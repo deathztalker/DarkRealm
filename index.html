@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dark Realm — Action RPG</title>
+  <meta name="description"
+    content="Dark Realm — a browser-based action RPG inspired by Diablo 2, World of Warcraft and Path of Exile.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <!-- Main Menu -->
+  <div id="main-menu" class="screen active">
+    <div class="menu-bg-particles" id="particles"></div>
+    <div class="menu-content">
+      <div class="title-block">
+        <h1 class="game-title">Dark Realm</h1>
+        <p class="game-subtitle">The Abyss Awaits</p>
+      </div>
+      <div class="class-selection" id="class-selection">
+        <h2 class="section-title">Choose Your Class</h2>
+        <div class="class-grid" id="class-grid">
+          <!-- Populated by JS -->
+        </div>
+        <div class="class-info-panel" id="class-info">
+          <h3 id="class-name">—</h3>
+          <p id="class-desc">Hover over a class to see its description.</p>
+          <div id="class-stats"></div>
+        </div>
+      </div>
+      <div class="menu-buttons">
+        <button id="btn-new-game" class="btn-primary" disabled>Enter the Realm</button>
+        <button id="btn-continue" class="btn-secondary">Continue</button>
+      </div>
+      <div class="save-slots" id="save-slots" style="display:none;">
+        <!-- Save slot selection -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="game-screen" class="screen">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Boss HP Bar Overlay -->
+    <div id="boss-hp-bar" class="hidden" style="position:absolute; top:40px; left:50%; transform:translateX(-50%); width:600px; height:24px; border:2px solid #311; background:#111; z-index:100; box-shadow:0 0 20px rgba(255,0,0,0.3); pointer-events:none;">
+      <div id="boss-hp-fill" style="width:100%; height:100%; background:linear-gradient(to right, #600, #c00); transition:width 0.1s linear;"></div>
+      <div id="boss-name" style="position:absolute; top:-28px; left:0; width:100%; text-align:center; color:#ff4040; font-family:'Cinzel', serif; font-size:22px; text-shadow:2px 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;">Act Boss</div>
+    </div>
+
+    <!-- Minimap -->
+    <canvas id="minimap" width="160" height="120" style="position:absolute; top:8px; right:8px; border:2px solid #444; background:#000; z-index:50; opacity:0.85; border-radius:4px; pointer-events:none;"></canvas>
+
+    <!-- Buff Bar -->
+    <div id="buff-bar" style="position:absolute; bottom:140px; left:50%; transform:translateX(-50%); display:flex; gap:6px; z-index:95;"></div>
+
+    <!-- HUD -->
+    <div id="hud">
+      <div id="hud-left">
+        <div class="orb-container">
+          <div id="hp-orb" class="orb hp-orb">
+            <div id="hp-fill" class="orb-fill"></div>
+            <div class="orb-text"><span id="hp-text">100</span></div>
+          </div>
+          <label class="orb-label">Life</label>
+        </div>
+      </div>
+
+      <div id="hud-center">
+        <div id="xp-bar-container">
+          <div id="xp-bar"></div>
+        </div>
+        <div id="potion-belt">
+          <div class="potion-slot" id="belt-1" data-slot="0"><span class="belt-key">Q</span>
+            <div class="potion-icon" id="pi-0"></div>
+          </div>
+          <div class="potion-slot" id="belt-2" data-slot="1"><span class="belt-key">W</span>
+            <div class="potion-icon" id="pi-1"></div>
+          </div>
+          <div class="potion-slot" id="belt-3" data-slot="2"><span class="belt-key">E</span>
+            <div class="potion-icon" id="pi-2"></div>
+          </div>
+          <div class="potion-slot" id="belt-4" data-slot="3"><span class="belt-key">R</span>
+            <div class="potion-icon" id="pi-3"></div>
+          </div>
+        </div>
+        <div id="skill-bar">
+          <div class="skill-slot" id="skill-1" data-slot="0">
+            <span class="skill-key">1</span>
+            <div class="skill-icon" id="si-0"></div>
+            <div class="cd-overlay" id="cd-0"></div>
+          </div>
+          <div class="skill-slot" id="skill-2" data-slot="1">
+            <span class="skill-key">2</span>
+            <div class="skill-icon" id="si-1"></div>
+            <div class="cd-overlay" id="cd-1"></div>
+          </div>
+          <div class="skill-slot" id="skill-3" data-slot="2">
+            <span class="skill-key">3</span>
+            <div class="skill-icon" id="si-2"></div>
+            <div class="cd-overlay" id="cd-2"></div>
+          </div>
+          <div class="skill-slot" id="skill-4" data-slot="3">
+            <span class="skill-key">4</span>
+            <div class="skill-icon" id="si-3"></div>
+            <div class="cd-overlay" id="cd-3"></div>
+          </div>
+          <div class="skill-slot" id="skill-5" data-slot="4">
+            <span class="skill-key">5</span>
+            <div class="skill-icon" id="si-4"></div>
+            <div class="cd-overlay" id="cd-4"></div>
+          </div>
+        </div>
+        <div id="zone-label"><span id="zone-name">Blood Moor</span></div>
+      </div>
+
+      <div id="hud-right">
+        <div class="orb-container">
+          <div id="mp-orb" class="orb mp-orb">
+            <div id="mp-fill" class="orb-fill"></div>
+            <div class="orb-text"><span id="mp-text">80</span></div>
+          </div>
+          <label class="orb-label">Mana</label>
+        </div>
+      </div>
+    </div>
+    <!-- HUD Buttons -->
+    <div id="hud-buttons">
+      <button class="hud-btn" id="btn-inventory" title="Inventory (I)">🎒</button>
+      <button class="hud-btn" id="btn-talents" title="Talents (T)">✨</button>
+      <button class="hud-btn" id="btn-character" title="Character (C)">📊</button>
+      <button class="hud-btn" id="btn-stash" title="Stash (H)">📦</button>
+      <button class="hud-btn" id="btn-quests" title="Quests (Q)">📜</button>
+    </div>
+  </div>
+
+  <!-- Combat log -->
+  <div id="combat-log"></div>
+
+  <!-- Transition Overlay -->
+  <div id="transition-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:9999; opacity:0; pointer-events:none; transition:opacity 0.5s;"></div>
+
+  <!-- Quest Log Panel -->
+  <div id="panel-quests" class="panel hidden" style="width:320px;">
+    <div class="panel-header"><span>📜 Quest Log</span><button class="panel-close" data-panel="quests">✕</button></div>
+    <div id="quest-list" style="padding:10px;"></div>
+    <div id="quest-stats" style="padding:10px;border-top:1px solid #333;color:#888;font-size:12px;"></div>
+  </div>
+
+  <!-- Panels (toggled) -->
+  <div id="panel-inventory" class="panel hidden">
+    <div class="panel-header"><span>Inventory</span><button class="panel-close" data-panel="inventory">✕</button></div>
+    <div id="equip-slots">
+      <div class="equip-slot" data-slot="head" data-label="Helm"></div>
+      <div class="equip-slot" data-slot="amulet" data-label="Amulet"></div>
+      <div class="equip-slot" data-slot="chest" data-label="Armor"></div>
+      <div class="equip-slot" data-slot="mainhand" data-label="Weapon"></div>
+      <div class="equip-slot" data-slot="offhand" data-label="Shield"></div>
+      <div class="equip-slot" data-slot="gloves" data-label="Gloves"></div>
+      <div class="equip-slot" data-slot="belt" data-label="Belt"></div>
+      <div class="equip-slot" data-slot="boots" data-label="Boots"></div>
+      <div class="equip-slot" data-slot="ring1" data-label="Ring"></div>
+      <div class="equip-slot" data-slot="ring2" data-label="Ring"></div>
+    </div>
+    <div id="inventory-grid">
+      <!-- 10x4 Grid populated by JS -->
+    </div>
+  </div>
+
+  <div id="panel-shop" class="panel hidden">
+    <div class="panel-header"><span>Merchant</span><button class="panel-close" data-panel="shop">✕</button></div>
+    <div id="shop-items" style="display:flex; flex-direction:column; gap:8px; padding:10px; overflow-y:auto; flex:1;">
+      <!-- Populated by JS -->
+    </div>
+    <div id="shop-gold" style="padding:10px; text-align:right; color:var(--gold); border-top:1px solid #333;">Your Gold: 0</div>
+  </div>
+
+  <div id="panel-stash" class="panel hidden">
+    <div class="panel-header"><span>Personal Stash</span><button class="panel-close" data-panel="stash">✕</button></div>
+    <div id="stash-grid" style="display:grid; grid-template-columns:repeat(5,40px); gap:4px; padding:10px;">
+      <!-- 20 slots populated by JS -->
+    </div>
+  </div>
+
+  <div id="panel-cube" class="panel hidden" style="width:200px;">
+    <div class="panel-header"><span style="color:#bf642f;">Horadric Cube</span><button class="panel-close" data-panel="cube">✕</button></div>
+    <div style="padding:10px;text-align:center;font-size:11px;color:#888;">Place 3 items of the SAME rarity to upgrade.</div>
+    <div id="cube-grid" style="display:grid; grid-template-columns:repeat(3,40px); gap:4px; padding:10px; justify-content:center;">
+      <!-- 3 slots -->
+    </div>
+    <div style="text-align:center; padding-bottom:10px;">
+      <button id="btn-transmute" class="btn-primary small">Transmute</button>
+    </div>
+  </div>
+
+  <div id="panel-talents" class="panel hidden">
+    <div class="panel-header"><span id="talent-tree-title">Talents</span><button class="panel-close"
+        data-panel="talents">✕</button></div>
+    <div id="talent-points-remaining">Points: <span id="tp-value">0</span></div>
+    <div id="talent-trees"></div>
+    <button id="btn-reset-talents" class="btn-secondary small">Reset (500g)</button>
+  </div>
+
+  <div id="panel-character" class="panel hidden">
+    <div class="panel-header"><span>Character</span><button class="panel-close" data-panel="character">✕</button>
+    </div>
+    <div id="character-stats-panel"></div>
+  </div>
+  </div>
+
+  <!-- Tooltip -->
+  <div id="tooltip" class="hidden"></div>
+
+  <!-- Death Screen -->
+  <div id="death-screen" class="screen overlay hidden">
+    <h2>You Have Fallen</h2>
+    <p id="death-stats"></p>
+    <button class="btn-primary" id="btn-respawn">Rise Again</button>
+    <button class="btn-secondary" id="btn-main-menu-death">Main Menu</button>
+  </div>
+
+  <!-- Victory Screen -->
+  <div id="victory-screen" class="screen overlay hidden">
+    <h2 style="color:#d4af37; font-size:48px; text-shadow:0 0 20px rgba(212,175,55,0.5);">Victory</h2>
+    <p>The Butcher has been slain. The darkness recedes... for now.</p>
+    <div id="victory-stats" style="margin:20px 0; color:#aaa;"></div>
+    <button class="btn-primary" id="btn-continue-rift">Enter the Infinite Rifts</button>
+    <button class="btn-secondary" id="btn-victory-menu">Return to Main Menu</button>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+  <div id="custom-tooltip"></div>
+</body>
+
+</html>

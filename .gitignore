@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+.npm/
+
+# Asset zips and large extracted folders
+*.zip
+rpg_beings_extracted/
+kemono_extracted/
+
+# System files
+.DS_Store
+Thumbs.db
+.gemini/
+
+# Temporary files
+/tmp/
+*.log
+*.tmp
+
+# Environment
+.env
+.venv/
+venv/
+__pycache__/
