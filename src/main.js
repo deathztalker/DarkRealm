@@ -29,6 +29,7 @@ let state = 'MENU', selectedClass = null;
 let lastTime = 0, lastSaveTime = 0;
 let portalReturnZone = 0;
 let zoneLevel = 0;
+let isTransitioning = false;
 let dialogue = null;
 let activeSlotId = null;
 let lastHitTime = 0;
@@ -731,6 +732,9 @@ function checkDeaths() {
 }
 
 function nextZone(targetZone = null) {
+    if (isTransitioning) return;
+    isTransitioning = true;
+
     const overlay = document.getElementById('transition-overlay');
     if (overlay) {
         overlay.style.opacity = '1';
@@ -747,7 +751,8 @@ function nextZone(targetZone = null) {
         dungeon.generate(zoneLevel, zoneLevel > 5 ? 'catacombs' : 'cathedral');
 
         finishZoneLoad();
-        
+        isTransitioning = false;
+
         if (overlay) {
             setTimeout(() => overlay.style.opacity = '0', 200);
         }
