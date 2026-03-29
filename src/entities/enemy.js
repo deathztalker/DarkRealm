@@ -3,6 +3,7 @@
  */
 import { bus } from '../engine/EventBus.js';
 import { calcDamage, applyDamage, DMG_TYPE, isCCd, getSlowFactor } from '../systems/combat.js';
+import { fx } from '../engine/ParticleSystem.js';
 
 const ENEMY_TYPES = {
     skeleton: { icon: 'enemy_skeleton', name: 'Skeleton', hp: 40, dmg: 5, spd: 50, xp: 15, armor: 2, group: 'undead' },
@@ -225,6 +226,13 @@ export class Enemy {
                 }
             }
 
+            // Special Boss skill: Summon Minions at 50% HP
+            if (this.isButcher && this.hp < this.maxHp * 0.5 && !this.hasSummoned) {
+                this.hasSummoned = true;
+                bus.emit('combat:log', { text: "RISE, MY SERVANTS!", type: 'log-crit' });
+                bus.emit('combat:spawnMinions', { x: this.x, y: this.y, count: 4 });
+            }
+
             if (this.isCharging) {
                 this.chargeTimer -= dt;
                 tryMove(Math.cos(this.chargeAngle) * this.moveSpeed * 4 * dt, Math.sin(this.chargeAngle) * this.moveSpeed * 4 * dt);
@@ -318,6 +326,14 @@ export class Enemy {
                 this.facingDir = dx > 0 ? 'right' : 'left';
             } else {
                 this.facingDir = dy > 0 ? 'down' : 'up';
+            }
+
+            // Enemy attack VFX on the target (player)
+            const angle = Math.atan2(dy, dx);
+            fx.emitSlash(target.x, target.y, angle, '#ff6666', 16);
+            fx.emitHitImpact(target.x, target.y, 'physical');
+            if (this.type === 'boss' || this.isButcher) {
+                fx.shake(200, 3);
             }
         }
     }

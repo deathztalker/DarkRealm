@@ -16,7 +16,7 @@ import { SaveSystem } from './systems/saveSystem.js';
 import { NPC } from './entities/npc.js';
 import { GameObject } from './entities/object.js';
 import { ASSET_NAMES } from './data/assets_list.js';
-import { initAudio, playLoot, playCastFire, playCastCold, playCastLightning, playCastPoison, playCastShadow, playDeathSfx, playZoneTransition } from './engine/audio.js';
+import { initAudio, playLoot, playCastFire, playCastCold, playCastLightning, playCastPoison, playCastShadow, playDeathSfx, playZoneTransition, startAmbientDungeon, startAmbientBoss, stopAmbient } from './engine/audio.js';
 import { ITEM_BASES as items } from './data/items.js';
 import { fx } from './engine/ParticleSystem.js';
 
@@ -152,7 +152,7 @@ function initClassGrid() {
         const card = document.createElement('div');
         card.className = 'class-card';
         card.dataset.classId = cls.id;
-        card.innerHTML = `<span class="class-icon"><img src="assets/class_${cls.id}.png" style="width:24px;height:24px;"></span><span class="class-card-name">${cls.name}</span>`;
+        card.innerHTML = `<span class="class-icon"><i class="ra ${getIconForClass(cls.id)}" style="font-size:24px;color:var(--gold);"></i></span><span class="class-card-name">${cls.name}</span>`;
         card.addEventListener('click', () => selectClass(cls.id));
         card.addEventListener('mouseenter', () => showClassInfo(cls.id));
         grid.appendChild(card);
@@ -168,7 +168,7 @@ function selectClass(classId) {
 
 function showClassInfo(classId) {
     const cls = getClass(classId);
-    $('class-name').innerHTML = `<img src="assets/class_${cls.id}.png" style="width:24px;height:24px;vertical-align:middle;"> ${cls.name}`;
+    $('class-name').innerHTML = `<i class="ra ${getIconForClass(cls.id)}" style="font-size:24px;vertical-align:middle;color:var(--gold);"></i> ${cls.name}`;
     $('class-desc').textContent = cls.desc;
     const statsHtml = ['str', 'dex', 'vit', 'int'].map(s =>
         `<div class="class-stat-bar"><span>${s.toUpperCase()}</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${cls.statBars[s]}%"></div></div></div>`
@@ -187,7 +187,7 @@ function renderCube() {
         slot.style.width = '40px';
         slot.style.height = '40px';
         if (cubeSlots[i]) {
-            slot.innerHTML = `<img src="assets/${cubeSlots[i].icon}.png" style="max-width:90%;max-height:90%;display:block;margin:auto;">`;
+            slot.innerHTML = `<i class="ra ${getIconForItem(cubeSlots[i].icon)}" style="font-size:28px; display:block; margin:auto; color:var(--text); text-shadow:0 0 8px currentColor;"></i>`;
             setupTooltip(slot, cubeSlots[i]);
             // Left-click: move from cube to inventory
             slot.addEventListener('click', () => {
@@ -323,8 +323,21 @@ function startGame(slotId = null, loadPlayerData = null) {
 
     updateHud();
 
+    // Ensure boss bar hidden unless zone 5
+    const bossBar = $('boss-hp-bar');
+    if (bossBar && zoneLevel !== 5) bossBar.classList.add('hidden');
+
     // Initial save
     SaveSystem.saveSlot(activeSlotId, player, zoneLevel);
+
+    // Initial ambient audio
+    if (zoneLevel === 5) {
+        startAmbientBoss();
+    } else if (zoneLevel > 0) {
+        startAmbientDungeon();
+    } else {
+        stopAmbient(); // Town is quiet for now
+    }
 
     // Init explored for minimap
     explored = Array.from({ length: dungeon.height }, () => Array(dungeon.width).fill(false));
@@ -420,9 +433,14 @@ function gameLoop(timestamp) {
             if (mercenary._atkCd <= 0) {
                 const dmg = mercenary.dmg + Math.floor(Math.random() * 5);
                 closestEnemy.hp -= dmg;
+                // Healing link: player's life steal or potions heal the merc too!
+                if (player.hp < player.maxHp) mercenary.hp = Math.min(mercenary.maxHp, mercenary.hp + dmg * 0.1);
                 mercenary._atkCd = 1.0;
+                fx.emitBurst(closestEnemy.x, closestEnemy.y, '#ccc', 5);
             }
         }
+        // Passive regen
+        mercenary.hp = Math.min(mercenary.maxHp, mercenary.hp + mercenary.maxHp * 0.005 * dt);
     }
 
     checkDeaths();
@@ -486,7 +504,7 @@ function gameLoop(timestamp) {
         if (e.isPlayer) {
             renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)';
             renderer.ctx.beginPath(); renderer.ctx.ellipse(e.x, e.y + 6, 8, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
-            renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 18, e.animState, e.facingDir, lastTime);
+            renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 18, e.animState, e.facingDir, lastTime, null, e.equipment);
             e.renderMinions(renderer, lastTime);
         } else {
             e.render(renderer, lastTime);
@@ -499,8 +517,8 @@ function gameLoop(timestamp) {
         renderer.ctx.beginPath();
         renderer.ctx.ellipse(mercenary.x, mercenary.y + 6, 6, 3, 0, 0, Math.PI * 2);
         renderer.ctx.fill();
-        renderer.drawSprite('npc_elder', mercenary.x, mercenary.y - 4, 16);
-        // HP bar
+        renderer.drawSprite('class_rogue', mercenary.x, mercenary.y - 4, 16);
+        // HP bar above head
         const bw = 18;
         renderer.ctx.fillStyle = '#333';
         renderer.ctx.fillRect(mercenary.x - bw / 2, mercenary.y - 14, bw, 2);
@@ -692,8 +710,15 @@ function checkDeaths() {
 
             // Quest tracking
             for (const q of activeQuests) {
-                if (q.bossOnly && e.type === 'boss') q.progress++;
-                else if (!q.bossOnly) q.progress++;
+                if (q.progress < q.target) {
+                    if ((q.bossOnly && e.type === 'boss') || !q.bossOnly) {
+                        q.progress++;
+                        if (q.progress === q.target) {
+                            addCombatLog(`Quest Objective Complete! Return to Akara.`, 'log-crit');
+                            updateHud();
+                        }
+                    }
+                }
             }
 
             if (e.type === 'boss' && zoneLevel === 5) {
@@ -729,6 +754,15 @@ function checkDeaths() {
         }
         return true;
     });
+
+    // Player Death
+    if (player && player.hp <= 0 && state === 'GAME') {
+        state = 'DEAD';
+        playDeathSfx();
+        $('death-screen').classList.remove('hidden');
+        const zName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 7}`;
+        $('death-stats').textContent = `You fell in ${zName} at Level ${player.level}.`;
+    }
 }
 
 function nextZone(targetZone = null) {
@@ -827,6 +861,15 @@ function finishZoneLoad() {
         addCombatLog(`Difficulty increased to ${DIFFICULTY_NAMES[difficulty]}!`, 'log-crit');
     }
 
+    // Ambient Audio Update
+    if (zoneLevel === 5) {
+        startAmbientBoss();
+    } else if (zoneLevel > 0) {
+        startAmbientDungeon();
+    } else {
+        stopAmbient();
+    }
+
     // Reset explored for minimap
     explored = Array.from({ length: dungeon.height }, () => Array(dungeon.width).fill(false));
 }
@@ -897,6 +940,372 @@ function updateHud() {
             mui.innerHTML = '';
         }
     }
+
+    // Mercenary HUD
+    const mh = $('mercenary-hud');
+    if (mh) {
+        if (typeof mercenary !== 'undefined' && mercenary && mercenary.hp > 0) {
+            mh.classList.remove('hidden');
+            $('merc-name').textContent = mercenary.name;
+            const mPct = Math.max(0, Math.min(100, (mercenary.hp / mercenary.maxHp) * 100));
+            $('merc-hp-fill').style.width = mPct + '%';
+        } else {
+            mh.classList.add('hidden');
+        }
+    }
+
+    // Quest HUD
+    const qh = $('quest-hud');
+    if (qh) {
+        if (typeof activeQuests !== 'undefined' && activeQuests.length > 0) {
+            qh.classList.remove('hidden');
+            $('quest-desc').textContent = activeQuests[0].desc;
+            if (activeQuests[0].progress >= activeQuests[0].target) {
+                $('quest-progress').textContent = 'Return to Akara';
+                $('quest-progress').style.color = '#4caf50';
+            } else {
+                $('quest-progress').textContent = `${activeQuests[0].progress} / ${activeQuests[0].target}`;
+                $('quest-progress').style.color = '#ffd700';
+            }
+        } else {
+            qh.classList.add('hidden');
+        }
+    }
+}
+
+// ─── ICON HELPERS (RPG-AWESOME) ───
+function getIconForSkill(id) {
+    const iconMap = {
+        // ══════════ WARRIOR ══════════
+        'warrior':            'ra-crossed-swords',
+        'arms':               'ra-sword',
+        'bash':               'ra-muscle-up',
+        'double_swing':       'ra-dervish-swords',
+        'rend':               'ra-dripping-sword',
+        'whirlwind':          'ra-spinning-sword',
+        'combat_mastery':     'ra-crossed-axes',
+        'berserk':            'ra-player-pyromaniac',
+        'cleave':             'ra-axe-swing',
+        'execute':            'ra-decapitation',
+        'defense':            'ra-heavy-shield',
+        'shield_bash':        'ra-bolt-shield',
+        'iron_skin':          'ra-knight-helmet',
+        'block_mastery':      'ra-round-shield',
+        'revenge':            'ra-player-dodge',
+        'taunt':              'ra-horn-call',
+        'fortify':            'ra-guarded-tower',
+        'life_tap':           'ra-crowned-heart',
+        'last_stand':         'ra-blast',
+        'battle':             'ra-castle-flag',
+        'warcry':             'ra-horn-call',
+        'shout':              'ra-speech-bubble',
+        'leap_attack':        'ra-boot-stomp',
+        'battle_orders':      'ra-hand-emblem',
+        'commanding_shout':   'ra-speech-bubbles',
+        'slam':               'ra-groundbreaker',
+        'avatar_of_war':      'ra-heavy-fall',
+        'war_syn':            'ra-all-for-one',
+
+        // ══════════ SORCERESS ══════════
+        'sorceress':          'ra-crystal-wand',
+        'fire':               'ra-fire-symbol',
+        'fire_bolt':          'ra-small-fire',
+        'fireball':           'ra-fire-bomb',
+        'fire_mastery':       'ra-burning-embers',
+        'meteor':             'ra-burning-meteor',
+        'fire_storm':         'ra-arson',
+        'immolate':           'ra-campfire',
+        'enchant':            'ra-fireball-sword',
+        'inferno':            'ra-fire-breath',
+        'cold':               'ra-snowflake',
+        'ice_bolt':           'ra-frost-emblem',
+        'frost_nova':         'ra-frostfire',
+        'ice_blast':          'ra-cold-heart',
+        'frozen_armor':       'ra-crystal-cluster',
+        'blizzard':           'ra-ice-cube',
+        'cold_mastery':       'ra-frozen-arrow',
+        'frozen_orb':         'ra-crystal-ball',
+        'absolute_zero':      'ra-brain-freeze',
+        'lightning':          'ra-lightning-bolt',
+        'charged_bolt':       'ra-focused-lightning',
+        'lightning_bolt':     'ra-lightning',
+        'chain_lightning':    'ra-lightning-trio',
+        'static_field':       'ra-energise',
+        'teleport':           'ra-player-teleport',
+        'light_mastery':      'ra-lightning-sword',
+        'nova':               'ra-explosion',
+        'energy_shield':      'ra-bolt-shield',
+        'thunder_storm':      'ra-lightning-storm',
+
+        // ══════════ NECROMANCER ══════════
+        'necromancer':        'ra-skull',
+        'summoning':          'ra-tombstone',
+        'summon_skeleton':    'ra-broken-bone',
+        'skeleton_mastery':   'ra-broken-skull',
+        'skeleton_mage':      'ra-death-skull',
+        'golem':              'ra-monster-skull',
+        'golem_mastery':      'ra-gear-hammer',
+        'summon_resist':      'ra-circular-shield',
+        'revive':             'ra-regeneration',
+        'army_of_dead':       'ra-dead-tree',
+        'curses':             'ra-eye-monster',
+        'amplify_damage':     'ra-broken-shield',
+        'weaken':             'ra-health-decrease',
+        'iron_maiden':        'ra-crown-of-thorns',
+        'life_tap_curse':     'ra-heart-bottle',
+        'decrepify':          'ra-noose',
+        'lower_resist':       'ra-acid',
+        'mass_curse':         'ra-overmind',
+        'bone':               'ra-bone-bite',
+        'teeth':              'ra-tooth',
+        'bone_spear':         'ra-spear-head',
+        'bone_armor':         'ra-bone-knife',
+        'bone_wall':          'ra-metal-gate',
+        'bone_spirit':        'ra-desert-skull',
+        'bone_mastery':       'ra-crossed-bones',
+        'bone_prison':        'ra-locked-fortress',
+        'bone_storm':         'ra-skull-trophy',
+        'poison_nova':        'ra-poison-cloud',
+
+        // ══════════ PALADIN ══════════
+        'paladin':            'ra-ankh',
+        'holy':               'ra-angel-wings',
+        'holy_light':         'ra-sunbeams',
+        'holy_smite':         'ra-sun-symbol',
+        'blessed_hammer':     'ra-hammer-drop',
+        'holy_shock':         'ra-player-thunder-struck',
+        'consecration':       'ra-aura',
+        'holy_mastery':       'ra-sun',
+        'divine_shield':      'ra-heavy-shield',
+        'divine_storm':       'ra-lightning-storm',
+        'foh':                'ra-shot-through-the-heart',
+        'auras':              'ra-radial-balance',
+        'might_aura':         'ra-muscle-up',
+        'prayer_aura':        'ra-health-increase',
+        'holy_fire_aura':     'ra-fire-ring',
+        'resist_all':         'ra-fire-shield',
+        'vigor':              'ra-forward',
+        'fanaticism':         'ra-flaming-claw',
+        'conviction':         'ra-gavel',
+        'aura_mastery':       'ra-triforce',
+        'combat':             'ra-crossed-swords',
+        'charge':             'ra-boot-stomp',
+        'smite':              'ra-flat-hammer',
+        'zeal':               'ra-dervish-swords',
+        'vengeance':          'ra-flaming-trident',
+        'cleansing':          'ra-hospital-cross',
+        'judgment':           'ra-crown',
+
+        // ══════════ SHAMAN ══════════
+        'shaman':             'ra-lightning',
+        'elemental':          'ra-lightning-bolt',
+        'lightning_bolt':     'ra-focused-lightning',
+        'chain_lightning':    'ra-lightning-trio',
+        'thunder_strike':     'ra-player-thunder-struck',
+        'elem_mastery':       'ra-energise',
+        'storm_caller':       'ra-lightning-storm',
+        'earthquake':         'ra-groundbreaker',
+        'cl_syn':             'ra-tesla',
+        'totems':             'ra-torch',
+        'searing_totem':      'ra-campfire',
+        'stoneskin_totem':    'ra-guarded-tower',
+        'windfury_totem':     'ra-feathered-wing',
+        'totem_mastery':      'ra-lit-candelabra',
+        'totemic_wrath':      'ra-bomb-explosion',
+        'totem_syn':          'ra-candle-fire',
+        'restoration':        'ra-heart-bottle',
+        'healing_wave':       'ra-health-increase',
+        'healing_stream':     'ra-water-drop',
+        'earth_shield':       'ra-circular-shield',
+        'mana_tide':          'ra-ocean-emblem',
+        'nature_swiftness':   'ra-feather-wing',
+        'resto_mastery':      'ra-crowned-heart',
+        'ancestral_spirit':   'ra-angel-wings',
+        'hw_syn':             'ra-droplets',
+
+        // ══════════ ROGUE ══════════
+        'rogue':              'ra-hood',
+        'assassination':      'ra-daggers',
+        'backstab':           'ra-diving-dagger',
+        'ambush':             'ra-cloak-and-dagger',
+        'eviscerate':         'ra-dripping-knife',
+        'lethality':          'ra-bowie-knife',
+        'vanish':             'ra-hood',
+        'death_blossom':      'ra-shuriken',
+        'death_mark':         'ra-on-target',
+        'poison':             'ra-poison-cloud',
+        'poison_blade':       'ra-dripping-blade',
+        'envenom':            'ra-venomous-snake',
+        'noxious_cloud':      'ra-gloop',
+        'plague':             'ra-biohazard',
+        'virulence':          'ra-bottle-vapors',
+        'pandemic':           'ra-skull',
+        'traps':              'ra-bear-trap',
+        'fire_trap':          'ra-fire-bomb',
+        'shock_trap':         'ra-focused-lightning',
+        'blade_trap':         'ra-circular-saw',
+        'trap_mastery':       'ra-bear-trap',
+        'shadow_mine':        'ra-bombs',
+        'spike_trap':         'ra-spikeball',
+        'shadow_strike':      'ra-plain-dagger',
+        'death_sentry':       'ra-barbed-arrow',
+        'shadow_dance':       'ra-player-dodge',
+
+        // ══════════ WARLOCK ══════════
+        'warlock':            'ra-burning-eye',
+        'destruction':        'ra-fire-symbol',
+        'shadow_bolt':        'ra-bottled-bolt',
+        'drain_life':         'ra-bleeding-hearts',
+        'soul_fire':          'ra-alien-fire',
+        'shadow_mastery':     'ra-arcane-mask',
+        'chaos_bolt':         'ra-beam-wake',
+        'seed':               'ra-sprout',
+        'dark_pact':          'ra-cut-palm',
+        'rain_of_chaos':      'ra-burning-meteor',
+        'affliction':         'ra-eye-monster',
+        'corruption':         'ra-gloop',
+        'agony':              'ra-broken-heart',
+        'haunt':              'ra-batwings',
+        'aff_mastery':        'ra-bleeding-eye',
+        'siphon_life':        'ra-glass-heart',
+        'unstable':           'ra-radioactive',
+        'dark_soul':          'ra-crescent-moon',
+        'doom':               'ra-death-skull',
+        'demonology':         'ra-dragon',
+        'imp':                'ra-small-fire',
+        'voidwalker':         'ra-tentacle',
+        'demon_armor':        'ra-vest',
+        'soul_link':          'ra-two-hearts',
+        'demonfire_passive':  'ra-hot-surface',
+        'succubus':           'ra-love-howl',
+        'infernal':           'ra-lava',
+        'metamorphosis':      'ra-hydra',
+
+        // ══════════ DRUID ══════════
+        'druid':              'ra-leaf',
+        'shapeshifting':      'ra-wolf-head',
+        'wolf_form':          'ra-wolf-howl',
+        'maul':               'ra-bear-trap',
+        'fury':               'ra-flaming-claw',
+        'feral_mastery':      'ra-pawprint',
+        'bear_form':          'ra-muscle-fat',
+        'bear_slam':          'ra-groundbreaker',
+        'primal_rage':        'ra-insect-jaws',
+        'rabies':             'ra-biohazard',
+        'elemental_druid':    'ra-mountains',
+        'fissure':            'ra-lava',
+        'cyclone_armor':      'ra-fluffy-swirl',
+        'tornado':            'ra-fluffy-swirl',
+        'twister':            'ra-cycle',
+        'hurricane':          'ra-heat-haze',
+        'volcano':            'ra-fire-ring',
+        'nature_mastery':     'ra-trefoil-lily',
+        'armageddon':         'ra-burning-meteor',
+        'summoning_druid':    'ra-sprout-emblem',
+        'raven':              'ra-raven',
+        'spirit_wolf':        'ra-wolf-head',
+        'summon_wolf':        'ra-wolf-howl',
+        'vine':               'ra-vine-whip',
+        'oak_sage':           'ra-acorn',
+        'heart_of_wolverine': 'ra-hearts',
+        'grizzly':            'ra-crab-claw',
+        'stampede':           'ra-lion',
+        'companion_hawk':     'ra-bird-claw',
+
+        // ══════════ RANGER ══════════
+        'ranger':             'ra-archer',
+        'marksmanship':       'ra-archery-target',
+        'power_shot':         'ra-supersonic-arrow',
+        'multi_shot':         'ra-arrow-cluster',
+        'guided_arrow':       'ra-broadhead-arrow',
+        'bow_mastery':        'ra-crossbow',
+        'immolation_arrow':   'ra-flaming-arrow',
+        'strafe':             'ra-arrow-flights',
+        'rain_of_arrows':     'ra-target-arrows',
+        'nature_ranger':      'ra-pine-tree',
+        'companion_hawk':     'ra-bird-claw',
+        'viper_arrow':        'ra-chemical-arrow',
+        'comp_mastery':       'ra-thorn-arrow',
+        'wolf_pack':          'ra-wolf-howl',
+        'spirit_guide':       'ra-feather-wing',
+        'harmony':            'ra-trefoil-lily',
+        'stampede_ranger':    'ra-lion',
+        'traps_ranger':       'ra-bear-trap',
+        'ice_trap':           'ra-frost-emblem',
+        'fire_trap_r':        'ra-fire-bomb',
+        'explosive_trap':     'ra-cluster-bomb',
+        'trap_mastery_r':     'ra-grenade',
+        'scatter_shot':       'ra-cannon-shot',
+        'black_arrow':        'ra-barbed-arrow',
+        'minefield':          'ra-bombs',
+        'mark_death':         'ra-targeted',
+
+        // ══════════ MISC / SYNERGIES ══════════
+        'chain_reaction':     'ra-chain',
+        'fortress':           'ra-locked-fortress',
+    };
+    return iconMap[id] || 'ra-cog';
+}
+
+function getIconForItem(iconStr) {
+    if (!iconStr) return 'ra-circle';
+    const s = iconStr.toLowerCase();
+    
+    // Weapons
+    if (s.includes('sword') || s.includes('blade')) return 'ra-broadsword';
+    if (s.includes('axe')) return 'ra-battered-axe';
+    if (s.includes('mace') || s.includes('hammer') || s.includes('club')) return 'ra-hammer';
+    if (s.includes('staff')) return 'ra-wooden-staff';
+    if (s.includes('bow')) return 'ra-bow';
+    if (s.includes('dagger')) return 'ra-daggers';
+    if (s.includes('totem') || s.includes('idol')) return 'ra-totem';
+    if (s.includes('wand')) return 'ra-crystal-wand';
+    if (s.includes('orb') || s.includes('source')) return 'ra-gem-pendant';
+    
+    // Armor
+    if (s.includes('cap') || s.includes('helm') || s.includes('circlet')) return 'ra-helmet';
+    if (s.includes('armor') || s.includes('mail') || s.includes('robe')) return 'ra-chain-mail'; // or ra-vest
+    if (s.includes('glove') || s.includes('gauntlet')) return 'ra-glove';
+    if (s.includes('boot')) return 'ra-boot-stomp'; // boot
+    if (s.includes('shield') || s.includes('buckler')) return 'ra-shield';
+    if (s.includes('belt') || s.includes('sash')) return 'ra-belt-buckle';
+    
+    // Accessories & Consumables
+    if (s.includes('ring')) return 'ra-diamond-ring';
+    if (s.includes('amulet')) return 'ra-necklace';
+    if (s.includes('hp') || s.includes('health') || (s.includes('potion') && s.includes('red'))) return 'ra-health-potion';
+    if (s.includes('mp') || s.includes('mana') || (s.includes('potion') && s.includes('blue'))) return 'ra-ammo-bag'; // using ammo for mana temp or standard flask
+    if (s.includes('potion')) return 'ra-potion';
+    if (s.includes('rune_')) return 'ra-rune-stone';
+    if (s.includes('gem_')) return 'ra-gem';
+    if (s.includes('charm')) return 'ra-scroll-unfurled';
+    if (s.includes('chest_open')) return 'ra-chest';
+    
+    // Gems specifics
+    if (s.includes('ruby')) return 'ra-drop'; // red
+    if (s.includes('sapphire')) return 'ra-crystal-cluster'; // blue
+    if (s.includes('topaz')) return 'ra-sun'; // yellow
+    if (s.includes('emerald')) return 'ra-leaf'; // green
+    if (s.includes('diamond')) return 'ra-diamond'; // white
+    if (s.includes('amethyst')) return 'ra-eye-shield'; // purple
+    if (s.includes('skull')) return 'ra-skull';
+    
+    return 'ra-help';
+}
+
+function getIconForClass(id) {
+    if (!id) return 'ra-player';
+    const cid = id.toLowerCase();
+    if (cid.includes('warrior')) return 'ra-sword';
+    if (cid.includes('sorceress')) return 'ra-crystal-wand';
+    if (cid.includes('rogue') || cid.includes('assassin')) return 'ra-kunai';
+    if (cid.includes('paladin')) return 'ra-shield';
+    if (cid.includes('necromancer')) return 'ra-skull';
+    if (cid.includes('druid')) return 'ra-pine-tree';
+    if (cid.includes('shaman')) return 'ra-lightning-sword';
+    if (cid.includes('ranger')) return 'ra-crossbow';
+    if (cid.includes('warlock')) return 'ra-bleeding-eye';
+    return 'ra-player';
 }
 
 function updateSkillBar() {
@@ -905,7 +1314,7 @@ function updateSkillBar() {
         const si = $(`si-${i}`);
         const skillId = player.hotbar[i];
         if (skillId && player.skillMap[skillId]) {
-            si.innerHTML = `<img src="assets/skill_${skillId}.png" style="width:100%;height:100%;object-fit:cover;">`;
+            si.innerHTML = `<i class="ra ${getIconForSkill(skillId)}" style="font-size: 28px; line-height: 48px; text-align: center; color: var(--gold); text-shadow: 0 0 5px #000; width: 100%; height: 100%; display: block; border-radius: 4px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);"></i>`;
         } else {
             si.innerHTML = '';
         }
@@ -1050,6 +1459,33 @@ bus.on('combat:damage', d => {
 bus.on('combat:spawnProjectile', d => projectiles.push(d.proj));
 bus.on('combat:spawnAoE', d => aoeZones.push(d.aoe));
 
+bus.on('combat:spawnMinions', d => {
+    for (let i = 0; i < d.count; i++) {
+        const angle = (Math.PI * 2 / d.count) * i;
+        const tx = d.x + Math.cos(angle) * 70;
+        const ty = d.y + Math.sin(angle) * 70;
+        if (dungeon && dungeon.isWalkable(tx, ty)) {
+            const minionSpawn = {
+                type: 'skeleton',
+                maxHp: 200 * (difficulty > 0 ? DIFFICULTY_MULT[difficulty] : 1),
+                dmg: 25 * (difficulty > 0 ? DIFFICULTY_MULT[difficulty] : 1),
+                moveSpeed: 70,
+                attackSpeed: 1.2,
+                attackRange: 25,
+                xpReward: 0,
+                color: '#aaa',
+                size: 22,
+                x: tx, y: ty
+            };
+            const minion = new Enemy(minionSpawn);
+            minion.type = 'champion';
+            minion.name = 'Servant of the Butcher';
+            enemies.push(minion);
+            fx.emitBurst(tx, ty, '#8000ff', 20);
+        }
+    }
+});
+
 bus.on('player:levelup', d => {
     addCombatLog(`LEVEL UP! Now level ${d.level}`, 'log-level');
     updateSkillBar();
@@ -1139,7 +1575,7 @@ function renderStash() {
         slot.style.width = '40px';
         slot.style.height = '40px';
         if (stash[i]) {
-            slot.innerHTML = `<img src="assets/${stash[i].icon}.png" style="max-width:90%;max-height:90%;display:block;margin:auto;">`;
+            slot.innerHTML = `<i class="ra ${getIconForItem(stash[i].icon)}" style="font-size:28px; color:var(--text); text-shadow:0 0 8px currentColor;"></i>`;
             setupTooltip(slot, stash[i]);
             // Left-click: move from stash to inventory
             slot.addEventListener('click', () => {
@@ -1245,7 +1681,7 @@ function renderTalentTree() {
     for (const tree of cls.trees) {
         const col = document.createElement('div');
         col.className = 'tree-column';
-        col.innerHTML = `<div class="tree-column-header"><img src="assets/tree_${tree.id}.png" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"> ${tree.name}</div>`;
+        col.innerHTML = `<div class="tree-column-header"><i class="ra ${getIconForSkill(tree.id)}" style="font-size:16px;vertical-align:middle;margin-right:4px;color:var(--gold);"></i> ${tree.name}</div>`;
 
         // Group by row
         const rows = {};
@@ -1271,7 +1707,7 @@ function renderTalentTree() {
 
                 const el = document.createElement('div');
                 el.className = `talent-node ${node.type === 'active' ? 'active-skill' : ''} ${pts > 0 ? (isMaxed ? 'maxed' : 'unlocked') : ''} ${!reqMet ? 'locked' : ''}`;
-                el.innerHTML = `<span><img src="assets/skill_${node.id}.png" style="width:100%;height:100%;vertical-align:top;border-radius:4px;"></span><span class="talent-node-pts">${pts}/${node.maxPts}</span>`;
+                el.innerHTML = `<span style="display:flex;justify-content:center;align-items:center;width:100%;height:100%;"><i class="ra ${getIconForSkill(node.id)}" style="font-size:32px; color: ${pts > 0 ? 'var(--gold)' : '#aaa'}; text-shadow:0 0 4px #000;"></i></span><span class="talent-node-pts">${pts}/${node.maxPts}</span>`;
                 el.title = `${node.name}\n${node.desc}\n\nBase: ${pts} / ${node.maxPts}${eff > pts ? ` (+${eff - pts} from items)` : ''}${node.mana ? `\nMana: ${node.mana}` : ''}${node.cd ? `\nCD: ${node.cd}s` : ''}${node.req ? `\nRequires: ${node.req}` : ''}${node.endgame ? `\n\n[Endgame] ${node.endgame}` : ''}`;
 
                 if (canSpend) {
@@ -1307,7 +1743,7 @@ function renderCharacterPanel() {
     const sp = player.statPoints;
     const btn = (stat) => sp > 0 ? `<button class="stat-alloc-btn" data-stat="${stat}">+</button>` : '';
     const stats = [
-        ['Class', `<img src="assets/class_${player.classId}.png" style="width:16px;height:16px;vertical-align:middle;"> ${player.className}`],
+        ['Class', `<i class="ra ${getIconForClass(player.classId)}" style="font-size:16px;vertical-align:middle;color:var(--gold);"></i> ${player.className}`],
         ['Level', player.level],
         ['Gold', player.gold],
         ['Stat Points', `<span style="color:${sp > 0 ? '#ffd700' : '#888'}">${sp}</span>`],
@@ -1374,7 +1810,7 @@ function renderInventory() {
         const el = document.querySelector(`.equip-slot[data-slot="${s}"]`);
         if (!el) return;
         const item = player.equipment[s];
-        el.innerHTML = item ? `<div class="inv-item rarity-${item.rarity}"><img src="assets/${item.icon}.png" style="max-width:90%;max-height:90%;"></div>` : '';
+        el.innerHTML = item ? `<div class="inv-item rarity-${item.rarity}"><i class="ra ${getIconForItem(item.icon)}" style="font-size:32px; color:var(--text); text-shadow:0 0 8px currentColor;"></i></div>` : '';
         if (item) {
             const itemEl = el.querySelector('.inv-item');
             setupTooltip(itemEl, item);
@@ -1442,11 +1878,25 @@ function renderInventory() {
             const div = document.createElement('div');
             const check = player.canEquip(item);
             div.className = `inv-item rarity-${item.rarity}${!check.ok ? ' cant-equip' : ''}`;
-            div.innerHTML = `<img src="assets/${item.icon}.png" style="max-width:90%;max-height:90%;display:block;margin:auto;${!check.ok ? 'filter:grayscale(0.8) sepia(0.5);' : ''}">`;
+            div.innerHTML = `<i class="ra ${getIconForItem(item.icon)}" style="font-size:28px; display:block; margin:auto; color:var(--text); text-shadow:0 0 8px currentColor; ${!check.ok ? 'filter:grayscale(0.8) sepia(0.5);' : ''}"></i>`;
             setupTooltip(div, item);
 
-            // Left click to equip / socket
+            // Left click to equip / socket / sell
             div.addEventListener('click', () => {
+                if (!$('panel-shop').classList.contains('hidden')) {
+                    // Sell Logic
+                    const price = Math.max(1, typeof calculateSellPrice === 'function' ? calculateSellPrice(item) : 5);
+                    player.gold += price;
+                    player.inventory[i] = null;
+                    addCombatLog(`Sold ${item.name} for ${price} gold.`, 'log-info');
+                    hideTooltip();
+                    renderInventory();
+                    renderCharacterPanel();
+                    if (typeof renderShop === 'function') renderShop();
+                    playLoot();
+                    return;
+                }
+                
                 if (socketingGemIndex !== -1) {
                     if (socketingGemIndex === i) {
                         // Cancel socketing
@@ -1740,6 +2190,16 @@ $('btn-reset-talents')?.addEventListener('click', () => {
 });
 
 // ─── SHOP UI ───
+function calculateSellPrice(item) {
+    if (!item) return 0;
+    let base = item.price || 10;
+    if (item.rarity === 'magic') base *= 3;
+    if (item.rarity === 'rare') base *= 10;
+    if (item.rarity === 'unique') base *= 25;
+    if (item.ilvl) base += (item.ilvl * 5);
+    return Math.floor(base * 0.25); // Sell for 25% of absolute value
+}
+
 function openShop() {
     $('panel-shop').classList.remove('hidden');
     $('panel-inventory').classList.remove('hidden');
@@ -1749,7 +2209,7 @@ function openShop() {
 function renderShop() {
     const container = $('shop-items');
     container.innerHTML = '';
-    $('shop-gold').textContent = `Your Gold: ${player.gold}`;
+    $('shop-gold').innerHTML = `Your Gold: <span style="color:var(--gold)">${player.gold}</span><div style="font-size:11px;color:#888;margin-top:4px;">(Click items in your Inventory to Sell them!)</div>`;
 
     const shopInventory = [
         { ...items.health_potion, price: 25 },
@@ -1775,7 +2235,7 @@ function renderShop() {
         
         row.innerHTML = `
             <div style="display:flex; align-items:center; gap:8px;">
-                <img src="assets/${item.icon}.png" width="32" height="32">
+                <i class="ra ${getIconForItem(item.icon)}" style="font-size:24px; color:var(--text); text-shadow:0 0 8px currentColor;"></i>
                 <span class="tooltip-trigger">${item.name}</span>
             </div>
             <button class="btn-secondary small">Buy (${item.price}g)</button>
@@ -1950,6 +2410,34 @@ window.addEventListener('DOMContentLoaded', () => {
         initAudio();
         startGame();
     });
+
+    // Death Screen
+    $('btn-respawn').addEventListener('click', () => {
+        $('death-screen').classList.add('hidden');
+        if (player) {
+            player.hp = player.maxHp;
+            player.mp = player.maxMp;
+            player.gold = Math.floor(player.gold * 0.9); // 10% gold penalty
+        }
+        state = 'GAME';
+        nextZone(0); // Respawn in town
+    });
+
+    $('btn-main-menu-death').addEventListener('click', () => {
+        $('death-screen').classList.add('hidden');
+        returnToMainMenu();
+    });
+
+    // Victory Screen
+    $('btn-continue-rift').addEventListener('click', () => {
+        $('victory-screen').classList.add('hidden');
+        nextZone(6);
+    });
+
+    $('btn-victory-menu').addEventListener('click', () => {
+        $('victory-screen').classList.add('hidden');
+        returnToMainMenu();
+    });
 });
 
 // ─── SAVE SLOT UI ───
@@ -1974,10 +2462,10 @@ function renderSaveSlots() {
         card.className = 'save-slot-card';
         const date = new Date(slot.timestamp).toLocaleDateString();
         card.innerHTML = `
-            <img src="assets/class_${slot.classId}.png" class="slot-icon" style="width:32px;height:32px;">
+            <i class="ra ${getIconForClass(slot.classId)} slot-icon" style="font-size:32px; color:var(--gold); text-shadow: 0 0 8px rgba(255,215,0,0.5);"></i>
             <div class="slot-info">
-                <div class="slot-name">${slot.name || slot.className}</div>
-                <div class="slot-detail">Level ${slot.level} ${slot.className} — ${date}</div>
+                <div class="slot-name" style="text-shadow: 0 0 4px rgba(255,255,255,0.3);">${slot.name || slot.className}</div>
+                <div class="slot-detail" style="color:#aaa;">Level ${slot.level} ${slot.className} — ${date}</div>
             </div>
             <button class="slot-delete" title="Delete character">✕</button>
         `;

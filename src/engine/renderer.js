@@ -112,10 +112,26 @@ export class Renderer {
     }
 
     // Draw frame from Spritesheet
-    drawAnim(spriteName, x, y, size, state, dir, time, filter = null) {
+    drawAnim(spriteName, x, y, size, state, dir, time, filter = null, equipment = null) {
         const img = Assets.get(spriteName);
         if (!img || !img.complete || img.width <= 64 || img.width === img.height) {
             this.drawSprite(spriteName, x, y, size, state === 'walk', time, filter);
+            
+            // Dynamic Equipment Layering (Paperdoll System)
+            if (equipment) {
+                // Bobbing handled natively by drawSprite, so we just layer passing the animate flags
+                const anim = state === 'walk';
+                if (equipment.chest) this.drawSprite(equipment.chest.icon, x, y, size, anim, time);
+                if (equipment.head) this.drawSprite(equipment.head.icon, x, y - 6, size * 0.9, anim, time);
+                
+                // Weapon offsets simulation
+                if (equipment.mainhand) {
+                    this.drawSprite(equipment.mainhand.icon, x + 8, y + 2, size * 0.8, anim, time);
+                }
+                if (equipment.offhand) {
+                    this.drawSprite(equipment.offhand.icon, x - 8, y + 2, size * 0.8, anim, time);
+                }
+            }
             return;
         }
 

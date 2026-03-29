@@ -259,3 +259,86 @@ export function playDeathSfx() {
     osc.connect(gain); gain.connect(ctx.destination);
     osc.start(); osc.stop(ctx.currentTime + 0.3);
 }
+
+// ─── AMBIENT AUDIO ───
+let ambientOsc = null;
+let ambientGain = null;
+let ambientLfo = null;
+let ambientLfoGain = null;
+
+export function stopAmbient() {
+    if (ambientOsc) {
+        ambientOsc.stop();
+        ambientOsc.disconnect();
+        ambientOsc = null;
+    }
+    if (ambientLfo) {
+        ambientLfo.stop();
+        ambientLfo.disconnect();
+        ambientLfo = null;
+    }
+    if (ambientGain) {
+        ambientGain.disconnect();
+        ambientGain = null;
+    }
+}
+
+export function startAmbientDungeon() {
+    if (!ctx) return;
+    stopAmbient();
+    
+    ambientOsc = ctx.createOscillator();
+    ambientGain = ctx.createGain();
+    ambientLfo = ctx.createOscillator();
+    ambientLfoGain = ctx.createGain();
+
+    // Dark low drone
+    ambientOsc.type = 'sine';
+    ambientOsc.frequency.value = 55; // Low A
+    
+    // Slow volume pulsing (wind-like)
+    ambientLfo.type = 'sine';
+    ambientLfo.frequency.value = 0.1; // 10 second cycle
+    
+    ambientGain.gain.value = 0.05; // Base low volume
+    
+    ambientLfoGain.gain.value = 0.03; // Modulation depth
+    ambientLfo.connect(ambientLfoGain);
+    ambientLfoGain.connect(ambientGain.gain);
+
+    ambientOsc.connect(ambientGain);
+    ambientGain.connect(ctx.destination);
+
+    ambientOsc.start();
+    ambientLfo.start();
+}
+
+export function startAmbientBoss() {
+    if (!ctx) return;
+    stopAmbient();
+    
+    ambientOsc = ctx.createOscillator();
+    ambientGain = ctx.createGain();
+    ambientLfo = ctx.createOscillator();
+    ambientLfoGain = ctx.createGain();
+
+    // Heartbeat/tense drone
+    ambientOsc.type = 'triangle';
+    ambientOsc.frequency.value = 60;
+    
+    // Fast pulsing
+    ambientLfo.type = 'square';
+    ambientLfo.frequency.value = 1.5; // 1.5 Hz heartbeat
+    
+    ambientGain.gain.value = 0.04;
+    
+    ambientLfoGain.gain.value = 0.04;
+    ambientLfo.connect(ambientLfoGain);
+    ambientLfoGain.connect(ambientGain.gain);
+
+    ambientOsc.connect(ambientGain);
+    ambientGain.connect(ctx.destination);
+
+    ambientOsc.start();
+    ambientLfo.start();
+}

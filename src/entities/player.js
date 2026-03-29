@@ -8,6 +8,7 @@ import { getClass, getSkillMap } from '../data/classes.js';
 import { calcDamage, applyDamage, skillDamage, skillType, DMG_TYPE } from '../systems/combat.js';
 import { RARITY } from '../systems/lootSystem.js';
 import { Projectile, AoEZone } from './projectile.js';
+import { fx } from '../engine/ParticleSystem.js';
 
 const XP_TABLE = Array.from({ length: 100 }, (_, i) => Math.round(80 * Math.pow(1.18, i)));
 const MOVE_SPEED_BASE = 100; // px/s in world space
@@ -443,20 +444,73 @@ export class Player {
         const isMelee = skill.group === 'melee';
         const isBuff = skill.group === 'warcry' || skill.group === 'aura' || skill.group === 'buff';
 
+        // Import particle system for VFX
+        // fx imported at top of file
+
         if (isBuff) {
             this._buffs.push({ id: skillId, duration: 15, base: totalBase });
-            const aoe = new AoEZone(this.x, this.y, 80, 0.5, 0, 'magic', this, 0.2); // VFX only
+            const aoe = new AoEZone(this.x, this.y, 80, 0.5, 0, 'magic', this, 0.2, skillId);
             bus.emit('combat:spawnAoE', { aoe });
+            if (fx) fx.emitHolyBurst(this.x, this.y);
         } else if (isMelee) {
+            // Melee range check — 50px for normal, 60px for Whirlwind/Cleave
+            const meleeRange = (skillId === 'whirlwind' || skillId === 'cleave' || skillId === 'slam') ? 60 : 50;
+
             if (skillId === 'whirlwind' || skillId === 'cleave') {
-                const aoe = new AoEZone(this.x, this.y, 50, 0.3, totalBase, 'physical', this, 0.8);
+                const aoe = new AoEZone(this.x, this.y, 50, 0.3, totalBase, 'physical', this, 0.8, skillId);
                 bus.emit('combat:spawnAoE', { aoe });
+                // Whirlwind VFX: circular slash + dust
+                if (fx) {
+                    for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+                        fx.emitSlash(this.x, this.y, a, '#cccccc', 30);
+                    }
+                    fx.emitShockwave(this.x, this.y, 40, '#aaa');
+                }
+            } else if (skillId === 'slam' || skillId === 'leap_attack' || skillId === 'earthquake') {
+                // Ground slam: shockwave at target position
+                const slamX = target ? target.x : this.x;
+                const slamY = target ? target.y : this.y;
+                const radius = skillId === 'earthquake' ? 100 : 60;
+                const aoe = new AoEZone(slamX, slamY, radius, 0.4, totalBase, 'physical', this, 0.5, skillId);
+                bus.emit('combat:spawnAoE', { aoe });
+                if (fx) {
+                    fx.emitShockwave(slamX, slamY, radius, '#b0a080');
+                    fx.shake(300, 5);
+                }
             } else {
+                // Standard melee strike (Bash, Rend, Execute, etc.)
                 if (target) {
                     const dist = Math.sqrt((target.x - this.x)**2 + (target.y - this.y)**2);
-                    if (dist < 50) {
+                    if (dist < meleeRange) {
                         const result = calcDamage(this, totalBase, type, target);
                         applyDamage(this, target, result, skillId);
+
+                        // Melee VFX based on skill
+                        if (fx) {
+                            const angle = Math.atan2(target.y - this.y, target.x - this.x);
+                            if (skillId === 'rend' || skillId === 'eviscerate' || skillId === 'backstab') {
+                                // Bleed slash — red arc
+                                fx.emitSlash(target.x, target.y, angle, '#cc2020', 18);
+                                fx.emitBlood(target.x, target.y, angle);
+                            } else if (skillId === 'execute') {
+                                // Execute — heavy red impact
+                                fx.emitSlash(target.x, target.y, angle, '#ff0000', 25);
+                                fx.emitBlood(target.x, target.y, angle);
+                                fx.shake(200, 4);
+                            } else if (skillId === 'shield_bash' || skillId === 'smite') {
+                                // Shield bash — bright metallic impact
+                                fx.emitHitImpact(target.x, target.y, 'physical');
+                                fx.shake(120, 2);
+                            } else if (skillId === 'holy_smite' || skillId === 'zeal') {
+                                // Holy melee — golden slash
+                                fx.emitSlash(target.x, target.y, angle, '#ffd040', 20);
+                                fx.emitHolyBurst(target.x, target.y);
+                            } else {
+                                // Default melee — white slash arc
+                                fx.emitSlash(target.x, target.y, angle, '#cccccc', 20);
+                                fx.emitBlood(target.x, target.y, angle);
+                            }
+                        }
                     }
                 }
             }
@@ -467,24 +521,52 @@ export class Player {
             const duration = (skillId === 'blizzard' || skillId === 'fire_wall' || skillId === 'fire_storm') ? 6 : 0.6;
 
             if (isMeteor) {
-                // Meteor special: high dmg, delayed start
+                // Meteor: delayed big impact with shake
                 setTimeout(() => {
-                    const aoe = new AoEZone(targetX, targetY, 60, 0.5, totalBase, type, this, 0.5);
+                    const aoe = new AoEZone(targetX, targetY, 60, 0.5, totalBase, type, this, 0.5, skillId);
                     bus.emit('combat:spawnAoE', { aoe });
+                    if (fx) {
+                        fx.emitShockwave(targetX, targetY, 60, type === 'fire' ? '#ff6000' : '#8a7a60');
+                        fx.shake(400, 6);
+                    }
                 }, 1500);
+                // VFX: fire trail falling from sky
+                if (fx) {
+                    for (let i = 0; i < 15; i++) {
+                        setTimeout(() => fx.emitFireTrail(targetX + (Math.random()-0.5)*20, targetY - 30 + i * 3), i * 100);
+                    }
+                }
             } else {
-                const aoe = new AoEZone(aoeTargetX, aoeTargetY, radius, duration, totalBase * (duration > 1 ? 0.3 : 0.8), type, this, 0.5);
+                const aoe = new AoEZone(aoeTargetX, aoeTargetY, radius, duration, totalBase * (duration > 1 ? 0.3 : 0.8), type, this, 0.5, skillId);
                 bus.emit('combat:spawnAoE', { aoe });
+                // Nova burst VFX
+                if (fx && isNova) {
+                    fx.emitBurst(this.x, this.y, type === 'cold' ? '#80d0ff' : type === 'fire' ? '#ff6000' : '#ffff00', 20, 3);
+                }
             }
         } else {
-            const speed = 180;
+            // Ranged Projectile — speed varies by element
+            const speedMap = {
+                fire: 200, cold: 160, lightning: 280, poison: 140,
+                shadow: 180, holy: 200, earth: 150, physical: 220, magic: 190
+            };
+            const speed = speedMap[type] || 180;
             const spriteColor = type === 'fire' ? '#ff4000' : type === 'cold' ? '#4080ff' : type === 'poison' ? '#00ff00' : type === 'lightning' ? '#ffff00' : '#cccccc';
             const piercing = skillId === 'bone_spear' || skillId === 'lightning' || skillId === 'frozen_orb';
-            const aoeRadius = skillId === 'fireball' ? 40 : 0;
+            const aoeRadius = skillId === 'fireball' ? 40 : skillId === 'chaos_bolt' ? 35 : 0;
             const bounces = skillId === 'chain_lightning' ? 3 + Math.floor(slvl/4) : 0;
 
-            const proj = new Projectile(this.x, this.y, targetX, targetY, speed, spriteColor, totalBase, type, this, piercing, 8, aoeRadius, bounces);
+            // Projectile size varies by skill
+            const projRadius = (skillId === 'fireball' || skillId === 'frozen_orb' || skillId === 'chaos_bolt') ? 10 :
+                               (skillId === 'bone_spear') ? 6 : 8;
+
+            const proj = new Projectile(this.x, this.y, targetX, targetY, speed, spriteColor, totalBase, type, this, piercing, projRadius, aoeRadius, bounces, skillId);
             bus.emit('combat:spawnProjectile', { proj });
+
+            // Lightning gets special bolt VFX to the target
+            if (fx && type === 'lightning' && target) {
+                fx.emitLightning(this.x, this.y, targetX, targetY);
+            }
         }
 
         this._setAnimState('cast');
