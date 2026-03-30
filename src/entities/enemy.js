@@ -4,17 +4,19 @@
 import { bus } from '../engine/EventBus.js';
 import { calcDamage, applyDamage, DMG_TYPE, isCCd, getSlowFactor } from '../systems/combat.js';
 import { fx } from '../engine/ParticleSystem.js';
+import { Projectile } from './projectile.js';
 
 const ENEMY_TYPES = {
-    skeleton: { icon: 'enemy_skeleton', name: 'Skeleton', hp: 40, dmg: 5, spd: 50, xp: 15, armor: 2, group: 'undead' },
-    goblin: { icon: 'enemy_goblin', name: 'Goblin', hp: 35, dmg: 6, spd: 65, xp: 12, armor: 1, group: 'humanoid' },
-    zombie: { icon: 'enemy_zombie', name: 'Zombie', hp: 65, dmg: 7, spd: 30, xp: 20, armor: 5, group: 'undead' },
-    ghost: { icon: 'enemy_ghost', name: 'Specter', hp: 30, dmg: 12, spd: 45, xp: 25, armor: 0, group: 'undead', shadowRes: 50 },
-    demon: { icon: 'enemy_demon', name: 'Demon', hp: 80, dmg: 15, spd: 55, xp: 35, armor: 10, group: 'demon', fireRes: 30 },
-    spider: { icon: 'enemy_spider', name: 'Spider', hp: 35, dmg: 6, spd: 70, xp: 18, armor: 2, group: 'beast', poisonDmg: 4 },
-    golem: { icon: 'enemy_golem', name: 'Stone Golem', hp: 120, dmg: 18, spd: 25, xp: 40, armor: 30, group: 'construct' },
-    cultist: { icon: 'enemy_cultist', name: 'Cultist', hp: 45, dmg: 14, spd: 40, xp: 28, armor: 4, group: 'human', lightRes: 20 },
-    bat: { icon: 'enemy_bat', name: 'Void Bat', hp: 20, dmg: 4, spd: 80, xp: 10, armor: 0, group: 'beast' },
+    skeleton: { icon: 'enemy_skeleton', name: 'Skeleton', hp: 40, dmg: 5, spd: 50, xp: 15, armor: 2, group: 'undead', attackType: 'melee' },
+    skeleton_archer: { icon: 'enemy_skeleton', name: 'Skeleton Archer', hp: 35, dmg: 5, spd: 45, xp: 16, armor: 1, group: 'undead', attackType: 'ranged', element: 'physical', projColor: '#cccccc', projRadius: 6 },
+    goblin: { icon: 'enemy_goblin', name: 'Goblin', hp: 35, dmg: 6, spd: 65, xp: 12, armor: 1, group: 'humanoid', attackType: 'melee' },
+    zombie: { icon: 'enemy_zombie', name: 'Zombie', hp: 65, dmg: 7, spd: 30, xp: 20, armor: 5, group: 'undead', attackType: 'melee' },
+    ghost: { icon: 'enemy_ghost', name: 'Specter', hp: 30, dmg: 12, spd: 45, xp: 25, armor: 0, group: 'undead', shadowRes: 50, attackType: 'caster', element: 'shadow', projColor: '#a040ff', projRadius: 12 },
+    demon: { icon: 'enemy_demon', name: 'Demon', hp: 80, dmg: 15, spd: 55, xp: 35, armor: 10, group: 'demon', fireRes: 30, attackType: 'melee' },
+    spider: { icon: 'enemy_spider', name: 'Spider', hp: 35, dmg: 6, spd: 70, xp: 18, armor: 2, group: 'beast', poisonDmg: 4, attackType: 'ranged', element: 'poison', projColor: '#00ff00', projRadius: 8 },
+    golem: { icon: 'enemy_golem', name: 'Stone Golem', hp: 120, dmg: 18, spd: 25, xp: 40, armor: 30, group: 'construct', attackType: 'melee' },
+    cultist: { icon: 'enemy_cultist', name: 'Cultist', hp: 45, dmg: 14, spd: 40, xp: 28, armor: 4, group: 'human', lightRes: 20, attackType: 'caster', element: 'fire', projColor: '#ff6000', projRadius: 10 },
+    bat: { icon: 'enemy_bat', name: 'Void Bat', hp: 20, dmg: 4, spd: 80, xp: 10, armor: 0, group: 'beast', attackType: 'melee' },
 };
 
 const BOSS_POOL = [
@@ -116,10 +118,16 @@ export class Enemy {
         this.poisRes = base.poisRes || 0;
         this.shadowRes = base.shadowRes || 0;
 
+        // Combat attributes
+        this.attackType = base.attackType || 'melee';
+        this.element = base.element || 'physical';
+        this.projColor = base.projColor || '#cccccc';
+        this.projRadius = base.projRadius || 8;
+
         // AI State
         this.state = 'idle'; // idle | patrol | chase | attack | dead
-        this.aggroRange = this.type === 'boss' ? 250 : 150;
-        this.attackRange = 25;
+        this.aggroRange = this.type === 'boss' ? 250 : (this.attackType === 'caster' || this.attackType === 'ranged' ? 280 : 150);
+        this.attackRange = this.attackType === 'melee' ? 25 : (this.attackType === 'caster' ? 200 : 250);
         this.attackCd = 0;
         this.atkSpeed = 1.0;
         this._patrolTarget = null;
@@ -248,6 +256,10 @@ export class Enemy {
                 }
             } else if (distSq > this.attackRange * this.attackRange) {
                 tryMove(Math.cos(angle) * this.moveSpeed * dt, Math.sin(angle) * this.moveSpeed * dt);
+            } else if (this.attackType !== 'melee' && distSq < (this.attackRange * 0.4) ** 2) {
+                // Kiting: Ranged/Caster enemies back away if player gets too close
+                tryMove(-Math.cos(angle) * this.moveSpeed * 0.6 * dt, -Math.sin(angle) * this.moveSpeed * 0.6 * dt);
+                this.state = 'chase';
             } else {
                 this.state = 'attack';
                 this.attack(player, dt);
@@ -314,11 +326,6 @@ export class Enemy {
     attack(target, dt) {
         this.attackCd = Math.max(0, this.attackCd - dt);
         if (this.attackCd <= 0) {
-            const result = calcDamage(this, this.dmg, DMG_TYPE.PHYSICAL, target);
-            applyDamage(this, target, result);
-            this.attackCd = 1 / this.atkSpeed;
-            this._setAnimState('attack');
-
             // Face target
             const dx = target.x - this.x;
             const dy = target.y - this.y;
@@ -328,12 +335,38 @@ export class Enemy {
                 this.facingDir = dy > 0 ? 'down' : 'up';
             }
 
-            // Enemy attack VFX on the target (player)
-            const angle = Math.atan2(dy, dx);
-            fx.emitSlash(target.x, target.y, angle, '#ff6666', 16);
-            fx.emitHitImpact(target.x, target.y, 'physical');
-            if (this.type === 'boss' || this.isButcher) {
-                fx.shake(200, 3);
+            this.attackCd = 1 / this.atkSpeed;
+            this._setAnimState('attack');
+
+            if (this.attackType === 'melee') {
+                const result = calcDamage(this, this.dmg, DMG_TYPE.PHYSICAL, target);
+                applyDamage(this, target, result);
+
+                // Enemy attack VFX on the target (player)
+                const angle = Math.atan2(dy, dx);
+                fx.emitSlash(target.x, target.y, angle, '#ff6666', 16);
+                fx.emitHitImpact(target.x, target.y, 'physical');
+                if (this.type === 'boss' || this.isButcher) {
+                    fx.shake(200, 3);
+                }
+            } else {
+                // Ranged or Caster attack spawns a projectile
+                const speed = this.attackType === 'ranged' ? 220 : 160;
+                // Add slight inaccuracy so you can dodge
+                const targetX = target.x + (Math.random() - 0.5) * 20;
+                const targetY = target.y + (Math.random() - 0.5) * 20;
+
+                const proj = new Projectile(
+                    this.x, this.y, targetX, targetY, speed, this.projColor, 
+                    this.dmg, this.element, this, false, this.projRadius, 0, 0, 'enemy_attack'
+                );
+                bus.emit('combat:spawnProjectile', { proj });
+                
+                // Caster VFX
+                if (this.attackType === 'caster') {
+                    if (this.element === 'fire') fx.emitBurst(this.x, this.y, '#ff4000', 10, 2);
+                    else if (this.element === 'shadow') fx.emitShadow(this.x, this.y);
+                }
             }
         }
     }
@@ -348,18 +381,25 @@ export class Enemy {
         renderer.ctx.fill();
 
 
-        // Sprite animation with Aggro Tint
+        // Sprite animation with Aggro Tint & Elite Aura
         const baseSize = this.isButcher ? 42 : (this.type === 'normal' ? 16 : (this.type === 'boss' ? 32 : 24));
         const isAggro = this.state === 'chase' || this.state === 'attack';
-        const aggroFilter = isAggro ? 'drop-shadow(0 0 4px #f00) sepia(1) saturate(3) hue-rotate(-50deg)' : null;
-        renderer.drawAnim(this.icon, this.x, this.y - 4, baseSize, this.animState, this.facingDir, time, aggroFilter);
+        const isElite = this.type === 'champion' || this.type === 'rare' || this.type === 'unique';
+        
+        // Elites get a yellow/gold aura, Bosses get a red aura, aggro gets a red tint
+        let aggroFilter = '';
+        if (isElite) aggroFilter += 'drop-shadow(0 0 6px #f0d030) ';
+        if (this.type === 'boss') aggroFilter += 'drop-shadow(0 0 8px #ff0000) ';
+        if (isAggro) aggroFilter += 'sepia(1) saturate(3) hue-rotate(-50deg)';
+        
+        renderer.drawAnim(this.icon, this.x, this.y - 4, baseSize, this.animState, this.facingDir, time, aggroFilter || null);
 
         // HP Bar
         const barW = 20;
         const barH = 2;
         renderer.ctx.fillStyle = '#333';
         renderer.ctx.fillRect(this.x - barW / 2, this.y - 15, barW, barH);
-        renderer.ctx.fillStyle = this.type === 'elite' ? '#f0d030' : (this.type === 'boss' ? '#eeca2c' : '#c0392b');
+        renderer.ctx.fillStyle = isElite ? '#f0d030' : (this.type === 'boss' ? '#eeca2c' : '#c0392b');
         renderer.ctx.fillRect(this.x - barW / 2, this.y - 15, barW * (this.hp / this.maxHp), barH);
 
         // Name

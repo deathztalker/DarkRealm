@@ -111,6 +111,31 @@ export class Player {
         this.lifeStealPct = s.lifeStealPct || 0;
         this.moveSpeed = MOVE_SPEED_BASE * (1 + (s.pctMoveSpeed || 0) / 100);
 
+        // --- Active Aura Stat Bonuses ---
+        if (this.activeAura) {
+            const slvl = this._auraSlvl || 1;
+            switch(this.activeAura) {
+                case 'might_aura':
+                    this.pctDmg = (this.pctDmg || 0) + (20 + slvl * 2);
+                    break;
+                case 'resist_all':
+                    const resBonus = (5 + slvl * 1.5);
+                    this.fireRes = Math.min(75, this.fireRes + resBonus);
+                    this.coldRes = Math.min(75, this.coldRes + resBonus);
+                    this.lightRes = Math.min(75, this.lightRes + resBonus);
+                    this.poisRes = Math.min(75, this.poisRes + resBonus);
+                    this.shadowRes = Math.min(75, this.shadowRes + resBonus);
+                    break;
+                case 'vigor':
+                    this.moveSpeed *= (1 + (20 + slvl * 1.5) / 100);
+                    break;
+                case 'fanaticism':
+                    this.pctIAS = (this.pctIAS || 0) + (30 + slvl * 1.5);
+                    this.pctDmg = (this.pctDmg || 0) + (30 + slvl * 2);
+                    break;
+            }
+        }
+
         // Resistances
         for (const r of ['fireRes', 'coldRes', 'lightRes', 'poisRes', 'shadowRes']) {
             this[r] = Math.min(75, (s[r] || 0) + (s.allRes || 0));
@@ -139,12 +164,12 @@ export class Player {
         const equip = this.equipment || {};
         // 1. Equipped Items
         for (const item of Object.values(equip)) {
-            if (!item) continue;
+            if (!item || item.identified === false) continue;
             this._addItemStats(item, s);
         }
         // 2. Charms in Inventory
         for (const item of this.inventory) {
-            if (item && item.type === 'charm') {
+            if (item && item.type === 'charm' && item.identified !== false) {
                 this._addItemStats(item, s);
             }
         }
@@ -182,6 +207,7 @@ export class Player {
     }
 
     _addItemStats(item, s) {
+        if (!item || item.identified === false) return;
         if (item.armor) s.flatArmor = (s.flatArmor || 0) + item.armor;
         if (item.block) s.blockChance = (s.blockChance || 0) + item.block;
         if (item.mods) {
@@ -209,7 +235,7 @@ export class Player {
     getSkillBonus(skillId) {
         let bonus = 0;
         for (const item of Object.values(this.equipment)) {
-            if (!item) continue;
+            if (!item || item.identified === false) continue;
             for (const mod of (item.mods || [])) {
                 if (mod.stat === '+allSkills') bonus += mod.value;
                 else if (mod.stat === `+classSkills:${this.classId}`) bonus += mod.value;
@@ -262,6 +288,58 @@ export class Player {
     update(dt, input) {
         // Mana regen
         this.mp = Math.min(this.maxMp, this.mp + (2 + this.int * 0.05) * dt);
+
+        // --- Periodic Aura Effects ---
+        if (this.activeAura) {
+            this._auraTimer = (this._auraTimer || 0) + dt;
+            const slvl = this._auraSlvl || 1;
+
+            if (this._auraTimer >= 1.0) { // Pulse every 1s
+                this._auraTimer = 0;
+                
+                if (this.activeAura === 'prayer_aura') {
+                    const heal = 2 + slvl * 1;
+                    this.hp = Math.min(this.maxHp, this.hp + heal);
+                    if (fx && fx.emitHeal) fx.emitHeal(this.x, this.y);
+                }
+                
+                if (this.activeAura === 'holy_fire_aura') {
+                    const dmg = 3 + slvl * 2;
+                    if (this._enemies) {
+                        this._enemies.forEach(e => {
+                            const dx = e.x - this.x, dy = e.y - this.y;
+                            if (dx*dx+dy*dy < 150*150) { // 150px range
+                                applyDamage(this, e, { dealt: dmg, isCrit: false, type: 'fire' }, 'holy_fire_aura');
+                                if (fx) fx.emitBurst(e.x, e.y, '#ff4000', 5);
+                            }
+                        });
+                    }
+                }
+
+                if (this.activeAura === 'conviction') {
+                    const debuff = 30 + slvl * 2;
+                    if (this._enemies) {
+                        this._enemies.forEach(e => {
+                            const dx = e.x - this.x, dy = e.y - this.y;
+                            if (dx*dx+dy*dy < 180*180) { // 180px range
+                                e.armorDebuff = debuff;
+                                e.resDebuff = debuff;
+                                // Visual indicator for debuff
+                                if (Math.random() < 0.3) fx.emitBurst(e.x, e.y, '#a040ff', 3);
+                            } else {
+                                e.armorDebuff = 0;
+                                e.resDebuff = 0;
+                            }
+                        });
+                    }
+                }
+            }
+        } else {
+            // Clear debuffs if aura is off
+            if (this._enemies) {
+                this._enemies.forEach(e => { e.armorDebuff = 0; e.resDebuff = 0; });
+            }
+        }
 
         // Cooldowns
         for (let i = 0; i < 5; i++) {
@@ -405,13 +483,23 @@ export class Player {
         this.cooldowns[slotIdx] = skill.cd || 0;
 
         // Check if this is a summon skill
-        const isSummon = skillId.startsWith('summon_') || skillId.startsWith('imp') ||
+        const isSummon = skill.group === 'summon' || skillId.startsWith('summon_') || skillId.startsWith('imp') ||
             skillId.startsWith('infernal') || skillId.startsWith('companion_') ||
             skillId.startsWith('raven') || skillId.startsWith('grizzly') ||
             skillId.startsWith('oak_sage') || skillId.startsWith('golem') ||
             skillId.startsWith('skeleton_mage') || skillId.startsWith('revive') ||
             skillId.startsWith('spirit_wolf') || skillId.startsWith('vine') ||
-            skillId.startsWith('voidwalker') || skillId.startsWith('succubus');
+            skillId.startsWith('voidwalker') || skillId.startsWith('succubus') ||
+            skillId.startsWith('ancestral_');
+
+        // Determine target coordinates early for teleport/skills
+        const target = this.attackTarget || this._nearestEnemy();
+        let targetX = target ? target.x : this.x;
+        let targetY = target ? target.y : this.y + 10;
+        if (!target && this.moveDir) {
+            targetX = this.x + this.moveDir.x * 100;
+            targetY = this.y + this.moveDir.y * 100;
+        }
 
         if (isSummon) {
             this._spawnMinion(skillId, slvl, skill);
@@ -421,37 +509,87 @@ export class Player {
             return;
         }
 
-        // Normal skill: spawn Projectile or AoEZone
-        const target = this.attackTarget || this._nearestEnemy();
-        // Fallback target if no enemy found (shoot forward)
-        let targetX = target ? target.x : this.x;
-        let targetY = target ? target.y : this.y + 10;
-
-        // Ensure we aim somewhere if there's no target
-        if (!target && this.moveDir) {
-            targetX = this.x + this.moveDir.x * 50;
-            targetY = this.y + this.moveDir.y * 50;
-        }
-
         const synBonus = this.talents.synergyBonus(skillId);
         const base = (skill.dmgBase || 10) + (skill.dmgPerLvl || 5) * slvl;
         const totalBase = base * (1 + synBonus);
         const type = skillType(skill);
 
-        const isAoE = ['blizzard', 'nova', 'wall', 'storm', 'meteor', 'armageddon', 'hurricane', 'volcano', 'fissure', 'earthquake', 'rain_of', 'consecration', 'trap'].some(kw => skillId.includes(kw));
-        const isNova = ['nova', 'storm', 'hurricane', 'armageddon', 'warcry'].some(kw => skillId.includes(kw));
-        const isMeteor = ['meteor', 'volcano', 'fissure'].includes(skillId);
+        const isAoE = ['blizzard', 'nova', 'wall', 'storm', 'meteor', 'armageddon', 'hurricane', 'volcano', 'fissure', 'earthquake', 'rain_of', 'consecration', 'trap', 'static'].some(kw => skillId.includes(kw));
+        const isNova = ['nova', 'storm', 'hurricane', 'armageddon', 'warcry', 'static', 'totemic_wrath'].some(kw => skillId.includes(kw));
+        const isMeteor = ['meteor', 'volcano', 'fissure', 'hammer'].includes(skillId);
         const isMelee = skill.group === 'melee';
-        const isBuff = skill.group === 'warcry' || skill.group === 'aura' || skill.group === 'buff';
+        const isBuff = skill.group === 'warcry' || skill.group === 'buff';
+        const isAura = skill.group === 'aura';
+        const isTeleport = skill.group === 'teleport';
 
         // Import particle system for VFX
         // fx imported at top of file
 
-        if (isBuff) {
+        if (isAura) {
+            // Toggle aura — only 1 active at a time
+            if (this.activeAura === skillId) {
+                this.activeAura = null;
+                bus.emit('combat:log', { text: `Deactivated ${skill.name}`, cls: 'log-info' });
+            } else {
+                this.activeAura = skillId;
+                this._auraSlvl = slvl;
+                bus.emit('combat:log', { text: `Activated ${skill.name}`, cls: 'log-level' });
+                if (fx) fx.emitHolyBurst(this.x, this.y);
+            }
+            this._setAnimState('cast');
+            this.attackCd = 0.3;
+            bus.emit('skill:used', { skillId, slotIdx });
+            return;
+        } else if (isTeleport) {
+            // Teleport — move player to target position
+            const maxDist = 200 + slvl * 10;
+            const dx = targetX - this.x;
+            const dy = targetY - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > maxDist) {
+                // Clamp to max distance
+                const ratio = maxDist / dist;
+                targetX = this.x + dx * ratio;
+                targetY = this.y + dy * ratio;
+            }
+            // VFX at departure
+            if (fx) fx.emitBurst(this.x, this.y, '#8080ff', 12, 2);
+            this.x = targetX;
+            this.y = targetY;
+            this.path = [];
+            // VFX at arrival
+            if (fx) fx.emitBurst(this.x, this.y, '#b0b0ff', 12, 2);
+            this._setAnimState('cast');
+            this.attackCd = 0.3;
+            bus.emit('skill:used', { skillId, slotIdx });
+            return;
+        } else if (isBuff) {
             this._buffs.push({ id: skillId, duration: 15, base: totalBase });
-            const aoe = new AoEZone(this.x, this.y, 80, 0.5, 0, 'magic', this, 0.2, skillId);
-            bus.emit('combat:spawnAoE', { aoe });
-            if (fx) fx.emitHolyBurst(this.x, this.y);
+            this._recalcStats();
+            bus.emit('combat:log', { text: `${skill.name} activated!`, cls: 'log-level' });
+            // VFX based on buff archetype
+            if (fx) {
+                if (skillId.includes('holy') || skillId.includes('divine')) {
+                    fx.emitHolyBurst(this.x, this.y);
+                } else if (skillId.includes('bone') || skillId.includes('frozen') || skillId.includes('energy') || skillId.includes('cyclone')) {
+                    fx.emitBurst(this.x, this.y, '#80d0ff', 12, 2);
+                } else if (skillId.includes('berserk') || skillId.includes('enchant') || skillId.includes('fire')) {
+                    fx.emitBurst(this.x, this.y, '#ff6000', 15, 2);
+                } else if (skillId.includes('bear') || skillId.includes('wolf') || skillId.includes('primal')) {
+                    fx.emitBurst(this.x, this.y, '#40c040', 12, 2);
+                    fx.emitShockwave(this.x, this.y, 30, '#408040');
+                } else if (skillId.includes('vanish') || skillId.includes('shadow') || skillId.includes('dark')) {
+                    fx.emitShadow(this.x, this.y);
+                } else if (skillId.includes('poison') || skillId.includes('venom') || skillId.includes('virulence')) {
+                    fx.emitPoisonCloud(this.x, this.y, 20);
+                } else {
+                    fx.emitBurst(this.x, this.y, '#ffe880', 10, 1.5);
+                }
+            }
+            this._setAnimState('cast');
+            this.attackCd = 0.5;
+            bus.emit('skill:used', { skillId, slotIdx });
+            return;
         } else if (isMelee) {
             // Melee range check — 50px for normal, 60px for Whirlwind/Cleave
             const meleeRange = (skillId === 'whirlwind' || skillId === 'cleave' || skillId === 'slam') ? 60 : 50;
@@ -563,10 +701,6 @@ export class Player {
             const proj = new Projectile(this.x, this.y, targetX, targetY, speed, spriteColor, totalBase, type, this, piercing, projRadius, aoeRadius, bounces, skillId);
             bus.emit('combat:spawnProjectile', { proj });
 
-            // Lightning gets special bolt VFX to the target
-            if (fx && type === 'lightning' && target) {
-                fx.emitLightning(this.x, this.y, targetX, targetY);
-            }
         }
 
         this._setAnimState('cast');
@@ -812,6 +946,30 @@ export class Player {
         if (idx === -1) return false;
         this.inventory[idx] = item;
         return true;
+    }
+
+    // ─── Inventory Management ───
+    sortInventory() {
+        // Filter out nulls, sort, then fill back up to 40
+        const items = this.inventory.filter(it => it !== null);
+        
+        const rarityWeights = { unique: 5, set: 4, rare: 3, magic: 2, normal: 1 };
+        const typeWeights = { weapon: 10, armor: 9, helm: 8, shield: 7, gloves: 6, boots: 5, belt: 4, ring: 3, amulet: 2, gem: 1, potion: 0, scroll: 0, charm: 0 };
+
+        items.sort((a, b) => {
+            const ra = rarityWeights[a.rarity] || 0;
+            const rb = rarityWeights[b.rarity] || 0;
+            if (ra !== rb) return rb - ra; // Rarity high to low
+
+            const ta = typeWeights[a.type] || 0;
+            const tb = typeWeights[b.type] || 0;
+            if (ta !== tb) return tb - ta; // Type weight
+
+            return (b.ilvl || 0) - (a.ilvl || 0); // Level
+        });
+
+        this.inventory = [...items];
+        while (this.inventory.length < 40) this.inventory.push(null);
     }
 
     // ─── Render ───

@@ -46,7 +46,7 @@ export const ROGUE_CLASS = {
                     id: 'vanish', row: 3, col: 0, type: 'active', icon: '👁️', name: 'Vanish',
                     desc: 'Go invisible for (5+slvl×0.3)s. Next attack from stealth: guaranteed crit + (50+slvl×3)% bonus damage.',
                     endgame: 'slvl 20: 11s stealth, +110% bonus on opener. Vanish → Ambush → Eviscerate = one-shot combo.',
-                    maxPts: 20, mana: 15, cd: 30, req: 'backstab:10'
+                    maxPts: 20, mana: 15, cd: 30, group: 'buff', req: 'backstab:10'
                 },
                 {
                     id: 'shadow_dance', row: 3, col: 2, type: 'active', icon: '💃', name: 'Shadow Dance',
@@ -69,7 +69,7 @@ export const ROGUE_CLASS = {
                     id: 'poison_blade', row: 0, col: 1, type: 'active', icon: '🐍', name: 'Poison Blade',
                     desc: 'Coat weapon in poison for (30+slvl×3)s: all hits apply (5+slvl×3) poison/s for 3s.',
                     endgame: 'slvl 20: 90s buff, 65/s poison on every hit. Foundation of poison builds.',
-                    maxPts: 20, mana: 8, cd: 30, dmgBase: 5, dmgPerLvl: 3
+                    maxPts: 20, mana: 8, cd: 30, group: 'buff', dmgBase: 5, dmgPerLvl: 3
                 },
                 {
                     id: 'venom', row: 1, col: 0, type: 'passive', icon: '☠️', name: 'Venom Mastery',
@@ -87,7 +87,7 @@ export const ROGUE_CLASS = {
                     id: 'death_blossom', row: 2, col: 1, type: 'active', icon: '🌸', name: 'Death Blossom',
                     desc: 'Mark target: all poison effects deal +(50+slvl×3)% damage. If target dies while marked, poisons spread to 3 nearby enemies.',
                     endgame: 'slvl 20: +110% poison amp. Kill spreads = exponential pack clear.',
-                    maxPts: 20, mana: 10, cd: 0, req: 'envenom:5'
+                    maxPts: 20, mana: 10, cd: 0, group: 'buff', req: 'envenom:5'
                 },
                 {
                     id: 'plague', row: 2, col: 0, type: 'active', icon: '🦠', name: 'Plague',
@@ -105,7 +105,7 @@ export const ROGUE_CLASS = {
                     id: 'virulence', row: 3, col: 2, type: 'active', icon: '🧬', name: 'Virulence',
                     desc: 'For 15s: your poisons ignore (50+slvl×2)% of target poison resistance.',
                     endgame: 'slvl 20: ignores 90% poison res. Makes poison immune enemies vulnerable.',
-                    maxPts: 20, mana: 12, cd: 30, req: 'venom:10'
+                    maxPts: 20, mana: 12, cd: 30, group: 'buff', req: 'venom:10'
                 },
                 {
                     id: 'pandemic', row: 4, col: 1, type: 'active', icon: '💀', name: 'Pandemic',

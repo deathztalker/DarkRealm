@@ -22,7 +22,7 @@ export const WARLOCK_CLASS = {
                     id: 'drain_life', row: 1, col: 0, type: 'active', icon: '🩸', name: 'Drain Life',
                     desc: 'Channel: steal (5+slvl×3) HP/s from target. You heal for 100% of damage dealt.',
                     endgame: 'slvl 20: 65 HP/s steal. Unlimited sustain channel.',
-                    maxPts: 20, mana: 4, cd: 0, dmgBase: 5, dmgPerLvl: 3
+                    maxPts: 20, mana: 4, cd: 0, group: 'shadow', dmgBase: 5, dmgPerLvl: 3
                 },
                 {
                     id: 'soul_fire', row: 1, col: 2, type: 'active', icon: '🔥', name: 'Soul Fire',
@@ -53,7 +53,7 @@ export const WARLOCK_CLASS = {
                     id: 'dark_pact', row: 3, col: 2, type: 'active', icon: '🩸', name: 'Dark Pact',
                     desc: 'Sacrifice 20% current HP: next shadow spell deals +(100+slvl×5)% damage.',
                     endgame: 'slvl 20: +200% next spell. HP cost is offset by Drain Life / Shadow Mastery leech.',
-                    maxPts: 20, mana: 0, cd: 12, req: 'shadow_mastery:10'
+                    maxPts: 20, mana: 0, cd: 12, group: 'buff', req: 'shadow_mastery:10'
                 },
                 {
                     id: 'rain_of_chaos', row: 4, col: 1, type: 'active', icon: '🌧️', name: 'Rain of Chaos',
@@ -94,7 +94,7 @@ export const WARLOCK_CLASS = {
                     id: 'siphon_life', row: 2, col: 1, type: 'active', icon: '💧', name: 'Siphon Life',
                     desc: 'Channel: drain (6+slvl×3)/s from target, healing you for 150% of damage.',
                     endgame: 'slvl 20: 66/s damage, 99/s self-heal. Infinite sustain while DoTting.',
-                    maxPts: 20, mana: 4, cd: 0, dmgBase: 6, dmgPerLvl: 3, req: 'agony:5'
+                    maxPts: 20, mana: 4, cd: 0, group: 'shadow', dmgBase: 6, dmgPerLvl: 3, req: 'agony:5'
                 },
                 {
                     id: 'unstable', row: 3, col: 0, type: 'active', icon: '💣', name: 'Unstable Affliction',
@@ -106,7 +106,7 @@ export const WARLOCK_CLASS = {
                     id: 'dark_soul', row: 3, col: 2, type: 'active', icon: '👁️', name: 'Dark Soul',
                     desc: 'Buff: for 20s, all DoTs tick (20+slvl×2)% faster.',
                     endgame: 'slvl 20: DoTs tick 60% faster = 1.6× DPS on everything. Huge burst window.',
-                    maxPts: 20, mana: 15, cd: 60, req: 'aff_mastery:10'
+                    maxPts: 20, mana: 15, cd: 60, group: 'buff', req: 'aff_mastery:10'
                 },
                 {
                     id: 'doom', row: 4, col: 1, type: 'active', icon: '💀', name: 'Curse of Doom',
@@ -165,7 +165,7 @@ export const WARLOCK_CLASS = {
                     id: 'metamorphosis', row: 4, col: 1, type: 'active', icon: '👹', name: 'Metamorphosis',
                     desc: 'Ultimate: become a demon for 20s. +100% HP, +50% damage, melee cleave (30+slvl×14) shadow per swing. Immune to CC.',
                     endgame: 'slvl 20: demon form, 310/swing melee cleave, double HP, CC immune. The ultimate transformation.',
-                    maxPts: 20, mana: 20, cd: 120, group: 'shadow', dmgBase: 30, dmgPerLvl: 14, req: 'infernal:5',
+                    maxPts: 20, mana: 20, cd: 120, group: 'buff', dmgBase: 30, dmgPerLvl: 14, req: 'infernal:5',
                     synergies: [{ from: 'demonfire_passive', pctPerPt: 4 }]
                 },
             ]

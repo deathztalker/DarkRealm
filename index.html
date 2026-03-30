@@ -51,22 +51,33 @@
     <canvas id="game-canvas"></canvas>
 
     <!-- Boss HP Bar Overlay -->
-    <div id="boss-hp-bar" class="hidden" style="position:absolute; top:40px; left:50%; transform:translateX(-50%); width:600px; height:24px; border:2px solid #311; background:#111; z-index:100; box-shadow:0 0 20px rgba(255,0,0,0.3); pointer-events:none;">
-      <div id="boss-hp-fill" style="width:100%; height:100%; background:linear-gradient(to right, #600, #c00); transition:width 0.1s linear;"></div>
-      <div id="boss-name" style="position:absolute; top:-28px; left:0; width:100%; text-align:center; color:#ff4040; font-family:'Cinzel', serif; font-size:22px; text-shadow:2px 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;">Act Boss</div>
+    <div id="boss-hp-bar" class="hidden"
+      style="position:absolute; top:40px; left:50%; transform:translateX(-50%); width:600px; height:24px; border:2px solid #311; background:#111; z-index:100; box-shadow:0 0 20px rgba(255,0,0,0.3); pointer-events:none;">
+      <div id="boss-hp-fill"
+        style="width:100%; height:100%; background:linear-gradient(to right, #600, #c00); transition:width 0.1s linear;">
+      </div>
+      <div id="boss-name"
+        style="position:absolute; top:-28px; left:0; width:100%; text-align:center; color:#ff4040; font-family:'Cinzel', serif; font-size:22px; text-shadow:2px 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;">
+        Act Boss</div>
     </div>
 
     <!-- Minimap -->
-    <canvas id="minimap" width="160" height="120" style="position:absolute; top:8px; right:8px; border:2px solid #444; background:#000; z-index:50; opacity:0.85; border-radius:4px; pointer-events:none;"></canvas>
-    
-    <div id="quest-hud" class="hidden" style="position:absolute; right:10px; top:140px; width:150px; background:rgba(0,0,0,0.8); border:1px solid #bf642f; padding:8px; border-radius:4px; font-family:'Cinzel',serif; box-sizing:border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.5); z-index:50;">
-      <div style="color:#bf642f; font-size:12px; border-bottom:1px solid #4a3520; padding-bottom:4px; margin-bottom:4px; text-transform:uppercase;">Active Quest</div>
+    <canvas id="minimap" width="160" height="120"
+      style="position:absolute; top:54px; right:8px; border:2px solid #444; background:#000; z-index:50; opacity:0.85; border-radius:4px; pointer-events:none;"></canvas>
+
+    <div id="quest-hud" class="hidden"
+      style="position:absolute; right:10px; top:140px; width:150px; background:rgba(0,0,0,0.8); border:1px solid #bf642f; padding:8px; border-radius:4px; font-family:'Cinzel',serif; box-sizing:border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.5); z-index:50;">
+      <div
+        style="color:#bf642f; font-size:12px; border-bottom:1px solid #4a3520; padding-bottom:4px; margin-bottom:4px; text-transform:uppercase;">
+        Active Quest</div>
       <div id="quest-desc" style="font-size:10px; color:#ddd; margin-bottom:4px;"></div>
       <div style="font-size:14px; color:#ffd700; text-align:right;" id="quest-progress">0/5</div>
     </div>
 
     <!-- Buff Bar -->
-    <div id="buff-bar" style="position:absolute; bottom:140px; left:50%; transform:translateX(-50%); display:flex; gap:6px; z-index:95;"></div>
+    <div id="buff-bar"
+      style="position:absolute; bottom:140px; left:50%; transform:translateX(-50%); display:flex; gap:6px; z-index:95;">
+    </div>
 
     <!-- HUD -->
     <div id="hud">
@@ -144,6 +155,7 @@
       <button class="hud-btn" id="btn-talents" title="Talents (T)">✨</button>
       <button class="hud-btn" id="btn-character" title="Character (C)">📊</button>
       <button class="hud-btn" id="btn-stash" title="Stash (H)">📦</button>
+      <button class="hud-btn" id="btn-cube" title="Horadric Cube (U)">🎲</button>
       <button class="hud-btn" id="btn-quests" title="Quests (Q)">📜</button>
     </div>
   </div>
@@ -152,7 +164,9 @@
   <div id="combat-log"></div>
 
   <!-- Transition Overlay -->
-  <div id="transition-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:9999; opacity:0; pointer-events:none; transition:opacity 0.5s;"></div>
+  <div id="transition-overlay"
+    style="position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:9999; opacity:0; pointer-events:none; transition:opacity 0.5s;">
+  </div>
 
   <!-- Quest Log Panel -->
   <div id="panel-quests" class="panel hidden" style="width:320px;">
@@ -187,7 +201,8 @@
     <div id="shop-items" style="display:flex; flex-direction:column; gap:8px; padding:10px; overflow-y:auto; flex:1;">
       <!-- Populated by JS -->
     </div>
-    <div id="shop-gold" style="padding:10px; text-align:right; color:var(--gold); border-top:1px solid #333;">Your Gold: 0</div>
+    <div id="shop-gold" style="padding:10px; text-align:right; color:var(--gold); border-top:1px solid #333;">Your Gold:
+      0</div>
   </div>
 
   <div id="panel-stash" class="panel hidden">
@@ -198,9 +213,12 @@
   </div>
 
   <div id="panel-cube" class="panel hidden" style="width:200px;">
-    <div class="panel-header"><span style="color:#bf642f;">Horadric Cube</span><button class="panel-close" data-panel="cube">✕</button></div>
-    <div style="padding:10px;text-align:center;font-size:11px;color:#888;">Place 3 items of the SAME rarity to upgrade.</div>
-    <div id="cube-grid" style="display:grid; grid-template-columns:repeat(3,40px); gap:4px; padding:10px; justify-content:center;">
+    <div class="panel-header"><span style="color:#bf642f;">Horadric Cube</span><button class="panel-close"
+        data-panel="cube">✕</button></div>
+    <div style="padding:10px;text-align:center;font-size:11px;color:#888;">Place 3 items of the SAME rarity to upgrade.
+    </div>
+    <div id="cube-grid"
+      style="display:grid; grid-template-columns:repeat(3,40px); gap:4px; padding:10px; justify-content:center;">
       <!-- 3 slots -->
     </div>
     <div style="text-align:center; padding-bottom:10px;">

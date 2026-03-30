@@ -169,7 +169,7 @@ export const SHAMAN_CLASS = {
                     name: 'Totemic Wrath',
                     desc: 'For 10+slvl×0.5s: all active totems attack (3+slvl/5) times per second and deal +(100+slvl×15)% damage.',
                     endgame: 'slvl 20: 15s burst, 7 attacks/sec, +400% dmg on all totems. Deadly burst with 4 Searing Totems active.',
-                    maxPts: 20, mana: 22, cd: 40, req: 'totem_mastery:10',
+                    maxPts: 20, mana: 22, cd: 40, group: 'buff', req: 'totem_mastery:10',
                 },
 
                 // Row 4 — Synergy
@@ -217,7 +217,7 @@ export const SHAMAN_CLASS = {
                     name: 'Ancestral Spirit',
                     desc: 'Summon an ancestor warrior for 20+slvl×2s. It attacks (dmg: 20+slvl×10), casts mini-heals every 3s for 15+slvl×6 HP.',
                     endgame: 'slvl 20: 60s duration spirit, 220 attack dmg, 135 HP heal every 3s. Permanent up-time with CDR gear.',
-                    maxPts: 20, mana: 20, cd: 45, req: 'healing_wave:5',
+                    maxPts: 20, mana: 20, cd: 45, group: 'summon', req: 'healing_wave:5',
                     dmgBase: 20, dmgPerLvl: 10,
                 },
 
@@ -236,7 +236,7 @@ export const SHAMAN_CLASS = {
                     name: 'Nature\'s Swiftness',
                     desc: 'Next healing or earth spell is instant cast and has +(50+slvl×5)% effectiveness. 20s cooldown, resets on kill.',
                     endgame: 'slvl 20: +150% on instant Healing Wave = ~675 HP base heal chained to 6 targets. Cooldown resets on kill.',
-                    maxPts: 20, mana: 6, cd: 20, req: 'healing_wave:10',
+                    maxPts: 20, mana: 6, cd: 20, group: 'buff', req: 'healing_wave:10',
                 },
                 {
                     id: 'mana_tide', row: 3, col: 2, type: 'active', icon: '🌊',

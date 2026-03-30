@@ -46,13 +46,14 @@ export function calcDamage(attacker, baseDmg, type, defender) {
 
     // --- Defender resistance (magic & holy bypass) ---
     if (type !== DMG_TYPE.MAGIC && type !== DMG_TYPE.HOLY) {
-        const res = Math.min(75, defender[`${type}Res`] || 0); // cap at 75%
+        let res = (defender[`${type}Res`] || 0) - (defender.resDebuff || 0);
+        res = Math.min(75, Math.max(-100, res)); // cap at 75%, floor at -100%
         dmg *= 1 - res / 100;
     }
 
     // --- Armor reduction (physical only) ---
     if (type === DMG_TYPE.PHYSICAL) {
-        const armor = Math.max(0, defender.armor || 0);
+        const armor = Math.max(0, (defender.armor || 0) - (defender.armorDebuff || 0));
         const attackerLevel = Math.max(1, attacker.level || 1);
         const divisor = armor + 5 * attackerLevel * 10;
         const reduction = divisor > 0 ? armor / divisor : 0;

@@ -37,6 +37,7 @@ let explored = null; // for minimap fog
 let difficulty = 0; // 0=Normal, 1=Nightmare, 2=Hell
 let discoveredWaypoints = new Set([0]); // Always have Town
 let stash = Array(20).fill(null); // Personal stash
+let cube = Array(3).fill(null); // Horadric Cube
 let activeQuests = []; // { id, desc, target, progress, reward }
 let completedQuests = new Set();
 let killCount = 0;
@@ -45,6 +46,8 @@ let mercenary = null; // { name, hp, maxHp, dmg, icon, x, y }
 let lootFilter = 0; // 0=show all, 1=hide normal, 2=hide normal+magic
 let showFullMap = false;
 let unlockedAchievements = new Set();
+let isIdentifying = false; // Global identification state
+let activeDialogueNpc = null; // Track NPC with open dialogue bubble
 
 // ─── RUNEWORDS ───
 const RUNEWORDS = [
@@ -175,65 +178,6 @@ function showClassInfo(classId) {
     ).join('');
     $('class-stats').innerHTML = statsHtml;
 }
-
-let cubeSlots = [null, null, null];
-function renderCube() {
-    const grid = $('cube-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    for (let i = 0; i < 3; i++) {
-        const slot = document.createElement('div');
-        slot.className = `inv-item${cubeSlots[i] ? ` rarity-${cubeSlots[i].rarity}` : ''}`;
-        slot.style.width = '40px';
-        slot.style.height = '40px';
-        if (cubeSlots[i]) {
-            slot.innerHTML = `<i class="ra ${getIconForItem(cubeSlots[i].icon)}" style="font-size:28px; display:block; margin:auto; color:var(--text); text-shadow:0 0 8px currentColor;"></i>`;
-            setupTooltip(slot, cubeSlots[i]);
-            // Left-click: move from cube to inventory
-            slot.addEventListener('click', () => {
-                if (player.addToInventory(cubeSlots[i])) {
-                    cubeSlots[i] = null;
-                    renderCube();
-                    renderInventory();
-                } else {
-                    addCombatLog('Inventory full!', 'log-dmg');
-                }
-            });
-        } else {
-            slot.style.border = '1px dashed #bf642f';
-        }
-        grid.appendChild(slot);
-    }
-}
-
-$('btn-transmute')?.addEventListener('click', () => {
-    // Check if 3 items exist and are of same rarity
-    if (cubeSlots.includes(null)) {
-        addCombatLog('Cube needs exactly 3 items!', 'log-dmg');
-        return;
-    }
-    const r1 = cubeSlots[0].rarity, r2 = cubeSlots[1].rarity, r3 = cubeSlots[2].rarity;
-    if (r1 !== r2 || r1 !== r3) {
-        addCombatLog('All 3 items must be the same rarity!', 'log-dmg');
-        return;
-    }
-    if (r1 === 'unique') {
-        addCombatLog('Cannot transmute uniques!', 'log-dmg');
-        return;
-    }
-
-    // Determine target rarity
-    const targetRarity = r1 === 'normal' ? 'magic' : r1 === 'magic' ? 'rare' : 'unique';
-    
-    // Generate new item
-    const newItem = loot.generate(player.level || 1, null, { explicitRarity: targetRarity });
-    
-    // Clear cube slots except first one which gets new item
-    cubeSlots = [newItem, null, null];
-    addCombatLog(`Transmuted into ${targetRarity} ${newItem.name}!`, 'log-crit');
-    playLoot();
-    renderCube();
-});
 
 // ─── START GAME ───
 function startGame(slotId = null, loadPlayerData = null) {
@@ -397,6 +341,25 @@ function gameLoop(timestamp) {
         input.click = null;
     }
 
+    // Update Floating Dialogue Position
+    if (activeDialogueNpc) {
+        const picker = document.getElementById('dialogue-picker');
+        if (picker) {
+            const screen = camera.toScreen(activeDialogueNpc.x, activeDialogueNpc.y);
+            picker.style.left = `${screen.x - 110}px`;
+            picker.style.top = `${screen.y - 180}px`;
+
+            // Auto-close if too far
+            const d = Math.sqrt((player.x - activeDialogueNpc.x) ** 2 + (player.y - activeDialogueNpc.y) ** 2);
+            if (d > 120) {
+                picker.remove();
+                activeDialogueNpc = null;
+            }
+        } else {
+            activeDialogueNpc = null;
+        }
+    }
+
     // Boss check
     if (zoneLevel === 5) {
         const boss = enemies.find(e => e.type === 'boss');
@@ -483,6 +446,34 @@ function gameLoop(timestamp) {
     for (const di of droppedItems) {
         if (lootFilter >= 1 && (!di.rarity || di.rarity === 'normal')) continue;
         if (lootFilter >= 2 && di.rarity === 'magic') continue;
+
+        // Loot Beam
+        if (di.rarity === 'unique' || di.rarity === 'rare') {
+            const ctx = renderer.ctx;
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            const color = di.rarity === 'unique' ? 'rgba(232, 160, 32, 0.6)' : 'rgba(240, 208, 48, 0.5)';
+            const g = ctx.createLinearGradient(0, di.y, 0, di.y - 120);
+            g.addColorStop(0, color);
+            g.addColorStop(1, 'transparent');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(di.x - 4, di.y + 4);
+            ctx.lineTo(di.x + 4, di.y + 4);
+            ctx.lineTo(di.x + 1, di.y - 120);
+            ctx.lineTo(di.x - 1, di.y - 120);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Core beam
+            const g2 = ctx.createLinearGradient(0, di.y, 0, di.y - 100);
+            g2.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+            g2.addColorStop(1, 'transparent');
+            ctx.fillStyle = g2;
+            ctx.fillRect(di.x - 0.5, di.y - 100, 1, 100);
+            ctx.restore();
+        }
+
         renderer.drawSprite(di.icon, di.x, di.y, 14);
         renderer.ctx.font = '4px Cinzel, serif';
         renderer.ctx.textAlign = 'center';
@@ -504,6 +495,28 @@ function gameLoop(timestamp) {
         if (e.isPlayer) {
             renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)';
             renderer.ctx.beginPath(); renderer.ctx.ellipse(e.x, e.y + 6, 8, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
+
+            // Draw aura ring if active
+            if (e.activeAura) {
+                const auraColors = {
+                    might_aura: '#ffd700', prayer_aura: '#40c040', holy_fire_aura: '#ff4000',
+                    resist_all: '#4080ff', vigor: '#ffffff', fanaticism: '#ffa000', conviction: '#a040ff'
+                };
+                const auraColor = auraColors[e.activeAura] || '#ffe880';
+                const pulse = 0.3 + Math.sin(lastTime * 0.004) * 0.15;
+                const auraRadius = 25 + Math.sin(lastTime * 0.003) * 3;
+                renderer.ctx.save();
+                renderer.ctx.globalAlpha = pulse;
+                renderer.ctx.strokeStyle = auraColor;
+                renderer.ctx.lineWidth = 1.5;
+                renderer.ctx.shadowColor = auraColor;
+                renderer.ctx.shadowBlur = 8;
+                renderer.ctx.beginPath();
+                renderer.ctx.ellipse(e.x, e.y + 2, auraRadius, auraRadius * 0.4, 0, 0, Math.PI * 2);
+                renderer.ctx.stroke();
+                renderer.ctx.restore();
+            }
+
             renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 18, e.animState, e.facingDir, lastTime, null, e.equipment);
             e.renderMinions(renderer, lastTime);
         } else {
@@ -530,13 +543,25 @@ function gameLoop(timestamp) {
         renderer.ctx.fillText(mercenary.name, mercenary.x, mercenary.y - 18);
     }
 
-    for (const n of npcs) n.render(renderer, lastTime);
+    for (const n of npcs) {
+        // Subtle glow for town NPCs
+        if (zoneLevel === 0) {
+            const pulse = 0.5 + Math.sin(lastTime * 0.005) * 0.3;
+            renderer.ctx.fillStyle = `rgba(216, 176, 104, ${pulse * 0.2})`;
+            renderer.ctx.beginPath();
+            renderer.ctx.ellipse(n.x, n.y + 4, 12, 5, 0, 0, Math.PI * 2);
+            renderer.ctx.fill();
+        }
+        n.render(renderer, lastTime);
+    }
     for (const obj of gameObjects) obj.render(renderer, lastTime);
 
     projectiles.forEach(p => p.render(renderer, lastTime));
     aoeZones.forEach(a => a.render(renderer, lastTime));
 
     bus.emit('render:effects', { renderer, lastTime });
+
+    fx.render(renderer.ctx);
 
     camera.reset(renderer.ctx);
 
@@ -598,23 +623,19 @@ function gameLoop(timestamp) {
         renderer.ctx.fillRect(ox + player.x * scale - 2, oy + player.y * scale - 2, 4, 4);
     }
 
-    fx.render(renderer.ctx);
+
 
     requestAnimationFrame(gameLoop);
 }
 
 function checkInteractions(pos) {
-    const worldPos = camera.screenToWorld(pos.x, pos.y);
+    const worldPos = camera.toWorld(pos.x, pos.y);
 
     // Check NPCs
     for (const n of npcs) {
         const d = Math.sqrt((n.x - worldPos.x) ** 2 + (n.y - worldPos.y) ** 2);
-        if (d < 30) {
-            dialogue = { text: `${n.name}: "${n.dialogue}"`, timer: 4, npc: n };
-            addCombatLog(dialogue.text, 'log-info');
-            if (n.name === 'Merchant' || n.type === 'merchant') openShop();
-            if (n.type === 'elder') offerQuest();
-            if (n.type === 'mercenary_hire') hireMercenary();
+        if (d < 50) {
+            renderDialoguePicker(n);
             return;
         }
     }
@@ -1247,6 +1268,25 @@ function getIconForSkill(id) {
     return iconMap[id] || 'ra-cog';
 }
 
+function getItemHtml(item, cantEquip = false) {
+    if (!item) return '';
+    const rarityClass = `rarity-${item.rarity || 'normal'}`;
+    const unidentifiedClass = (item.identified === false) ? ' unidentified' : '';
+    const equipClass = cantEquip ? ' cant-equip' : '';
+    
+    // Check if we have an HD version or use the base icon
+    let iconName = item.icon || 'item_amulet';
+    
+    // Support for tinted gems if we are missing specific HD icons (Diamond/Skull)
+    let filterStyle = '';
+    if (iconName === 'item_diamond') { iconName = 'item_emerald'; filterStyle = 'filter: brightness(2) saturate(0) contrast(1.2);'; }
+    if (iconName === 'item_skull') { iconName = 'item_topaz'; filterStyle = 'filter: grayscale(1) brightness(0.8) contrast(1.5);'; }
+    
+    return `<div class="inv-item ${rarityClass}${unidentifiedClass}${equipClass}">
+        <img src="assets/${iconName}.png" style="width:100%; height:100%; object-fit:contain; ${filterStyle}">
+    </div>`;
+}
+
 function getIconForItem(iconStr) {
     if (!iconStr) return 'ra-circle';
     const s = iconStr.toLowerCase();
@@ -1407,6 +1447,12 @@ for (let i = 0; i < 4; i++) {
     });
 }
 
+// ─── INPUT EVENTS ───
+bus.on('input:click', p => { input.click = { x: p.screenX, y: p.screenY }; });
+bus.on('input:rightclick', p => { 
+    // Handle right-click for quick actions if needed
+});
+
 // ─── TOGGLES ───
 bus.on('ui:toggle:fullmap', () => { showFullMap = !showFullMap; });
 bus.on('ui:toggle:lootfilter', () => {
@@ -1521,7 +1567,7 @@ bus.on('ui:toggle:inventory', () => togglePanel('inventory'));
 bus.on('ui:toggle:talents', () => togglePanel('talents'));
 bus.on('ui:toggle:character', () => togglePanel('character'));
 bus.on('ui:closeAll', () => {
-    ['inventory', 'talents', 'character', 'shop', 'stash'].forEach(p => {
+    ['inventory', 'talents', 'character', 'shop', 'stash', 'cube', 'quests'].forEach(p => {
         const el = $(`panel-${p}`);
         if (el) el.classList.add('hidden');
     });
@@ -1544,7 +1590,10 @@ bus.on('action:town_portal', () => {
 $('btn-inventory').addEventListener('click', () => togglePanel('inventory'));
 $('btn-talents').addEventListener('click', () => togglePanel('talents'));
 $('btn-character').addEventListener('click', () => togglePanel('character'));
-$('btn-stash')?.addEventListener('click', () => {
+$('btn-stash')?.addEventListener('click', toggleTownPanels);
+$('btn-cube')?.addEventListener('click', toggleTownPanels);
+
+function toggleTownPanels() {
     if (zoneLevel !== 0) {
         addCombatLog('Stash and Cube are only available in town!', 'log-dmg');
         return;
@@ -1559,42 +1608,12 @@ $('btn-stash')?.addEventListener('click', () => {
     } else {
         $('panel-cube').classList.add('hidden');
     }
-});
+}
+
 $('btn-quests')?.addEventListener('click', () => {
     togglePanel('quests');
     if (!$('panel-quests').classList.contains('hidden')) renderQuestLog();
 });
-
-function renderStash() {
-    const grid = $('stash-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    for (let i = 0; i < 20; i++) {
-        const slot = document.createElement('div');
-        slot.className = `inv-item${stash[i] ? ` rarity-${stash[i].rarity}` : ''}`;
-        slot.style.width = '40px';
-        slot.style.height = '40px';
-        if (stash[i]) {
-            slot.innerHTML = `<i class="ra ${getIconForItem(stash[i].icon)}" style="font-size:28px; color:var(--text); text-shadow:0 0 8px currentColor;"></i>`;
-            setupTooltip(slot, stash[i]);
-            // Left-click: move from stash to inventory
-            slot.addEventListener('click', () => {
-                if (player.addToInventory(stash[i])) {
-                    addCombatLog(`Retrieved ${stash[i].name} from stash`, 'log-info');
-                    stash[i] = null;
-                    renderStash();
-                    renderInventory();
-                } else {
-                    addCombatLog('Inventory full!', 'log-dmg');
-                }
-            });
-        } else {
-            // Empty slot — drag concept: right-click inventory item to stash
-            slot.style.border = '1px dashed #333';
-        }
-        grid.appendChild(slot);
-    }
-}
 
 // ─── QUEST LOG ───
 function renderQuestLog() {
@@ -1810,13 +1829,23 @@ function renderInventory() {
         const el = document.querySelector(`.equip-slot[data-slot="${s}"]`);
         if (!el) return;
         const item = player.equipment[s];
-        el.innerHTML = item ? `<div class="inv-item rarity-${item.rarity}"><i class="ra ${getIconForItem(item.icon)}" style="font-size:32px; color:var(--text); text-shadow:0 0 8px currentColor;"></i></div>` : '';
+        el.innerHTML = item ? getItemHtml(item) : '';
         if (item) {
             const itemEl = el.querySelector('.inv-item');
             setupTooltip(itemEl, item);
             
-            // Left-click to socket into equipped item
+            // Left-click to socket / identify / unequip
             itemEl.addEventListener('click', (e) => {
+                if (window.isIdentifying && item.identified === false) {
+                    item.identified = true;
+                    window.isIdentifying = false;
+                    document.body.style.cursor = 'default';
+                    addCombatLog(`Identified: ${item.name}!`, 'log-level');
+                    playLoot();
+                    renderInventory();
+                    renderCharacterPanel();
+                    return;
+                }
                 if (socketingGemIndex !== -1) {
                     const gem = player.inventory[socketingGemIndex];
                     if (item.sockets && item.socketed && item.socketed.length < item.sockets) {
@@ -1862,7 +1891,41 @@ function renderInventory() {
     });
 
     // 2. Inventory Grid (10x4 = 40 slots)
-    const ig = $('inventory-grid');
+    let ig = $('inventory-grid');
+    if (!ig) {
+        // If the grid doesn't exist yet, we might be in an initialization state or the HTML structure changed.
+        // But based on common patterns, we expect it to exist. 
+        // Let's add the button to the parent of the grid.
+        const container = $('panel-inventory');
+        const header = document.createElement('div');
+        header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding: 4px 8px; border-bottom:1px solid #333; margin-bottom:4px;';
+        header.innerHTML = `
+            <span style="font-family:Cinzel,serif; color:var(--gold); font-size:12px;">INVENTORY</span>
+            <button id="btn-sort-inv" class="btn-secondary small" style="padding: 2px 8px; font-size:10px;">SORT</button>
+        `;
+        container.insertBefore(header, container.firstChild);
+        header.querySelector('#btn-sort-inv').onclick = () => {
+            player.sortInventory();
+            renderInventory();
+        };
+        ig = $('inventory-grid');
+    } else {
+        // Just ensure the button is there if we are re-rendering
+        if (!$('btn-sort-inv')) {
+            const container = ig.parentElement;
+            const header = document.createElement('div');
+            header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding: 4px 8px; border-bottom:1px solid #333; margin-bottom:4px;';
+            header.innerHTML = `
+                <span style="font-family:Cinzel,serif; color:var(--gold); font-size:12px;">INVENTORY</span>
+                <button id="btn-sort-inv" class="btn-secondary small" style="padding: 2px 8px; font-size:10px;">SORT</button>
+            `;
+            container.insertBefore(header, ig);
+            header.querySelector('#btn-sort-inv').onclick = () => {
+                player.sortInventory();
+                renderInventory();
+            };
+        }
+    }
     ig.innerHTML = '';
     const MAX_INV_SLOTS = 40;
 
@@ -1877,9 +1940,9 @@ function renderInventory() {
         if (item) {
             const div = document.createElement('div');
             const check = player.canEquip(item);
-            div.className = `inv-item rarity-${item.rarity}${!check.ok ? ' cant-equip' : ''}`;
-            div.innerHTML = `<i class="ra ${getIconForItem(item.icon)}" style="font-size:28px; display:block; margin:auto; color:var(--text); text-shadow:0 0 8px currentColor; ${!check.ok ? 'filter:grayscale(0.8) sepia(0.5);' : ''}"></i>`;
-            setupTooltip(div, item);
+            div.innerHTML = getItemHtml(item, !check.ok);
+            const innerDiv = div.firstChild; // The .inv-item div
+            setupTooltip(innerDiv, item);
 
             // Left click to equip / socket / sell
             div.addEventListener('click', () => {
@@ -1921,6 +1984,17 @@ function renderInventory() {
                     renderInventory();
                     return;
                 }
+                if (window.isIdentifying && item.identified === false) {
+                    item.identified = true;
+                    window.isIdentifying = false;
+                    document.body.style.cursor = 'default';
+                    addCombatLog(`Identified: ${item.name}!`, 'log-level');
+                    playLoot();
+                    renderInventory();
+                    renderCharacterPanel();
+                    return;
+                }
+
                 const result = player.equip(item);
                 if (result && result.error) {
                     addCombatLog(result.error, 'log-dmg');
@@ -1932,39 +2006,11 @@ function renderInventory() {
                 updateHud();
             });
 
-            $('btn-respawn').addEventListener('click', () => {
-                $('death-screen').classList.add('hidden');
-                player.hp = player.maxHp;
-                player.mp = player.maxMp;
-                player.gold = Math.floor(player.gold * 0.9);
-                state = 'GAME';
-                nextZone(0); // Back to town
-            });
-
-            $('btn-main-menu-death').addEventListener('click', () => {
-                state = 'MAIN_MENU';
-                $('death-screen').classList.add('hidden');
-                $('main-menu').classList.add('active');
-                $('game-screen').classList.remove('active');
-            });
-
-            $('btn-continue-rift').addEventListener('click', () => {
-                $('victory-screen').classList.add('hidden');
-                nextZone(6); // Go to first rift
-            });
-
-            $('btn-victory-menu').addEventListener('click', () => {
-                state = 'MAIN_MENU';
-                $('victory-screen').classList.add('hidden');
-                $('main-menu').classList.add('active');
-                $('game-screen').classList.remove('active');
-            });
-
             // Right-click to Drop/Sell/Belt/Socket
             div.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 if (socketingGemIndex !== -1) return; // block
-
+                
                 // Merchant sell (via dialogue OR open shop panel)
                 const shopOpen = !$('panel-shop').classList.contains('hidden');
                 const merchantDialogue = dialogue && dialogue.timer > 0 && dialogue.npc && dialogue.npc.type === 'merchant';
@@ -1999,16 +2045,34 @@ function renderInventory() {
                         addCombatLog('Stash full!', 'log-dmg');
                     }
                 }
-                else {
-                    // Enter socket mode if it's a gem
-                    if (item.type === 'gem') {
-                        socketingGemIndex = i;
-                        document.body.style.cursor = `url('assets/item_amulet.png'), crosshair`;
-                        addCombatLog(`Select an item to socket ${item.name} into`, 'log-info');
-                        renderInventory();
-                        return;
+                else if (!$('panel-cube').classList.contains('hidden')) {
+                    const cubeIdx = cube.indexOf(null);
+                    if (cubeIdx !== -1) {
+                        cube[cubeIdx] = item;
+                        player.inventory[i] = null;
+                        addCombatLog(`Moved ${item.name} to cube`, 'log-info');
+                        renderCube();
+                    } else {
+                        addCombatLog('Cube full!', 'log-dmg');
                     }
-                    
+                }
+                // Enter identify mode if it's a scroll or gem
+                else if (item.type === 'scroll' && item.baseId === 'scroll_identify') {
+                    window.isIdentifying = true;
+                    document.body.style.cursor = `crosshair`;
+                    addCombatLog('Select an item to identify', 'log-info');
+                    player.inventory[i] = null; // Consume scroll
+                    renderInventory();
+                }
+                else if (item.type === 'gem') {
+                    socketingGemIndex = i;
+                    document.body.style.cursor = `url('assets/item_amulet.png'), crosshair`;
+                    addCombatLog(`Select an item to socket ${item.name} into`, 'log-info');
+                    renderInventory();
+                    return;
+                }
+                
+                else {
                     const drop = { ...item };
                     drop.x = player.x + (Math.random() - 0.5) * 32;
                     drop.y = player.y + (Math.random() - 0.5) * 32;
@@ -2082,21 +2146,58 @@ function itemTooltipText(item) {
         set: '#00ff00',
         unique: '#bf642f'
     };
-    const c = colors[item.rarity] || '#fff';
+    const c = (item.identified === false) ? '#888' : (colors[item.rarity] || '#fff');
 
     let t = `<div class="tooltip-inner" style="color:${c};">`;
-    t += `<div class="tooltip-name">${item.name}</div>`;
+    t += `<div class="tooltip-name">${item.identified === false ? 'Unidentified ' + (items[item.baseId]?.name || 'Item') : item.name}</div>`;
 
-    if (item.rarity && item.rarity !== 'normal') {
-        const rarityLabel = item.rarity === 'set' ? item.setName : item.rarity.toUpperCase();
+    // Force gems/runes to be identified in tooltip always
+    const skipID = (item.type === 'gem' || item.type === 'rune' || item.type === 'charm' || item.type === 'potion');
+
+    if (item.identified === false && !skipID) {
+        t += `<div class="tooltip-rarity" style="color:#666;">— Unknown Potential —</div>`;
+        t += `<div class="tooltip-stats" style="color:#666; font-style:italic;">Use a Scroll of Identification to reveal this item's powers.</div>`;
+        t += `<div class="tooltip-footer">[Left-Click to Equip] | [Right-Click to Deposit]</div>`;
+        t += `</div>`;
+        return t;
+    }
+
+    if (item.rarity && item.rarity !== 'normal' && typeof item.rarity === 'string') {
+        const rarityLabel = item.rarity === 'set' ? (item.setName || "SET ITEM") : item.rarity.toUpperCase();
         t += `<div class="tooltip-rarity">— ${rarityLabel} —</div>`;
     }
+
+    const friendlyNames = {
+        flatSTR: 'Strength', flatDEX: 'Dexterity', flatVIT: 'Vitality', flatINT: 'Intellect',
+        flatHP: 'Life', flatMP: 'Mana', flatArmor: 'Defense', pctArmor: 'Enhanced Defense',
+        pctDmg: 'Enhanced Damage', flatMinDmg: 'Minimum Damage', flatMaxDmg: 'Maximum Damage',
+        fireRes: 'Fire Resist', coldRes: 'Cold Resist', lightRes: 'Lightning Resist', poisRes: 'Poison Resist',
+        allRes: 'All Resistances', critChance: 'Critical Strike Chance', critMulti: 'Critical Damage',
+        lifeStealPct: 'Life Stolen per Hit', manaStealPct: 'Mana Stolen per Hit', pctMoveSpeed: 'Faster Run/Walk',
+        lifeRegenPerSec: 'Life Replenish', manaRegenPerSec: 'Mana Regen', magicFind: 'Magic Find', goldFind: 'Gold Find',
+        pctFireDmg: 'Fire Skill Damage', pctColdDmg: 'Cold Skill Damage', pctLightDmg: 'Lightning Skill Damage',
+        pctPoisonDmg: 'Poison Skill Damage', pctShadowDmg: 'Shadow Skill Damage', pctHolyDmg: 'Holy Skill Damage',
+        blockChance: 'Chance to Block'
+    };
 
     t += `<div class="tooltip-stats" style="color:#fff;">`;
     if (item.minDmg) t += `<div>Damage: ${item.minDmg}–${item.maxDmg}</div>`;
     if (item.armor) t += `<div>Armor: ${item.armor}</div>`;
     if (item.block) t += `<div>Block: ${item.block}%</div>`;
     if (item.atkSpd && item.atkSpd !== 1) t += `<div>Attack Speed: ${item.atkSpd.toFixed(2)}</div>`;
+    
+    // Support for Gem/Rune Socket Effects (Compact & Categorized)
+    if (item.type === 'gem' && item.socketEffect) {
+        t += `<div style="background:rgba(191,100,47,0.1); border:1px solid rgba(191,100,47,0.3); padding:8px; margin-top:10px; border-radius:4px;">`;
+        t += `<div style="color:#bf642f; margin-bottom:6px; font-weight:bold; font-size:12px; border-bottom:1px solid #332a1e; padding-bottom:3px;">— SOCKETABLE DATA —</div>`;
+        for (const [loc, effect] of Object.entries(item.socketEffect)) {
+            const locName = loc.charAt(0).toUpperCase() + loc.slice(1);
+            let statLabel = friendlyNames[effect.stat] || effect.stat.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+            const val = effect.value > 0 ? `+${effect.value}` : `${effect.value}`;
+            t += `<div style="font-size:11px; margin:2px 0;"><span style="color:#aaa; width:60px; display:inline-block;">${locName}:</span> <span style="color:#4850b8;">${val}${effect.stat.includes('pct') ? '%' : ''} ${statLabel}</span></div>`;
+        }
+        t += `</div>`;
+    }
     if (item.sockets) {
         t += `<div>Sockets: ${item.socketed ? item.socketed.length : 0} / ${item.sockets}</div>`;
         if (item.socketed && item.socketed.length > 0) {
@@ -2115,6 +2216,8 @@ function itemTooltipText(item) {
             const val = mod.value > 0 ? `+${mod.value}` : `${mod.value}`;
             let statName = mod.stat;
             // Human readable skill bonuses
+            // Mapping for human readable stat names
+            const fLabels = friendlyNames; 
             if (statName.startsWith('+skill:')) {
                 const skId = statName.split(':')[1];
                 statName = `to ${skId.replace(/_/g, ' ').toUpperCase()}`;
@@ -2125,9 +2228,9 @@ function itemTooltipText(item) {
             } else if (statName === '+allSkills') {
                 statName = "to All Skills";
             } else {
-                statName = statName.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+                statName = fLabels[statName] || statName.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
             }
-            t += `<div>${val} ${statName}</div>`;
+            t += `<div>${val}${mod.stat.includes('pct') || mod.stat.includes('Chance') || mod.stat.includes('Res') ? '%' : ''} ${statName}</div>`;
         }
         t += `</div>`;
     }
@@ -2206,6 +2309,166 @@ function openShop() {
     renderShop();
 }
 
+function renderDialoguePicker(npc) {
+    activeDialogueNpc = npc;
+    const existing = document.getElementById('dialogue-picker');
+    if (existing) existing.remove();
+
+    const menu = document.createElement('div');
+    menu.id = 'dialogue-picker';
+    menu.className = 'dialogue-picker-menu';
+    
+    // Initial position above head
+    const screen = camera.toScreen(npc.x, npc.y);
+    menu.style.cssText = `
+        position: absolute; left: ${screen.x - 110}px; top: ${screen.y - 180}px; width: 220px;
+        background: rgba(10, 8, 5, 0.95); border: 1px solid #bf642f;
+        padding: 15px; z-index: 1000; font-family: 'Cinzel', serif;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.9), inset 0 0 15px rgba(186, 145, 88, 0.1);
+        pointer-events: all; border-radius: 8px;
+    `;
+
+    const title = document.createElement('div');
+    title.style.cssText = 'color: #ffd700; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #4a3520; padding-bottom: 6px; text-align: center;';
+    title.textContent = npc.name.toUpperCase();
+    menu.appendChild(title);
+
+    const options = [
+        { label: 'Trade', action: () => { openShop(); menu.remove(); activeDialogueNpc = null; } },
+        { label: 'Talk', action: () => { 
+            dialogue = { text: `${npc.name}: "${npc.dialogue}"`, timer: 6, npc: npc };
+            addCombatLog(dialogue.text, 'log-info');
+            menu.remove();
+            activeDialogueNpc = null;
+        } }
+    ];
+
+    // Special: Gamble (Gheed)
+    if (npc.id === 'gheed') {
+        options.push({ label: 'Gamble', action: () => { openGambleShop(); menu.remove(); activeDialogueNpc = null; } });
+    }
+
+    // Special: Akara Services
+    if (npc.id === 'akara') {
+        options.push({ label: 'Heal & Refill', action: () => {
+            player.hp = player.maxHp;
+            player.mp = player.maxMp;
+            addCombatLog('Akara has restored your health and mana.', 'log-heal');
+            fx.emitBurst(player.x, player.y, '#4caf50', 20, 2);
+            updateHud();
+            menu.remove();
+            activeDialogueNpc = null;
+        }});
+        options.push({ label: 'Reset (500g)', action: () => {
+             if (player.gold >= 500) {
+                 player.gold -= 500;
+                 player.talents.reset();
+                 player.hotbar = [null, null, null, null, null];
+                 updateSkillBar();
+                 renderTalentTree();
+                 addCombatLog('Talents reset!', 'log-level');
+             } else {
+                 addCombatLog('Not enough gold!', 'log-dmg');
+             }
+             menu.remove();
+             activeDialogueNpc = null;
+        }});
+    }
+
+    // Special: Identify All
+    options.push({ label: 'Identify All (100g)', action: () => {
+        const cost = 100;
+        if (player.gold >= cost) {
+            let count = 0;
+            player.inventory.forEach(it => { if (it && it.identified === false) { it.identified = true; count++; } });
+            if (count > 0) {
+                player.gold -= cost;
+                addCombatLog(`Identified ${count} items.`, 'log-info');
+                playLoot();
+                renderInventory();
+            } else {
+                addCombatLog("No unidentified items found.", "log-info");
+            }
+        } else {
+            addCombatLog("Not enough gold!", "log-dmg");
+        }
+        menu.remove();
+        activeDialogueNpc = null;
+    }});
+
+    options.push({ label: 'Cancel', action: () => { menu.remove(); activeDialogueNpc = null; } });
+
+    options.forEach(opt => {
+        const btn = document.createElement('div');
+        btn.className = 'dialogue-option';
+        btn.style.cssText = 'color: #d8b068; cursor: pointer; padding: 10px; margin: 4px 0; text-align: left; transition: all 0.2s; font-size: 13px; background: rgba(191,100,47,0.05); border: 1px solid transparent;';
+        btn.onmouseover = () => { btn.style.color = '#fff'; btn.style.background = 'rgba(191,100,47,0.2)'; btn.style.borderColor = '#bf642f'; };
+        btn.onmouseout = () => { btn.style.color = '#d8b068'; btn.style.background = 'rgba(191,100,47,0.05)'; btn.style.borderColor = 'transparent'; };
+        btn.textContent = `• ${opt.label}`;
+        btn.onclick = opt.action;
+        menu.appendChild(btn);
+    });
+
+    $('game-screen').appendChild(menu);
+}
+
+
+function openGambleShop() {
+    $('panel-shop').classList.remove('hidden');
+    $('panel-inventory').classList.remove('hidden');
+    renderGambleShop();
+}
+
+function renderGambleShop() {
+    const container = $('shop-items');
+    container.innerHTML = '';
+    const goldText = $('shop-gold');
+    goldText.innerHTML = `Your Gold: <span style="color:var(--gold)">${player.gold}</span><div style="font-size:11px;color:#bf642f;margin-top:4px;">(Gheed's Gambling Service)</div>`;
+
+    const bases = ['ring', 'amulet', 'leather_armor', 'short_sword', 'great_helm', 'circlet', 'gauntlets', 'leather_boots', 'buckler'];
+    
+    // Gamble prices scale with level
+    const cost = Math.max(100, player.level * 50);
+
+    for (const baseId of bases) {
+        const base = items[baseId];
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:8px; border:1px solid #333; background:#111; border-radius:4px; transition:0.2s;';
+        
+        row.innerHTML = `
+            <div style="display:flex; align-items:center; gap:8px;">
+                <div style="width:32px; height:32px; border:1px solid #444; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;">
+                    ${getItemHtml({ ...base, identified: false, rarity: 'normal' })}
+                </div>
+                <div style="display:flex; flex-direction:column;">
+                    <span style="color:#fff; font-size:13px;">${base.name}</span>
+                    <span style="color:#888; font-size:10px;">Unidentified</span>
+                </div>
+            </div>
+            <button class="btn-secondary small">Gamble (${cost}g)</button>
+        `;
+
+        row.querySelector('button').onclick = () => {
+            if (player.gold >= cost) {
+                player.gold -= cost;
+                const itm = loot.generateGamble(baseId, player.level);
+                if (player.addToInventory(itm)) {
+                    playLoot();
+                    renderGambleShop();
+                    renderInventory();
+                } else {
+                    player.gold += cost;
+                    addCombatLog('Inventory full!', 'log-dmg');
+                }
+            } else {
+                addCombatLog('Not enough gold!', 'log-dmg');
+            }
+        };
+
+        container.appendChild(row);
+    }
+}
+
 function renderShop() {
     const container = $('shop-items');
     container.innerHTML = '';
@@ -2215,7 +2478,32 @@ function renderShop() {
         { ...items.health_potion, price: 25 },
         { ...items.mana_potion, price: 25 },
         { ...items.rejuv_potion, price: 75 },
+        { ...items.scroll_identify, price: 100 },
+        { ...items.scroll_town_portal, price: 100 },
     ];
+
+    // Identify All Service
+    const idAllRow = document.createElement('div');
+    idAllRow.style.cssText = 'padding:6px; margin: 4px 0; border:1px solid #bf642f; background:#302010; border-radius:4px; text-align:center; cursor:pointer; font-family:Cinzel,serif; color:#ffd700;';
+    idAllRow.innerHTML = `📜 Identify All Inventory (300g)`;
+    idAllRow.onclick = () => {
+        if (player.gold >= 300) {
+            let count = 0;
+            player.inventory.forEach(it => { if (it && it.identified === false) { it.identified = true; count++; } });
+            if (count > 0) {
+                player.gold -= 300;
+                addCombatLog(`Identified ${count} items.`, 'log-info');
+                playLoot();
+                renderShop();
+                renderInventory();
+            } else {
+                addCombatLog('No unidentified items found.', 'log-info');
+            }
+        } else {
+            addCombatLog('Not enough gold!', 'log-dmg');
+        }
+    };
+    container.appendChild(idAllRow);
 
     // Section Header: Buy
     const buyHeader = document.createElement('div');
@@ -2235,7 +2523,9 @@ function renderShop() {
         
         row.innerHTML = `
             <div style="display:flex; align-items:center; gap:8px;">
-                <i class="ra ${getIconForItem(item.icon)}" style="font-size:24px; color:var(--text); text-shadow:0 0 8px currentColor;"></i>
+                <div style="width:32px; height:32px; border:1px solid #444; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;">
+                    ${getItemHtml(item)}
+                </div>
                 <span class="tooltip-trigger">${item.name}</span>
             </div>
             <button class="btn-secondary small">Buy (${item.price}g)</button>
@@ -2304,6 +2594,96 @@ function renderShop() {
         container.appendChild(row);
     }
 }
+
+// ─── STASH & CUBE ───
+function renderStash() {
+    const grid = $('stash-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    
+    for (let i = 0; i < stash.length; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'inv-slot';
+        const item = stash[i];
+        
+        if (item) {
+            const div = document.createElement('div');
+            div.innerHTML = getItemHtml(item);
+            const innerDiv = div.firstChild;
+            setupTooltip(innerDiv, item);
+            
+            const moveToInv = (e) => {
+                e.preventDefault();
+                const empty = player.inventory.indexOf(null);
+                if (empty !== -1) {
+                    player.inventory[empty] = item;
+                    stash[i] = null;
+                    addCombatLog(`Took ${item.name} from Stash`, 'log-info');
+                    hideTooltip();
+                    renderStash();
+                    renderInventory();
+                } else {
+                    addCombatLog('Inventory full!', 'log-dmg');
+                }
+            };
+            div.addEventListener('click', moveToInv);
+            div.addEventListener('contextmenu', moveToInv);
+            cell.appendChild(div);
+        } else {
+            // Empy stash cell -> moving cursor to drop into stash? We handled that in inventory right click!
+        }
+        grid.appendChild(cell);
+    }
+}
+
+function renderCube() {
+    const grid = $('cube-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    
+    for (let i = 0; i < cube.length; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'inv-slot';
+        const item = cube[i];
+        
+        if (item) {
+            const div = document.createElement('div');
+            div.innerHTML = getItemHtml(item);
+            const innerDiv = div.firstChild;
+            setupTooltip(innerDiv, item);
+            
+            const moveToInv = (e) => {
+                e.preventDefault();
+                const empty = player.inventory.indexOf(null);
+                if (empty !== -1) {
+                    player.inventory[empty] = item;
+                    cube[i] = null;
+                    addCombatLog(`Took ${item.name} from Cube`, 'log-info');
+                    hideTooltip();
+                    renderCube();
+                    renderInventory();
+                } else {
+                    addCombatLog('Inventory full!', 'log-dmg');
+                }
+            };
+            div.addEventListener('click', moveToInv);
+            div.addEventListener('contextmenu', moveToInv);
+            cell.appendChild(div);
+        }
+        grid.appendChild(cell);
+    }
+}
+
+$('btn-transmute')?.addEventListener('click', () => {
+    if (cube.every(x => x !== null)) {
+        addCombatLog('Transmuted items into a new treasure!', 'log-crit');
+        cube = Array(3).fill(null);
+        cube[0] = loot.generate(player.level, 'weapon'); // simple transmute
+        renderCube();
+    } else {
+        addCombatLog('Not enough items in the Cube. Need 3.', 'log-dmg');
+    }
+});
 
 // ─── QUEST SYSTEM ───
 const QUEST_POOL = [

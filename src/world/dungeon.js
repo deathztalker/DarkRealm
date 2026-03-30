@@ -123,14 +123,18 @@ export class Dungeon {
             }
         }
 
-        // Buildings (Walls blocking movement)
+        // Buildings (Walls blocking movement but hollow inside)
         const carveBuilding = (bx, by, bw, bh) => {
             for (let y = by; y < by + bh; y++) {
                 for (let x = bx; x < bx + bw; x++) {
-                    this.grid[y][x] = TILE.WALL;
+                    if (y === by || y === by + bh - 1 || x === bx || x === bx + bw - 1) {
+                        this.grid[y][x] = TILE.WALL;
+                    } else {
+                        this.grid[y][x] = TILE.FLOOR; // Walkable interior
+                    }
                 }
             }
-            this.grid[by + bh - 1][bx + Math.floor(bw / 2)] = TILE.DOOR;
+            this.grid[by + bh - 1][bx + Math.floor(bw / 2)] = TILE.PATH; // Door
         };
 
         carveBuilding(cx - 12, cy - 3, 6, 5); // Blacksmith
@@ -157,8 +161,8 @@ export class Dungeon {
             id: "akara",
             name: "Akara the Elder",
             type: "elder",
-            x: (cx - 10) * this.tileSize,
-            y: (cy - 1) * this.tileSize,
+            x: (cx - 3) * this.tileSize,
+            y: (cy - 4) * this.tileSize,
             icon: "npc_elder",
             dialogue: "Greetings, traveler. I sense a great darkness rising."
         });
@@ -167,23 +171,39 @@ export class Dungeon {
             id: "gheed",
             name: "Gheed the Merchant",
             type: "merchant",
-            x: (cx + 10) * this.tileSize,
-            y: (cy - 1) * this.tileSize,
+            x: (cx + 3) * this.tileSize,
+            y: (cy - 4) * this.tileSize,
             icon: "npc_merchant",
             dialogue: "Looking for a deal? My prices are mostly fair."
         });
 
-        this.objectSpawns.push({ type: 'chest', x: (cx + 5) * this.tileSize, y: (cy + 5) * this.tileSize, icon: 'obj_chest' });
-
-        // Mercenary hire NPC
         this.npcSpawns.push({
             id: "kashya",
             name: "Kashya",
             type: "mercenary_hire",
-            x: (cx - 5) * this.tileSize,
-            y: (cy + 3) * this.tileSize,
+            x: (cx - 4) * this.tileSize,
+            y: (cy + 2) * this.tileSize,
             icon: "npc_elder",
             dialogue: "Need a fighter? I can send one of my rogues to aid you... for a price."
+        });
+
+        // Town Objects: Stash & Cube
+        this.objectSpawns.push({ 
+            id: 'stash',
+            type: 'stash', 
+            name: 'Alijo (Stash)',
+            x: (cx - 6) * this.tileSize, 
+            y: cy * this.tileSize, 
+            icon: 'obj_chest' 
+        });
+
+        this.objectSpawns.push({ 
+            id: 'cube',
+            type: 'cube', 
+            name: 'Cubo Horádrico',
+            x: (cx - 6) * this.tileSize, 
+            y: (cy + 2) * this.tileSize, 
+            icon: 'obj_chest' 
         });
 
         return this;

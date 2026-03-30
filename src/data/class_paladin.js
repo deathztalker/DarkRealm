@@ -70,43 +70,43 @@ export const PALADIN_CLASS = {
                     id: 'might_aura', row: 0, col: 1, type: 'active', icon: '💪', name: 'Might',
                     desc: 'Aura: party gains +(20+slvl×2)% physical damage. Only 1 aura active at a time.',
                     endgame: 'slvl 20: +60% phys dmg for entire party. Default offensive aura.',
-                    maxPts: 20, mana: 0, cd: 0
+                    maxPts: 20, mana: 0, cd: 0, group: 'aura'
                 },
                 {
                     id: 'prayer_aura', row: 1, col: 0, type: 'active', icon: '🙏', name: 'Prayer',
                     desc: 'Aura: party regenerates (2+slvl×1) HP/s.',
                     endgame: 'slvl 20: 22 HP/s passive regen for party. Consistent sustain.',
-                    maxPts: 20, mana: 0, cd: 0
+                    maxPts: 20, mana: 0, cd: 0, group: 'aura'
                 },
                 {
                     id: 'holy_fire_aura', row: 1, col: 2, type: 'active', icon: '🔥', name: 'Holy Fire',
                     desc: 'Aura: adds (3+slvl×2) fire damage to all party melee hits. Pulses fire AoE every 2s.',
                     endgame: 'slvl 20: +43 fire/hit + periodic AoE. Turns melee party into fire machines.',
-                    maxPts: 20, mana: 0, cd: 0, group: 'fire', dmgBase: 3, dmgPerLvl: 2
+                    maxPts: 20, mana: 0, cd: 0, group: 'aura', dmgBase: 3, dmgPerLvl: 2
                 },
                 {
                     id: 'resist_all', row: 2, col: 0, type: 'active', icon: '🛡️', name: 'Resist All',
                     desc: 'Aura: party gains +(5+slvl×1.5)% all resistances.',
                     endgame: 'slvl 20: +35% all res for party. Party-wide survivability.',
-                    maxPts: 20, mana: 0, cd: 0
+                    maxPts: 20, mana: 0, cd: 0, group: 'aura'
                 },
                 {
                     id: 'vigor', row: 2, col: 1, type: 'active', icon: '🏃', name: 'Vigor',
                     desc: 'Aura: party gains +(20+slvl×1.5)% run speed and +(10+slvl×1)% stamina regen.',
                     endgame: 'slvl 20: +50% run speed. Travel aura, invaluable for farming efficiency.',
-                    maxPts: 20, mana: 0, cd: 0
+                    maxPts: 20, mana: 0, cd: 0, group: 'aura'
                 },
                 {
                     id: 'fanaticism', row: 3, col: 0, type: 'active', icon: '⚡', name: 'Fanaticism',
                     desc: 'Aura: +(30+slvl×1.5)% attack speed and +(30+slvl×2)% damage for party. THE endgame aura.',
                     endgame: 'slvl 20: +60% IAS + +70% dmg for entire party. Best offensive aura in the game.',
-                    maxPts: 20, mana: 0, cd: 0, req: 'might_aura:10'
+                    maxPts: 20, mana: 0, cd: 0, group: 'aura', req: 'might_aura:10'
                 },
                 {
                     id: 'conviction', row: 3, col: 2, type: 'active', icon: '💥', name: 'Conviction',
                     desc: 'Aura: nearby enemies lose -(30+slvl×2)% defense and -(30+slvl×2)% all resistances.',
                     endgame: 'slvl 20: -70% def and -70% res on all nearby enemies. Breaks immunities with Lower Resist.',
-                    maxPts: 20, mana: 0, cd: 0, req: 'resist_all:10'
+                    maxPts: 20, mana: 0, cd: 0, group: 'aura', req: 'resist_all:10'
                 },
                 {
                     id: 'aura_mastery', row: 4, col: 1, type: 'passive', icon: '📈', name: 'Aura Mastery',

@@ -58,7 +58,7 @@ export const WARRIOR_CLASS = {
                     id: 'berserk', row: 3, col: 0, type: 'active', icon: '🔥', name: 'Berserk',
                     desc: 'Enter berserker rage for (8+slvl×0.5)s: +(80+slvl×4)% damage, -30% defense. Immune to fear/slow.',
                     endgame: 'slvl 20: 18s duration, +160% damage. Combine with Whirlwind for the ultimate AoE burst window.',
-                    maxPts: 20, mana: 8, cd: 20, group: 'melee', dmgBase: 0, dmgPerLvl: 4, req: 'double_swing:5'
+                    maxPts: 20, mana: 8, cd: 20, group: 'buff', dmgBase: 0, dmgPerLvl: 4, req: 'double_swing:5'
                 },
 
                 {

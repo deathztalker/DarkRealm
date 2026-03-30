@@ -117,19 +117,143 @@ export class Renderer {
         if (!img || !img.complete || img.width <= 64 || img.width === img.height) {
             this.drawSprite(spriteName, x, y, size, state === 'walk', time, filter);
             
-            // Dynamic Equipment Layering (Paperdoll System)
+            // Dynamic Equipment Layering — Canvas-drawn overlays
             if (equipment) {
-                // Bobbing handled natively by drawSprite, so we just layer passing the animate flags
                 const anim = state === 'walk';
-                if (equipment.chest) this.drawSprite(equipment.chest.icon, x, y, size, anim, time);
-                if (equipment.head) this.drawSprite(equipment.head.icon, x, y - 6, size * 0.9, anim, time);
-                
-                // Weapon offsets simulation
-                if (equipment.mainhand) {
-                    this.drawSprite(equipment.mainhand.icon, x + 8, y + 2, size * 0.8, anim, time);
+                const bob = anim ? Math.sin(time * 0.005) * 2 : 0;
+                const drawY = y + bob;
+                const ctx = this.ctx;
+
+                // Helper: get color from armor type
+                const armorColor = (item) => {
+                    if (!item) return null;
+                    const t = item.type || item.icon || '';
+                    if (t.includes('plate') || t.includes('chain') || t.includes('gauntlet') || t.includes('war_boot')) return '#a0a0a8';
+                    if (t.includes('robe') || t.includes('circlet')) return '#6040a0';
+                    return '#8B6540'; // leather default
+                };
+
+                // Rarity glow
+                const rarityGlow = (item) => {
+                    if (!item) return null;
+                    if (item.rarity === 'unique') return '#bf642f';
+                    if (item.rarity === 'rare') return '#ffff00';
+                    if (item.rarity === 'magic') return '#4850b8';
+                    return null;
+                };
+
+                const drawGlow = (px, py, w, h, item) => {
+                    const glow = rarityGlow(item);
+                    if (glow) {
+                        ctx.save();
+                        ctx.shadowColor = glow;
+                        ctx.shadowBlur = 6;
+                        ctx.strokeStyle = glow;
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(px, py, w, h);
+                        ctx.restore();
+                    }
+                };
+
+                // Chest armor — colored torso area
+                if (equipment.chest) {
+                    const color = armorColor(equipment.chest);
+                    ctx.save();
+                    ctx.globalAlpha = 0.5;
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x - 5, drawY - 6, 10, 8);
+                    drawGlow(x - 5, drawY - 6, 10, 8, equipment.chest);
+                    ctx.restore();
                 }
+
+                // Helm — band on head with visor detail
+                if (equipment.head) {
+                    const color = armorColor(equipment.head);
+                    ctx.save();
+                    ctx.globalAlpha = 0.8;
+                    ctx.fillStyle = color;
+                    // Main helm
+                    ctx.fillRect(x - 4, drawY - 14, 8, 4);
+                    // Visor or crown peak
+                    ctx.fillStyle = '#eee';
+                    ctx.fillRect(x - 3, drawY - 14, 6, 1);
+                    drawGlow(x - 4, drawY - 14, 8, 4, equipment.head);
+                    ctx.restore();
+                }
+
+                // Weapon — line extending from hand with point/hilt
+                if (equipment.mainhand) {
+                    const wt = (equipment.mainhand.type || '').toLowerCase();
+                    const wColor = wt.includes('staff') ? '#8B6540' : wt.includes('bow') ? '#A0784B' : wt.includes('wand') ? '#6060c0' : '#c0c0d0';
+                    const dirOff = dir === 'right' ? 1 : dir === 'left' ? -1 : 0;
+                    const dirOffy = dir === 'down' ? 1 : dir === 'up' ? -1 : 0;
+                    ctx.save();
+                    ctx.strokeStyle = wColor;
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+                    ctx.shadowColor = rarityGlow(equipment.mainhand) || wColor;
+                    ctx.shadowBlur = rarityGlow(equipment.mainhand) ? 8 : 2;
+                    
+                    const startX = x + dirOff * 4;
+                    const startY = drawY - 2 + dirOffy * 2;
+                    const wLen = wt.includes('staff') || wt.includes('bow') ? 14 : 10;
+                    const endX = x + dirOff * (4 + wLen);
+                    const endY = drawY - 2 + dirOffy * (2 + wLen * 0.5);
+
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+
+                    // Hilt / Crossguard if melee/staff
+                    if (!wt.includes('bow')) {
+                        ctx.lineWidth = 1;
+                        ctx.strokeStyle = '#666';
+                        ctx.beginPath();
+                        ctx.moveTo(startX - 2, startY - 2);
+                        ctx.lineTo(startX + 2, startY + 2);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+
+                // Shield / Offhand — shield shape
                 if (equipment.offhand) {
-                    this.drawSprite(equipment.offhand.icon, x - 8, y + 2, size * 0.8, anim, time);
+                    const dirOff = dir === 'right' ? -1 : dir === 'left' ? 1 : 0;
+                    ctx.save();
+                    ctx.globalAlpha = 0.8;
+                    const sx = x + dirOff * 7 - 3;
+                    const sy = drawY - 5;
+                    ctx.fillStyle = '#606068'; // Shield base
+                    ctx.fillRect(sx, sy, 6, 8);
+                    ctx.fillStyle = '#909098'; // Shield border/detail
+                    ctx.strokeRect(sx, sy, 6, 8);
+                    drawGlow(sx, sy, 6, 8, equipment.offhand);
+                    ctx.restore();
+                }
+
+                // Boots — colored feet
+                if (equipment.boots) {
+                    const color = armorColor(equipment.boots);
+                    ctx.save();
+                    ctx.globalAlpha = 0.5;
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x - 4, drawY + 3, 3, 2);
+                    ctx.fillRect(x + 1, drawY + 3, 3, 2);
+                    ctx.restore();
+                }
+
+                // Gloves — colored hand dots
+                if (equipment.gloves) {
+                    const color = armorColor(equipment.gloves);
+                    ctx.save();
+                    ctx.globalAlpha = 0.5;
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(x - 6, drawY - 1, 1.5, 0, Math.PI * 2);
+                    ctx.arc(x + 6, drawY - 1, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
                 }
             }
             return;

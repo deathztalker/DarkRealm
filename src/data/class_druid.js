@@ -16,13 +16,13 @@ export const DRUID_CLASS = {
                     id: 'bear_form', row: 0, col: 1, type: 'active', icon: '🐻', name: 'Werebear Form',
                     desc: 'Transform: +(100+slvl×5)% HP, +(50+slvl×3)% armor. Unlocks Maul/Slam. Lasts 30+slvl×3s.',
                     endgame: 'slvl 20: +200% HP, +110% armor for 90s. The tankiest form in the game.',
-                    maxPts: 20, mana: 15, cd: 30
+                    maxPts: 20, mana: 15, cd: 30, group: 'buff'
                 },
                 {
                     id: 'wolf_form', row: 0, col: 0, type: 'active', icon: '🐺', name: 'Werewolf Form',
                     desc: 'Transform: +(50+slvl×2)% move speed, +(30+slvl×2)% IAS. Unlocks Fury/Rabies. Lasts 30+slvl×3s.',
                     endgame: 'slvl 20: +90% IAS, +90% move speed for 90s. Fastest melee class.',
-                    maxPts: 20, mana: 10, cd: 20
+                    maxPts: 20, mana: 10, cd: 20, group: 'buff'
                 },
                 {
                     id: 'maul', row: 1, col: 1, type: 'active', icon: '🐾', name: 'Maul',
@@ -59,7 +59,7 @@ export const DRUID_CLASS = {
                     id: 'primal_rage', row: 4, col: 1, type: 'active', icon: '🔥', name: 'Primal Rage',
                     desc: 'Ultimate: both forms active simultaneously for 15s. Bear HP + Wolf speed. All shapeshifting skills usable.',
                     endgame: 'slvl 20: 15s of being a fast bear-wolf hybrid with access to all abilities. True endgame form.',
-                    maxPts: 20, mana: 25, cd: 120, req: 'feral_mastery:15'
+                    maxPts: 20, mana: 25, cd: 120, group: 'buff', req: 'feral_mastery:15'
                 },
             ]
         },
@@ -81,7 +81,7 @@ export const DRUID_CLASS = {
                     id: 'cyclone_armor', row: 1, col: 2, type: 'active', icon: '🛡️', name: 'Cyclone Armor',
                     desc: 'Wind shield absorbs (30+slvl×12) elemental damage. Lasts until depleted.',
                     endgame: 'slvl 20: absorbs 270 elemental dmg. Refreshable. Key survivability buff.',
-                    maxPts: 20, mana: 8, cd: 0, dmgBase: 30, dmgPerLvl: 12
+                    maxPts: 20, mana: 8, cd: 0, group: 'buff', dmgBase: 30, dmgPerLvl: 12
                 },
                 {
                     id: 'hurricane', row: 2, col: 1, type: 'active', icon: '🌀', name: 'Hurricane',

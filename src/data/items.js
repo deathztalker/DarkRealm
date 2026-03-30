@@ -85,20 +85,54 @@ export const ITEM_BASES = {
     amulet: { name: 'Amulet', slot: SLOT.AMULET, type: 'amulet', icon: 'item_amulet', size: [1, 1] },
 
     // === CHARMS ===
-    small_charm: { name: 'Small Charm', slot: 'none', type: 'charm', icon: 'item_ring', size: [1, 1] },
-    large_charm: { name: 'Large Charm', slot: 'none', type: 'charm', icon: 'item_amulet', size: [1, 2] },
-    grand_charm: { name: 'Grand Charm', slot: 'none', type: 'charm', icon: 'item_shield', size: [1, 3] },
+    small_charm: { name: 'Small Charm', slot: 'none', type: 'charm', icon: 'item_charm', size: [1, 1], price: 50 },
+    large_charm: { name: 'Large Charm', slot: 'none', type: 'charm', icon: 'item_charm', size: [1, 2], price: 100 },
+    grand_charm: { name: 'Grand Charm', slot: 'none', type: 'charm', icon: 'item_charm', size: [1, 3], price: 200 },
 
     // === CONSUMABLES ===
     health_potion: { name: 'Health Potion', slot: 'none', type: 'potion', icon: 'item_potion_hp', size: [1, 1] },
     mana_potion: { name: 'Mana Potion', slot: 'none', type: 'potion', icon: 'item_potion_mp', size: [1, 1] },
-    rejuv_potion: { name: 'Rejuv Potion', slot: 'none', type: 'potion', icon: 'item_potion_mp', size: [1, 1] },
+    rejuv_potion: { name: 'Rejuv Potion', slot: 'none', type: 'potion', icon: 'item_potion_mp', size: [1, 1], price: 75 },
+    
+    // === SCROLLS ===
+    scroll_identify: { name: 'Scroll of Identification', slot: 'none', type: 'scroll', icon: 'item_scroll', size: [1, 1], price: 100 },
+    scroll_town_portal: { name: 'Town Portal Scroll', slot: 'none', type: 'scroll', icon: 'item_scroll_tp', size: [1, 1], price: 100 },
+
     // === GEMS ===
-    chipped_ruby: { name: 'Chipped Ruby', slot: 'none', type: 'gem', icon: 'item_amulet', size: [1, 1], socketEffect: { weapon: { stat: 'flatFireDmg', value: 4 }, armor: { stat: 'flatHP', value: 10 }, shield: { stat: 'fireRes', value: 10 } } },
-    chipped_sapphire: { name: 'Chipped Sapphire', slot: 'none', type: 'gem', icon: 'item_amulet', size: [1, 1], socketEffect: { weapon: { stat: 'flatColdDmg', value: 4 }, armor: { stat: 'flatMP', value: 10 }, shield: { stat: 'coldRes', value: 10 } } },
-    chipped_topaz: { name: 'Chipped Topaz', slot: 'none', type: 'gem', icon: 'item_amulet', size: [1, 1], socketEffect: { weapon: { stat: 'flatLightDmg', value: 4 }, armor: { stat: 'magicFind', value: 5 }, shield: { stat: 'lightRes', value: 10 } } },
-    chipped_emerald: { name: 'Chipped Emerald', slot: 'none', type: 'gem', icon: 'item_amulet', size: [1, 1], socketEffect: { weapon: { stat: 'flatPoisonDmg', value: 6 }, armor: { stat: 'flatDEX', value: 3 }, shield: { stat: 'poisonRes', value: 10 } } },
-    chipped_skull: { name: 'Chipped Skull', slot: 'none', type: 'gem', icon: 'item_amulet', size: [1, 1], socketEffect: { weapon: { stat: 'lifeStealPct', value: 2 }, armor: { stat: 'hpRegenPerSec', value: 2 }, shield: { stat: 'manaRegenPerSec', value: 2 } } },
+    chipped_ruby: { name: 'Chipped Ruby', slot: 'none', type: 'gem', icon: 'item_ruby', size: [1, 1], price: 25, socketEffect: { weapon: { stat: 'flatFireDmg', value: 4 }, armor: { stat: 'flatHP', value: 10 }, shield: { stat: 'fireRes', value: 10 } } },
+    chipped_sapphire: { name: 'Chipped Sapphire', slot: 'none', type: 'gem', icon: 'item_sapphire', size: [1, 1], price: 25, socketEffect: { weapon: { stat: 'flatColdDmg', value: 4 }, armor: { stat: 'flatMP', value: 10 }, shield: { stat: 'coldRes', value: 10 } } },
+    chipped_topaz: { name: 'Chipped Topaz', slot: 'none', type: 'gem', icon: 'item_topaz', size: [1, 1], price: 25, socketEffect: { weapon: { stat: 'flatLightDmg', value: 4 }, armor: { stat: 'magicFind', value: 5 }, shield: { stat: 'lightRes', value: 10 } } },
+    chipped_emerald: { name: 'Chipped Emerald', slot: 'none', type: 'gem', icon: 'item_emerald', size: [1, 1], price: 25, socketEffect: { weapon: { stat: 'flatPoisonDmg', value: 6 }, armor: { stat: 'flatDEX', value: 3 }, shield: { stat: 'poisonRes', value: 10 } } },
+    chipped_skull: { name: 'Chipped Skull', slot: 'none', type: 'gem', icon: 'item_skull', size: [1, 1], price: 25, socketEffect: { weapon: { stat: 'lifeStealPct', value: 2 }, armor: { stat: 'hpRegenPerSec', value: 2 }, shield: { stat: 'manaRegenPerSec', value: 2 } } },
+    
+    // === RUNES ===
+    rune_el: { name: 'El Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 50, socketEffect: { weapon: { stat: 'flatMinDmg', value: 15 }, armor: { stat: 'flatArmor', value: 15 }, shield: { stat: 'flatArmor', value: 15 } } },
+    rune_eld: { name: 'Eld Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 50, socketEffect: { weapon: { stat: 'pctDmg', value: 10 }, armor: { stat: 'pctArmor', value: 10 }, shield: { stat: 'blockChance', value: 5 } } },
+    rune_tir: { name: 'Tir Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 50, socketEffect: { weapon: { stat: 'manaAfterKill', value: 2 }, armor: { stat: 'manaAfterKill', value: 2 }, shield: { stat: 'manaAfterKill', value: 2 } } },
+    rune_nef: { name: 'Nef Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 50, socketEffect: { weapon: { stat: 'knockback', value: 1 }, armor: { stat: 'flatArmor', value: 30 }, shield: { stat: 'flatArmor', value: 30 } } },
+    rune_eth: { name: 'Eth Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 50, socketEffect: { weapon: { stat: 'targetDefenseReduce', value: 25 }, armor: { stat: 'manaRegenPerSec', value: 3 }, shield: { stat: 'manaRegenPerSec', value: 3 } } },
+    rune_ith: { name: 'Ith Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 50, socketEffect: { weapon: { stat: 'flatMaxDmg', value: 9 }, armor: { stat: 'dmgTakenToMana', value: 15 }, shield: { stat: 'dmgTakenToMana', value: 15 } } },
+    rune_tal: { name: 'Tal Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 50, socketEffect: { weapon: { stat: 'flatPoisonDmg', value: 75 }, armor: { stat: 'poisRes', value: 30 }, shield: { stat: 'poisRes', value: 30 } } },
+    rune_ral: { name: 'Ral Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 50, socketEffect: { weapon: { stat: 'flatFireDmg', value: 30 }, armor: { stat: 'fireRes', value: 30 }, shield: { stat: 'fireRes', value: 30 } } },
+    rune_ort: { name: 'Ort Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 50, socketEffect: { weapon: { stat: 'flatLightDmg', value: 50 }, armor: { stat: 'lightRes', value: 30 }, shield: { stat: 'lightRes', value: 30 } } },
+    rune_thul: { name: 'Thul Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 50, socketEffect: { weapon: { stat: 'flatColdDmg', value: 20 }, armor: { stat: 'coldRes', value: 30 }, shield: { stat: 'coldRes', value: 30 } } },
+    rune_amn: { name: 'Amn Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 75, socketEffect: { weapon: { stat: 'lifeStealPct', value: 7 }, armor: { stat: 'thorns', value: 14 }, shield: { stat: 'thorns', value: 14 } } },
+    rune_sol: { name: 'Sol Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 75, socketEffect: { weapon: { stat: 'flatMinDmg', value: 9 }, armor: { stat: 'flatDmgReduce', value: 7 }, shield: { stat: 'flatDmgReduce', value: 7 } } },
+    rune_shael: { name: 'Shael Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 75, socketEffect: { weapon: { stat: 'pctIAS', value: 20 }, armor: { stat: 'pctFHR', value: 20 }, shield: { stat: 'pctFBR', value: 20 } } },
+    rune_dol: { name: 'Dol Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 75, socketEffect: { weapon: { stat: 'monsterFear', value: 25 }, armor: { stat: 'lifeRegenPerSec', value: 7 }, shield: { stat: 'lifeRegenPerSec', value: 7 } } },
+    rune_hel: { name: 'Hel Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 100, socketEffect: { weapon: { stat: 'reqReduce', value: 20 }, armor: { stat: 'reqReduce', value: 15 }, shield: { stat: 'reqReduce', value: 15 } } },
+    rune_io: { name: 'Io Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 100, socketEffect: { weapon: { stat: 'flatVIT', value: 10 }, armor: { stat: 'flatVIT', value: 10 }, shield: { stat: 'flatVIT', value: 10 } } },
+    rune_lum: { name: 'Lum Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 100, socketEffect: { weapon: { stat: 'flatMP', value: 10 }, armor: { stat: 'flatMP', value: 10 }, shield: { stat: 'flatMP', value: 10 } } },
+    rune_ko: { name: 'Ko Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 100, socketEffect: { weapon: { stat: 'flatDEX', value: 10 }, armor: { stat: 'flatDEX', value: 10 }, shield: { stat: 'flatDEX', value: 10 } } },
+    rune_fal: { name: 'Fal Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 100, socketEffect: { weapon: { stat: 'flatSTR', value: 10 }, armor: { stat: 'flatSTR', value: 10 }, shield: { stat: 'flatSTR', value: 10 } } },
+    rune_lem: { name: 'Lem Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 150, socketEffect: { weapon: { stat: 'goldFind', value: 75 }, armor: { stat: 'goldFind', value: 50 }, shield: { stat: 'goldFind', value: 50 } } },
+    rune_pul: { name: 'Pul Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 150, socketEffect: { weapon: { stat: 'pctDmgUndead', value: 75 }, armor: { stat: 'pctArmor', value: 30 }, shield: { stat: 'pctArmor', value: 30 } } },
+    rune_um: { name: 'Um Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 200, socketEffect: { weapon: { stat: 'openWounds', value: 25 }, armor: { stat: 'allRes', value: 15 }, shield: { stat: 'allRes', value: 22 } } },
+    rune_mal: { name: 'Mal Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 200, socketEffect: { weapon: { stat: 'preventMonsterHeal', value: 1 }, armor: { stat: 'magicDmgReduce', value: 7 }, shield: { stat: 'magicDmgReduce', value: 7 } } },
+    rune_ist: { name: 'Ist Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 250, socketEffect: { weapon: { stat: 'magicFind', value: 30 }, armor: { stat: 'magicFind', value: 25 }, shield: { stat: 'magicFind', value: 25 } } },
+    rune_gul: { name: 'Gul Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 300, socketEffect: { weapon: { stat: 'pctHitRating', value: 20 }, armor: { stat: 'maxPoisRes', value: 5 }, shield: { stat: 'maxPoisRes', value: 5 } } },
+    rune_vex: { name: 'Vex Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 400, socketEffect: { weapon: { stat: 'manaStealPct', value: 7 }, armor: { stat: 'maxFireRes', value: 5 }, shield: { stat: 'maxFireRes', value: 5 } } },
+    rune_zod: { name: 'Zod Rune', slot: 'none', type: 'gem', icon: 'item_rune_base', size: [1, 1], price: 1000, socketEffect: { weapon: { stat: 'indestructible', value: 1 }, armor: { stat: 'indestructible', value: 1 }, shield: { stat: 'indestructible', value: 1 } } },
 };
 
 

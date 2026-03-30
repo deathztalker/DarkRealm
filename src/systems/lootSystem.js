@@ -20,17 +20,17 @@ const SETS = {
 const SET_ITEMS = [
     {
         id: 'sigon_visor', name: "Sigon's Visor", base: 'great_helm', rarity: RARITY.SET,
-        icon: '🪖', dropLvl: 12, setId: 'sigon',
+        icon: 'item_great_helm', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel",
         mods: [{ stat: 'flatMP', value: 30 }, { stat: 'flatArmor', value: 25 }]
     },
     {
         id: 'sigon_shelter', name: "Sigon's Shelter", base: 'plate_mail', rarity: RARITY.SET,
-        icon: '🛡️', dropLvl: 12, setId: 'sigon',
+        icon: 'item_plate_mail', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel",
         mods: [{ stat: 'lightRes', value: 30 }, { stat: 'flatArmor', value: 50 }]
     },
     {
         id: 'sigon_gage', name: "Sigon's Gage", base: 'gauntlets', rarity: RARITY.SET,
-        icon: '🧤', dropLvl: 12, setId: 'sigon',
+        icon: 'item_gauntlets', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel",
         mods: [{ stat: 'flatSTR', value: 10 }, { stat: 'pctIAS', value: 30 }]
     }
 ];
@@ -39,7 +39,7 @@ const SET_ITEMS = [
 const UNIQUES = [
     {
         id: 'shako', name: "Harlequin Crest", base: 'circlet', rarity: RARITY.UNIQUE,
-        icon: '👑', dropLvl: 45,
+        icon: 'item_circlet', dropLvl: 45,
         mods: [
             { stat: '+allSkills', value: 2 },
             { stat: 'flatHP', value: 98 },
@@ -50,8 +50,38 @@ const UNIQUES = [
         flavor: '"Cap adorned with the fool\'s motley — yet no fool would discard it."'
     },
     {
+        id: 'soj', name: 'The Stone of Jordan', base: 'ring', rarity: RARITY.UNIQUE,
+        icon: 'item_ring', dropLvl: 29,
+        mods: [
+            { stat: '+allSkills', value: 1 },
+            { stat: 'flatMP', value: 20 },
+            { stat: 'pctMP', value: 25 },
+        ],
+        flavor: '"One ring to rule the market... oh, wait, wrong universe."'
+    },
+    {
+        id: 'maras', name: "Mara's Kaleidoscope", base: 'amulet', rarity: RARITY.UNIQUE,
+        icon: 'item_amulet', dropLvl: 67,
+        mods: [
+            { stat: '+allSkills', value: 2 },
+            { stat: 'allRes', value: 25 },
+            { stat: 'flatVIT', value: 5 },
+        ],
+        flavor: '"Beauty that wards away the biting cold of the abyss."'
+    },
+    {
+        id: 'nagelring', name: 'Nagelring', base: 'ring', rarity: RARITY.UNIQUE,
+        icon: 'item_ring', dropLvl: 7,
+        mods: [
+            { stat: 'magicFind', value: 30 },
+            { stat: 'flatHP', value: 20 },
+            { stat: 'thorns', value: 3 },
+        ],
+        flavor: '"May your pockets always overflow with gold and trinkets."'
+    },
+    {
         id: 'enigma_robe', name: 'Enigma Robe', base: 'robe', rarity: RARITY.UNIQUE,
-        icon: '🌀', dropLvl: 65,
+        icon: 'item_robe', dropLvl: 65,
         mods: [
             { stat: '+allSkills', value: 2 },
             { stat: 'flatSTR', value: 45 },
@@ -63,7 +93,7 @@ const UNIQUES = [
     },
     {
         id: 'shaftstop', name: 'Shaft of Anguish', base: 'chain_mail', rarity: RARITY.UNIQUE,
-        icon: '🛡️', dropLvl: 38,
+        icon: 'item_chain_mail', dropLvl: 38,
         mods: [
             { stat: 'pctDmgReduce', value: 30 },
             { stat: 'flatHP', value: 300 },
@@ -74,7 +104,7 @@ const UNIQUES = [
     },
     {
         id: 'doombringer', name: 'Doombringer', base: 'long_sword', rarity: RARITY.UNIQUE,
-        icon: '⚔️', dropLvl: 50,
+        icon: 'item_long_sword', dropLvl: 50,
         mods: [
             { stat: 'pctDmg', value: 180 },
             { stat: 'lifeStealPct', value: 8 },
@@ -86,7 +116,7 @@ const UNIQUES = [
     },
     {
         id: 'spirit_of_barbs', name: 'Spirit of the Ancestors', base: 'grand_totem', rarity: RARITY.UNIQUE,
-        icon: '🗿', dropLvl: 40,
+        icon: 'item_grand_totem', dropLvl: 40,
         mods: [
             { stat: '+classSkills:shaman', value: 3 },
             { stat: '+skillGroup:totem', value: 2 },
@@ -136,11 +166,19 @@ export class LootSystem {
             }
         }
 
-        // Pick base item
-        const baseIds = Object.keys(ITEM_BASES);
+        return this.generate(ilvl, rarity);
+    }
+
+    /**
+     * Generate a specific item by level and rarity (used for shops/gambling)
+     */
+    generate(ilvl = 1, rarity = RARITY.NORMAL) {
+        const baseIds = Object.keys(ITEM_BASES).filter(id => {
+            const b = ITEM_BASES[id];
+            return b.type !== 'gem' && b.type !== 'potion' && b.type !== 'scroll';
+        });
         const baseId = baseIds[Math.floor(Math.random() * baseIds.length)];
         const base = ITEM_BASES[baseId];
-
         return this._buildItem(baseId, base, rarity, ilvl);
     }
 
@@ -185,12 +223,18 @@ export class LootSystem {
             twoHanded: !!base.twoHanded,
             mods: [],
             sockets: 0, socketed: [], insertedRunes: [],
+            identified: (base.type === 'gem' || base.type === 'potion' || base.type === 'scroll' || base.type === 'ring' || base.type === 'amulet' || base.type === 'charm' || rarity === RARITY.NORMAL),
         };
 
         // Enforce normal rarity for gems and potions
-        if (base.type === 'gem' || base.type === 'potion') {
+        if (base.type === 'gem' || base.type === 'potion' || base.type === 'charm' || base.type === 'scroll') {
             item.rarity = RARITY.NORMAL;
             rarity = RARITY.NORMAL;
+            item.identified = true;
+        }
+        
+        if (rarity === RARITY.UNIQUE || rarity === RARITY.SET) {
+            item.identified = true;
         }
 
         if (rarity === RARITY.MAGIC && base.type !== 'gem' && base.type !== 'potion') {
@@ -201,9 +245,9 @@ export class LootSystem {
             item.name = this._buildName(item, true);
         }
 
-        // Generate sockets (25% chance to have sockets if eligible type)
-        if (base.type !== 'gem' && base.type !== 'potion' && base.type !== 'ring' && base.type !== 'amulet' && base.type !== 'charm') {
-            if (Math.random() < 0.25) {
+        // Generate sockets (40% chance to have sockets if eligible type)
+        if (base.type !== 'gem' && base.type !== 'potion' && base.type !== 'ring' && base.type !== 'amulet' && base.type !== 'charm' && base.type !== 'scroll') {
+            if (Math.random() < 0.40) {
                 const maxSock = SOCKET_MAX[base.type] || 0;
                 if (maxSock > 0) item.sockets = Math.min(maxSock, 1 + Math.floor(Math.random() * maxSock));
             }
@@ -227,6 +271,7 @@ export class LootSystem {
             twoHanded: !!base.twoHanded,
             mods: template.mods.map(m => ({ ...m, name: m.stat })),
             sockets: 0, socketed: [], insertedRunes: [],
+            identified: false,
             flavor: template.flavor,
         };
     }
@@ -245,7 +290,8 @@ export class LootSystem {
             size: base.size || [1, 1],
             twoHanded: !!base.twoHanded,
             mods: template.mods.map(m => ({ ...m, name: m.stat })),
-            sockets: 0, socketed: [], insertedRunes: []
+            sockets: 0, socketed: [], insertedRunes: [],
+            identified: false
         };
     }
 
@@ -295,6 +341,60 @@ export class LootSystem {
         const mult = enemy.type === 'boss' ? 8 : enemy.type === 'elite' ? 3 : 1;
         const gfMult = 1 + (goldFind / 100);
         return Math.round(base * mult * gfMult * (0.7 + Math.random() * 0.6));
+    }
+
+    /**
+     * Gheed's Gambling Roll
+     * Odds: 1/2000 Unique, 1/1000 Set, 10% Rare, remainder Magic
+     */
+    generateGamble(baseId, playerLevel = 1) {
+        const roll = Math.random();
+        let rarity = RARITY.MAGIC;
+
+        if (roll < 0.0005) rarity = RARITY.UNIQUE;       // 1/2000
+        else if (roll < 0.001) rarity = RARITY.SET;    // 1/1000
+        else if (roll < 0.1) rarity = RARITY.RARE;      // 10%
+        
+        let itm;
+        if (rarity === RARITY.UNIQUE) {
+            const matches = UNIQUES.filter(u => u.base === baseId);
+            if (matches.length > 0) {
+                itm = this.generateFixedUnique(matches[Math.floor(Math.random() * matches.length)].id);
+                itm.identified = false;
+                return itm;
+            }
+            rarity = RARITY.RARE;
+        }
+
+        if (rarity === RARITY.SET) {
+            const matches = SET_ITEMS.filter(s => s.base === baseId);
+            if (matches.length > 0) {
+                itm = this.generateFixedSetItem(matches[Math.floor(Math.random() * matches.length)].id);
+                itm.identified = false;
+                return itm;
+            }
+            rarity = RARITY.RARE;
+        }
+
+        itm = this._buildItem(baseId, rarity, playerLevel);
+        itm.identified = true; // Force identified for gamble results
+        return itm;
+    }
+
+    generateFixedUnique(uniqueId) {
+        const template = UNIQUES.find(u => u.id === uniqueId);
+        if (!template) return this.generate(1);
+        const item = this._buildUnique(template);
+        item.identified = (template.base === 'ring' || template.base === 'amulet' || template.base === 'charm') ? true : false; 
+        return item;
+    }
+
+    generateFixedSetItem(setId) {
+        const template = SET_ITEMS.find(s => s.id === setId);
+        if (!template) return this.generate(1);
+        const item = this._buildSetItem(template);
+        item.identified = (template.base === 'ring' || template.base === 'amulet') ? true : false;
+        return item;
     }
 }
 

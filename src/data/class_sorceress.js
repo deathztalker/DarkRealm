@@ -51,7 +51,7 @@ export const SORCERESS_CLASS = {
                     id: 'enchant', row: 2, col: 2, type: 'active', icon: '✨', name: 'Enchant',
                     desc: 'Buff self or ally: weapon gains +(15+slvl×8) fire damage on hit for 60+slvl×5s.',
                     endgame: 'slvl 20: +175 fire damage on every melee/ranged hit for 160s. Amazing support for melee classes.',
-                    maxPts: 20, mana: 20, cd: 0, group: 'fire', dmgBase: 15, dmgPerLvl: 8, req: 'fire_mastery:1'
+                    maxPts: 20, mana: 20, cd: 0, group: 'buff', dmgBase: 15, dmgPerLvl: 8, req: 'fire_mastery:1'
                 },
 
                 {
@@ -101,7 +101,7 @@ export const SORCERESS_CLASS = {
                     id: 'frozen_armor', row: 1, col: 2, type: 'active', icon: '🛡️', name: 'Frozen Armor',
                     desc: 'Self-buff: +(10+slvl×3)% defense. Melee attackers are chilled for 2s. Lasts 120+slvl×10s.',
                     endgame: 'slvl 20: +70% defense, auto-chill attackers. Essential survivability for a squishy class.',
-                    maxPts: 20, mana: 12, cd: 0, req: 'ice_bolt:1'
+                    maxPts: 20, mana: 12, cd: 0, group: 'buff', req: 'ice_bolt:1'
                 },
 
                 {
@@ -165,7 +165,7 @@ export const SORCERESS_CLASS = {
                     id: 'teleport', row: 1, col: 2, type: 'active', icon: '🌀', name: 'Teleport',
                     desc: 'Blink to target location instantly. Distance: (200+slvl×10) pixels.',
                     endgame: 'slvl 20: 400px blink range. The signature Sorceress mobility skill. No damage but invaluable.',
-                    maxPts: 20, mana: 15, cd: 1, req: 'charged_bolt:1'
+                    maxPts: 20, mana: 15, cd: 1, group: 'teleport', req: 'charged_bolt:1'
                 },
 
                 {
@@ -195,7 +195,7 @@ export const SORCERESS_CLASS = {
                     id: 'energy_shield', row: 3, col: 2, type: 'active', icon: '🛡️', name: 'Energy Shield',
                     desc: 'Absorbs (60+slvl×2)% of incoming damage, draining mana instead of HP. Lasts until mana depleted.',
                     endgame: 'slvl 20: absorbs 100% damage into mana. With high mana pool = pseudo-invulnerability.',
-                    maxPts: 20, mana: 20, cd: 0, req: 'teleport:5'
+                    maxPts: 20, mana: 20, cd: 0, group: 'buff', req: 'teleport:5'
                 },
 
                 {

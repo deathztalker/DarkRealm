@@ -69,37 +69,37 @@ export const NECROMANCER_CLASS = {
                     id: 'amplify_damage', row: 0, col: 1, type: 'active', icon: '💢', name: 'Amplify Damage',
                     desc: 'Curse: target takes +(100+slvl×5)% physical damage for 10+slvl×1s.',
                     endgame: 'slvl 20: +200% physical dmg taken for 30s. Doubles+ all physical DPS in party.',
-                    maxPts: 20, mana: 7, cd: 0
+                    maxPts: 20, mana: 7, cd: 0, group: 'buff'
                 },
                 {
                     id: 'weaken', row: 1, col: 0, type: 'active', icon: '💔', name: 'Weaken',
                     desc: 'Curse: target deals -(30+slvl×1)% damage for 10+slvl×1s.',
                     endgame: 'slvl 20: -50% enemy damage for 30s. Key survivability curse.',
-                    maxPts: 20, mana: 5, cd: 0
+                    maxPts: 20, mana: 5, cd: 0, group: 'buff'
                 },
                 {
                     id: 'iron_maiden', row: 1, col: 2, type: 'active', icon: '🩸', name: 'Iron Maiden',
                     desc: 'Curse: returns (200+slvl×10)% of melee damage dealt back to attacker.',
                     endgame: 'slvl 20: 400% damage reflect. Bosses literally kill themselves hitting you.',
-                    maxPts: 20, mana: 9, cd: 0
+                    maxPts: 20, mana: 9, cd: 0, group: 'buff'
                 },
                 {
                     id: 'decrepify', row: 2, col: 1, type: 'active', icon: '🦴', name: 'Decrepify',
                     desc: 'Curse: slows by 50%, weakens by 30%, reduces phys resist by 25%. Duration: 10+slvl×0.5s.',
                     endgame: 'slvl 20: 20s of total debilitation. The ultimate control curse.',
-                    maxPts: 20, mana: 10, cd: 0, req: 'weaken:5'
+                    maxPts: 20, mana: 10, cd: 0, group: 'buff', req: 'weaken:5'
                 },
                 {
                     id: 'life_tap_curse', row: 2, col: 0, type: 'active', icon: '❤️', name: 'Life Tap',
                     desc: 'Curse: all hits vs target steal (30+slvl×2)% as life for 10+slvl×1s.',
                     endgame: 'slvl 20: 70% life steal for whole party. Turns any fight into a heal-fest.',
-                    maxPts: 20, mana: 8, cd: 0, req: 'decrepify:5'
+                    maxPts: 20, mana: 8, cd: 0, group: 'buff', req: 'decrepify:5'
                 },
                 {
                     id: 'lower_resist', row: 3, col: 0, type: 'active', icon: '⬇️', name: 'Lower Resist',
                     desc: 'Curse: reduces all elemental resistances by -(35+slvl×2)% for 15s.',
                     endgame: 'slvl 20: -75% all res. Combined with Sorceress mastery = negative resistances.',
-                    maxPts: 20, mana: 9, cd: 0, req: 'decrepify:5'
+                    maxPts: 20, mana: 9, cd: 0, group: 'buff', req: 'decrepify:5'
                 },
                 {
                     id: 'poison_nova', row: 3, col: 2, type: 'active', icon: '☠️', name: 'Poison Nova',
@@ -134,7 +134,7 @@ export const NECROMANCER_CLASS = {
                     id: 'bone_armor', row: 1, col: 1, type: 'active', icon: '🛡️', name: 'Bone Armor',
                     desc: 'Generate a bone shell absorbing (15+slvl×12) damage. Refreshable, no cooldown.',
                     endgame: 'slvl 20: 255 damage absorb. Always keep up. Necromancer survivability backbone.',
-                    maxPts: 20, mana: 8, cd: 0, dmgBase: 15, dmgPerLvl: 12
+                    maxPts: 20, mana: 8, cd: 0, group: 'buff', dmgBase: 15, dmgPerLvl: 12
                 },
                 {
                     id: 'bone_wall', row: 1, col: 0, type: 'active', icon: '🧱', name: 'Bone Wall',
