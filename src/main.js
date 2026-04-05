@@ -376,30 +376,40 @@ function gameLoop(timestamp) {
         if (hpBar) hpBar.classList.add('hidden');
     }
 
-    // Mercenary follow & attack
+    // Mercenary follow & attack AI
     if (mercenary && mercenary.hp > 0) {
         const mx = player.x - mercenary.x, my = player.y - mercenary.y;
         const md = Math.sqrt(mx * mx + my * my);
-        if (md > 40) {
-            mercenary.x += (mx / md) * 80 * dt;
-            mercenary.y += (my / md) * 80 * dt;
+        if (md > 60) {
+            mercenary.x += (mx / md) * 85 * dt;
+            mercenary.y += (my / md) * 85 * dt;
         }
-        // Find closest enemy and attack
-        let closestEnemy = null, closestDist = 100;
+        // Find closest enemy within archer range
+        let closestEnemy = null, closestDist = 250;
         for (const e of enemies) {
             if (e.hp <= 0) continue;
             const ed = Math.sqrt((e.x - mercenary.x) ** 2 + (e.y - mercenary.y) ** 2);
             if (ed < closestDist) { closestDist = ed; closestEnemy = e; }
         }
-        if (closestEnemy && closestDist < 30) {
+        if (closestEnemy) {
             mercenary._atkCd = (mercenary._atkCd || 0) - dt;
             if (mercenary._atkCd <= 0) {
                 const dmg = mercenary.dmg + Math.floor(Math.random() * 5);
-                closestEnemy.hp -= dmg;
-                // Healing link: player's life steal or potions heal the merc too!
-                if (player.hp < player.maxHp) mercenary.hp = Math.min(mercenary.maxHp, mercenary.hp + dmg * 0.1);
-                mercenary._atkCd = 1.0;
-                fx.emitBurst(closestEnemy.x, closestEnemy.y, '#ccc', 5);
+                
+                // 15% chance to shoot Fire Arrow, 15% chance for Frost Arrow
+                let pType = 'physical', sprite = 'ra-arrow', pDmg = dmg;
+                const roll = Math.random();
+                if (roll < 0.15) { pType = 'fire'; pDmg *= 1.3; }
+                else if (roll < 0.30) { pType = 'cold'; pDmg *= 1.2; }
+
+                projectiles.push(new Projectile(
+                    mercenary.x, mercenary.y,
+                    closestEnemy.x, closestEnemy.y,
+                    300, sprite, pDmg, pType, mercenary, false, 8, 0, 0, 'arrow'
+                ));
+                
+                mercenary._atkCd = 1.2; // Attack speed
+                if (player.hp < player.maxHp) player.hp = Math.min(player.maxHp, player.hp + dmg * 0.05); // Minor supportive heal
             }
         }
         // Passive regen
@@ -2770,6 +2780,9 @@ function hireMercenary() {
         dmg: 5 + lvl * 2,
         x: player.x + 20, y: player.y,
         _atkCd: 0,
+        isMercenary: true,
+        isPlayer: true, // Inherits player faction so projectiles target enemies
+        icon: 'class_rogue'
     };
     addCombatLog(`Hired Mercenary ${mercenary.name}! She will fight by your side.`, 'log-level');
     updateHud();
