@@ -45,7 +45,9 @@ export function calcDamage(attacker, baseDmg, type, defender) {
     dmg += attacker.flatMinDmg || 0;
 
     // --- Defender resistance (magic & holy bypass) ---
-    if (type !== DMG_TYPE.MAGIC && type !== DMG_TYPE.HOLY) {
+    if (defender[`${type}Immune`]) {
+        dmg = 0;
+    } else if (type !== DMG_TYPE.MAGIC && type !== DMG_TYPE.HOLY) {
         let res = (defender[`${type}Res`] || 0) - (defender.resDebuff || 0);
         res = Math.min(75, Math.max(-100, res)); // cap at 75%, floor at -100%
         dmg *= 1 - res / 100;
@@ -60,7 +62,7 @@ export function calcDamage(attacker, baseDmg, type, defender) {
         dmg *= 1 - Math.min(0.75, reduction);
     }
 
-    dmg = Math.max(1, Math.round(dmg));
+    dmg = Math.max(defender[`${type}Immune`] ? 0 : 1, Math.round(dmg));
     if (isNaN(dmg)) dmg = 1; // Last resort fallback
     return { dealt: dmg, isCrit, type };
 }

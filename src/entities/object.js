@@ -1,14 +1,15 @@
 /**
- * GameObject Class — Interactive world objects like chests
+ * GameObject Class — Interactive world objects like chests, shrines, portals
  */
 export class GameObject {
     constructor(type, x, y, icon) {
-        this.type = type; // chest, door
+        this.type = type; // chest, door, portal, shrine
         this.x = x;
         this.y = y;
         this.icon = icon;
         this.isOpen = false;
         this.id = Math.random().toString(36).substr(2, 9);
+        this.shrineType = null; // For shrine objects
     }
 
     interact(player) {
@@ -18,11 +19,24 @@ export class GameObject {
             return { type: 'LOOT', count: 2 + Math.floor(Math.random() * 3) };
         } else if (this.type === 'portal') {
             return { type: 'PORTAL', targetZone: this.targetZone };
+        } else if (this.type === 'shrine' && !this.isOpen) {
+            this.isOpen = true;
+            this.icon = 'obj_shrine_used';
+            return { type: 'SHRINE', shrineType: this.shrineType };
         }
         return null;
     }
 
     render(renderer) {
+        // Shrines glow when unused
+        if (this.type === 'shrine' && !this.isOpen) {
+            renderer.ctx.save();
+            renderer.ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 400) * 0.15;
+            renderer.ctx.shadowColor = '#4080ff';
+            renderer.ctx.shadowBlur = 12;
+            renderer.drawSprite(this.icon, this.x, this.y, 16);
+            renderer.ctx.restore();
+        }
         renderer.drawSprite(this.icon, this.x, this.y, 16);
     }
 }

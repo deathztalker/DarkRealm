@@ -708,6 +708,36 @@ function checkInteractions(pos) {
             } else if (res && res.type === 'PORTAL') {
                 addCombatLog('Entering Portal...', 'log-level');
                 nextZone(res.targetZone);
+            } else if (res && res.type === 'SHRINE') {
+                const sType = res.shrineType;
+                let buffName = '';
+                let duration = 60; // default 60s
+                
+                if (sType === 'experience') {
+                    buffName = 'Experience Shrine (+50% XP)';
+                    player._buffs.push({ type: 'exp', id: 'shrine_exp', value: 50, duration: 120 });
+                } else if (sType === 'armor') {
+                    buffName = 'Armor Shrine (+100% Defense)';
+                    player._buffs.push({ type: 'armor', id: 'shrine_armor', value: 100, duration: 60 });
+                } else if (sType === 'combat') {
+                    buffName = 'Combat Shrine (+50% Damage)';
+                    player._buffs.push({ type: 'damage', id: 'shrine_damage', value: 50, duration: 60 });
+                } else if (sType === 'mana') {
+                    buffName = 'Mana Shrine (+500% Mana Regen)';
+                    player._buffs.push({ type: 'mana', id: 'shrine_mana', value: 500, duration: 60 });
+                    player.mp = player.maxMp;
+                } else if (sType === 'resist') {
+                    buffName = 'Resist Shrine (+75 All Resists)';
+                    player._buffs.push({ type: 'resist', id: 'shrine_resist', value: 75, duration: 60 });
+                } else if (sType === 'speed') {
+                    buffName = 'Stamina Shrine (+30% Move Speed)';
+                    player._buffs.push({ type: 'speed', id: 'shrine_speed', value: 30, duration: 60 });
+                }
+                
+                player._recalcStats();
+
+                addCombatLog(`Touched ${buffName}`, 'log-heal');
+                fx.emitBurst(o.x, o.y, '#4080ff', 30, 2);
             }
             return;
         }
@@ -890,16 +920,30 @@ function finishZoneLoad() {
         }
     } else {
         npcs = [];
-        gameObjects = [];
+        gameObjects = dungeon.objectSpawns ? dungeon.objectSpawns.map(s => {
+            const obj = new GameObject(s.type, s.x, s.y, s.icon);
+            if (s.type === 'shrine') obj.shrineType = s.shrineType;
+            return obj;
+        }) : [];
         enemies = dungeon.enemySpawns.map(s => new Enemy(s));
         // Apply difficulty scaling
         if (difficulty > 0) {
             const mult = DIFFICULTY_MULT[difficulty];
+            const immunityTypes = ['physical', 'fire', 'cold', 'lightning', 'poison'];
             for (const e of enemies) {
                 e.maxHp = Math.round(e.maxHp * mult);
                 e.hp = e.maxHp;
                 e.dmg = Math.round(e.dmg * mult);
                 e.xpReward = Math.round(e.xpReward * mult);
+                
+                // Immunities in Nightmare (10%) and Hell (35%)
+                const immChance = difficulty === 1 ? 0.10 : 0.35;
+                if (Math.random() < immChance) {
+                    const imm = immunityTypes[Math.floor(Math.random() * immunityTypes.length)];
+                    e[`${imm}Immune`] = true;
+                    e.immunityName = imm;
+                    e.name += ` [${imm.charAt(0).toUpperCase() + imm.slice(1)} Immune]`;
+                }
             }
         }
     }
@@ -991,7 +1035,7 @@ function updateHud() {
     const bb = $('buff-bar');
     if (bb) {
         bb.innerHTML = '';
-        for (const b of (player.buffs || [])) {
+        for (const b of (player._buffs || [])) {
             const el = document.createElement('div');
             el.style.cssText = 'width:24px;height:24px;border:1px solid #aa0;background:#330;border-radius:4px;display:flex;justify-content:center;align-items:center;font-size:12px;color:#ff0;position:relative;cursor:help;pointer-events:auto;';
             el.textContent = '⚡';

@@ -95,6 +95,14 @@ export class Player {
             if (b.id === 'fortify') s.flatArmor = (s.flatArmor||0) + b.base * 15;
             if (b.id === 'burst_of_speed') { s.pctMoveSpeed = (s.pctMoveSpeed||0) + b.base; s.pctIAS = (s.pctIAS||0) + b.base*2; }
             if (b.id === 'holy_shield' || b.id === 'divine_shield') { s.blockChance = (s.blockChance||0) + b.base/2; s.pctArmor = (s.pctArmor||0) + b.base; }
+            
+            // Shrine Buffs
+            if (b.id === 'shrine_armor') s.pctArmor = (s.pctArmor||0) + b.value;
+            if (b.id === 'shrine_damage') s.pctDmg = (s.pctDmg||0) + b.value;
+            if (b.id === 'shrine_mana') s.manaRegenPerSec = (s.manaRegenPerSec||0) + (this.maxMp * (b.value / 100));
+            if (b.id === 'shrine_resist') s.allRes = (s.allRes||0) + b.value;
+            if (b.id === 'shrine_speed') s.pctMoveSpeed = (s.pctMoveSpeed||0) + b.value;
+            // shrine_exp is handled locally in the kill loop where XP is awarded
         }
 
         this.str = this.baseStr + (s.flatSTR || 0);
@@ -886,7 +894,13 @@ export class Player {
 
     // ─── XP & Leveling ───
     addXp(amount) {
-        this.xp += amount;
+        // Apply XP buffs
+        let mult = 1.0;
+        if (this._buffs) {
+            const expBuff = this._buffs.find(b => b.id === 'shrine_exp');
+            if (expBuff) mult += expBuff.value / 100;
+        }
+        this.xp += Math.round(amount * mult);
         while (this.xp >= this.xpToNext) {
             this.xp -= this.xpToNext;
             this.level++;

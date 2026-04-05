@@ -81,10 +81,18 @@ export class Dungeon {
             }
             // Maybe place loot chest
             if (Math.random() < 0.3) {
-                this.lootSpawns.push({
-                    x: (room.x + Math.floor(room.w / 2)) * this.tileSize,
-                    y: (room.y + Math.floor(room.h / 2)) * this.tileSize,
-                });
+                const cx2 = (room.x + Math.floor(room.w / 2)) * this.tileSize;
+                const cy2 = (room.y + Math.floor(room.h / 2)) * this.tileSize;
+                this.lootSpawns.push({ x: cx2, y: cy2 });
+                this.objectSpawns.push({ type: 'chest', x: cx2, y: cy2, icon: 'obj_chest' });
+            }
+            // Maybe place shrine (20% per room, not in first or last room)
+            if (i > 1 && i < this.rooms.length - 1 && Math.random() < 0.20) {
+                const sx2 = (room.x + 1 + Math.floor(Math.random() * (room.w - 2))) * this.tileSize + this.tileSize / 2;
+                const sy2 = (room.y + 1) * this.tileSize + this.tileSize / 2;
+                const shrineTypes = ['experience', 'armor', 'combat', 'mana', 'resist', 'speed'];
+                const sType = shrineTypes[Math.floor(Math.random() * shrineTypes.length)];
+                this.objectSpawns.push({ type: 'shrine', x: sx2, y: sy2, icon: 'obj_shrine', shrineType: sType });
             }
         }
 
