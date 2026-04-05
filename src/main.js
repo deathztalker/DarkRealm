@@ -2149,7 +2149,7 @@ function itemTooltipText(item) {
     const c = (item.identified === false) ? '#888' : (colors[item.rarity] || '#fff');
 
     let t = `<div class="tooltip-inner" style="color:${c};">`;
-    t += `<div class="tooltip-name">${item.identified === false ? 'Unidentified ' + (items[item.baseId]?.name || 'Item') : item.name}</div>`;
+    t += `<div class="tooltip-name">${item.identified === false ? 'Unidentified ' + (items[item.baseId]?.name || 'Item') : (item.name || items[item.baseId]?.name || 'Unknown Item')}</div>`;
 
     // Force gems/runes to be identified in tooltip always
     const skipID = (item.type === 'gem' || item.type === 'rune' || item.type === 'charm' || item.type === 'potion');
@@ -2242,13 +2242,26 @@ function itemTooltipText(item) {
     if (req.dex) reqs.push(`Dex: ${req.dex}`);
     if (req.int) reqs.push(`Int: ${req.int}`);
     if (item.reqLvl) reqs.push(`Level: ${item.reqLvl}`);
-
-    if (reqs.length) {
+if (reqs.length) {
         t += `<div class="tooltip-requirements">Requires: ${reqs.join(', ')}</div>`;
     }
 
-    if (item.flavor) {
-        t += `<div class="tooltip-flavor" style="color:#bf642f; font-style:italic; margin-top:8px;">"${item.flavor}"</div>`;
+    let flavorText = item.flavor;
+    if (!flavorText) {
+        if (item.type === 'gem') {
+            if (item.name.includes('Rune')) flavorText = 'An ancient stone etched with a syllable of creation.';
+            else flavorText = 'A rare, precious jewel humming with magical potential.';
+        } else if (item.type === 'charm') {
+            flavorText = 'A minor trinket that carries a lingering aura.';
+        } else if (item.type === 'potion') {
+            flavorText = 'A mystical elixir sealed in thick glass.';
+        } else if (item.type === 'scroll') {
+            flavorText = 'A fragile parchment covered in glowing arcane ink.';
+        }
+    }
+
+    if (flavorText) {
+        t += `<div class="tooltip-flavor" style="color:#bf642f; font-style:italic; margin-top:8px;">"${flavorText}"</div>`;
     }
 
     t += `<div class="tooltip-footer">[Left-Click to Equip] | [Right-Click to Drop/Sell]</div>`;

@@ -205,8 +205,8 @@ export class LootSystem {
     }
 
     _buildItem(baseId, base, rarity, ilvl) {
-        // Jewelry (ring/amulet) should always be at least Magic
-        if ((base.type === 'ring' || base.type === 'amulet') && rarity === RARITY.NORMAL) {
+        // Jewelry and Charms should always be at least Magic
+        if ((base.type === 'ring' || base.type === 'amulet' || base.type === 'charm') && rarity === RARITY.NORMAL) {
             rarity = RARITY.MAGIC;
         }
 
@@ -226,8 +226,8 @@ export class LootSystem {
             identified: (base.type === 'gem' || base.type === 'potion' || base.type === 'scroll' || base.type === 'ring' || base.type === 'amulet' || base.type === 'charm' || rarity === RARITY.NORMAL),
         };
 
-        // Enforce normal rarity for gems and potions
-        if (base.type === 'gem' || base.type === 'potion' || base.type === 'charm' || base.type === 'scroll') {
+        // Enforce normal rarity for gems, potions, and scrolls (Charms should roll affixes)
+        if (base.type === 'gem' || base.type === 'potion' || base.type === 'scroll') {
             item.rarity = RARITY.NORMAL;
             rarity = RARITY.NORMAL;
             item.identified = true;
