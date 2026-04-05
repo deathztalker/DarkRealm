@@ -251,6 +251,14 @@ function startGame(slotId = null, loadPlayerData = null) {
             stash = loadPlayerData.stash;
             while (stash.length < 20) stash.push(null);
         }
+        // Restore difficulty and waypoints
+        if (typeof loadPlayerData.difficulty === 'number') {
+            difficulty = loadPlayerData.difficulty;
+        }
+        if (Array.isArray(loadPlayerData.waypoints)) {
+            discoveredWaypoints = new Set(loadPlayerData.waypoints);
+            discoveredWaypoints.add(0); // Always have town
+        }
     } else {
         player = new Player(selectedClass);
         player.x = dungeon.playerStart.x;
@@ -308,7 +316,7 @@ function startGame(slotId = null, loadPlayerData = null) {
     if (bossBar && zoneLevel !== 5) bossBar.classList.add('hidden');
 
     // Initial save
-    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash);
+    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: [...discoveredWaypoints] });
 
     // Initial ambient audio
     if (zoneLevel === 5) {
@@ -620,7 +628,7 @@ function gameLoop(timestamp) {
     // Auto-save every 30 seconds
     if (timestamp - lastSaveTime > 30000 && activeSlotId) {
         lastSaveTime = timestamp;
-        SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash);
+        SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: [...discoveredWaypoints] });
         addCombatLog('Auto-saved', 'log-heal');
     }
 
@@ -907,7 +915,7 @@ function finishZoneLoad() {
     const endgameMult = zoneLevel > 7 ? 1 + (zoneLevel - 7) * 0.3 : 1;
     $('zone-name').textContent = zoneName + diffLabel;
     addCombatLog(`Entered ${zoneName}${diffLabel}!`, 'log-level');
-    if (activeSlotId) SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash);
+    if (activeSlotId) SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: [...discoveredWaypoints] });
 
     // Apply endgame scaling
     if (endgameMult > 1 && enemies.length > 0) {
@@ -2481,6 +2489,29 @@ function renderDialoguePicker(npc) {
         menu.remove();
         activeDialogueNpc = null;
     }});
+
+    // Special: Warriv Waypoint Travel
+    if (npc.id === 'warriv') {
+        // Remove Trade for Warriv — he's a travel NPC, not a merchant
+        const tradeIdx = options.findIndex(o => o.label === 'Trade');
+        if (tradeIdx >= 0) options.splice(tradeIdx, 1);
+
+        const wpZones = [...discoveredWaypoints].sort((a, b) => a - b);
+        for (const wz of wpZones) {
+            if (wz === zoneLevel) continue; // Don't show current zone
+            const wzName = ZONE_NAMES[wz] || `Rift Level ${wz - 7}`;
+            const diffLabel = difficulty > 0 ? ` (${DIFFICULTY_NAMES[difficulty]})` : '';
+            options.push({
+                label: `⚡ ${wzName}${diffLabel}`,
+                action: () => {
+                    menu.remove();
+                    activeDialogueNpc = null;
+                    addCombatLog(`Warriv transports you to ${wzName}...`, 'log-level');
+                    nextZone(wz);
+                }
+            });
+        }
+    }
 
     options.push({ label: 'Cancel', action: () => { menu.remove(); activeDialogueNpc = null; } });
 

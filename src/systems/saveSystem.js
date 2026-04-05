@@ -18,7 +18,7 @@ export const SaveSystem = {
     },
 
     /** Save a character to a specific slot */
-    saveSlot(slotId, player, zoneLevel, stash) {
+    saveSlot(slotId, player, zoneLevel, stash, extras) {
         if (!player || !slotId) return false;
         try {
             const slots = this.listSlots();
@@ -32,6 +32,8 @@ export const SaveSystem = {
                 timestamp: Date.now(),
                 player: player.serialize(),
                 stash: stash || [],
+                difficulty: extras?.difficulty || 0,
+                waypoints: extras?.waypoints || [0],
             };
             const idx = slots.findIndex(s => s.id === slotId);
             if (idx >= 0) slots[idx] = entry;
@@ -55,6 +57,8 @@ export const SaveSystem = {
                 zoneLevel: slot.zoneLevel || 0,
                 slotId: slot.id,
                 stash: slot.stash || [],
+                difficulty: slot.difficulty || 0,
+                waypoints: slot.waypoints || [0],
             };
         } catch (e) {
             console.error('Failed to load slot:', e);

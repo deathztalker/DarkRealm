@@ -187,6 +187,16 @@ export class Dungeon {
             dialogue: "Need a fighter? I can send one of my rogues to aid you... for a price."
         });
 
+        this.npcSpawns.push({
+            id: "warriv",
+            name: "Warriv",
+            type: "waypoint",
+            x: (cx + 4) * this.tileSize,
+            y: (cy + 2) * this.tileSize,
+            icon: "npc_merchant",
+            dialogue: "I know the roads well. Tell me where you wish to go."
+        });
+
         // Town Objects: Stash & Cube
         this.objectSpawns.push({ 
             id: 'stash',
