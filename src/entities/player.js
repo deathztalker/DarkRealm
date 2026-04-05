@@ -1057,7 +1057,7 @@ export class Player {
     serialize() {
         return {
             classId: this.classId, level: this.level, xp: this.xp,
-            charName: this.charName,
+            charName: this.charName, isHardcore: this.isHardcore,
             x: this.x, y: this.y, hp: this.hp, mp: this.mp,
             baseStr: this.baseStr, baseDex: this.baseDex, baseVit: this.baseVit, baseInt: this.baseInt,
             statPoints: this.statPoints, gold: this.gold,
@@ -1070,6 +1070,7 @@ export class Player {
     static deserialize(data) {
         const p = new Player(data.classId);
         p.charName = data.charName || p.className;
+        p.isHardcore = !!data.isHardcore;
         p.level = data.level; p.xp = data.xp;
         p.x = data.x; p.y = data.y;
         p.hp = data.hp; p.mp = data.mp;

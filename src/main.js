@@ -261,6 +261,9 @@ function startGame(slotId = null, loadPlayerData = null) {
         }
     } else {
         player = new Player(selectedClass);
+        if ($('hardcore-mode') && $('hardcore-mode').checked) {
+            player.isHardcore = true;
+        }
         player.x = dungeon.playerStart.x;
         player.y = dungeon.playerStart.y;
 
@@ -866,7 +869,15 @@ function checkDeaths() {
         playDeathSfx();
         $('death-screen').classList.remove('hidden');
         const zName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 7}`;
-        $('death-stats').textContent = `You fell in ${zName} at Level ${player.level}.`;
+        if (player.isHardcore) {
+            $('death-stats').textContent = `Your Hardcore hero fell in ${zName} at Level ${player.level}. Your deeds of valor will be remembered.`;
+            $('btn-respawn').style.display = 'none'; // No respawn for hardcore
+            if (activeSlotId) SaveSystem.deleteSlot(activeSlotId);
+            addCombatLog('HARDCORE DEATH. Save file deleted.', 'log-dmg');
+        } else {
+            $('death-stats').textContent = `You fell in ${zName} at Level ${player.level}.`;
+            $('btn-respawn').style.display = 'inline-block';
+        }
     }
 }
 
@@ -2160,6 +2171,21 @@ function renderInventory() {
                     document.body.style.cursor = `crosshair`;
                     addCombatLog('Select an item to identify', 'log-info');
                     player.inventory[i] = null; // Consume scroll
+                    renderInventory();
+                }
+                else if (item.type === 'scroll' && item.baseId === 'scroll_town_portal') {
+                    if (zoneLevel === 0) {
+                        addCombatLog('Cannot cast Town Portal in Town!', 'log-dmg');
+                        return;
+                    }
+                    const tp = new GameObject('portal', player.x, player.y - 40, 'env_water');
+                    tp.targetZone = 0; // Town
+                    portalReturnZone = zoneLevel; 
+                    gameObjects.push(tp);
+                    
+                    if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 50, 4);
+                    addCombatLog('A Town Portal has opened.', 'log-level');
+                    player.inventory[i] = null; // Consume
                     renderInventory();
                 }
                 else if (item.type === 'gem') {
