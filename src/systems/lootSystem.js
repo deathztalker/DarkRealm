@@ -321,18 +321,80 @@ export class LootSystem {
     }
 
     _buildName(item, isRare = false) {
-        const prefix = item.mods.find(m => m.type === 'prefix');
-        const suffix = item.mods.find(m => m.type === 'suffix');
-        const base = ITEM_BASES[item.baseId]?.name || item.name;
-        if (isRare) {
-            const rarePrefixes = ['Shadow', 'Cruel', 'Bitter', 'Dark', 'Grim', 'Foul', 'Dire', 'Blood', 'Bone', 'Viper', 'Doom'];
-            const rareSuffixes = ['Bane', 'Grip', 'Ruin', 'Dread', 'Wrath', 'Scourge', 'Malice', 'Fang', 'Heart', 'Song', 'Wedge'];
-            return `${rarePrefixes[Math.floor(Math.random() * rarePrefixes.length)]} ${rareSuffixes[Math.floor(Math.random() * rareSuffixes.length)]}`;
+        if (!isRare) {
+            const prefix = item.mods.find(m => m.type === 'prefix')?.name || '';
+            const suffix = item.mods.find(m => m.type === 'suffix')?.name || '';
+            const pStr = prefix ? `${prefix} ` : '';
+            const sStr = suffix ? ` of ${suffix}` : '';
+            return `${pStr}${item.name}${sStr}`.trim();
+        } else {
+            const rarePool = ['Grim', 'Doom', 'Shadow', 'Blood', 'Bone', 'Viper', 'Rune', 'Storm', 'Wraith', 'Ghoul', 'Skull', 'Demon'];
+            const sufPool = ['Grasp', 'Track', 'Song', 'Cry', 'Mark', 'Bite', 'Weave', 'Grip', 'Flight', 'Wand', 'Spade'];
+            const r1 = rarePool[Math.floor(Math.random() * rarePool.length)];
+            const r2 = sufPool[Math.floor(Math.random() * sufPool.length)];
+            return `${r1} ${r2}`;
         }
-        let name = base;
-        if (prefix) name = `${prefix.name} ${name}`;
-        if (suffix) name = `${name} ${suffix.name}`;
-        return name;
+    }
+
+    /**
+     * Horadric Cube Transmutation Logic
+     * @param {Array} cubeArray - The 9-slot array representing the cube contents
+     * @returns {Object|null} - The newly created item, or null if no recipe matched
+     */
+    transmuteCube(cubeArray) {
+        const items = cubeArray.filter(i => i !== null);
+        if (items.length === 0) return null;
+
+        // Recipe: 3 Runes of the same type = 1 Rune of the next tier
+        if (items.length === 3 && items.every(i => i.type === 'gem' && i.name.includes('Rune'))) {
+            const baseIds = items.map(i => i.baseId);
+            if (baseIds[0] === baseIds[1] && baseIds[1] === baseIds[2]) {
+                const runeOrder = ['rune_el', 'rune_eld', 'rune_tir', 'rune_nef', 'rune_eth', 'rune_ith', 'rune_tal', 'rune_ral', 'rune_ort', 'rune_thul', 'rune_amn', 'rune_sol', 'rune_shael', 'rune_dol', 'rune_hel', 'rune_io', 'rune_lum', 'rune_ko', 'rune_fal', 'rune_lem', 'rune_pul', 'rune_um', 'rune_mal', 'rune_ist', 'rune_gul', 'rune_vex', 'rune_zod'];
+                const idx = runeOrder.indexOf(baseIds[0]);
+                if (idx !== -1 && idx < runeOrder.length - 1) {
+                    const upgradeBaseId = runeOrder[idx + 1];
+                    const base = ITEM_BASES[upgradeBaseId];
+                    return this._buildItem(upgradeBaseId, base, RARITY.NORMAL, 1);
+                }
+            }
+        }
+
+        // Recipe: 3 Magic Rings = 1 Random Magic Amulet
+        if (items.length === 3 && items.every(i => i.type === 'ring' && (i.rarity === RARITY.MAGIC || i.rarity === RARITY.RARE))) {
+            const avgIlvl = Math.floor(items.reduce((sum, i) => sum + i.ilvl, 0) / 3);
+            const base = ITEM_BASES['amulet'];
+            return this._buildItem('amulet', base, RARITY.MAGIC, Math.max(1, avgIlvl));
+        }
+
+        // Recipe: 3 Magic Amulets = 1 Random Magic Ring
+        if (items.length === 3 && items.every(i => i.type === 'amulet' && (i.rarity === RARITY.MAGIC || i.rarity === RARITY.RARE))) {
+            const avgIlvl = Math.floor(items.reduce((sum, i) => sum + i.ilvl, 0) / 3);
+            const base = ITEM_BASES['ring'];
+            return this._buildItem('ring', base, RARITY.MAGIC, Math.max(1, avgIlvl));
+        }
+
+        // Recipe: 3 Chipped Gems of same type = 1 Perfect Gem
+        if (items.length === 3 && items.every(i => i.type === 'gem' && !i.name.includes('Rune'))) {
+            const baseIds = items.map(i => i.baseId);
+            if (baseIds[0] === baseIds[1] && baseIds[1] === baseIds[2] && baseIds[0].includes('chipped_')) {
+                const upgradeBaseId = baseIds[0].replace('chipped_', 'perfect_');
+                if (ITEM_BASES[upgradeBaseId]) {
+                    const base = ITEM_BASES[upgradeBaseId];
+                    return this._buildItem(upgradeBaseId, base, RARITY.NORMAL, 1);
+                }
+            }
+        }
+
+        // Recipe: 3 Gems + 1 Magic Weapon = Rerolled Magic Weapon
+        const weapons = items.filter(i => !!i.minDmg && i.type !== 'shield' && i.rarity === RARITY.MAGIC);
+        const gems = items.filter(i => i.type === 'gem' && !i.name.includes('Rune'));
+        if (weapons.length === 1 && gems.length === 3 && items.length === 4) {
+            const w = weapons[0];
+            const base = ITEM_BASES[w.baseId];
+            return this._buildItem(w.baseId, base, RARITY.MAGIC, w.ilvl);
+        }
+
+        return null; // Invalid recipe
     }
 
     /** Drop gold on the ground */

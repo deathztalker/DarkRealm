@@ -37,7 +37,7 @@ let explored = null; // for minimap fog
 let difficulty = 0; // 0=Normal, 1=Nightmare, 2=Hell
 let discoveredWaypoints = new Set([0]); // Always have Town
 let stash = Array(20).fill(null); // Personal stash
-let cube = Array(3).fill(null); // Horadric Cube
+let cube = Array(9).fill(null); // Horadric Cube
 let activeQuests = []; // { id, desc, target, progress, reward }
 let completedQuests = new Set();
 let killCount = 0;
@@ -2688,13 +2688,18 @@ function renderCube() {
 }
 
 $('btn-transmute')?.addEventListener('click', () => {
-    if (cube.every(x => x !== null)) {
-        addCombatLog('Transmuted items into a new treasure!', 'log-crit');
-        cube = Array(3).fill(null);
-        cube[0] = loot.generate(player.level, 'weapon'); // simple transmute
+    const resultItem = loot.transmuteCube(cube);
+    
+    if (resultItem) {
+        addCombatLog(`Transmutation Successful! Crafted: ${resultItem.name}`, 'log-crit');
+        // Clear all non-null items that were used in the recipe
+        cube.forEach((item, index) => {
+            if (item) cube[index] = null;
+        });
+        cube[0] = resultItem; // Place the new item in the top-left slot of the cube
         renderCube();
     } else {
-        addCombatLog('Not enough items in the Cube. Need 3.', 'log-dmg');
+        addCombatLog('Transmutation Failed. Invalid Horadric Recipe.', 'log-dmg');
     }
 });
 
