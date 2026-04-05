@@ -10,7 +10,7 @@ import { Dungeon } from './world/dungeon.js';
 import { Player } from './entities/player.js';
 import { Enemy } from './entities/enemy.js';
 import { getAllClasses, getClass } from './data/classes.js';
-import { loot } from './systems/lootSystem.js';
+import { loot, SETS } from './systems/lootSystem.js';
 import { updateStatuses } from './systems/combat.js';
 import { SaveSystem } from './systems/saveSystem.js';
 import { NPC } from './entities/npc.js';
@@ -489,11 +489,11 @@ function gameLoop(timestamp) {
         if (lootFilter >= 2 && di.rarity === 'magic') continue;
 
         // Loot Beam
-        if (di.rarity === 'unique' || di.rarity === 'rare') {
+        if (di.rarity === 'unique' || di.rarity === 'rare' || di.rarity === 'set') {
             const ctx = renderer.ctx;
             ctx.save();
             ctx.globalCompositeOperation = 'screen';
-            const color = di.rarity === 'unique' ? 'rgba(232, 160, 32, 0.6)' : 'rgba(240, 208, 48, 0.5)';
+            const color = di.rarity === 'unique' ? 'rgba(232, 160, 32, 0.6)' : di.rarity === 'set' ? 'rgba(0, 255, 0, 0.5)' : 'rgba(240, 208, 48, 0.5)';
             const g = ctx.createLinearGradient(0, di.y, 0, di.y - 120);
             g.addColorStop(0, color);
             g.addColorStop(1, 'transparent');
@@ -518,7 +518,7 @@ function gameLoop(timestamp) {
         renderer.drawSprite(di.icon, di.x, di.y, 14);
         renderer.ctx.font = '4px Cinzel, serif';
         renderer.ctx.textAlign = 'center';
-        renderer.ctx.fillStyle = di.rarity === 'unique' ? '#e8a020' : di.rarity === 'rare' ? '#f0d030' : di.rarity === 'magic' ? '#4080ff' : '#aaa';
+        renderer.ctx.fillStyle = di.rarity === 'unique' ? '#e8a020' : di.rarity === 'set' ? '#00ff00' : di.rarity === 'rare' ? '#f0d030' : di.rarity === 'magic' ? '#4080ff' : '#aaa';
         renderer.ctx.fillText(di.name, di.x, di.y + 10);
     }
 
@@ -2303,6 +2303,33 @@ if (reqs.length) {
 
     if (flavorText) {
         t += `<div class="tooltip-flavor" style="color:#bf642f; font-style:italic; margin-top:8px;">"${flavorText}"</div>`;
+    }
+
+    // Set Item Completion Tracker
+    if (item.rarity === 'set' && item.setId) {
+        const def = SETS[item.setId];
+        if (def) {
+            // Count equipped set pieces
+            let equipped = 0;
+            if (player && player.equipment) {
+                for (const eq of Object.values(player.equipment)) {
+                    if (eq && eq.setId === item.setId) equipped++;
+                }
+            }
+            const maxTier = Object.keys(def.bonuses).length > 0 ? Math.max(...Object.keys(def.bonuses).map(Number)) : '?';
+            t += `<div style="border-top:1px solid #1a3a1a; margin-top:8px; padding-top:6px;">`;
+            t += `<div style="color:#00ff00; font-weight:bold; margin-bottom:4px;">${def.name} (${equipped}/${maxTier})</div>`;
+            for (const [tier, mods] of Object.entries(def.bonuses)) {
+                const active = equipped >= Number(tier);
+                const color = active ? '#00ff00' : '#555';
+                const modText = mods.map(m => {
+                    const fn = friendlyNames[m.stat] || m.stat;
+                    return `+${m.value} ${fn}`;
+                }).join(', ');
+                t += `<div style="color:${color}; font-size:11px;">(${tier}) ${modText}</div>`;
+            }
+            t += `</div>`;
+        }
     }
 
     t += `<div class="tooltip-footer">[Left-Click to Equip] | [Right-Click to Drop/Sell]</div>`;

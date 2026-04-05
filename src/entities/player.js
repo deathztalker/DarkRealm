@@ -6,7 +6,7 @@ import { Pathfinder } from '../world/pathfinding.js';
 import { TalentTree } from '../systems/talentTree.js';
 import { getClass, getSkillMap } from '../data/classes.js';
 import { calcDamage, applyDamage, skillDamage, skillType, DMG_TYPE } from '../systems/combat.js';
-import { RARITY } from '../systems/lootSystem.js';
+import { RARITY, SETS } from '../systems/lootSystem.js';
 import { Projectile, AoEZone } from './projectile.js';
 import { fx } from '../engine/ParticleSystem.js';
 
@@ -162,11 +162,34 @@ export class Player {
     _gearStats() {
         const s = {};
         const equip = this.equipment || {};
+        const setCounts = {};
+
         // 1. Equipped Items
         for (const item of Object.values(equip)) {
             if (!item || item.identified === false) continue;
             this._addItemStats(item, s);
+
+            if (item.rarity === RARITY.SET && item.setId) {
+                setCounts[item.setId] = (setCounts[item.setId] || 0) + 1;
+            }
         }
+
+        // Apply Tiered Set Bonuses
+        for (const [setId, count] of Object.entries(setCounts)) {
+            const def = SETS[setId];
+            if (def && def.bonuses && count >= 2) {
+                for (let tier = 2; tier <= count; tier++) {
+                    const mods = def.bonuses[tier];
+                    if (mods) {
+                        for (const mod of mods) {
+                            if (mod.stat.startsWith('+')) continue;
+                            s[mod.stat] = (s[mod.stat] || 0) + mod.value;
+                        }
+                    }
+                }
+            }
+        }
+
         // 2. Charms in Inventory
         for (const item of this.inventory) {
             if (item && item.type === 'charm' && item.identified !== false) {
@@ -234,8 +257,12 @@ export class Player {
     /** Get total +skill bonus for a specific skillId from gear */
     getSkillBonus(skillId) {
         let bonus = 0;
+        const setCounts = {};
+
         for (const item of Object.values(this.equipment)) {
             if (!item || item.identified === false) continue;
+            
+            // Item inherent mods
             for (const mod of (item.mods || [])) {
                 if (mod.stat === '+allSkills') bonus += mod.value;
                 else if (mod.stat === `+classSkills:${this.classId}`) bonus += mod.value;
@@ -246,7 +273,34 @@ export class Player {
                     if (skill?.group === group) bonus += mod.value;
                 }
             }
+
+            if (item.rarity === RARITY.SET && item.setId) {
+                setCounts[item.setId] = (setCounts[item.setId] || 0) + 1;
+            }
         }
+
+        // Apply Tiered Set Bonuses for Skills
+        for (const [setId, count] of Object.entries(setCounts)) {
+            const def = SETS[setId];
+            if (def && def.bonuses && count >= 2) {
+                for (let tier = 2; tier <= count; tier++) {
+                    const mods = def.bonuses[tier];
+                    if (mods) {
+                        for (const mod of mods) {
+                            if (mod.stat === '+allSkills') bonus += mod.value;
+                            else if (mod.stat === `+classSkills:${this.classId}`) bonus += mod.value;
+                            else if (mod.stat === `+skill:${skillId}`) bonus += mod.value;
+                            else if (mod.stat.startsWith('+skillGroup:')) {
+                                const group = mod.stat.split(':')[1];
+                                const skill = this.skillMap[skillId];
+                                if (skill?.group === group) bonus += mod.value;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         return bonus;
     }
 

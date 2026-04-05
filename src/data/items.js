@@ -141,7 +141,6 @@ export const ITEM_BASES = {
 };
 
 
-// Sockets per item type max
 export const SOCKET_MAX = {
     weapon: 3, helm: 2, armor: 4, gloves: 1, boots: 1, shield: 3, source: 2, wand: 2, staff: 3,
 };

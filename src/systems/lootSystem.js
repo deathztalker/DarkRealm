@@ -7,32 +7,51 @@ import { bus } from '../engine/EventBus.js';
 
 export const RARITY = { NORMAL: 'normal', MAGIC: 'magic', RARE: 'rare', SET: 'set', UNIQUE: 'unique' };
 
-const SETS = {
+export const SETS = {
     sigon: {
         name: "Sigon's Complete Steel",
         bonuses: {
             2: [{ stat: 'lifeStealPct', value: 10 }],
-            3: [{ stat: 'magicFind', value: 50 }, { stat: 'flatArmor', value: 100 }]
+            3: [{ stat: 'flatArmor', value: 100 }],
+            4: [{ stat: 'flatHP', value: 100 }],
+            5: [{ stat: 'flatMP', value: 100 }],
+            6: [{ stat: 'pctDmgReduce', value: 20 }, { stat: 'allRes', value: 24 }]
+        }
+    },
+    deaths: {
+        name: "Death's Disguise",
+        bonuses: {
+            2: [{ stat: 'lifeStealPct', value: 8 }],
+            3: [{ stat: 'allRes', value: 15 }, { stat: 'flatSTR', value: 10 }]
+        }
+    },
+    milabregas: {
+        name: "Milabrega's Regalia",
+        bonuses: {
+            2: [{ stat: 'pctAtkRating', value: 50 }, { stat: 'pctArmor', value: 50 }],
+            3: [{ stat: 'allRes', value: 15 }, { stat: 'manaRegenPerSec', value: 20 }],
+            4: [{ stat: '+allSkills', value: 2 }]
         }
     }
 };
 
-const SET_ITEMS = [
-    {
-        id: 'sigon_visor', name: "Sigon's Visor", base: 'great_helm', rarity: RARITY.SET,
-        icon: 'item_great_helm', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel",
-        mods: [{ stat: 'flatMP', value: 30 }, { stat: 'flatArmor', value: 25 }]
-    },
-    {
-        id: 'sigon_shelter', name: "Sigon's Shelter", base: 'plate_mail', rarity: RARITY.SET,
-        icon: 'item_plate_mail', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel",
-        mods: [{ stat: 'lightRes', value: 30 }, { stat: 'flatArmor', value: 50 }]
-    },
-    {
-        id: 'sigon_gage', name: "Sigon's Gage", base: 'gauntlets', rarity: RARITY.SET,
-        icon: 'item_gauntlets', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel",
-        mods: [{ stat: 'flatSTR', value: 10 }, { stat: 'pctIAS', value: 30 }]
-    }
+export const SET_ITEMS = [
+    // Sigon's
+    { id: 'sigon_visor', name: "Sigon's Visor", base: 'great_helm', rarity: RARITY.SET, icon: 'item_great_helm', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'flatMP', value: 30 }, { stat: 'flatArmor', value: 25 }] },
+    { id: 'sigon_shelter', name: "Sigon's Shelter", base: 'plate_mail', rarity: RARITY.SET, icon: 'item_plate_mail', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'lightRes', value: 30 }, { stat: 'flatArmor', value: 50 }] },
+    { id: 'sigon_gage', name: "Sigon's Gage", base: 'gauntlets', rarity: RARITY.SET, icon: 'item_gauntlets', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'flatSTR', value: 10 }, { stat: 'pctIAS', value: 30 }] },
+    { id: 'sigon_sabot', name: "Sigon's Sabot", base: 'war_boots', rarity: RARITY.SET, icon: 'item_boots_war', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'pctMoveSpeed', value: 20 }, { stat: 'coldRes', value: 40 }] },
+    { id: 'sigon_wrap', name: "Sigon's Wrap", base: 'leather_belt', rarity: RARITY.SET, icon: 'item_belt', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'flatHP', value: 20 }, { stat: 'fireRes', value: 20 }] },
+    { id: 'sigon_guard', name: "Sigon's Guard", base: 'tower_shield', rarity: RARITY.SET, icon: 'item_shield_tower', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: '+allSkills', value: 1 }, { stat: 'blockChance', value: 20 }] },
+    // Death's
+    { id: 'deaths_touch', name: "Death's Touch", base: 'long_sword', rarity: RARITY.SET, icon: 'item_sword_long', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'lifeStealPct', value: 4 }, { stat: 'flatMaxDmg', value: 25 }] },
+    { id: 'deaths_hand', name: "Death's Hand", base: 'leather_gloves', rarity: RARITY.SET, icon: 'item_gloves_leather', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'poisRes', value: 50 }] },
+    { id: 'deaths_guard', name: "Death's Guard", base: 'leather_belt', rarity: RARITY.SET, icon: 'item_belt', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'magicDmgReduce', value: 3 }] },
+    // Milabrega's
+    { id: 'milabrega_orb', name: "Milabrega's Orb", base: 'buckler', rarity: RARITY.SET, icon: 'item_shield_buckler', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'magicFind', value: 20 }] },
+    { id: 'milabrega_diadem', name: "Milabrega's Diadem", base: 'crown', rarity: RARITY.SET, icon: 'item_helm_crown', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'flatMP', value: 15 }, { stat: 'flatHP', value: 15 }] },
+    { id: 'milabrega_robe', name: "Milabrega's Robe", base: 'chain_mail', rarity: RARITY.SET, icon: 'item_chain_mail', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'flatDmgReduce', value: 2 }] },
+    { id: 'milabrega_rod', name: "Milabrega's Rod", base: 'war_hammer', rarity: RARITY.SET, icon: 'item_hammer_war', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'pctDmg', value: 50 }] }
 ];
 
 // Unique item definitions (hand-crafted, fixed mods)
