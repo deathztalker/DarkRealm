@@ -246,6 +246,11 @@ function startGame(slotId = null, loadPlayerData = null) {
         player = Player.deserialize(loadPlayerData.player);
         player.x = dungeon.playerStart.x;
         player.y = dungeon.playerStart.y;
+        // Restore stash
+        if (loadPlayerData.stash && Array.isArray(loadPlayerData.stash)) {
+            stash = loadPlayerData.stash;
+            while (stash.length < 20) stash.push(null);
+        }
     } else {
         player = new Player(selectedClass);
         player.x = dungeon.playerStart.x;
@@ -303,7 +308,7 @@ function startGame(slotId = null, loadPlayerData = null) {
     if (bossBar && zoneLevel !== 5) bossBar.classList.add('hidden');
 
     // Initial save
-    SaveSystem.saveSlot(activeSlotId, player, zoneLevel);
+    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash);
 
     // Initial ambient audio
     if (zoneLevel === 5) {
@@ -615,7 +620,7 @@ function gameLoop(timestamp) {
     // Auto-save every 30 seconds
     if (timestamp - lastSaveTime > 30000 && activeSlotId) {
         lastSaveTime = timestamp;
-        SaveSystem.saveSlot(activeSlotId, player, zoneLevel);
+        SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash);
         addCombatLog('Auto-saved', 'log-heal');
     }
 
@@ -902,7 +907,7 @@ function finishZoneLoad() {
     const endgameMult = zoneLevel > 7 ? 1 + (zoneLevel - 7) * 0.3 : 1;
     $('zone-name').textContent = zoneName + diffLabel;
     addCombatLog(`Entered ${zoneName}${diffLabel}!`, 'log-level');
-    if (activeSlotId) SaveSystem.saveSlot(activeSlotId, player, zoneLevel);
+    if (activeSlotId) SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash);
 
     // Apply endgame scaling
     if (endgameMult > 1 && enemies.length > 0) {
