@@ -52,31 +52,62 @@ let activeDialogueNpc = null; // Track NPC with open dialogue bubble
 // ─── RUNEWORDS ───
 const RUNEWORDS = [
     {
-        name: 'Blood and Ice',
-        types: ['weapon'],
+        name: 'Stealth',
+        types: ['armor'],
         sockets: 2,
-        gems: ['chipped_ruby', 'chipped_sapphire'],
-        mods: [{stat: 'lifeStealPct', value: 5}, {stat: 'flatMinDmg', value: 10}, {stat: 'flatMaxDmg', value: 20}]
+        gems: ['rune_tal', 'rune_eth'],
+        mods: [{stat: 'pctFHR', value: 25}, {stat: 'manaRegenPerSec', value: 15}, {stat: 'flatDEX', value: 6}]
     },
     {
-        name: 'Prosperity',
-        types: ['armor', 'helm'],
+        name: 'Lore',
+        types: ['helm'],
         sockets: 2,
-        gems: ['chipped_topaz', 'chipped_emerald'],
-        mods: [{stat: 'magicFind', value: 25}, {stat: 'goldFind', value: 50}]
+        gems: ['rune_ort', 'rune_sol'],
+        mods: [{stat: 'lightRes', value: 30}, {stat: 'flatMP', value: 20}, {stat: 'flatDmgReduce', value: 7}]
+    },
+    {
+        name: 'Leaf',
+        types: ['weapon'],
+        sockets: 2,
+        gems: ['rune_tir', 'rune_ral'],
+        mods: [{stat: 'flatFireDmg', value: 45}, {stat: 'manaAfterKill', value: 2}, {stat: 'coldRes', value: 33}]
+    },
+    {
+        name: 'Zephyr',
+        types: ['weapon'],
+        sockets: 2,
+        gems: ['rune_ort', 'rune_eth'],
+        mods: [{stat: 'pctIAS', value: 25}, {stat: 'flatLightDmg', value: 35}, {stat: 'targetDefenseReduce', value: 25}]
+    },
+    {
+        name: 'Spirit',
+        types: ['weapon', 'shield'],
+        sockets: 4,
+        gems: ['rune_tal', 'rune_thul', 'rune_ort', 'rune_amn'],
+        mods: [{stat: 'pctFHR', value: 55}, {stat: 'flatMP', value: 90}, {stat: 'flatVIT', value: 22}]
+    },
+    {
+        name: 'Insight',
+        types: ['weapon'],
+        sockets: 4,
+        gems: ['rune_ral', 'rune_tir', 'rune_tal', 'rune_sol'],
+        mods: [{stat: 'manaRegenPerSec', value: 40}, {stat: 'pctDmg', value: 200}, {stat: 'magicFind', value: 23}]
     }
 ];
 
 function checkRuneword(item) {
     if (!item.socketed || item.socketed.length === 0) return;
     if (item.socketed.length !== item.sockets) return;
-
-    const itemClass = (item.type === 'shield' || item.type === 'source') ? 'shield' 
-                : (item.type === 'helm' || item.type === 'armor' || item.type === 'gloves' || item.type === 'boots' || item.type === 'belt') ? 'armor' 
-                : 'weapon';
     
+    // Group weapon types so recipes that say 'weapon' work across all weapons
+    const weaponTypes = ['sword', 'axe', 'mace', 'staff', 'orb', 'bow', 'dagger', 'totem', 'wand'];
+    const isWeapon = weaponTypes.includes(item.type);
+
     for (const rw of RUNEWORDS) {
-        if (!rw.types.includes(itemClass)) continue;
+        // Valid if exact type matches OR it's a weapon recipe applied to a weapon base
+        const validMatch = rw.types.includes(item.type) || (rw.types.includes('weapon') && isWeapon);
+        if (!validMatch) continue;
+        
         if (rw.sockets !== item.sockets) continue;
         
         let match = true;
