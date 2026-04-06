@@ -62,6 +62,18 @@ export function calcDamage(attacker, baseDmg, type, defender) {
         dmg *= 1 - Math.min(0.75, reduction);
     }
 
+    // --- Percentage damage reduction (D2 Shaft, Doombringer, etc.) ---
+    if (defender.pctDmgReduce) {
+        dmg *= 1 - Math.min(50, defender.pctDmgReduce) / 100; // Cap at 50%
+    }
+
+    // --- Flat damage reduction ---
+    if (type === DMG_TYPE.MAGIC && defender.magicDmgReduce) {
+        dmg -= defender.magicDmgReduce;
+    } else if (defender.flatDmgReduce) {
+        dmg -= defender.flatDmgReduce;
+    }
+
     dmg = Math.max(defender[`${type}Immune`] ? 0 : 1, Math.round(dmg));
     if (isNaN(dmg)) dmg = 1; // Last resort fallback
     return { dealt: dmg, isCrit, type };
@@ -94,6 +106,19 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
     if (attacker.isPlayer && attacker.lifeStealPct) {
         const stolen = Math.round(dealt * attacker.lifeStealPct / 100);
         attacker.hp = Math.min(attacker.maxHp, attacker.hp + stolen);
+    }
+
+    // Mana steal
+    if (attacker.isPlayer && attacker.manaStealPct) {
+        const stolen = Math.round(dealt * attacker.manaStealPct / 100);
+        attacker.mp = Math.min(attacker.maxMp, (attacker.mp || 0) + stolen);
+    }
+
+    // Thorns (reflect damage back to melee attackers)
+    if (target.isPlayer && target.thorns && type === DMG_TYPE.PHYSICAL && !attacker.isPlayer) {
+        const reflected = target.thorns;
+        attacker.hp = Math.max(0, attacker.hp - reflected);
+        bus.emit('combat:damage', { attacker: target, target: attacker, dealt: reflected, isCrit: false, type: 'physical', worldX: attacker.x, worldY: attacker.y });
     }
 
     // --- Knockback logic ---

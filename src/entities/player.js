@@ -5,7 +5,7 @@ import { bus } from '../engine/EventBus.js';
 import { Pathfinder } from '../world/pathfinding.js';
 import { TalentTree } from '../systems/talentTree.js';
 import { getClass, getSkillMap } from '../data/classes.js';
-import { calcDamage, applyDamage, skillDamage, skillType, DMG_TYPE } from '../systems/combat.js';
+import { calcDamage, applyDamage, applyDot, skillDamage, skillType, DMG_TYPE } from '../systems/combat.js';
 import { RARITY, SETS } from '../systems/lootSystem.js';
 import { Projectile, AoEZone } from './projectile.js';
 import { fx } from '../engine/ParticleSystem.js';
@@ -110,14 +110,27 @@ export class Player {
         this.vit = this.baseVit + (s.flatVIT || 0);
         this.int = this.baseInt + (s.flatINT || 0);
 
-        this.maxHp = 50 + this.vit * 8 + this.level * 5 + (s.flatHP || 0);
-        this.maxMp = 30 + this.int * 5 + this.level * 3 + (s.flatMP || 0);
+        this.maxHp = Math.round((50 + this.vit * 8 + this.level * 5 + (s.flatHP || 0)) * (1 + (s.pctHP || 0) / 100));
+        this.maxMp = Math.round((30 + this.int * 5 + this.level * 3 + (s.flatMP || 0)) * (1 + (s.pctMP || 0) / 100));
         this.armor = (s.flatArmor || 0) * (1 + (s.pctArmor || 0) / 100);
 
         this.critChance = 5 + (s.critChance || 0);
         this.critMulti = 150 + (s.critMulti || 0);
         this.lifeStealPct = s.lifeStealPct || 0;
+        this.manaStealPct = s.manaStealPct || 0;
         this.moveSpeed = MOVE_SPEED_BASE * (1 + (s.pctMoveSpeed || 0) / 100);
+
+        // Damage reduction (from uniques like Shaft of Anguish, Doombringer, set bonuses)
+        this.pctDmgReduce = s.pctDmgReduce || 0;
+        this.flatDmgReduce = s.flatDmgReduce || 0;
+        this.magicDmgReduce = s.magicDmgReduce || 0;
+
+        // Thorns (reflect damage back to melee attackers)
+        this.thorns = s.thorns || 0;
+
+        // Regeneration
+        this.lifeRegenPerSec = s.lifeRegenPerSec || 0;
+        this.manaRegenPerSec = s.manaRegenPerSec || 0;
 
         // --- Active Aura Stat Bonuses ---
         if (this.activeAura) {
@@ -160,6 +173,9 @@ export class Player {
         // Magic Find & Gold Find
         this.magicFind = s.magicFind || 0;
         this.goldFind = s.goldFind || 0;
+
+        // Poison damage (from affixes like Pestilent weapons)
+        this.poisonDmgPerSec = s.poisonDmgPerSec || 0;
 
         // Weapon damage
         const wep = (this.equipment && this.equipment.mainhand);
@@ -284,6 +300,21 @@ export class Player {
 
             if (item.rarity === RARITY.SET && item.setId) {
                 setCounts[item.setId] = (setCounts[item.setId] || 0) + 1;
+            }
+        }
+
+        // Charms in inventory also grant skill bonuses
+        for (const item of this.inventory) {
+            if (!item || item.type !== 'charm' || item.identified === false) continue;
+            for (const mod of (item.mods || [])) {
+                if (mod.stat === '+allSkills') bonus += mod.value;
+                else if (mod.stat === `+classSkills:${this.classId}`) bonus += mod.value;
+                else if (mod.stat === `+skill:${skillId}`) bonus += mod.value;
+                else if (mod.stat.startsWith('+skillGroup:')) {
+                    const group = mod.stat.split(':')[1];
+                    const skill = this.skillMap[skillId];
+                    if (skill?.group === group) bonus += mod.value;
+                }
             }
         }
 
@@ -517,6 +548,11 @@ export class Player {
         applyDamage(this, target, result, 'autoAttack');
         this.attackCd = 1 / this.atkSpd;
         this._setAnimState('attack');
+
+        // Apply poison DoT from weapon affix
+        if (this.poisonDmgPerSec && target.hp > 0) {
+            applyDot(target, this.poisonDmgPerSec, 'poison', 3, 'player_poison');
+        }
 
         // Face target
         const dx = target.x - this.x;
@@ -1057,7 +1093,7 @@ export class Player {
     serialize() {
         return {
             classId: this.classId, level: this.level, xp: this.xp,
-            charName: this.charName, isHardcore: this.isHardcore,
+            charName: this.charName, isHardcore: this.isHardcore, maxDifficulty: this.maxDifficulty,
             x: this.x, y: this.y, hp: this.hp, mp: this.mp,
             baseStr: this.baseStr, baseDex: this.baseDex, baseVit: this.baseVit, baseInt: this.baseInt,
             statPoints: this.statPoints, gold: this.gold,
@@ -1071,6 +1107,7 @@ export class Player {
         const p = new Player(data.classId);
         p.charName = data.charName || p.className;
         p.isHardcore = !!data.isHardcore;
+        p.maxDifficulty = data.maxDifficulty || 0;
         p.level = data.level; p.xp = data.xp;
         p.x = data.x; p.y = data.y;
         p.hp = data.hp; p.mp = data.mp;

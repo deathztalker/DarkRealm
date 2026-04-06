@@ -5,6 +5,7 @@
 import { Player } from '../entities/player.js';
 
 const SLOTS_KEY = 'darkRealm_slots';
+const SHARED_STASH_KEY = 'DARK_REALM_SHARED_STASH';
 
 export const SaveSystem = {
     /** Get all saved character slots (summary info for menu) */
@@ -31,7 +32,6 @@ export const SaveSystem = {
                 zoneLevel,
                 timestamp: Date.now(),
                 player: player.serialize(),
-                stash: stash || [],
                 difficulty: extras?.difficulty || 0,
                 waypoints: extras?.waypoints || [0],
             };
@@ -56,7 +56,6 @@ export const SaveSystem = {
                 player: slot.player,
                 zoneLevel: slot.zoneLevel || 0,
                 slotId: slot.id,
-                stash: slot.stash || [],
                 difficulty: slot.difficulty || 0,
                 waypoints: slot.waypoints || [0],
             };
@@ -95,5 +94,19 @@ export const SaveSystem = {
         return false;
     },
     loadGame() { return null; },
+    getSharedStash() {
+        try {
+            const data = localStorage.getItem(SHARED_STASH_KEY);
+            return data ? JSON.parse(data) : { items: Array(20).fill(null), gold: 0 };
+        } catch { return { items: Array(20).fill(null), gold: 0 }; }
+    },
+
+    saveSharedStash(items, gold) {
+        try {
+            localStorage.setItem(SHARED_STASH_KEY, JSON.stringify({ items, gold }));
+            return true;
+        } catch { return false; }
+    },
+
     clearSave() { }
 };

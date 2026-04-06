@@ -63,11 +63,11 @@ export const AFFIXES = [
     // --- Life & Mana ---
     {
         id: 'life', name: 'Sturdy', type: 'prefix', tiers: [{ ilvl: 1, roll: [10, 25] }, { ilvl: 12, roll: [26, 50] }, { ilvl: 24, roll: [51, 100] }, { ilvl: 40, roll: [101, 175] }],
-        stat: 'flatHP', allowedSlots: [...ARMOR_SLOTS, 'ring', 'amulet']
+        stat: 'flatHP', allowedSlots: [...ARMOR_SLOTS, 'ring', 'amulet', 'charm']
     },
     {
         id: 'mana', name: 'Azure', type: 'prefix', tiers: [{ ilvl: 1, roll: [8, 20] }, { ilvl: 12, roll: [21, 45] }, { ilvl: 24, roll: [46, 90] }, { ilvl: 40, roll: [91, 150] }],
-        stat: 'flatMP', allowedSlots: [...ARMOR_SLOTS, 'ring', 'amulet', 'staff', 'orb', 'source', 'wand']
+        stat: 'flatMP', allowedSlots: [...ARMOR_SLOTS, 'ring', 'amulet', 'staff', 'orb', 'source', 'wand', 'charm']
     },
 
     // --- Armor ---
@@ -196,41 +196,41 @@ export const AFFIXES = [
     // --- Attributes ---
     {
         id: 'str', name: 'of Strength', type: 'suffix', tiers: [{ ilvl: 1, roll: [3, 8] }, { ilvl: 15, roll: [9, 20] }, { ilvl: 30, roll: [21, 35] }],
-        stat: 'flatSTR', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY]
+        stat: 'flatSTR', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY, 'charm']
     },
     {
         id: 'dex', name: 'of Dexterity', type: 'suffix', tiers: [{ ilvl: 1, roll: [3, 8] }, { ilvl: 15, roll: [9, 20] }, { ilvl: 30, roll: [21, 35] }],
-        stat: 'flatDEX', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY]
+        stat: 'flatDEX', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY, 'charm']
     },
     {
         id: 'int', name: 'of Wisdom', type: 'suffix', tiers: [{ ilvl: 1, roll: [3, 8] }, { ilvl: 15, roll: [9, 20] }, { ilvl: 30, roll: [21, 35] }],
-        stat: 'flatINT', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY]
+        stat: 'flatINT', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY, 'charm']
     },
     {
         id: 'vit', name: 'of the Bear', type: 'suffix', tiers: [{ ilvl: 1, roll: [3, 8] }, { ilvl: 15, roll: [9, 20] }, { ilvl: 30, roll: [21, 35] }],
-        stat: 'flatVIT', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY]
+        stat: 'flatVIT', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY, 'charm']
     },
 
     // --- Resistances ---
     {
         id: 'fire_res', name: 'of Flame Warding', type: 'suffix', tiers: [{ ilvl: 3, roll: [5, 15] }, { ilvl: 12, roll: [16, 30] }, { ilvl: 28, roll: [31, 45] }],
-        stat: 'fireRes', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY]
+        stat: 'fireRes', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY, 'charm']
     },
     {
         id: 'cold_res', name: 'of the Glacier', type: 'suffix', tiers: [{ ilvl: 3, roll: [5, 15] }, { ilvl: 12, roll: [16, 30] }, { ilvl: 28, roll: [31, 45] }],
-        stat: 'coldRes', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY]
+        stat: 'coldRes', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY, 'charm']
     },
     {
         id: 'light_res', name: 'of the Storm Ward', type: 'suffix', tiers: [{ ilvl: 3, roll: [5, 15] }, { ilvl: 12, roll: [16, 30] }, { ilvl: 28, roll: [31, 45] }],
-        stat: 'lightRes', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY]
+        stat: 'lightRes', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY, 'charm']
     },
     {
         id: 'pois_res', name: 'of the Viper', type: 'suffix', tiers: [{ ilvl: 3, roll: [5, 15] }, { ilvl: 12, roll: [16, 30] }, { ilvl: 28, roll: [31, 45] }],
-        stat: 'poisRes', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY]
+        stat: 'poisRes', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY, 'charm']
     },
     {
         id: 'all_res', name: 'of Warding', type: 'suffix', tiers: [{ ilvl: 15, roll: [5, 10] }, { ilvl: 35, roll: [11, 20] }, { ilvl: 50, roll: [21, 30] }],
-        stat: 'allRes', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY], weight: 25
+        stat: 'allRes', allowedSlots: [...ARMOR_SLOTS, ...JEWELRY, 'charm'], weight: 25
     },
 
     // --- Crit & Life Steal ---
@@ -254,7 +254,17 @@ export const AFFIXES = [
     // --- Move speed ---
     {
         id: 'move_speed', name: 'of Haste', type: 'suffix', tiers: [{ ilvl: 5, roll: [10, 15] }, { ilvl: 20, roll: [15, 25] }, { ilvl: 35, roll: [25, 40] }],
-        stat: 'pctMoveSpeed', allowedSlots: ['boots']
+        stat: 'pctMoveSpeed', allowedSlots: ['boots', 'charm']
+    },
+
+    // --- Utility ---
+    {
+        id: 'magic_find', name: 'of Fortune', type: 'suffix', tiers: [{ ilvl: 4, roll: [5, 15] }, { ilvl: 20, roll: [16, 25] }, { ilvl: 40, roll: [26, 40] }],
+        stat: 'magicFind', allowedSlots: ['boots', 'gloves', 'ring', 'amulet', 'helm', 'charm']
+    },
+    {
+        id: 'gold_find', name: 'of Greed', type: 'suffix', tiers: [{ ilvl: 4, roll: [20, 40] }, { ilvl: 20, roll: [41, 75] }, { ilvl: 40, roll: [76, 150] }],
+        stat: 'goldFind', allowedSlots: ['boots', 'gloves', 'ring', 'amulet', 'belt', 'charm']
     },
 
     // --- Block rate ---

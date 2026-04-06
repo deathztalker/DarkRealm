@@ -99,8 +99,8 @@ const UNIQUES = [
         flavor: '"May your pockets always overflow with gold and trinkets."'
     },
     {
-        id: 'enigma_robe', name: 'Enigma Robe', base: 'robe', rarity: RARITY.UNIQUE,
-        icon: 'item_robe', dropLvl: 65,
+        id: 'enigma_robe', name: 'Enigma Robe', base: 'plate_mail', rarity: RARITY.UNIQUE,
+        icon: 'item_plate_mail', dropLvl: 65,
         mods: [
             { stat: '+allSkills', value: 2 },
             { stat: 'flatSTR', value: 45 },
@@ -144,6 +144,67 @@ const UNIQUES = [
             { stat: 'pctColdDmg', value: 30 },
         ],
         flavor: '"Three ancestors speak through this totem. None of them are silent."'
+    },
+    // --- Unique Charms ---
+    {
+        id: 'gheeds_fortune', name: "Gheed's Fortune", base: 'grand_charm', rarity: RARITY.UNIQUE,
+        icon: 'item_charm_grand', dropLvl: 62,
+        mods: [
+            { stat: 'magicFind', value: 40 },
+            { stat: 'goldFind', value: 120 },
+            { stat: 'flatHP', value: 50 },
+        ],
+        flavor: '"Greed is... good? No, greed is GREAT."'
+    },
+    {
+        id: 'annihilus', name: 'Annihilus', base: 'small_charm', rarity: RARITY.UNIQUE,
+        icon: 'item_charm_small', dropLvl: 80,
+        mods: [
+            { stat: '+allSkills', value: 1 },
+            { stat: 'allRes', value: 15 },
+            { stat: 'flatHP', value: 20 },
+            { stat: 'flatMP', value: 20 },
+        ],
+        flavor: '"A shard of the Dark Lord himself, pulsating with infernal power."'
+    },
+    // --- Unique Weapons ---
+    {
+        id: 'windforce', name: 'Windforce', base: 'war_bow', rarity: RARITY.UNIQUE,
+        icon: 'item_war_bow', dropLvl: 73,
+        mods: [
+            { stat: 'pctDmg', value: 250 },
+            { stat: 'flatMaxDmg', value: 20 },
+            { stat: 'pctIAS', value: 20 },
+            { stat: 'manaStealPct', value: 6 },
+            { stat: 'flatDEX', value: 15 },
+        ],
+        flavor: '"It does not bend to the wind — the wind bends to it."'
+    },
+    // --- Unique Shields ---
+    {
+        id: 'herald_of_zakarum', name: 'Herald of Zakarum', base: 'tower_shield', rarity: RARITY.UNIQUE,
+        icon: 'item_shield_tower', dropLvl: 42,
+        mods: [
+            { stat: '+classSkills:paladin', value: 2 },
+            { stat: 'blockChance', value: 30 },
+            { stat: 'flatArmor', value: 180 },
+            { stat: 'allRes', value: 35 },
+            { stat: 'flatSTR', value: 20 },
+        ],
+        flavor: '"The golden shield of the Order, passed from one champion to the next."'
+    },
+    {
+        id: 'stormshield', name: 'Stormshield', base: 'tower_shield', rarity: RARITY.UNIQUE,
+        icon: 'item_shield_tower', dropLvl: 73,
+        mods: [
+            { stat: 'pctDmgReduce', value: 35 },
+            { stat: 'blockChance', value: 35 },
+            { stat: 'flatArmor', value: 140 },
+            { stat: 'coldRes', value: 30 },
+            { stat: 'lightRes', value: 25 },
+            { stat: 'flatSTR', value: 30 },
+        ],
+        flavor: '"Where thunder and lightning break upon an immovable wall."'
     },
 ];
 

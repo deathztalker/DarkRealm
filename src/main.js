@@ -348,13 +348,18 @@ function gameLoop(timestamp) {
         player.update(dt, input);
         fx.update(dt * 1000); // Particle update expects ms
 
-        // HP Regen out of combat
-        if (performance.now() - lastHitTime > 5000 && player.hp < player.maxHp && player.hp > 0) {
-            player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.005 * dt);
+        // HP Regen out of combat (passive) + gear-based regen (always active)
+        if (player.hp > 0 && player.hp < player.maxHp) {
+            let hpRegen = (player.lifeRegenPerSec || 0) * dt;
+            if (performance.now() - lastHitTime > 5000) {
+                hpRegen += player.maxHp * 0.005 * dt; // Passive OOC regen
+            }
+            if (hpRegen > 0) player.hp = Math.min(player.maxHp, player.hp + hpRegen);
         }
-        // MP Regen (always, slower)
+        // MP Regen (always, slower) + gear-based regen
         if (player.mp < player.maxMp && player.hp > 0) {
-            player.mp = Math.min(player.maxMp, player.mp + player.maxMp * 0.003 * dt);
+            const mpRegen = player.maxMp * 0.003 * dt + (player.manaRegenPerSec || 0) * dt;
+            player.mp = Math.min(player.maxMp, player.mp + mpRegen);
         }
     }
     if (camera) {
@@ -830,6 +835,13 @@ function checkDeaths() {
             }
 
             if (e.type === 'boss' && zoneLevel === 5) {
+                // Progression Unlock!
+                if (!player.maxDifficulty) player.maxDifficulty = 0;
+                let unlockedDiff = false;
+                if (difficulty === player.maxDifficulty && player.maxDifficulty < 2) {
+                    player.maxDifficulty++;
+                    unlockedDiff = true;
+                }
                 setTimeout(() => {
                     $('victory-screen').classList.remove('hidden');
                     $('victory-stats').textContent = `Level ${player.level} ${player.className} — The butcher is no more.`;
@@ -838,6 +850,11 @@ function checkDeaths() {
                 tp.targetZone = 6;
                 gameObjects.push(tp);
                 addCombatLog(`The Ancient Evil has been defeated! The path forward opens...`, 'log-crit');
+                if (unlockedDiff) {
+                    const diffName = player.maxDifficulty === 1 ? 'Nightmare' : 'Hell';
+                    addCombatLog(`⭐ ${diffName} Difficulty Unlocked! ⭐`, 'log-crit');
+                    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: Array.from(discoveredWaypoints) });
+                }
             }
         }
     }
@@ -2293,7 +2310,8 @@ function itemTooltipText(item) {
 
     const friendlyNames = {
         flatSTR: 'Strength', flatDEX: 'Dexterity', flatVIT: 'Vitality', flatINT: 'Intellect',
-        flatHP: 'Life', flatMP: 'Mana', flatArmor: 'Defense', pctArmor: 'Enhanced Defense',
+        flatHP: 'Life', flatMP: 'Mana', pctHP: 'Enhanced Life', pctMP: 'Enhanced Mana',
+        flatArmor: 'Defense', pctArmor: 'Enhanced Defense',
         pctDmg: 'Enhanced Damage', flatMinDmg: 'Minimum Damage', flatMaxDmg: 'Maximum Damage',
         fireRes: 'Fire Resist', coldRes: 'Cold Resist', lightRes: 'Lightning Resist', poisRes: 'Poison Resist',
         allRes: 'All Resistances', critChance: 'Critical Strike Chance', critMulti: 'Critical Damage',
@@ -2301,7 +2319,11 @@ function itemTooltipText(item) {
         lifeRegenPerSec: 'Life Replenish', manaRegenPerSec: 'Mana Regen', magicFind: 'Magic Find', goldFind: 'Gold Find',
         pctFireDmg: 'Fire Skill Damage', pctColdDmg: 'Cold Skill Damage', pctLightDmg: 'Lightning Skill Damage',
         pctPoisonDmg: 'Poison Skill Damage', pctShadowDmg: 'Shadow Skill Damage', pctHolyDmg: 'Holy Skill Damage',
-        blockChance: 'Chance to Block'
+        blockChance: 'Chance to Block', pctIAS: 'Increased Attack Speed',
+        pctDmgReduce: 'Damage Reduced', flatDmgReduce: 'Damage Reduced',
+        magicDmgReduce: 'Magic Damage Reduced', thorns: 'Attacker Takes Damage',
+        poisonDmgPerSec: 'Poison Damage Over 3 Seconds', pctAtkRating: 'Attack Rating',
+        sockets: 'Sockets',
     };
 
     t += `<div class="tooltip-stats" style="color:#fff;">`;
@@ -3050,8 +3072,42 @@ function renderSaveSlots() {
             if (e.target.classList.contains('slot-delete')) return;
             const saveData = SaveSystem.loadSlot(slot.id);
             if (saveData) {
-                initAudio();
-                startGame(slot.id, saveData);
+                let pData = null;
+                try { pData = typeof saveData.player === 'string' ? JSON.parse(saveData.player) : saveData.player; } catch(err){}
+                const maxDiff = (pData && pData.maxDifficulty) ? pData.maxDifficulty : 0;
+                
+                if (maxDiff > 0) {
+                    const picker = document.createElement('div');
+                    picker.className = 'dialogue-picker-menu';
+                    picker.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(10,8,5,0.95); border:1px solid #bf642f; padding:20px; z-index:2000; text-align:center; box-shadow:0 0 20px #000;';
+                    picker.innerHTML = `<h3 style="color:var(--gold); margin-bottom:15px; font-family:'Cinzel',serif;">Select Difficulty</h3>`;
+                    
+                    for (let d = 0; d <= maxDiff; d++) {
+                        const btn = document.createElement('button');
+                        btn.className = 'btn-secondary';
+                        btn.style.cssText = 'display:block; width:100%; margin-bottom:8px;';
+                        btn.textContent = DIFFICULTY_NAMES[d];
+                        btn.onclick = (ev) => {
+                            ev.stopPropagation();
+                            saveData.difficulty = d; // override difficulty for this session
+                            picker.remove();
+                            initAudio();
+                            startGame(slot.id, saveData);
+                        };
+                        picker.appendChild(btn);
+                    }
+                    
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.className = 'btn-secondary small';
+                    cancelBtn.textContent = 'Cancel';
+                    cancelBtn.onclick = (ev) => { ev.stopPropagation(); picker.remove(); };
+                    picker.appendChild(cancelBtn);
+                    
+                    document.body.appendChild(picker);
+                } else {
+                    initAudio();
+                    startGame(slot.id, saveData);
+                }
             }
         });
 
