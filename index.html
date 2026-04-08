@@ -43,6 +43,11 @@
         </div>
         <button id="btn-new-game" class="btn-primary" disabled>Enter the Realm</button>
         <button id="btn-continue" class="btn-secondary">Continue</button>
+        <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+            <button id="btn-export-save" class="btn-secondary small" title="Export save data to a file">Export Save</button>
+            <button id="btn-import-save" class="btn-secondary small" title="Import save data from a file">Import Save</button>
+            <input type="file" id="import-file" style="display:none;" accept=".json">
+        </div>
       </div>
       <div class="save-slots" id="save-slots" style="display:none;">
         <!-- Save slot selection -->

@@ -36,11 +36,23 @@ export class TalentTree {
     }
 
     /**
-     * Synergy bonus: sum of (synergyNode.basePoints × bonusPerPoint)
+     * Synergy bonus: sum of (synergyNode.basePoints × pctPerPt)
      * returned as a decimal multiplier (e.g. 0.20 = +20%)
      */
     synergyBonus(targetSkillId) {
         let bonus = 0;
+        const targetSkill = this.skillMap[targetSkillId];
+        
+        if (targetSkill && targetSkill.synergies) {
+            for (const syn of targetSkill.synergies) {
+                const pts = this.baseLevel(syn.from);
+                if (pts > 0) {
+                    bonus += (pts * syn.pctPerPt) / 100;
+                }
+            }
+        }
+        
+        // Also support old/legacy synergy nodes if they exist
         for (const [id, skill] of Object.entries(this.skillMap)) {
             if (skill.type === 'synergy' && skill.targetSkill === targetSkillId) {
                 const pts = this.baseLevel(id);

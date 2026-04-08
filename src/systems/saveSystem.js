@@ -112,5 +112,39 @@ export const SaveSystem = {
         } catch { return false; }
     },
 
+    /** Export all save data as a JSON string */
+    exportData() {
+        try {
+            const slots = localStorage.getItem(SLOTS_KEY);
+            const stash = localStorage.getItem(SHARED_STASH_KEY);
+            const data = {
+                slots: slots ? JSON.parse(slots) : [],
+                sharedStash: stash ? JSON.parse(stash) : { items: Array(20).fill(null), gold: 0 }
+            };
+            return JSON.stringify(data);
+        } catch (e) {
+            console.error('Failed to export data:', e);
+            return null;
+        }
+    },
+
+    /** Import save data from a JSON string */
+    importData(jsonString) {
+        try {
+            const data = JSON.parse(jsonString);
+            if (data && Array.isArray(data.slots)) {
+                localStorage.setItem(SLOTS_KEY, JSON.stringify(data.slots));
+                if (data.sharedStash) {
+                    localStorage.setItem(SHARED_STASH_KEY, JSON.stringify(data.sharedStash));
+                }
+                return true;
+            }
+            return false;
+        } catch (e) {
+            console.error('Failed to import data:', e);
+            return false;
+        }
+    },
+
     clearSave() { }
 };

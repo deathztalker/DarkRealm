@@ -278,6 +278,8 @@ function startGame(slotId = null, loadPlayerData = null) {
         }
     }
 
+    window._difficulty = difficulty;
+
     // Potion Belt
     for (let i = 0; i < 4; i++) {
         const slotEl = $(`pi-${i}`);
@@ -1021,6 +1023,7 @@ function finishZoneLoad() {
     // Difficulty advancement: clearing Zone 5 advances difficulty
     if (zoneLevel > 5 && difficulty < 2) {
         difficulty++;
+        window._difficulty = difficulty;
         addCombatLog(`Difficulty increased to ${DIFFICULTY_NAMES[difficulty]}!`, 'log-crit');
     }
 
@@ -3274,6 +3277,44 @@ window.addEventListener('DOMContentLoaded', () => {
     $('btn-victory-menu').addEventListener('click', () => {
         $('victory-screen').classList.add('hidden');
         returnToMainMenu();
+    });
+
+    // Export / Import
+    $('btn-export-save').addEventListener('click', () => {
+        const data = SaveSystem.exportData();
+        if (!data) return;
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dark_realm_save_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    $('btn-import-save').addEventListener('click', () => {
+        $('import-file').click();
+    });
+
+    $('import-file').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            if (SaveSystem.importData(ev.target.result)) {
+                alert('Save data imported successfully!');
+                // Reload shared stash and slots
+                sharedStashData = SaveSystem.getSharedStash();
+                sharedStash = sharedStashData.items;
+                sharedGold = sharedStashData.gold;
+                renderSaveSlots();
+            } else {
+                alert('Failed to import save data. Invalid file format.');
+            }
+        };
+        reader.readAsText(file);
     });
 });
 

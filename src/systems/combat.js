@@ -100,6 +100,16 @@ export function applyDot(target, dmgPerSec, type, durationSec, source) {
  */
 export function applyDamage(attacker, target, dmgResult, skillId = null) {
     const { dealt, isCrit, type } = dmgResult;
+
+    // --- Block logic ---
+    if (target.blockChance && type === DMG_TYPE.PHYSICAL && dealt > 0) {
+        const blockCap = 75;
+        if (Math.random() * 100 < Math.min(blockCap, target.blockChance)) {
+            bus.emit('combat:damage', { attacker, target, dealt: 'Blocked!', isCrit: false, type: 'physical', worldX: target.x, worldY: target.y });
+            return; // No damage taken
+        }
+    }
+
     target.hp = Math.max(0, target.hp - dealt);
 
     // Life steal

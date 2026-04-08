@@ -141,11 +141,7 @@ export class Player {
                     break;
                 case 'resist_all':
                     const resBonus = (5 + slvl * 1.5);
-                    this.fireRes = Math.min(75, this.fireRes + resBonus);
-                    this.coldRes = Math.min(75, this.coldRes + resBonus);
-                    this.lightRes = Math.min(75, this.lightRes + resBonus);
-                    this.poisRes = Math.min(75, this.poisRes + resBonus);
-                    this.shadowRes = Math.min(75, this.shadowRes + resBonus);
+                    s.allRes = (s.allRes || 0) + resBonus;
                     break;
                 case 'vigor':
                     this.moveSpeed *= (1 + (20 + slvl * 1.5) / 100);
@@ -158,8 +154,10 @@ export class Player {
         }
 
         // Resistances
+        const diff = typeof window !== 'undefined' && window._difficulty ? window._difficulty : 0;
+        const resPenalty = diff === 2 ? 100 : (diff === 1 ? 40 : 0);
         for (const r of ['fireRes', 'coldRes', 'lightRes', 'poisRes', 'shadowRes']) {
-            this[r] = Math.min(75, (s[r] || 0) + (s.allRes || 0));
+            this[r] = Math.max(-100, Math.min(75, (s[r] || 0) + (s.allRes || 0) - resPenalty));
         }
 
         // Damage bonuses
