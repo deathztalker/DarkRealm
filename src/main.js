@@ -1499,12 +1499,74 @@ function updateSkillBar() {
     for (let i = 0; i < 5; i++) {
         const si = $(`si-${i}`);
         const skillId = player.hotbar[i];
+        
+        // Remove old listeners by cloning
+        const newSi = si.cloneNode(true);
+        si.parentNode.replaceChild(newSi, si);
+        
         if (skillId && player.skillMap[skillId]) {
-            si.innerHTML = `<i class="ra ${getIconForSkill(skillId)}" style="font-size: 28px; line-height: 48px; text-align: center; color: var(--gold); text-shadow: 0 0 5px #000; width: 100%; height: 100%; display: block; border-radius: 4px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);"></i>`;
+            newSi.innerHTML = `<i class="ra ${getIconForSkill(skillId)}" style="font-size: 28px; line-height: 48px; text-align: center; color: var(--gold); text-shadow: 0 0 5px #000; width: 100%; height: 100%; display: block; border-radius: 4px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);"></i>`;
+            
+            newSi.addEventListener('mouseenter', (e) => showSkillTooltip(skillId, e.clientX, e.clientY));
+            newSi.addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
+            newSi.addEventListener('mouseleave', hideTooltip);
         } else {
-            si.innerHTML = '';
+            newSi.innerHTML = '';
         }
     }
+}
+
+function showSkillTooltip(skillId, x, y) {
+    const tt = $('custom-tooltip');
+    tt.innerHTML = skillTooltipText(skillId);
+    tt.style.display = 'block';
+    moveTooltip(x, y);
+}
+
+function skillTooltipText(skillId) {
+    const skill = player.skillMap[skillId];
+    if (!skill) return '';
+    
+    const effLvl = player.effectiveSkillLevel(skillId);
+    const synBonus = player.talents.synergyBonus ? player.talents.synergyBonus(skillId) : 0;
+    
+    let t = `<div class="tooltip-inner" style="color:#fff; min-width: 220px;">`;
+    t += `<div class="tooltip-name" style="color:var(--gold);">${skill.name} <span style="color:#aaa; font-size:12px;">(Lv ${effLvl})</span></div>`;
+    t += `<div class="tooltip-rarity" style="color:#666; margin-bottom: 8px;">— Active Skill —</div>`;
+    t += `<div class="tooltip-stats" style="color:#ccc; font-size:12px;">${skill.desc}</div>`;
+    
+    t += `<div style="margin-top:10px; padding-top:6px; border-top:1px solid #333;">`;
+    if (skill.mana) t += `<div style="color:#4850b8;">Mana Cost: ${skill.mana}</div>`;
+    if (skill.cd) t += `<div style="color:#aaa;">Cooldown: ${skill.cd}s</div>`;
+    
+    if (skill.dmgBase) {
+        const baseDmg = skill.dmgBase + (skill.dmgPerLvl || 0) * (effLvl - 1);
+        const wepDmg = (player.wepMin + player.wepMax) / 2;
+        let totalBase = baseDmg + (skill.wepDmgPct ? wepDmg * (skill.wepDmgPct / 100) : 0);
+        
+        let typeMultiplier = 0;
+        const dmgType = skill.group === 'fire' || skill.group === 'cold' || skill.group === 'lightning' || skill.group === 'poison' || skill.group === 'shadow' || skill.group === 'holy' ? skill.group : 'physical';
+        
+        if (dmgType === 'fire') typeMultiplier = player.pctFireDmg || 0;
+        if (dmgType === 'cold') typeMultiplier = player.pctColdDmg || 0;
+        if (dmgType === 'lightning') typeMultiplier = player.pctLightDmg || 0;
+        if (dmgType === 'poison') typeMultiplier = player.pctPoisonDmg || 0;
+        if (dmgType === 'shadow') typeMultiplier = player.pctShadowDmg || 0;
+        if (dmgType === 'holy') typeMultiplier = player.pctHolyDmg || 0;
+        
+        const finalMultiplier = 1 + (player.pctDmg || 0) / 100 + synBonus + typeMultiplier / 100;
+        const finalDmg = Math.round(totalBase * finalMultiplier);
+        
+        const dmgColors = { fire: '#ff6030', cold: '#30ccff', lightning: '#ffff40', poison: '#50ff50', shadow: '#cc60ff', physical: '#ffffff', holy: '#ffd700' };
+        t += `<div style="color:${dmgColors[dmgType] || '#fff'}; font-weight:bold; margin-top:4px;">Damage: ${finalDmg} ${dmgType}</div>`;
+        
+        if (synBonus > 0) {
+            t += `<div style="color:#00ff00; font-size:11px;">+${Math.round(synBonus * 100)}% from Synergies</div>`;
+        }
+    }
+    
+    t += `</div></div>`;
+    return t;
 }
 
 function addCombatLog(text, cls = '') {
