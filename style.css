@@ -762,7 +762,26 @@ body {
   padding: 4px;
 }
 
-.panel.hidden {
+/* Side-by-side layout for large panels */
+#panel-inventory {
+  left: auto;
+  right: 5%;
+  transform: translateY(-50%);
+  width: 540px;
+  background: #0a0805;
+}
+
+#panel-shop, #panel-stash, #panel-character, #panel-mercenary, #panel-talents, #panel-quests {
+  left: 5%;
+  transform: translateY(-50%);
+}
+
+#panel-cube {
+  left: 35%;
+  transform: translateY(-50%);
+}
+
+.panel-header {
   display: none;
 }
 

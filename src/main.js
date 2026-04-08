@@ -349,6 +349,7 @@ function gameLoop(timestamp) {
     lastTime = timestamp;
 
     // Update
+    if (input) input.update();
     if (player) {
         player.update(dt, input);
         fx.update(dt * 1000); // Particle update expects ms

@@ -24,6 +24,9 @@ const BOSS_POOL = [
     { icon: 'enemy_spider', name: 'Kha\'thul the Unseen', hpMult: 8, dmgMult: 4, xpMult: 12 },
     { icon: 'enemy_skeleton', name: 'Bone Lord Varkath', hpMult: 12, dmgMult: 2.5, xpMult: 18 },
     { icon: 'enemy_golem', name: 'Infernal Sentinel', hpMult: 9, dmgMult: 3.5, xpMult: 14 },
+    { icon: 'enemy_demon', name: 'Azmodan, Lord of Sin', hpMult: 18, dmgMult: 4.5, xpMult: 25, riftOnly: true, element: 'fire' },
+    { icon: 'enemy_ghost', name: 'Mephisto, Lord of Hatred', hpMult: 15, dmgMult: 5.5, xpMult: 30, riftOnly: true, element: 'lightning' },
+    { icon: 'enemy_cultist', name: 'Baal, Lord of Destruction', hpMult: 22, dmgMult: 3.5, xpMult: 35, riftOnly: true, element: 'cold' },
 ];
 
 const ELITE_AFFIXES = [
@@ -72,20 +75,33 @@ export class Enemy {
 
         const scale = 1 + (this.level - 1) * 0.12;
         if (this.type === 'boss') {
-            const boss = BOSS_POOL[Math.floor(Math.random() * BOSS_POOL.length)];
+            let availableBosses = BOSS_POOL;
+            if (this.level > 7) {
+                availableBosses = BOSS_POOL.filter(b => b.riftOnly);
+                if (availableBosses.length === 0) availableBosses = BOSS_POOL;
+            } else {
+                availableBosses = BOSS_POOL.filter(b => !b.riftOnly);
+            }
+            
+            const boss = availableBosses[Math.floor(Math.random() * availableBosses.length)];
             this.icon = boss.icon || base.icon;
             this.name = boss.name;
             this.maxHp = Math.round(base.hp * scale * boss.hpMult);
             this.dmg = Math.round(base.dmg * scale * boss.dmgMult);
             this.xpReward = Math.round(base.xp * scale * boss.xpMult);
             
-            this.isButcher = boss.name.includes('Butcher') || Math.random() < 0.25;
+            this.isButcher = this.level === 5 && Math.random() < 1.0;
             if (this.isButcher) {
                 this.name = "The Butcher";
                 this.icon = 'enemy_demon';
                 this.maxHp = Math.round(this.maxHp * 1.5);
                 this.dmg = Math.round(this.dmg * 1.2);
                 this.chargeCd = 5;
+            }
+
+            if (boss.riftOnly) {
+                this.isRiftBoss = true;
+                this.element = boss.element || 'shadow';
             }
         } else {
             this.icon = base.icon;
@@ -386,8 +402,8 @@ export class Enemy {
             fx.emitShockwave(this.x, this.y, 100, '#ff6000');
             const d = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
             if (d < 100) {
-                applyDamage(this, player, { dealt: this.dmg * 2.5, isCrit: false, type: 'fire' });
-                addCombatLog("Fire Enchanted explosion hit you!", 'log-dmg');
+                import('../systems/combat.js').then(c => c.applyDamage(this, player, { dealt: this.dmg * 2.5, isCrit: false, type: 'fire' }));
+                bus.emit('combat:log', { text: "Fire Enchanted explosion hit you!", type: 'log-dmg' });
             }
         }
         if (this.isColdEnchanted) {
@@ -395,11 +411,34 @@ export class Enemy {
             fx.emitShockwave(this.x, this.y, 120, '#80d0ff');
             const d = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
             if (d < 120) {
-                applyDamage(this, player, { dealt: this.dmg * 1.5, isCrit: false, type: 'cold' });
-                import('../systems/combat.js').then(c => c.applyStatus(player, 'chill', 5, 0.5));
-                addCombatLog("Cold Enchanted nova froze you!", 'log-dmg');
+                import('../systems/combat.js').then(c => {
+                    c.applyDamage(this, player, { dealt: this.dmg * 1.5, isCrit: false, type: 'cold' });
+                    c.applyStatus(player, 'chill', 5, 0.5);
+                });
+                bus.emit('combat:log', { text: "Cold Enchanted nova froze you!", type: 'log-dmg' });
             }
         }
+    }
+
+    _castRiftNova(element) {
+        bus.emit('combat:log', { text: `${this.name} unleashes a devastating ${element} nova!`, type: 'log-crit' });
+        const colors = { fire: '#ff4000', cold: '#4080ff', lightning: '#ffff40', shadow: '#cc60ff', physical: '#aaaaaa' };
+        bus.emit('combat:spawnAoE', { aoe: {
+            x: this.x, y: this.y, radius: 150, duration: 1.0, dmg: this.dmg * 2, type: element, source: this, active: true, hasHit: false,
+            update: function(dt, enemies, player) {
+                if (!this.hasHit) {
+                    const d = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
+                    if (d < this.radius) { 
+                        import('../systems/combat.js').then(c => c.applyDamage(this.source, player, { dealt: this.dmg, isCrit: false, type: this.type }));
+                    }
+                    this.hasHit = true;
+                }
+            },
+            render: (r) => { 
+                fx.emitBurst(this.x, this.y, colors[element] || '#ff0000', 40, 3); 
+                fx.emitShockwave(this.x, this.y, 150, colors[element] || '#ff0000'); 
+            }
+        }});
     }
 
     _setAnimState(state) {

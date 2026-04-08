@@ -472,13 +472,18 @@ export class Player {
             }
         };
 
-        // --- WASD Movement ---
+        // --- WASD & Gamepad Movement ---
         if (input && this.attackCd <= 0) {
             let kx = 0, ky = 0;
             if (input.isDown('KeyW') || input.isDown('ArrowUp')) ky -= 1;
             if (input.isDown('KeyS') || input.isDown('ArrowDown')) ky += 1;
             if (input.isDown('KeyA') || input.isDown('ArrowLeft')) kx -= 1;
             if (input.isDown('KeyD') || input.isDown('ArrowRight')) kx += 1;
+
+            if (input.gamepadState && input.gamepadState.connected) {
+                kx += input.gamepadState.axes[0];
+                ky += input.gamepadState.axes[1];
+            }
 
             if (kx !== 0 || ky !== 0) {
                 const len = Math.sqrt(kx*kx + ky*ky);
@@ -487,6 +492,19 @@ export class Player {
 
                 this.path = [];
                 this.attackTarget = null;
+            }
+
+            // Aiming direction
+            if (input.gamepadState && input.gamepadState.connected) {
+                const rsX = input.gamepadState.axes[2];
+                const rsY = input.gamepadState.axes[3];
+                if (Math.abs(rsX) > 0.1 || Math.abs(rsY) > 0.1) {
+                    this.moveDir = { x: rsX, y: rsY };
+                } else if (kx !== 0 || ky !== 0) {
+                    this.moveDir = { x: kx, y: ky };
+                }
+            } else if (kx !== 0 || ky !== 0) {
+                this.moveDir = { x: kx, y: ky };
             }
         }
 
