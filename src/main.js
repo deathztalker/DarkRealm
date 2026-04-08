@@ -316,15 +316,16 @@ function startGame(slotId = null, loadPlayerData = null) {
 
     updateHud();
 
-    // Ensure boss bar hidden unless zone 5
+    // Ensure boss bar hidden unless zone 5 or rift boss
+    const isBossZone = zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0);
     const bossBar = $('boss-hp-bar');
-    if (bossBar && zoneLevel !== 5) bossBar.classList.add('hidden');
+    if (bossBar && !isBossZone) bossBar.classList.add('hidden');
 
     // Initial save
     SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: [...discoveredWaypoints] });
 
     // Initial ambient audio
-    if (zoneLevel === 5) {
+    if (isBossZone) {
         startAmbientBoss();
     } else if (zoneLevel > 0) {
         startAmbientDungeon();
@@ -647,12 +648,21 @@ function gameLoop(timestamp) {
     // Premium Ambient Lighting Mask (affecting everything)
     const cx = renderer.width / 2;
     const cy = renderer.height / 2;
-    const radius = 450; // Larger vision radius
-    const grd = renderer.ctx.createRadialGradient(cx, cy, 100, cx, cy, radius);
+    
+    // Dynamic pulsing and gear-based light radius
+    const baseRadius = 450 + (player.lightRadius || 0) * 50;
+    const pulse = Math.sin(lastTime * 0.002) * 15;
+    const radius = Math.max(100, baseRadius + pulse); 
+    
+    const grd = renderer.ctx.createRadialGradient(cx, cy, 50, cx, cy, radius);
+    
+    // In town or boss room, make it slightly brighter overall
+    const minAlpha = (zoneLevel === 0) ? 0.6 : (isBossZone ? 0.8 : 0.95);
+    
     grd.addColorStop(0, 'rgba(0, 0, 0, 0)');      // Full visibility at center
     grd.addColorStop(0.3, 'rgba(0, 0, 0, 0)');    // Wider clear area
-    grd.addColorStop(0.7, 'rgba(0, 0, 0, 0.4)');  // Atmospheric penumbra
-    grd.addColorStop(1, 'rgba(0, 0, 0, 0.95)');   // Outer darkness
+    grd.addColorStop(0.7, `rgba(0, 0, 0, ${minAlpha * 0.5})`);  // Atmospheric penumbra
+    grd.addColorStop(1, `rgba(0, 0, 0, ${minAlpha})`);   // Outer darkness
 
     renderer.ctx.fillStyle = grd;
     renderer.ctx.fillRect(0, 0, renderer.width, renderer.height);
@@ -836,22 +846,26 @@ function checkDeaths() {
                 }
             }
 
-            if (e.type === 'boss' && zoneLevel === 5) {
+            if (e.type === 'boss' && isBossZone) {
                 // Progression Unlock!
                 if (!player.maxDifficulty) player.maxDifficulty = 0;
                 let unlockedDiff = false;
-                if (difficulty === player.maxDifficulty && player.maxDifficulty < 2) {
+                if (difficulty === player.maxDifficulty && player.maxDifficulty < 2 && zoneLevel === 5) {
                     player.maxDifficulty++;
                     unlockedDiff = true;
                 }
+                
+                const bossMsg = zoneLevel === 5 ? 'The butcher is no more.' : `Rift Guardian defeated at Depth ${zoneLevel - 7}.`;
+                
                 setTimeout(() => {
                     $('victory-screen').classList.remove('hidden');
-                    $('victory-stats').textContent = `Level ${player.level} ${player.className} — The butcher is no more.`;
+                    $('victory-stats').textContent = `Level ${player.level} ${player.className} — ${bossMsg}`;
                 }, 1500);
+                
                 const tp = new GameObject('portal', e.x, e.y - 40, 'env_water');
-                tp.targetZone = 6;
+                tp.targetZone = zoneLevel === 5 ? 6 : zoneLevel + 1;
                 gameObjects.push(tp);
-                addCombatLog(`The Ancient Evil has been defeated! The path forward opens...`, 'log-crit');
+                addCombatLog(zoneLevel === 5 ? `The Ancient Evil has been defeated! The path forward opens...` : `The Rift Portal has opened!`, 'log-crit');
                 if (unlockedDiff) {
                     const diffName = player.maxDifficulty === 1 ? 'Nightmare' : 'Hell';
                     addCombatLog(`⭐ ${diffName} Difficulty Unlocked! ⭐`, 'log-crit');

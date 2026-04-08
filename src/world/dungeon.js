@@ -27,7 +27,7 @@ export class Dungeon {
 
     generate(zoneLevel = 1, theme = 'cathedral') {
         if (zoneLevel === 0) return this.generateTown();
-        if (zoneLevel === 5) return this.generateBossRoom(theme);
+        if (zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0)) return this.generateBossRoom(theme, zoneLevel);
 
         this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
         this.rooms = [];
@@ -237,7 +237,7 @@ export class Dungeon {
         return this;
     }
 
-    generateBossRoom(theme) {
+    generateBossRoom(theme, zoneLevel = 5) {
         this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
         this.rooms = [];
         this.enemySpawns = [];
@@ -272,7 +272,7 @@ export class Dungeon {
             x: cx * this.tileSize,
             y: cy * this.tileSize,
             type: 'boss',
-            level: 5,
+            level: zoneLevel,
         });
 
         // The exit is unreachable until the boss dies (handled in main.js)
