@@ -696,6 +696,17 @@ function gameLoop(timestamp) {
                 renderer.ctx.fillRect(ox + c * ts * scale, oy + r * ts * scale, ts * scale + 1, ts * scale + 1);
             }
         }
+        
+        // Objects (Shrines, Chests, Portals)
+        for (const obj of gameObjects) {
+            const or = Math.floor(obj.y / ts);
+            const oc = Math.floor(obj.x / ts);
+            if (explored[or] && explored[or][oc]) {
+                renderer.ctx.fillStyle = obj.type === 'portal' ? '#30ccff' : (obj.type === 'shrine' ? '#ffd700' : '#8b4513');
+                renderer.ctx.fillRect(ox + obj.x * scale - 1.5, oy + obj.y * scale - 1.5, 3, 3);
+            }
+        }
+
         renderer.ctx.fillStyle = '#0f0'; // Player
         renderer.ctx.fillRect(ox + player.x * scale - 2, oy + player.y * scale - 2, 4, 4);
     }
@@ -1834,10 +1845,15 @@ function renderMercenaryPanel() {
     `;
 }
 bus.on('ui:closeAll', () => {
-    ['inventory', 'talents', 'character', 'shop', 'stash', 'cube', 'quests'].forEach(p => {
+    ['inventory', 'talents', 'character', 'shop', 'stash', 'cube', 'quests', 'mercenary'].forEach(p => {
         const el = $(`panel-${p}`);
         if (el) el.classList.add('hidden');
     });
+    // Reset global interaction states
+    isIdentifying = false;
+    isLarzukSocketing = false;
+    socketingGemIndex = -1;
+    document.body.style.cursor = 'default';
 });
 
 // Town Portal
