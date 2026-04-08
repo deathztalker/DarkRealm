@@ -178,6 +178,11 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
  * Types: 'chill' (slows), 'frozen' (stops), 'burn' (DoT), 'stun' (stops), 'weaken' (less dmg).
  */
 export function applyStatus(target, type, duration, value = 0, source = null) {
+    // --- Cannot be Frozen check ---
+    if (target.isPlayer && target.cannotBeFrozen && (type === 'chill' || type === 'frozen')) {
+        return;
+    }
+
     if (!target._statuses) target._statuses = [];
 
     // Refresh existing status of same type

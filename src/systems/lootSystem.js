@@ -206,6 +206,52 @@ const UNIQUES = [
         ],
         flavor: '"Where thunder and lightning break upon an immovable wall."'
     },
+    {
+        id: 'butchers_cleaver', name: 'Butcher\'s Cleaver', base: 'war_axe', rarity: RARITY.UNIQUE,
+        icon: 'item_axe_war', dropLvl: 10,
+        mods: [
+            { stat: 'pctDmg', value: 80 },
+            { stat: 'lifeStealPct', value: 10 },
+            { stat: 'flatSTR', value: 15 },
+            { stat: 'thorns', value: 15 },
+        ],
+        flavor: '"FRESH MEAT!"'
+    },
+    {
+        id: 'vampire_gaze', name: 'Vampire Gaze', base: 'great_helm', rarity: RARITY.UNIQUE,
+        icon: 'item_helm_great', dropLvl: 41,
+        mods: [
+            { stat: 'lifeStealPct', value: 8 },
+            { stat: 'manaStealPct', value: 8 },
+            { stat: 'pctDmgReduce', value: 20 },
+            { stat: 'coldRes', value: 15 },
+        ],
+        flavor: '"The gaze that drains the soul before the body."'
+    },
+    {
+        id: 'gore_rider', name: 'Gore Rider', base: 'war_boots', rarity: RARITY.UNIQUE,
+        icon: 'item_boots_war', dropLvl: 47,
+        mods: [
+            { stat: 'pctMoveSpeed', value: 30 },
+            { stat: 'critChance', value: 15 },
+            { stat: 'flatDEX', value: 10 },
+            { stat: 'pctIAS', value: 10 },
+        ],
+        flavor: '"Walk through the blood of your enemies without losing your footing."'
+    },
+    {
+        id: 'hellfire_torch', name: 'Hellfire Torch', base: 'large_charm', rarity: RARITY.UNIQUE,
+        icon: 'item_charm_large', dropLvl: 75,
+        mods: [
+            { stat: '+allSkills', value: 3 },
+            { stat: 'allRes', value: 20 },
+            { stat: 'flatSTR', value: 20 },
+            { stat: 'flatDEX', value: 20 },
+            { stat: 'flatVIT', value: 20 },
+            { stat: 'flatINT', value: 20 },
+        ],
+        flavor: '"A flickering flame that has survived the depths of the Abyss."'
+    }
 ];
 
 export class LootSystem {

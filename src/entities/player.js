@@ -185,6 +185,16 @@ export class Player {
         
         // Attack Range
         this.attackRange = wep && wep.range ? Math.max(30, wep.range) : 30;
+
+        // Light Radius
+        this.lightRadius = s.lightRadius || 0;
+
+        // Special flags
+        this.cannotBeFrozen = !!s.cannotBeFrozen;
+
+        // Life/Mana after kill
+        this.manaAfterKill = s.manaAfterKill || 0;
+        this.lifeAfterKill = s.lifeAfterKill || 0;
     }
     _gearStats() {
         const s = {};

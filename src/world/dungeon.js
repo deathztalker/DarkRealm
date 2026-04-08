@@ -103,6 +103,14 @@ export class Dungeon {
                 const sType = shrineTypes[Math.floor(Math.random() * shrineTypes.length)];
                 this.objectSpawns.push({ type: 'shrine', x: sx2, y: sy2, icon: 'obj_shrine', shrineType: sType });
             }
+
+            // Place breakables (1-3 per room)
+            const numBreakables = 1 + Math.floor(Math.random() * 3);
+            for (let b = 0; b < numBreakables; b++) {
+                const bx = (room.x + 1 + Math.floor(Math.random() * (room.w - 2))) * this.tileSize;
+                const by = (room.y + 1 + Math.floor(Math.random() * (room.h - 2))) * this.tileSize;
+                this.objectSpawns.push({ type: 'breakable', x: bx, y: by, icon: 'obj_chest' });
+            }
         }
 
         return this;

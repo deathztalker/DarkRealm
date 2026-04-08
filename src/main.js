@@ -95,6 +95,48 @@ const RUNEWORDS = [
         sockets: 4,
         gems: ['rune_ral', 'rune_tir', 'rune_tal', 'rune_sol'],
         mods: [{stat: 'manaRegenPerSec', value: 40}, {stat: 'pctDmg', value: 200}, {stat: 'magicFind', value: 23}]
+    },
+    {
+        name: 'Ancient\'s Pledge',
+        types: ['shield'],
+        sockets: 3,
+        gems: ['rune_ral', 'rune_ort', 'rune_tal'],
+        mods: [{stat: 'allRes', value: 35}, {stat: 'pctArmor', value: 50}]
+    },
+    {
+        name: 'White',
+        types: ['wand'],
+        sockets: 2,
+        gems: ['rune_dol', 'rune_io'],
+        mods: [{stat: '+skillGroup:bone', value: 3}, {stat: 'pctIAS', value: 20}, {stat: 'flatMP', value: 13}]
+    },
+    {
+        name: 'Rhyme',
+        types: ['shield'],
+        sockets: 2,
+        gems: ['rune_shael', 'rune_eth'],
+        mods: [{stat: 'allRes', value: 25}, {stat: 'magicFind', value: 25}, {stat: 'cannotBeFrozen', value: 1}]
+    },
+    {
+        name: 'Honor',
+        types: ['weapon'],
+        sockets: 5,
+        gems: ['rune_amn', 'rune_el', 'rune_ith', 'rune_tir', 'rune_sol'],
+        mods: [{stat: 'pctDmg', value: 160}, {stat: 'lifeStealPct', value: 7}, {stat: 'flatSTR', value: 10}]
+    },
+    {
+        name: 'Steel',
+        types: ['weapon', 'sword', 'axe', 'mace'],
+        sockets: 2,
+        gems: ['rune_tir', 'rune_el'],
+        mods: [{stat: 'pctIAS', value: 25}, {stat: 'pctDmg', value: 20}, {stat: 'flatMinDmg', value: 3}]
+    },
+    {
+        name: 'Malice',
+        types: ['weapon'],
+        sockets: 3,
+        gems: ['rune_ith', 'rune_el', 'rune_eth'],
+        mods: [{stat: 'pctDmg', value: 33}, {stat: 'targetDefenseReduce', value: 25}, {stat: 'preventHeal', value: 1}]
     }
 ];
 
@@ -262,6 +304,10 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
             discoveredWaypoints = new Set(loadPlayerData.waypoints);
             discoveredWaypoints.add(0); // Always have town
         }
+        // Restore mercenary
+        if (loadPlayerData.mercenary) {
+            mercenary = Mercenary.deserialize(loadPlayerData.mercenary);
+        }
     } else {
         player = new Player(selectedClass);
         if (charName) player.charName = charName;
@@ -326,7 +372,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     if (bossBar && !isBossZone) bossBar.classList.add('hidden');
 
     // Initial save
-    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: [...discoveredWaypoints] });
+    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: [...discoveredWaypoints], mercenary: mercenary ? mercenary.serialize() : null });
 
     // Initial ambient audio
     if (isBossZone) {
@@ -609,8 +655,8 @@ function gameLoop(timestamp) {
     // Auto-save every 30 seconds
     if (timestamp - lastSaveTime > 30000 && activeSlotId) {
         lastSaveTime = timestamp;
-        SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: [...discoveredWaypoints] });
-        addCombatLog('Auto-saved', 'log-heal');
+        SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: [...discoveredWaypoints], mercenary: mercenary ? mercenary.serialize() : null });
+        addCombatLog('Progress Saved.', 'log-info');
     }
 
     renderer.text(`FPS: ${Math.round(1000 / dt)}`, renderer.width - 20, renderer.height - 20, { size: 10, align: 'right', color: '#555' });
@@ -706,6 +752,16 @@ function checkInteractions(pos) {
                     droppedItems.push({ ...itm, x: o.x + (Math.random() - 0.5) * 20, y: o.y + (Math.random() - 0.5) * 20 });
                 }
                 addCombatLog(`You opened a chest!`, 'log-info');
+            } else if (res && res.type === 'BREAKABLE') {
+                // Drop gold or trash
+                const goldAmt = 5 + Math.floor(Math.random() * 15) * (1 + difficulty * 0.5);
+                droppedGold.push({ x: o.x, y: o.y, amount: Math.round(goldAmt) });
+                if (Math.random() < 0.15) {
+                    const itm = loot.generate(zoneLevel, 'normal');
+                    droppedItems.push({ ...itm, x: o.x, y: o.y });
+                }
+                addCombatLog(`You smashed a barrel!`, 'log-info');
+                fx.emitBurst(o.x, o.y, '#8b4513', 10, 1.5);
             } else if (res && res.type === 'PORTAL') {
                 addCombatLog('Entering Portal...', 'log-level');
                 nextZone(res.targetZone);
@@ -764,6 +820,7 @@ function checkInteractions(pos) {
                     addCombatLog(`Picked up ${di.name}`, 'log-item');
                     bus.emit('item:pickup', { item: di });
                     droppedItems.splice(i, 1);
+                    playLoot();
                     renderInventory();
                 } else {
                     addCombatLog('Inventory full!', 'log-dmg');
@@ -806,6 +863,27 @@ function checkDeaths() {
             if (e.type === 'boss') fx.shake(500, 8);
 
             player.addXp(e.xpReward);
+
+            // Bosses guarantee at least one Rare+ item
+            if (e.type === 'boss') {
+                const bossItem = loot.generate(zoneLevel, Math.random() < 0.15 ? 'unique' : (Math.random() < 0.25 ? 'set' : 'rare'));
+                bossItem.x = e.x;
+                bossItem.y = e.y;
+                droppedItems.push(bossItem);
+                const beamColors = { rare: '#ffff00', unique: '#ff8000', set: '#00ff00' };
+                if (beamColors[bossItem.rarity]) fx.emitBurst(bossItem.x, bossItem.y - 20, beamColors[bossItem.rarity], 20, 2);
+            }
+
+            // Mana/Life after kill
+            if (player.manaAfterKill) {
+                player.mp = Math.min(player.maxMp, player.mp + player.manaAfterKill);
+                if (fx) fx.emitManaSteal(player.x, player.y);
+            }
+            if (player.lifeAfterKill) {
+                player.hp = Math.min(player.maxHp, player.hp + player.lifeAfterKill);
+                if (fx) fx.emitHeal(player.x, player.y);
+            }
+
             // Loot with MF/GF
             const item = loot.roll(e, { magicFind: player.magicFind || 0 });
             if (item) {
@@ -920,8 +998,21 @@ function nextZone(targetZone = null) {
         } else {
             zoneLevel++;
         }
+        
+        let theme = 'cathedral';
+        if (zoneLevel === 0) theme = 'town';
+        else if (zoneLevel <= 2) theme = 'wilderness';
+        else if (zoneLevel <= 4) theme = 'cathedral';
+        else if (zoneLevel === 5) theme = 'arena';
+        else if (zoneLevel <= 7) theme = 'catacombs';
+        else {
+            // Infinite Rifts: Random theme
+            const themes = ['cathedral', 'catacombs', 'wilderness'];
+            theme = themes[Math.floor(Math.random() * themes.length)];
+        }
+
         dungeon = new Dungeon(80, 60, 16);
-        dungeon.generate(zoneLevel, zoneLevel > 5 ? 'catacombs' : 'cathedral');
+        dungeon.generate(zoneLevel, theme);
 
         finishZoneLoad();
         isTransitioning = false;
@@ -997,7 +1088,7 @@ function finishZoneLoad() {
     const endgameMult = zoneLevel > 7 ? 1 + (zoneLevel - 7) * 0.3 : 1;
     $('zone-name').textContent = zoneName + diffLabel;
     addCombatLog(`Entered ${zoneName}${diffLabel}!`, 'log-level');
-    if (activeSlotId) SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: [...discoveredWaypoints] });
+    if (activeSlotId) SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: [...discoveredWaypoints], mercenary: mercenary ? mercenary.serialize() : null });
 
     // Apply endgame scaling
     if (endgameMult > 1 && enemies.length > 0) {
@@ -2071,6 +2162,9 @@ function renderCharacterPanel() {
         ['─ FIND ─', ''],
         ['Magic Find', (player.magicFind || 0) + '%'],
         ['Gold Find', (player.goldFind || 0) + '%'],
+        ['─ DIFFICULTY ─', ''],
+        ['Current', DIFFICULTY_NAMES[difficulty]],
+        ['Resist Penalty', (difficulty === 2 ? '-100%' : (difficulty === 1 ? '-40%' : '0%'))],
     ];
     panel.innerHTML = stats.map(([n, v, tooltip]) =>
         n.startsWith('─') ? `<div class="stat-row" style="border-bottom:none;"><span class="stat-name" style="color:var(--gold);font-size:0.75rem;">${n}</span><span></span></div>`
@@ -2513,7 +2607,7 @@ function hideTooltip() {
     $('custom-tooltip').style.display = 'none';
 }
 
-function itemTooltipText(item) {
+function itemTooltipText(item, isComparison = false) {
     const colors = {
         normal: '#fff',
         magic: '#4850b8',
@@ -2523,7 +2617,9 @@ function itemTooltipText(item) {
     };
     const c = (item.identified === false) ? '#888' : (colors[item.rarity] || '#fff');
 
-    let t = `<div class="tooltip-inner" style="color:${c};">`;
+    let t = `<div class="tooltip-inner" style="color:${c}; ${isComparison ? 'border-color: #444; opacity: 0.9;' : ''}">`;
+    if (isComparison) t += `<div style="font-size:10px; color:#aaa; text-align:center; margin-bottom:4px;">— EQUIPPED —</div>`;
+    
     t += `<div class="tooltip-name">${item.identified === false ? 'Unidentified ' + (items[item.baseId]?.name || 'Item') : (item.name || items[item.baseId]?.name || 'Unknown Item')}</div>`;
 
     // Force gems/runes to be identified in tooltip always
@@ -2541,6 +2637,10 @@ function itemTooltipText(item) {
         const rarityLabel = item.rarity === 'set' ? (item.setName || "SET ITEM") : item.rarity.toUpperCase();
         t += `<div class="tooltip-rarity">— ${rarityLabel} —</div>`;
     }
+
+    // Item Tier
+    const tier = item.ilvl >= 50 ? 'Elite' : (item.ilvl >= 25 ? 'Exceptional' : 'Normal');
+    t += `<div style="font-size:10px; color:#888; text-align:center; margin-bottom:4px;">${tier} Tier</div>`;
 
     const friendlyNames = {
         flatSTR: 'Strength', flatDEX: 'Dexterity', flatVIT: 'Vitality', flatINT: 'Intellect',
@@ -3170,6 +3270,30 @@ $('btn-stash-withdraw')?.addEventListener('click', () => {
         updateHud();
         addCombatLog(`Withdrew ${amt} gold.`, 'log-heal');
     }
+});
+
+$('btn-sort-stash')?.addEventListener('click', () => {
+    const items = currentStashTab === 'personal' ? stash : sharedStash;
+    
+    // Weight map for sorting
+    const rarityWeights = { unique: 5, set: 4, rare: 3, magic: 2, normal: 1 };
+    const typeWeights = { weapon: 10, armor: 9, helm: 8, shield: 7, gloves: 6, boots: 5, belt: 4, ring: 3, amulet: 2, gem: 1, potion: 0, scroll: 0, charm: 0 };
+
+    const sorted = items.filter(i => i !== null).sort((a, b) => {
+        if (rarityWeights[b.rarity] !== rarityWeights[a.rarity]) 
+            return rarityWeights[b.rarity] - rarityWeights[a.rarity];
+        if (typeWeights[b.type] !== typeWeights[a.type]) 
+            return typeWeights[b.type] - typeWeights[a.type];
+        return b.ilvl - a.ilvl;
+    });
+
+    for (let i = 0; i < items.length; i++) {
+        items[i] = sorted[i] || null;
+    }
+    
+    if (currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
+    renderStash();
+    addCombatLog('Stash Organized.', 'log-info');
 });
 
 

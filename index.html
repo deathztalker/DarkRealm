@@ -219,9 +219,12 @@
 
   <div id="panel-stash" class="panel hidden">
     <div class="panel-header"><span>Alijo (Stash)</span><button class="panel-close" data-panel="stash">✕</button></div>
-    <div style="display:flex; background:#111; border-bottom:1px solid #333;">
-      <button id="btn-stash-personal" class="stash-tab active" style="flex:1; padding:8px; border:none; background:transparent; color:#888; cursor:pointer; font-family:Cinzel,serif; font-size:11px;">PERSONAL</button>
-      <button id="btn-stash-shared" class="stash-tab" style="flex:1; padding:8px; border:none; background:transparent; color:#888; cursor:pointer; font-family:Cinzel,serif; font-size:11px;">SHARED</button>
+    <div style="display:flex; background:#111; border-bottom:1px solid #333; align-items:center; justify-content:space-between; padding-right:8px;">
+      <div style="display:flex; flex:1;">
+        <button id="btn-stash-personal" class="stash-tab active" style="padding:8px; border:none; background:transparent; color:#888; cursor:pointer; font-family:Cinzel,serif; font-size:11px;">PERSONAL</button>
+        <button id="btn-stash-shared" class="stash-tab" style="padding:8px; border:none; background:transparent; color:#888; cursor:pointer; font-family:Cinzel,serif; font-size:11px;">SHARED</button>
+      </div>
+      <button id="btn-sort-stash" class="btn-secondary small" style="padding: 2px 8px; font-size:10px;">SORT</button>
     </div>
     <div id="stash-grid" style="display:grid; grid-template-columns:repeat(5,40px); gap:4px; padding:10px;">
       <!-- 20 slots populated by JS -->

@@ -17,6 +17,10 @@ export class GameObject {
             this.isOpen = true;
             this.icon = 'obj_chest_open';
             return { type: 'LOOT', count: 2 + Math.floor(Math.random() * 3) };
+        } else if (this.type === 'breakable' && !this.isOpen) {
+            this.isOpen = true;
+            this.icon = 'obj_chest_open'; // Placeholder for destroyed state
+            return { type: 'BREAKABLE' };
         } else if (this.type === 'portal') {
             return { type: 'PORTAL', targetZone: this.targetZone };
         } else if (this.type === 'waypoint') {

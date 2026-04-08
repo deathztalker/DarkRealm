@@ -17,6 +17,10 @@ const ENEMY_TYPES = {
     golem: { icon: 'enemy_golem', name: 'Stone Golem', hp: 120, dmg: 18, spd: 25, xp: 40, armor: 30, group: 'construct', attackType: 'melee' },
     cultist: { icon: 'enemy_cultist', name: 'Cultist', hp: 45, dmg: 14, spd: 40, xp: 28, armor: 4, group: 'human', lightRes: 20, attackType: 'caster', element: 'fire', projColor: '#ff6000', projRadius: 10 },
     bat: { icon: 'enemy_bat', name: 'Void Bat', hp: 20, dmg: 4, spd: 80, xp: 10, armor: 0, group: 'beast', attackType: 'melee' },
+    wraith: { icon: 'enemy_ghost', name: 'Wraith', hp: 45, dmg: 10, spd: 55, xp: 30, armor: 0, group: 'undead', lightRes: 50, attackType: 'melee', element: 'lightning' },
+    fetish: { icon: 'enemy_goblin', name: 'Fetish', hp: 25, dmg: 8, spd: 90, xp: 15, armor: 0, group: 'humanoid', attackType: 'melee' },
+    vampire: { icon: 'enemy_cultist', name: 'Vampire', hp: 90, dmg: 22, spd: 45, xp: 60, armor: 12, group: 'undead', fireRes: 40, attackType: 'caster', element: 'fire', projColor: '#ff0000', projRadius: 14 },
+    scarab: { icon: 'enemy_bat', name: 'Death Beetle', hp: 70, dmg: 12, spd: 40, xp: 40, armor: 25, group: 'beast', lightRes: 75, attackType: 'melee', isLightningEnchanted: true },
 };
 
 const BOSS_POOL = [
@@ -524,7 +528,14 @@ export class Enemy {
         const barH = 2;
         renderer.ctx.fillStyle = '#333';
         renderer.ctx.fillRect(this.x - barW / 2, this.y - 15, barW, barH);
-        renderer.ctx.fillStyle = isElite ? '#f0d030' : (this.type === 'boss' ? '#eeca2c' : '#c0392b');
+        
+        let hpColor = '#c0392b'; // Default red
+        if (this.type === 'unique') hpColor = '#bf642f'; // Unique Gold
+        else if (this.type === 'rare') hpColor = '#ffff00'; // Rare Yellow
+        else if (this.type === 'champion') hpColor = '#4850b8'; // Champion Blue
+        else if (this.type === 'boss') hpColor = '#eeca2c'; // Boss Bright Gold
+        
+        renderer.ctx.fillStyle = hpColor;
         renderer.ctx.fillRect(this.x - barW / 2, this.y - 15, barW * (this.hp / this.maxHp), barH);
 
         // Name
