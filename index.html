@@ -210,9 +210,23 @@
   </div>
 
   <div id="panel-stash" class="panel hidden">
-    <div class="panel-header"><span>Personal Stash</span><button class="panel-close" data-panel="stash">✕</button></div>
+    <div class="panel-header"><span>Alijo (Stash)</span><button class="panel-close" data-panel="stash">✕</button></div>
+    <div style="display:flex; background:#111; border-bottom:1px solid #333;">
+      <button id="btn-stash-personal" class="stash-tab active" style="flex:1; padding:8px; border:none; background:transparent; color:#888; cursor:pointer; font-family:Cinzel,serif; font-size:11px;">PERSONAL</button>
+      <button id="btn-stash-shared" class="stash-tab" style="flex:1; padding:8px; border:none; background:transparent; color:#888; cursor:pointer; font-family:Cinzel,serif; font-size:11px;">SHARED</button>
+    </div>
     <div id="stash-grid" style="display:grid; grid-template-columns:repeat(5,40px); gap:4px; padding:10px;">
       <!-- 20 slots populated by JS -->
+    </div>
+    <div style="padding:10px; border-top:1px solid #333; background:rgba(0,0,0,0.3);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span style="color:var(--gold); font-size:12px;">STASH GOLD:</span>
+        <span id="stash-gold-val" style="color:#fff; font-size:12px;">0</span>
+      </div>
+      <div style="display:flex; gap:4px;">
+        <button id="btn-stash-deposit" class="btn-secondary small" style="flex:1; font-size:9px;">DEPOSIT</button>
+        <button id="btn-stash-withdraw" class="btn-secondary small" style="flex:1; font-size:9px;">WITHDRAW</button>
+      </div>
     </div>
   </div>
 
@@ -242,6 +256,20 @@
     <div class="panel-header"><span>Character</span><button class="panel-close" data-panel="character">✕</button>
     </div>
     <div id="character-stats-panel"></div>
+  </div>
+
+  <div id="panel-mercenary" class="panel hidden" style="width:240px;">
+    <div class="panel-header"><span>Companion (O)</span><button class="panel-close" data-panel="mercenary">✕</button></div>
+    <div style="padding:10px; text-align:center;">
+      <div id="merc-paperdoll" style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:15px;">
+        <div class="equip-slot merc-slot" data-slot="head" data-label="Helm" style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+        <div class="equip-slot merc-slot" data-slot="chest" data-label="Armor" style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+        <div class="equip-slot merc-slot" data-slot="mainhand" data-label="Weapon" style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+      </div>
+      <div id="merc-stats-display" style="font-size:11px; text-align:left; color:#aaa; background:rgba(0,0,0,0.3); padding:8px; border-radius:4px;">
+        <!-- Stats here -->
+      </div>
+    </div>
   </div>
   </div>
 

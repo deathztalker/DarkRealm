@@ -121,6 +121,24 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
         bus.emit('combat:damage', { attacker: target, target: attacker, dealt: reflected, isCrit: false, type: 'physical', worldX: attacker.x, worldY: attacker.y });
     }
 
+    // --- Durability loss ---
+    if (attacker.isPlayer && attacker.equipment?.mainhand) {
+        const item = attacker.equipment.mainhand;
+        if (item.maxDurability > 0 && item.durability > 0 && Math.random() < 0.1) {
+            item.durability--;
+            if (item.durability === 0) bus.emit('item:broken', { item, slot: 'mainhand' });
+        }
+    }
+    if (target.isPlayer && target.equipment) {
+        const slots = ['chest', 'head', 'offhand', 'gloves', 'boots'];
+        const slot = slots[Math.floor(Math.random() * slots.length)];
+        const item = target.equipment[slot];
+        if (item && item.maxDurability > 0 && item.durability > 0 && Math.random() < 0.15) {
+            item.durability--;
+            if (item.durability === 0) bus.emit('item:broken', { item, slot });
+        }
+    }
+
     // --- Knockback logic ---
     // If damage is high enough (e.g. >10% of maxHp) or specifically has knockback
     const threshold = target.maxHp * 0.1;

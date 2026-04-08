@@ -14,6 +14,7 @@ import { loot, SETS } from './systems/lootSystem.js';
 import { updateStatuses } from './systems/combat.js';
 import { SaveSystem } from './systems/saveSystem.js';
 import { NPC } from './entities/npc.js';
+import { Mercenary } from './entities/mercenary.js';
 import { GameObject } from './entities/object.js';
 import { ASSET_NAMES } from './data/assets_list.js';
 import { initAudio, playLoot, playCastFire, playCastCold, playCastLightning, playCastPoison, playCastShadow, playDeathSfx, playZoneTransition, startAmbientDungeon, startAmbientBoss, stopAmbient } from './engine/audio.js';
@@ -47,6 +48,7 @@ let lootFilter = 0; // 0=show all, 1=hide normal, 2=hide normal+magic
 let showFullMap = false;
 let unlockedAchievements = new Set();
 let isIdentifying = false; // Global identification state
+let isLarzukSocketing = false; // Global socketing service state
 let activeDialogueNpc = null; // Track NPC with open dialogue bubble
 
 // ─── RUNEWORDS ───
@@ -369,7 +371,7 @@ function gameLoop(timestamp) {
     }
 
     // Update entities — pass dungeon for collision checks
-    for (const e of (enemies || [])) e.update(dt, player, dungeon);
+    for (const e of (enemies || [])) e.update(dt, player, dungeon, enemies);
     for (const n of npcs) n.update(dt);
     if (player) player.updateMinions(dt, enemies, dungeon);
 
@@ -1663,6 +1665,13 @@ bus.on('player:levelup', d => {
     updateSkillBar();
 });
 
+bus.on('item:broken', d => {
+    addCombatLog(`⚠ ALERT: Your ${d.item.name} is BROKEN!`, 'log-dmg');
+    if (player) player._recalcStats();
+    renderInventory();
+    renderCharacterPanel();
+});
+
 bus.on('skill:used', d => {
     if (camera && renderer && player) {
         // Spellcast animation
@@ -1687,11 +1696,63 @@ function togglePanel(name) {
     if (name === 'talents' && !panel.classList.contains('hidden')) renderTalentTree();
     if (name === 'character' && !panel.classList.contains('hidden')) renderCharacterPanel();
     if (name === 'inventory' && !panel.classList.contains('hidden')) renderInventory();
+    if (name === 'mercenary' && !panel.classList.contains('hidden')) renderMercenaryPanel();
 }
 
 bus.on('ui:toggle:inventory', () => togglePanel('inventory'));
 bus.on('ui:toggle:talents', () => togglePanel('talents'));
 bus.on('ui:toggle:character', () => togglePanel('character'));
+bus.on('ui:toggle:mercenary', () => togglePanel('mercenary'));
+
+function renderMercenaryPanel() {
+    if (!mercenary) {
+        $('merc-paperdoll').style.opacity = '0.3';
+        $('merc-stats-display').innerHTML = '<div style="text-align:center;padding:20px;">No active companion.<br>Hire a Rogue in town.</div>';
+        return;
+    }
+    $('merc-paperdoll').style.opacity = '1';
+    
+    const slots = ['head', 'chest', 'mainhand'];
+    slots.forEach(s => {
+        const el = document.querySelector(`.merc-slot[data-slot="${s}"]`);
+        if (!el) return;
+        const item = mercenary.equipment[s];
+        el.innerHTML = item ? getItemHtml(item) : '';
+        
+        if (item) {
+            const itemEl = el.querySelector('.inv-item');
+            setupTooltip(itemEl, item);
+            
+            // Right-click to unequip
+            itemEl.oncontextmenu = (e) => {
+                e.preventDefault();
+                const empty = player.inventory.indexOf(null);
+                if (empty !== -1) {
+                    player.inventory[empty] = item;
+                    mercenary.equipment[s] = null;
+                    mercenary._recalcStats();
+                    renderMercenaryPanel();
+                    renderInventory();
+                    addCombatLog(`Took ${item.name} from ${mercenary.name}`, 'log-info');
+                } else {
+                    addCombatLog('Inventory full!', 'log-dmg');
+                }
+            };
+        }
+    });
+
+    $('merc-stats-display').innerHTML = `
+        <div style="color:var(--gold); font-family:Cinzel,serif; margin-bottom:5px; border-bottom:1px solid #444;">${mercenary.name} (Lvl ${mercenary.level} ${mercenary.className})</div>
+        <div>HP: <span style="color:#fff;">${Math.round(mercenary.hp)} / ${mercenary.maxHp}</span></div>
+        <div>Damage: <span style="color:#fff;">${Math.round(mercenary.baseDmg)}</span></div>
+        <div style="margin-top:5px; font-size:9px; color:#888;">Resists: 
+            <span style="color:#f66;">F:${mercenary.resists.fire}%</span> 
+            <span style="color:#6af;">C:${mercenary.resists.cold}%</span> 
+            <span style="color:#ff4;">L:${mercenary.resists.light}%</span> 
+            <span style="color:#6f6;">P:${mercenary.resists.pois}%</span>
+        </div>
+    `;
+}
 bus.on('ui:closeAll', () => {
     ['inventory', 'talents', 'character', 'shop', 'stash', 'cube', 'quests'].forEach(p => {
         const el = $(`panel-${p}`);
@@ -1911,7 +1972,16 @@ function renderCharacterPanel() {
         ['Lightning Res', player.lightRes + '%'],
         ['Poison Res', player.poisRes + '%'],
         ['Life Steal', (player.lifeStealPct || 0) + '%'],
+        ['Mana Steal', (player.manaStealPct || 0) + '%'],
         ['Move Speed', Math.round(player.moveSpeed)],
+        ['─ REGEN ─', ''],
+        ['Life Regen', (player.lifeRegenPerSec || 0).toFixed(1) + '/s'],
+        ['Mana Regen', (player.manaRegenPerSec || 0).toFixed(1) + '/s'],
+        ['─ ADVANCED ─', ''],
+        ['Dmg Reduction', (player.pctDmgReduce || 0) + '%'],
+        ['Flat Dmg Red', (player.flatDmgReduce || 0)],
+        ['Magic Dmg Red', (player.magicDmgReduce || 0)],
+        ['Thorns', (player.thorns || 0)],
         ['─ FIND ─', ''],
         ['Magic Find', (player.magicFind || 0) + '%'],
         ['Gold Find', (player.goldFind || 0) + '%'],
@@ -1972,6 +2042,27 @@ function renderInventory() {
                     renderCharacterPanel();
                     return;
                 }
+                
+                if (isLarzukSocketing) {
+                    const maxSockets = {
+                        'head': 2, 'chest': 4, 'mainhand': 4, 'offhand': 4
+                    };
+                    const itemTypeMax = maxSockets[s] || 0;
+                    if (itemTypeMax > 0 && (!item.sockets || item.sockets < itemTypeMax)) {
+                        player.gold -= 2000;
+                        item.sockets = (item.sockets || 0) + 1;
+                        if (!item.socketed) item.socketed = [];
+                        addCombatLog(`Larzuk punched a socket into ${item.name}!`, 'log-crit');
+                    } else {
+                        addCombatLog(`${item.name} cannot have any more sockets.`, 'log-dmg');
+                    }
+                    isLarzukSocketing = false;
+                    document.body.style.cursor = 'default';
+                    renderInventory();
+                    updateHud();
+                    return;
+                }
+
                 if (socketingGemIndex !== -1) {
                     const gem = player.inventory[socketingGemIndex];
                     if (item.sockets && item.socketed && item.socketed.length < item.sockets) {
@@ -2085,7 +2176,45 @@ function renderInventory() {
                     playLoot();
                     return;
                 }
+
+                if (!$('panel-mercenary').classList.contains('hidden') && mercenary) {
+                    const validSlots = ['head', 'chest', 'mainhand'];
+                    if (validSlots.includes(item.slot)) {
+                        const old = mercenary.equipment[item.slot];
+                        mercenary.equipment[item.slot] = item;
+                        player.inventory[i] = old;
+                        mercenary._recalcStats();
+                        addCombatLog(`Equipped ${item.name} to ${mercenary.name}`, 'log-info');
+                        renderInventory();
+                        renderMercenaryPanel();
+                        return;
+                    } else {
+                        addCombatLog(`${mercenary.name} cannot equip this!`, 'log-dmg');
+                        return;
+                    }
+                }
                 
+                if (isLarzukSocketing) {
+                    const maxSockets = {
+                        'head': 2, 'chest': 4, 'mainhand': 4, 'offhand': 4, 'shield': 4, 'weapon': 4
+                    };
+                    const itemTypeMax = maxSockets[item.slot] || maxSockets[item.type] || 0;
+                    
+                    if (itemTypeMax > 0 && (!item.sockets || item.sockets < itemTypeMax)) {
+                        player.gold -= 2000;
+                        item.sockets = (item.sockets || 0) + 1;
+                        if (!item.socketed) item.socketed = [];
+                        addCombatLog(`Larzuk punched a socket into ${item.name}!`, 'log-crit');
+                    } else {
+                        addCombatLog(`${item.name} cannot have any more sockets.`, 'log-dmg');
+                    }
+                    isLarzukSocketing = false;
+                    document.body.style.cursor = 'default';
+                    renderInventory();
+                    updateHud();
+                    return;
+                }
+
                 if (socketingGemIndex !== -1) {
                     if (socketingGemIndex === i) {
                         // Cancel socketing
@@ -2534,6 +2663,26 @@ function renderDialoguePicker(npc) {
         options.push({ label: 'Gamble', action: () => { openGambleShop(); menu.remove(); activeDialogueNpc = null; } });
     }
 
+    // Special: Socket (Larzuk)
+    if (npc.id === 'larzuk') {
+        // Remove Trade for Larzuk
+        const tradeIdx = options.findIndex(o => o.label === 'Trade');
+        if (tradeIdx >= 0) options.splice(tradeIdx, 1);
+
+        options.push({ label: 'Add Socket (2000g)', action: () => {
+            if (player.gold >= 2000) {
+                isLarzukSocketing = true;
+                togglePanel('inventory');
+                document.body.style.cursor = 'crosshair';
+                addCombatLog('Select an item to add a socket to.', 'log-info');
+            } else {
+                addCombatLog('Not enough gold! (2000g needed)', 'log-dmg');
+            }
+            menu.remove();
+            activeDialogueNpc = null;
+        }});
+    }
+
     // Special: Akara Services
     if (npc.id === 'akara') {
         options.push({ label: 'Heal & Refill', action: () => {
@@ -2678,18 +2827,41 @@ function renderGambleShop() {
     }
 }
 
+let currentStashTab = 'personal';
+let sharedStashData = SaveSystem.getSharedStash();
+let sharedStash = sharedStashData.items;
+let sharedGold = sharedStashData.gold;
+
 function renderShop() {
     const container = $('shop-items');
     container.innerHTML = '';
     $('shop-gold').innerHTML = `Your Gold: <span style="color:var(--gold)">${player.gold}</span><div style="font-size:11px;color:#888;margin-top:4px;">(Click items in your Inventory to Sell them!)</div>`;
 
-    const shopInventory = [
-        { ...items.health_potion, price: 25 },
-        { ...items.mana_potion, price: 25 },
-        { ...items.rejuv_potion, price: 75 },
-        { ...items.scroll_identify, price: 100 },
-        { ...items.scroll_town_portal, price: 100 },
-    ];
+    // Repair All Service
+    const repairCost = Object.values(player.equipment).reduce((acc, it) => {
+        if (it && it.durability < it.maxDurability) {
+            return acc + Math.ceil((it.maxDurability - it.durability) * 2);
+        }
+        return acc;
+    }, 0);
+
+    const repairRow = document.createElement('div');
+    repairRow.style.cssText = `padding:8px; margin: 4px 0; border:1px solid ${repairCost > 0 ? '#4caf50' : '#333'}; background:${repairCost > 0 ? '#1a2a1a' : '#111'}; border-radius:4px; text-align:center; cursor:${repairCost > 0 ? 'pointer' : 'default'}; font-family:Cinzel,serif; color:${repairCost > 0 ? '#4caf50' : '#666'};`;
+    repairRow.innerHTML = `🛠️ Repair All Gear (${repairCost}g)`;
+    if (repairCost > 0) {
+        repairRow.onclick = () => {
+            if (player.gold >= repairCost) {
+                player.gold -= repairCost;
+                Object.values(player.equipment).forEach(it => { if (it) it.durability = it.maxDurability; });
+                addCombatLog(`Gear repaired for ${repairCost} gold.`, 'log-heal');
+                renderShop();
+                renderCharacterPanel();
+            } else {
+                addCombatLog('Not enough gold to repair!', 'log-dmg');
+            }
+        };
+    }
+    container.appendChild(repairRow);
 
     // Identify All Service
     const idAllRow = document.createElement('div');
@@ -2720,6 +2892,14 @@ function renderShop() {
     buyHeader.textContent = '— Buy Items —';
     container.appendChild(buyHeader);
 
+    const shopInventory = [
+        { ...items.health_potion, price: 25 },
+        { ...items.mana_potion, price: 25 },
+        { ...items.rejuv_potion, price: 75 },
+        { ...items.scroll_identify, price: 100 },
+        { ...items.scroll_town_portal, price: 100 },
+    ];
+
     for (const item of shopInventory) {
         const row = document.createElement('div');
         row.style.display = 'flex';
@@ -2740,7 +2920,7 @@ function renderShop() {
             <button class="btn-secondary small">Buy (${item.price}g)</button>
         `;
         
-        row.querySelector('.tooltip-trigger').addEventListener('mouseenter', e => showTooltip(e, itemTooltipText(item)));
+        row.querySelector('.tooltip-trigger').addEventListener('mouseenter', e => showTooltip(item, e.clientX, e.clientY));
         row.querySelector('.tooltip-trigger').addEventListener('mouseleave', hideTooltip);
 
         const btn = row.querySelector('button');
@@ -2810,10 +2990,12 @@ function renderStash() {
     if (!grid) return;
     grid.innerHTML = '';
     
-    for (let i = 0; i < stash.length; i++) {
+    const items = currentStashTab === 'personal' ? stash : sharedStash;
+    
+    for (let i = 0; i < items.length; i++) {
         const cell = document.createElement('div');
         cell.className = 'inv-slot';
-        const item = stash[i];
+        const item = items[i];
         
         if (item) {
             const div = document.createElement('div');
@@ -2826,7 +3008,8 @@ function renderStash() {
                 const empty = player.inventory.indexOf(null);
                 if (empty !== -1) {
                     player.inventory[empty] = item;
-                    stash[i] = null;
+                    items[i] = null;
+                    if (currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
                     addCombatLog(`Took ${item.name} from Stash`, 'log-info');
                     hideTooltip();
                     renderStash();
@@ -2838,7 +3021,52 @@ function renderStash() {
             div.addEventListener('click', moveToInv);
             div.addEventListener('contextmenu', moveToInv);
             cell.appendChild(div);
-        } else {
+        }
+        grid.appendChild(cell);
+    }
+
+    // Update Gold
+    $('stash-gold-val').textContent = sharedGold;
+}
+
+// Wire Stash Tabs
+$('btn-stash-personal')?.addEventListener('click', () => {
+    currentStashTab = 'personal';
+    $('btn-stash-personal').classList.add('active');
+    $('btn-stash-shared').classList.remove('active');
+    renderStash();
+});
+$('btn-stash-shared')?.addEventListener('click', () => {
+    currentStashTab = 'shared';
+    $('btn-stash-shared').classList.add('active');
+    $('btn-stash-personal').classList.remove('active');
+    renderStash();
+});
+
+// Wire Gold Buttons
+$('btn-stash-deposit')?.addEventListener('click', () => {
+    const amt = player.gold;
+    if (amt > 0) {
+        sharedGold += amt;
+        player.gold = 0;
+        SaveSystem.saveSharedStash(sharedStash, sharedGold);
+        renderStash();
+        updateHud();
+        addCombatLog(`Deposited ${amt} gold into global bank.`, 'log-heal');
+    }
+});
+$('btn-stash-withdraw')?.addEventListener('click', () => {
+    if (sharedGold > 0) {
+        player.gold += sharedGold;
+        const amt = sharedGold;
+        sharedGold = 0;
+        SaveSystem.saveSharedStash(sharedStash, sharedGold);
+        renderStash();
+        updateHud();
+        addCombatLog(`Withdrew ${amt} gold.`, 'log-heal');
+    }
+});
+
             // Empy stash cell -> moving cursor to drop into stash? We handled that in inventory right click!
         }
         grid.appendChild(cell);
@@ -2960,16 +3188,14 @@ function hireMercenary() {
     player.gold -= cost;
     const names = ['Aliza', 'Blaise', 'Paige', 'Kyra', 'Ryann'];
     const lvl = player.level || 1;
-    mercenary = {
+    mercenary = new Mercenary({
         name: names[Math.floor(Math.random() * names.length)],
-        hp: 60 + lvl * 15, maxHp: 60 + lvl * 15,
-        dmg: 5 + lvl * 2,
-        x: player.x + 20, y: player.y,
-        _atkCd: 0,
-        isMercenary: true,
-        isPlayer: true, // Inherits player faction so projectiles target enemies
-        icon: 'class_rogue'
-    };
+        className: 'Rogue',
+        level: player.level || 1,
+        icon: 'class_rogue',
+        x: player.x + 20, y: player.y
+    });
+    
     addCombatLog(`Hired Mercenary ${mercenary.name}! She will fight by your side.`, 'log-level');
     updateHud();
 }

@@ -30,6 +30,8 @@ export const SaveSystem = {
                 className: player.className,
                 level: player.level,
                 zoneLevel,
+                stash: stash || [],
+                mercenary: extras?.mercenary || null,
                 timestamp: Date.now(),
                 player: player.serialize(),
                 difficulty: extras?.difficulty || 0,
@@ -55,6 +57,8 @@ export const SaveSystem = {
             return {
                 player: slot.player,
                 zoneLevel: slot.zoneLevel || 0,
+                stash: slot.stash || [],
+                mercenary: slot.mercenary || null,
                 slotId: slot.id,
                 difficulty: slot.difficulty || 0,
                 waypoints: slot.waypoints || [0],

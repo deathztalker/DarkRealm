@@ -191,6 +191,10 @@ export class Player {
         // 1. Equipped Items
         for (const item of Object.values(equip)) {
             if (!item || item.identified === false) continue;
+            
+            // Broken items provide NO stats
+            if (item.maxDurability > 0 && item.durability === 0) continue;
+
             this._addItemStats(item, s);
 
             if (item.rarity === RARITY.SET && item.setId) {

@@ -333,12 +333,14 @@ export class LootSystem {
             }
         }
 
+        this._applyDurability(item, base, ilvl);
+
         return item;
     }
 
     _buildUnique(template) {
         const base = ITEM_BASES[template.base];
-        return {
+        const item = {
             id: `item_${Date.now()}_${Math.random().toString(36).slice(2)}`,
             baseId: template.base, rarity: RARITY.UNIQUE, ilvl: template.dropLvl,
             name: template.name, icon: template.icon,
@@ -354,11 +356,13 @@ export class LootSystem {
             identified: false,
             flavor: template.flavor,
         };
+        this._applyDurability(item, base, template.dropLvl);
+        return item;
     }
 
     _buildSetItem(template) {
         const base = ITEM_BASES[template.base];
-        return {
+        const item = {
             id: `item_${Date.now()}_${Math.random().toString(36).slice(2)}`,
             baseId: template.base, rarity: RARITY.SET, ilvl: template.dropLvl,
             name: template.name, icon: template.icon, setId: template.setId, setName: SETS[template.setId].name,
@@ -373,6 +377,17 @@ export class LootSystem {
             sockets: 0, socketed: [], insertedRunes: [],
             identified: false
         };
+        this._applyDurability(item, base, template.dropLvl);
+        return item;
+    }
+
+    _applyDurability(item, base, ilvl) {
+        const noDurTypes = ['ring', 'amulet', 'charm', 'potion', 'scroll', 'gem'];
+        if (noDurTypes.includes(base.type)) return;
+
+        const baseDur = base.durability || (base.type === 'shield' ? 40 : base.type === 'armor' || base.slot === 'chest' ? 50 : 30);
+        item.maxDurability = Math.floor(baseDur * (1 + (ilvl / 25)));
+        item.durability = item.maxDurability;
     }
 
     _addAffixes(item, ilvl, maxPre, maxSuf) {

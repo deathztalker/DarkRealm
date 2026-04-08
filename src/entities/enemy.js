@@ -31,10 +31,14 @@ const ELITE_AFFIXES = [
     { name: 'Berserker', mod: e => { e.dmg *= 1.5; e.moveSpeed *= 1.3; } },
     { name: 'Spectral', mod: e => { e.shadowRes = 60; e.icon = 'enemy_ghost'; } },
     { name: 'Frozen', mod: e => { e.coldRes = 50; e.extraDmgType = 'cold'; } },
-    { name: 'Electrified', mod: e => { e.lightRes = 40; e.extraDmgType = 'lightning'; } },
+    { name: 'Electrified', mod: e => { e.lightRes = 40; e.isLightningEnchanted = true; } },
     { name: 'Vampiric', mod: e => { e.lifeStealPct = 25; } },
-    { name: 'Teleporter', mod: e => { e.canTeleport = true; } },
-    { name: 'Extra Fast', mod: e => { e.moveSpeed *= 1.6; e.atkSpeed *= 1.4; } }
+    { name: 'Teleporter', mod: e => { e.canTeleport = true; e._teleportCd = 0; } },
+    { name: 'Extra Fast', mod: e => { e.moveSpeed *= 1.6; e.atkSpeed *= 1.4; } },
+    { name: 'Multi Shot', mod: e => { e.isMultiShot = true; } },
+    { name: 'Fire Enchanted', mod: e => { e.fireRes = 50; e.isFireEnchanted = true; } },
+    { name: 'Cold Enchanted', mod: e => { e.coldRes = 50; e.isColdEnchanted = true; } },
+    { name: 'Aura Enchanted', mod: e => { e.hasAura = true; e.auraType = ['might', 'holy_fire', 'conviction'][Math.floor(Math.random()*3)]; } }
 ];
 
 const RARE_PREFIX = ['Gore', 'Blight', 'Bone', 'Blood', 'Onyx', 'Storm', 'Shadow', 'Plague', 'Dread', 'Night', 'Doom', 'Foul', 'Rot'];
@@ -174,11 +178,71 @@ export class Enemy {
         this._dots = [];
     }
 
-    update(dt, player, dungeon) {
-        if (this.hp <= 0) return;
+    update(dt, player, dungeon, allEnemies) {
+        if (this.hp <= 0) {
+            if (this.state !== 'dead') {
+                this.state = 'dead';
+                this._onDeath(player);
+            }
+            return;
+        }
         this.hp = Math.min(this.maxHp, this.hp + (this.hpRegen || 0) * dt);
 
-        // Check for CC (Stun/Frozen)
+        // Aura Enchanted logic: buff nearby allies
+        if (this.hasAura && allEnemies) {
+            this._auraPulse = (this._auraPulse || 0) - dt;
+            if (this._auraPulse <= 0) {
+                this._auraPulse = 1.0;
+                fx.emitBurst(this.x, this.y, this.auraType === 'might' ? '#ffd700' : '#4080ff', 12, 1.5);
+                for (const other of allEnemies) {
+                    if (other === this || other.hp <= 0) continue;
+                    const d = Math.sqrt((other.x - this.x)**2 + (other.y - this.y)**2);
+                    if (d < 200) {
+                        if (this.auraType === 'might') {
+                            other._auraBuff = { dmg: 1.5, timer: 1.5 };
+                        } else if (this.auraType === 'holy_fire') {
+                            // Holy fire aura logic
+                        }
+                    }
+                }
+            }
+        }
+
+        // Lightning Enchanted reaction
+        if (this.isLightningEnchanted && this.hp < this._prevHp) {
+            if (Math.random() < 0.25) {
+                for (let i = 0; i < 4; i++) {
+                    const angle = (Math.PI / 2) * i + Math.random();
+                    const tx = this.x + Math.cos(angle) * 100;
+                    const ty = this.y + Math.sin(angle) * 100;
+                    const proj = new Projectile(this.x, this.y, tx, ty, 300, '#ffff40', this.dmg * 0.4, 'lightning', this, false, 6, 0, 0, 'spark');
+                    bus.emit('combat:spawnProjectile', { proj });
+                }
+                fx.emitBurst(this.x, this.y, '#ffff40', 8);
+            }
+        }
+        this._prevHp = this.hp;
+
+        // Teleporter AI
+        if (this.canTeleport && player && this.state !== 'idle') {
+            this._teleportCd = (this._teleportCd || 0) - dt;
+            if (this._teleportCd <= 0) {
+                const dist = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
+                if (dist < 80 || (this.attackType !== 'melee' && dist > 250)) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const tx = player.x + Math.cos(angle) * 120;
+                    const ty = player.y + Math.sin(angle) * 120;
+                    if (dungeon && dungeon.isWalkable(tx, ty)) {
+                        fx.emitBurst(this.x, this.y, '#8080ff', 15);
+                        this.x = tx; this.y = ty;
+                        fx.emitBurst(this.x, this.y, '#b0b0ff', 15);
+                        this._teleportCd = 5 + Math.random() * 5;
+                    }
+                }
+            }
+        }
+
+        // Standard AI
         if (isCCd(this)) return;
 
         let currentMoveSpeed = this.moveSpeed;
@@ -313,6 +377,28 @@ export class Enemy {
             this._setAnimState('walk');
         } else {
             this._setAnimState('idle');
+        }
+    }
+
+    _onDeath(player) {
+        if (this.isFireEnchanted) {
+            fx.emitBurst(this.x, this.y, '#ff4000', 40, 3);
+            fx.emitShockwave(this.x, this.y, 100, '#ff6000');
+            const d = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
+            if (d < 100) {
+                applyDamage(this, player, { dealt: this.dmg * 2.5, isCrit: false, type: 'fire' });
+                addCombatLog("Fire Enchanted explosion hit you!", 'log-dmg');
+            }
+        }
+        if (this.isColdEnchanted) {
+            fx.emitBurst(this.x, this.y, '#4080ff', 35, 2.5);
+            fx.emitShockwave(this.x, this.y, 120, '#80d0ff');
+            const d = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
+            if (d < 120) {
+                applyDamage(this, player, { dealt: this.dmg * 1.5, isCrit: false, type: 'cold' });
+                import('../systems/combat.js').then(c => c.applyStatus(player, 'chill', 5, 0.5));
+                addCombatLog("Cold Enchanted nova froze you!", 'log-dmg');
+            }
         }
     }
 

@@ -205,6 +205,16 @@ export class Dungeon {
             dialogue: "I know the roads well. Tell me where you wish to go."
         });
 
+        this.npcSpawns.push({
+            id: "larzuk",
+            name: "Larzuk the Blacksmith",
+            type: "blacksmith",
+            x: (cx - 9) * this.tileSize,
+            y: (cy - 1) * this.tileSize,
+            icon: "npc_villager",
+            dialogue: "I can punch a hole in that for you... for the right price."
+        });
+
         // Town Objects: Stash & Cube
         this.objectSpawns.push({ 
             id: 'stash',
