@@ -2402,7 +2402,26 @@ function setupTooltip(el, item) {
 
 function showTooltip(item, x, y) {
     const tt = $('custom-tooltip');
-    tt.innerHTML = itemTooltipText(item);
+    let html = itemTooltipText(item);
+
+    // Item comparison logic
+    if (player && item.slot && item.slot !== 'none' && item.identified !== false) {
+        // Find if we have an item equipped in this slot
+        let equippedItem = null;
+        if (item.slot === 'ring') {
+            equippedItem = player.equipment['ring1'] || player.equipment['ring2'];
+        } else {
+            equippedItem = player.equipment[item.slot];
+        }
+
+        // Make sure we aren't hovering the equipped item itself
+        if (equippedItem && equippedItem !== item) {
+            const equippedHtml = itemTooltipText(equippedItem, true);
+            html = `<div style="display:flex; gap:10px;">${html}${equippedHtml}</div>`;
+        }
+    }
+
+    tt.innerHTML = html;
     tt.style.display = 'block';
     moveTooltip(x, y);
 }

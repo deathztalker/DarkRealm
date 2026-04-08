@@ -1048,6 +1048,13 @@ export class Player {
         this._recalcStats();
     }
     addToInventory(item) {
+        if (item && item.type === 'potion') {
+            const beltIdx = this.belt.indexOf(null);
+            if (beltIdx !== -1) {
+                this.belt[beltIdx] = item;
+                return true;
+            }
+        }
         const idx = this.inventory.indexOf(null);
         if (idx === -1) return false;
         this.inventory[idx] = item;
