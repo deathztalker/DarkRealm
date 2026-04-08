@@ -64,6 +64,8 @@ export class Player {
         // Active effects
         this._dots = [];
         this._buffs = [];
+        this.hpBuffer = 0;
+        this.mpBuffer = 0;
 
         // Aura (paladin)
         this.activeAura = null;
@@ -180,6 +182,9 @@ export class Player {
         this.wepMin = wep ? (wep.minDmg || 1) + (s.flatMinDmg || 0) : 1 + (s.flatMinDmg || 0);
         this.wepMax = wep ? (wep.maxDmg || 3) + (s.flatMaxDmg || 0) : 3 + (s.flatMaxDmg || 0);
         this.atkSpd = (wep?.atkSpd || 1.0) * (1 + (this.pctIAS || 0) / 100);
+        
+        // Attack Range
+        this.attackRange = wep && wep.range ? Math.max(30, wep.range) : 30;
     }
     _gearStats() {
         const s = {};
@@ -384,6 +389,21 @@ export class Player {
         // Mana regen
         this.mp = Math.min(this.maxMp, this.mp + (2 + this.int * 0.05) * dt);
 
+        // --- Potion HoT Logic ---
+        if (this.hpBuffer > 0 && this.hp < this.maxHp) {
+            const healSpeed = this.maxHp * 0.1 * dt; // heal 10% max hp per second
+            const heal = Math.min(this.hpBuffer, healSpeed);
+            this.hp = Math.min(this.maxHp, this.hp + heal);
+            this.hpBuffer -= heal;
+            if (fx && Math.random() < 0.1) fx.emitHeal(this.x, this.y);
+        }
+        if (this.mpBuffer > 0 && this.mp < this.maxMp) {
+            const restoreSpeed = this.maxMp * 0.1 * dt;
+            const restore = Math.min(this.mpBuffer, restoreSpeed);
+            this.mp = Math.min(this.maxMp, this.mp + restore);
+            this.mpBuffer -= restore;
+        }
+
         // --- Periodic Aura Effects ---
         if (this.activeAura) {
             this._auraTimer = (this._auraTimer || 0) + dt;
@@ -513,7 +533,7 @@ export class Player {
             if (this.attackTarget.hp <= 0) { this.attackTarget = null; return; }
             const dx = this.attackTarget.x - this.x, dy = this.attackTarget.y - this.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            const range = 30;
+            const range = this.attackRange || 30;
             if (dist > range) {
                 const spd = this.moveSpeed * dt;
                 tryMove((dx / dist) * Math.min(spd, dist), (dy / dist) * Math.min(spd, dist));
@@ -1050,18 +1070,25 @@ export class Player {
 
         let restoredHp = 0;
         let restoredMp = 0;
+        let instant = false;
 
-        if (item.id === 'health_potion') restoredHp = this.maxHp * 0.35;
-        if (item.id === 'mana_potion') restoredMp = this.maxMp * 0.35;
-        if (item.id === 'rejuv_potion') {
+        if (item.baseId === 'health_potion') restoredHp = this.maxHp * 0.35;
+        if (item.baseId === 'mana_potion') restoredMp = this.maxMp * 0.35;
+        if (item.baseId === 'rejuv_potion') {
             restoredHp = this.maxHp * 0.35;
             restoredMp = this.maxMp * 0.35;
+            instant = true;
         }
 
-        this.hp = Math.min(this.maxHp, this.hp + restoredHp);
-        this.mp = Math.min(this.maxMp, this.mp + restoredMp);
+        if (instant) {
+            this.hp = Math.min(this.maxHp, this.hp + restoredHp);
+            this.mp = Math.min(this.maxMp, this.mp + restoredMp);
+        } else {
+            this.hpBuffer += restoredHp;
+            this.mpBuffer += restoredMp;
+        }
 
-        bus.emit('log:add', { text: `Used ${item.name}`, cls: 'log-heal' });
+        bus.emit('log:add', { text: `Used ${item.name}`, cls: instant ? 'log-crit' : 'log-heal' });
         this.belt[slot] = null;
         this._recalcStats();
     }

@@ -30,6 +30,7 @@ let state = 'MENU', selectedClass = null;
 let lastTime = 0, lastSaveTime = 0;
 let portalReturnZone = 0;
 let zoneLevel = 0;
+let isBossZone = false;
 let isTransitioning = false;
 let dialogue = null;
 let activeSlotId = null;
@@ -213,7 +214,7 @@ function showClassInfo(classId) {
 }
 
 // ─── START GAME ───
-function startGame(slotId = null, loadPlayerData = null) {
+function startGame(slotId = null, loadPlayerData = null, charName = null) {
     if (!selectedClass && !loadPlayerData) return;
 
     if (loadPlayerData) {
@@ -263,6 +264,7 @@ function startGame(slotId = null, loadPlayerData = null) {
         }
     } else {
         player = new Player(selectedClass);
+        if (charName) player.charName = charName;
         if ($('hardcore-mode') && $('hardcore-mode').checked) {
             player.isHardcore = true;
         }
@@ -707,6 +709,15 @@ function checkInteractions(pos) {
             } else if (res && res.type === 'PORTAL') {
                 addCombatLog('Entering Portal...', 'log-level');
                 nextZone(res.targetZone);
+            } else if (res && res.type === 'WAYPOINT') {
+                if (!discoveredWaypoints.has(res.zone)) {
+                    discoveredWaypoints.add(res.zone);
+                    addCombatLog(`Waypoint Discovered: ${ZONE_NAMES[res.zone] || 'Area'}`, 'log-crit');
+                    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: Array.from(discoveredWaypoints) });
+                    if (fx) fx.emitBurst(o.x, o.y, '#ffd700', 30, 2.5);
+                } else {
+                    addCombatLog(`Waypoint already active.`, 'log-info');
+                }
             } else if (res && res.type === 'SHRINE') {
                 const sType = res.shrineType;
                 let buffName = '';
@@ -978,6 +989,10 @@ function finishZoneLoad() {
 
     const zoneName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 7}`;
     const diffLabel = difficulty > 0 ? ` (${DIFFICULTY_NAMES[difficulty]})` : '';
+    
+    // Check if boss zone
+    isBossZone = (zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0));
+    
     // Endgame: zones beyond 7 scale infinitely
     const endgameMult = zoneLevel > 7 ? 1 + (zoneLevel - 7) * 0.3 : 1;
     $('zone-name').textContent = zoneName + diffLabel;
@@ -1683,6 +1698,12 @@ bus.on('combat:damage', d => {
         const burstColor = d.target?.isPlayer ? '#f00' : (d.type === 'fire' ? '#f60' : d.type === 'cold' ? '#0cf' : '#ff0');
         fx.emitBurst(d.worldX || d.target?.x, d.worldY || d.target?.y, burstColor, d.isCrit ? 20 : 8);
         if (d.isCrit) fx.shake(200, 4);
+
+        // Steal Visuals
+        if (d.attacker?.isPlayer && !d.target?.isPlayer) {
+            if (d.attacker.lifeStealPct && Math.random() < 0.3) fx.emitHeal(d.attacker.x, d.attacker.y);
+            if (d.attacker.manaStealPct && Math.random() < 0.3) fx.emitManaSteal(d.attacker.x, d.attacker.y);
+        }
     }
 });
 
@@ -1719,6 +1740,10 @@ bus.on('combat:spawnMinions', d => {
 bus.on('player:levelup', d => {
     addCombatLog(`LEVEL UP! Now level ${d.level}`, 'log-level');
     updateSkillBar();
+});
+
+bus.on('log:add', d => {
+    addCombatLog(d.text, d.cls || '');
 });
 
 bus.on('item:broken', d => {
@@ -3147,11 +3172,7 @@ $('btn-stash-withdraw')?.addEventListener('click', () => {
     }
 });
 
-            // Empy stash cell -> moving cursor to drop into stash? We handled that in inventory right click!
-        }
-        grid.appendChild(cell);
-    }
-}
+
 
 function renderCube() {
     const grid = $('cube-grid');
@@ -3310,8 +3331,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
     $('btn-new-game').addEventListener('click', () => {
         if (!selectedClass) return;
+        const nameInput = $('character-name');
+        const charName = nameInput ? nameInput.value.trim() : null;
         initAudio();
-        startGame();
+        startGame(null, null, charName);
     });
 
     // Death Screen

@@ -56,6 +56,15 @@ export class Dungeon {
             y: (first.y + Math.floor(first.h / 2)) * this.tileSize + this.tileSize / 2,
         };
 
+        // Place Waypoint in first room
+        this.objectSpawns.push({ 
+            type: 'waypoint', 
+            x: this.playerStart.x + 32, 
+            y: this.playerStart.y, 
+            icon: 'env_stairs_up', 
+            zone: zoneLevel 
+        });
+
         // Place exit in last room
         const last = this.rooms[this.rooms.length - 1];
         const ec = last.x + Math.floor(last.w / 2);
@@ -163,6 +172,15 @@ export class Dungeon {
         this.playerStart = { x: cx * this.tileSize, y: (cy + 2) * this.tileSize };
         this.exitPos = { x: cx * this.tileSize, y: (this.height - 12) * this.tileSize };
         this.grid[this.height - 12][cx] = TILE.STAIRS_DOWN;
+
+        // Waypoint Pad in Town Square
+        this.objectSpawns.push({
+            type: 'waypoint',
+            x: cx * this.tileSize,
+            y: cy * this.tileSize,
+            icon: 'env_stairs_up',
+            zone: 0
+        });
 
         // Spawn NPCs
         this.npcSpawns.push({

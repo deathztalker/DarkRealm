@@ -19,6 +19,8 @@ export class GameObject {
             return { type: 'LOOT', count: 2 + Math.floor(Math.random() * 3) };
         } else if (this.type === 'portal') {
             return { type: 'PORTAL', targetZone: this.targetZone };
+        } else if (this.type === 'waypoint') {
+            return { type: 'WAYPOINT', zone: this.zone };
         } else if (this.type === 'shrine' && !this.isOpen) {
             this.isOpen = true;
             this.icon = 'obj_shrine_used';
@@ -28,11 +30,12 @@ export class GameObject {
     }
 
     render(renderer) {
-        // Shrines glow when unused
-        if (this.type === 'shrine' && !this.isOpen) {
+        // Waypoints/Shrines glow when active/unused
+        if ((this.type === 'shrine' && !this.isOpen) || (this.type === 'waypoint')) {
             renderer.ctx.save();
-            renderer.ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 400) * 0.15;
-            renderer.ctx.shadowColor = '#4080ff';
+            const pulse = 0.3 + Math.sin(Date.now() / 400) * 0.15;
+            renderer.ctx.globalAlpha = pulse;
+            renderer.ctx.shadowColor = this.type === 'shrine' ? '#4080ff' : '#ffd700';
             renderer.ctx.shadowBlur = 12;
             renderer.drawSprite(this.icon, this.x, this.y, 16);
             renderer.ctx.restore();

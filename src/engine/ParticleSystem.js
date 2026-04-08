@@ -206,6 +206,17 @@ export class ParticleSystem {
         }
     }
 
+    /** Mana steal effect — blue sparkles rising */
+    emitManaSteal(x, y) {
+        for (let i = 0; i < 8; i++) {
+            const p = new Particle(x + (Math.random() - 0.5) * 15, y + (Math.random() - 0.5) * 15,
+                (Math.random() - 0.5) * 1, -(1 + Math.random() * 2), 500,
+                '#4080ff', 1.5 + Math.random());
+            p.gravity = -0.05;
+            this.particles.push(p);
+        }
+    }
+
     /** Shadow/dark magic effect */
     emitShadow(x, y) {
         for (let i = 0; i < 8; i++) {
