@@ -89,6 +89,15 @@ export class Mercenary {
     update(dt, player, enemies, dungeon) {
         if (this.hp <= 0) return;
 
+        // Auto-level with player (if lower level)
+        if (player && player.level > this.level) {
+            this.level = player.level;
+            this._recalcStats();
+            this.hp = this.maxHp;
+            fx.emitBurst(this.x, this.y, '#ffd700', 20, 2);
+            bus.emit('combat:log', { text: `${this.name} has leveled up to ${this.level}!`, type: 'log-level' });
+        }
+
         const mx = player.x - this.x, my = player.y - this.y;
         const md = Math.sqrt(mx * mx + my * my);
         if (md > 60) {
