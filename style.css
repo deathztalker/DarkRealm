@@ -816,10 +816,6 @@ body {
 /* =============================================
    INVENTORY PANEL
    ============================================= */
-#panel-inventory {
-  width: 540px;
-  background: #0a0805;
-}
 
 #equip-slots {
   display: grid;

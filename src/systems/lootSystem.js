@@ -440,6 +440,38 @@ export class LootSystem {
         const items = cubeArray.filter(i => i !== null);
         if (items.length === 0) return null;
 
+        // Recipe: Hel Rune + Town Portal Scroll + Socketed Item = Unsocket Item
+        if (items.length === 3) {
+            const helIdx = items.findIndex(i => i.baseId === 'rune_hel');
+            const tpIdx = items.findIndex(i => i.baseId === 'scroll_town_portal');
+            const socketedIdx = items.findIndex(i => i.socketed && i.socketed.length > 0);
+            
+            if (helIdx !== -1 && tpIdx !== -1 && socketedIdx !== -1 && helIdx !== tpIdx && helIdx !== socketedIdx && tpIdx !== socketedIdx) {
+                const clearedItem = JSON.parse(JSON.stringify(items[socketedIdx]));
+                clearedItem.socketed = [];
+                // Remove runeword unique status if it was a runeword
+                if (clearedItem.name.includes('(')) {
+                    clearedItem.name = clearedItem.name.substring(clearedItem.name.indexOf('(') + 1, clearedItem.name.lastIndexOf(')'));
+                    clearedItem.rarity = 'normal'; // Demote back to base rarity
+                    clearedItem.mods = []; // clear runeword mods
+                }
+                return clearedItem;
+            }
+        }
+
+        // Recipe: 3 Chipped Gems = 1 Perfect Gem
+        if (items.length === 3 && items.every(i => i.type === 'gem' && i.baseId.startsWith('chipped_'))) {
+            const baseIds = items.map(i => i.baseId);
+            if (baseIds[0] === baseIds[1] && baseIds[1] === baseIds[2]) {
+                const color = baseIds[0].split('_')[1]; // e.g. 'ruby'
+                const upgradeBaseId = `perfect_${color}`;
+                const base = ITEM_BASES[upgradeBaseId];
+                if (base) {
+                    return this._buildItem(upgradeBaseId, base, RARITY.NORMAL, 1);
+                }
+            }
+        }
+
         // Recipe: 3 Runes of the same type = 1 Rune of the next tier
         if (items.length === 3 && items.every(i => i.type === 'gem' && i.name.includes('Rune'))) {
             const baseIds = items.map(i => i.baseId);
