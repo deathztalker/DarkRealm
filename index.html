@@ -52,6 +52,20 @@
             <input type="file" id="import-file" style="display:none;" accept=".json">
         </div>
       </div>
+      
+      <div id="keybinds-legend" style="margin-top: 30px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 11px; color: #888; font-family: 'Cinzel', serif; border-top: 1px solid #333; padding-top: 15px;">
+          <div>[I] Inventory</div>
+          <div>[C] Stats</div>
+          <div>[T] Talents</div>
+          <div>[O] Companion</div>
+          <div>[Q] Quests</div>
+          <div>[W] Swap Weapons</div>
+          <div>[TAB] Map</div>
+          <div>[M] Map Zoom</div>
+          <div>[F] Loot Filter</div>
+          <div>[P] Town Portal</div>
+      </div>
+
       <div class="save-slots" id="save-slots" style="display:none;">
         <!-- Save slot selection -->
       </div>
@@ -163,6 +177,7 @@
     </div>
     <!-- HUD Buttons -->
     <div id="hud-buttons">
+      <div id="broken-gear-warning" class="hidden" title="You have broken equipment! Stats are disabled." style="width: 32px; height: 32px; background: rgba(255,0,0,0.2); border: 1px solid #f00; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-bottom: 5px; color: #f00; font-size: 18px; cursor: help;">⚠</div>
       <button class="hud-btn" id="btn-inventory" title="Inventory (I)">🎒</button>
       <button class="hud-btn" id="btn-talents" title="Talents (T)">✨</button>
       <button class="hud-btn" id="btn-character" title="Character (C)">📊</button>
@@ -189,13 +204,25 @@
 
   <!-- Panels (toggled) -->
   <div id="panel-inventory" class="panel hidden">
-    <div class="panel-header"><span>Inventory</span><button class="panel-close" data-panel="inventory">✕</button></div>
+    <div class="panel-header">
+        <span>Inventory</span>
+        <div style="display:flex; gap:5px;">
+            <button id="btn-sort-inv" class="btn-secondary small" style="padding: 2px 8px; font-size:10px;">SORT</button>
+            <button class="panel-close" data-panel="inventory">✕</button>
+        </div>
+    </div>
     <div id="equip-slots">
       <div class="equip-slot" data-slot="head" data-label="Helm"></div>
       <div class="equip-slot" data-slot="amulet" data-label="Amulet"></div>
       <div class="equip-slot" data-slot="chest" data-label="Armor"></div>
-      <div class="equip-slot" data-slot="mainhand" data-label="Weapon"></div>
-      <div class="equip-slot" data-slot="offhand" data-label="Shield"></div>
+      <div class="equip-slot" data-slot="mainhand" data-label="Weapon">
+        <div id="wset-main-1" class="weapon-set-indicator active">I</div>
+        <div id="wset-main-2" class="weapon-set-indicator">II</div>
+      </div>
+      <div class="equip-slot" data-slot="offhand" data-label="Shield">
+        <div id="wset-off-1" class="weapon-set-indicator active">I</div>
+        <div id="wset-off-2" class="weapon-set-indicator">II</div>
+      </div>
       <div class="equip-slot" data-slot="gloves" data-label="Gloves"></div>
       <div class="equip-slot" data-slot="belt" data-label="Belt"></div>
       <div class="equip-slot" data-slot="boots" data-label="Boots"></div>

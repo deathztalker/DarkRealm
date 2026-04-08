@@ -33,6 +33,8 @@ export class Player {
         this.xp = 0;
         this.statPoints = 0;
         this.gold = 0;
+        this.totalMonstersSlain = 0;
+        this.totalGoldCollected = 0;
         this.charName = cls.name; // Character name (user can customize)
         this.baseStr = cls.stats.str;
         this.baseDex = cls.stats.dex;
@@ -45,6 +47,8 @@ export class Player {
 
         // Equipment & Inventory
         this.equipment = {}; // slot → item
+        this.secondaryEquipment = { mainhand: null, offhand: null };
+        this.activeWeaponSet = 1;
         this.inventory = Array(40).fill(null); // 10×4 grid
         this.belt = Array(4).fill(null); // 4 potion slots
 
@@ -1073,6 +1077,24 @@ export class Player {
         return item;
     }
 
+    swapWeapons() {
+        // Only swap mainhand and offhand
+        const oldMain = this.equipment.mainhand;
+        const oldOff = this.equipment.offhand;
+
+        this.equipment.mainhand = this.secondaryEquipment.mainhand;
+        this.equipment.offhand = this.secondaryEquipment.offhand;
+
+        this.secondaryEquipment.mainhand = oldMain;
+        this.secondaryEquipment.offhand = oldOff;
+
+        this.activeWeaponSet = this.activeWeaponSet === 1 ? 2 : 1;
+        
+        this._recalcStats();
+        bus.emit('log:add', { text: `Swapped to Weapon Set ${this.activeWeaponSet}`, cls: 'log-info' });
+        if (fx) fx.emitBurst(this.x, this.y, '#aaa', 10, 1.2);
+    }
+
     // ─── Potions ───
     usePotion(slot) {
         const item = this.belt[slot];
@@ -1161,8 +1183,13 @@ export class Player {
             x: this.x, y: this.y, hp: this.hp, mp: this.mp,
             baseStr: this.baseStr, baseDex: this.baseDex, baseVit: this.baseVit, baseInt: this.baseInt,
             statPoints: this.statPoints, gold: this.gold,
+            totalMonstersSlain: this.totalMonstersSlain,
+            totalGoldCollected: this.totalGoldCollected,
             talents: this.talents.serialize(),
-            equipment: this.equipment, inventory: this.inventory, belt: this.belt,
+            equipment: this.equipment, 
+            secondaryEquipment: this.secondaryEquipment,
+            activeWeaponSet: this.activeWeaponSet,
+            inventory: this.inventory, belt: this.belt,
             hotbar: this.hotbar,
         };
     }
@@ -1177,8 +1204,12 @@ export class Player {
         p.hp = data.hp; p.mp = data.mp;
         p.baseStr = data.baseStr; p.baseDex = data.baseDex; p.baseVit = data.baseVit; p.baseInt = data.baseInt;
         p.statPoints = data.statPoints; p.gold = data.gold;
+        p.totalMonstersSlain = data.totalMonstersSlain || 0;
+        p.totalGoldCollected = data.totalGoldCollected || 0;
         p.talents = TalentTree.deserialize(data.talents);
         p.equipment = data.equipment || {};
+        p.secondaryEquipment = data.secondaryEquipment || { mainhand: null, offhand: null };
+        p.activeWeaponSet = data.activeWeaponSet || 1;
         p.inventory = data.inventory || Array(40).fill(null);
         p.belt = data.belt || [null, null, null, null];
         p.hotbar = data.hotbar || [null, null, null, null, null];

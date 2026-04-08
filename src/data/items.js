@@ -96,7 +96,11 @@ export const ITEM_BASES = {
     
     // === SCROLLS ===
     scroll_identify: { name: 'Scroll of Identification', slot: 'none', type: 'scroll', icon: 'item_scroll', size: [1, 1], price: 100 },
-    scroll_town_portal: { name: 'Town Portal Scroll', slot: 'none', type: 'scroll', icon: 'item_scroll_tp', size: [1, 1], price: 100 },
+    scroll_town_portal: { name: 'Scroll of Town Portal', slot: 'none', type: 'scroll', icon: 'item_scroll_tp', size: [1, 1], price: 10 },
+
+    // === TOMES ===
+    tome_tp: { name: 'Tome of Town Portal', slot: 'none', type: 'tome', icon: 'item_scroll_tp', size: [1, 2], price: 150, maxCharges: 20 },
+    tome_identify: { name: 'Tome of Identification', slot: 'none', type: 'tome', icon: 'item_scroll', size: [1, 2], price: 150, maxCharges: 20 },
 
     // === GEMS ===
     chipped_ruby: { name: 'Chipped Ruby', slot: 'none', type: 'gem', icon: 'item_ruby', size: [1, 1], price: 25, socketEffect: { weapon: { stat: 'flatFireDmg', value: 4 }, armor: { stat: 'flatHP', value: 10 }, shield: { stat: 'fireRes', value: 10 } } },

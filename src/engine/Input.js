@@ -172,6 +172,7 @@ export class Input {
             'Tab': 'ui:toggle:fullmap',
             'KeyF': 'ui:toggle:lootfilter',
             'KeyP': 'action:town_portal',
+            'KeyW': 'action:weapon_swap',
         };
         if (map[e.code]) {
             e.preventDefault();

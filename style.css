@@ -1648,6 +1648,52 @@ body {
   text-shadow: 0 0 8px #fff;
 }
 
+/* Item Charges Counter */
+/* Weapon Set Indicators */
+.weapon-set-indicator {
+  position: absolute;
+  top: -18px;
+  font-size: 10px;
+  font-family: 'Cinzel', serif;
+  color: #888;
+  width: 100%;
+  text-align: center;
+  pointer-events: none;
+}
+.weapon-set-indicator.active {
+  color: var(--gold);
+  text-shadow: 0 0 5px var(--gold);
+}
+
+.item-charges {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 9px;
+  color: #fff;
+  background: rgba(0,0,0,0.7);
+  padding: 0 3px;
+  border-radius: 2px;
+  pointer-events: none;
+  font-family: 'Cinzel', serif;
+}
+
+.inv-item.unidentified img {
+  filter: grayscale(1) brightness(0.5) sepia(1) hue-rotate(-50deg);
+}
+
+.merc-dead-btn {
+  background: #600;
+  border: 1px solid #f00;
+  color: #fff;
+  font-size: 9px;
+  padding: 2px 5px;
+  cursor: pointer;
+  font-family: 'Cinzel', serif;
+  margin-top: 4px;
+}
+.merc-dead-btn:hover { background: #800; }
+
 @keyframes bubblePop {
   from { transform: scale(0.8) translateY(20px); opacity: 0; }
   to { transform: scale(1) translateY(0); opacity: 1; }

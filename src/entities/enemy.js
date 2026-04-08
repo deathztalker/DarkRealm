@@ -262,6 +262,17 @@ export class Enemy {
             }
         }
 
+        // Rift Boss Nova mechanics
+        if (this.isRiftBoss && this.state !== 'dead') {
+            const hpPct = this.hp / this.maxHp;
+            if (!this._novaThresholds) this._novaThresholds = [0.75, 0.50, 0.25];
+            
+            if (this._novaThresholds.length > 0 && hpPct <= this._novaThresholds[0]) {
+                this._novaThresholds.shift();
+                this._castRiftNova(this.element || 'shadow');
+            }
+        }
+
         // Standard AI
         if (isCCd(this)) return;
 
@@ -503,6 +514,20 @@ export class Enemy {
     render(renderer, time) {
         if (this.hp <= 0) return;
 
+        // Ground Aura for Elites/Bosses
+        const isElite = this.type === 'champion' || this.type === 'rare' || this.type === 'unique';
+        if (isElite || this.type === 'boss') {
+            renderer.ctx.save();
+            const pulse = 0.4 + Math.sin(time * 0.005) * 0.2;
+            const auraColor = this.type === 'unique' ? 'rgba(191,100,47,' : (this.type === 'rare' ? 'rgba(255,255,0,' : (this.type === 'champion' ? 'rgba(72,80,184,' : 'rgba(238,202,44,'));
+            const grd = renderer.ctx.createRadialGradient(this.x, this.y + 2, 5, this.x, this.y + 2, this.type === 'boss' ? 25 : 15);
+            grd.addColorStop(0, auraColor + pulse + ')');
+            grd.addColorStop(1, 'transparent');
+            renderer.ctx.fillStyle = grd;
+            renderer.ctx.fillRect(this.x - 30, this.y - 30, 60, 60);
+            renderer.ctx.restore();
+        }
+
         // Shadow
         renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)';
         renderer.ctx.beginPath();
@@ -513,7 +538,6 @@ export class Enemy {
         // Sprite animation with Aggro Tint & Elite Aura
         const baseSize = this.isButcher ? 42 : (this.type === 'normal' ? 16 : (this.type === 'boss' ? 32 : 24));
         const isAggro = this.state === 'chase' || this.state === 'attack';
-        const isElite = this.type === 'champion' || this.type === 'rare' || this.type === 'unique';
         
         // Elites get a yellow/gold aura, Bosses get a red aura, aggro gets a red tint
         let aggroFilter = '';

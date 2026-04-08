@@ -34,6 +34,7 @@ export class Mercenary {
         this.atkSpeed = 1.2;
         
         this.resists = { fire: 0, cold: 0, light: 0, pois: 0 };
+        this._buffs = [];
         this._recalcStats();
     }
 
@@ -46,42 +47,82 @@ export class Mercenary {
             maxHp: this.maxHp,
             hp: this.hp,
             dmg: this.dmg,
-            equipment: this.equipment
+            equipment: this.equipment,
+            buffs: this._buffs
         };
     }
 
     static deserialize(data) {
         if (!data) return null;
-        return new Mercenary(data);
+        const m = new Mercenary(data);
+        if (data.buffs) m._buffs = data.buffs;
+        return m;
     }
 
     _recalcStats() {
         // Base stats from level
-        this.maxHp = 60 + this.level * 15;
-        this.baseDmg = 5 + this.level * 2;
-        this.resists = { fire: this.level * 2, cold: this.level * 2, light: this.level * 2, pois: this.level * 2 };
+        this.maxHp = 100 + this.level * 20;
+        this.baseDmg = 10 + this.level * 3;
+        this.armor = this.level * 5;
+        
+        const s = {
+            allRes: this.level * 1.5,
+            fireRes: 0, coldRes: 0, lightRes: 0, poisRes: 0, shadowRes: 0,
+            pctIAS: 0, pctDmg: 0, lifeStealPct: 0, manaStealPct: 0,
+            flatHP: 0, flatArmor: 0, pctArmor: 0
+        };
+
+        // Buffs
+        for (const b of this._buffs) {
+            if (b.id === 'shrine_armor') s.pctArmor += b.value;
+            if (b.id === 'shrine_damage') s.pctDmg += b.value;
+            if (b.id === 'shrine_resist') s.allRes += b.value;
+            if (b.id === 'shrine_speed') s.pctMoveSpeed = (s.pctMoveSpeed||0) + b.value;
+        }
         
         // Add gear stats
         for (const item of Object.values(this.equipment)) {
             if (!item) continue;
-            if (item.armor) this.maxHp += item.armor * 0.5; // Armor gives minor HP to mercs
+            
+            // Base item stats
+            if (item.armor) s.flatArmor += item.armor;
             if (item.minDmg) this.baseDmg += (item.minDmg + item.maxDmg) / 2;
             
+            // Mods
             if (item.mods) {
                 for (const mod of item.mods) {
-                    if (mod.stat === 'fireRes') this.resists.fire += mod.value;
-                    if (mod.stat === 'coldRes') this.resists.cold += mod.value;
-                    if (mod.stat === 'lightRes') this.resists.light += mod.value;
-                    if (mod.stat === 'poisRes') this.resists.pois += mod.value;
-                    if (mod.stat === 'allRes') {
-                        this.resists.fire += mod.value;
-                        this.resists.cold += mod.value;
-                        this.resists.light += mod.value;
-                        this.resists.pois += mod.value;
+                    if (s[mod.stat] !== undefined) s[mod.stat] += mod.value;
+                    else if (mod.stat === 'allRes') s.allRes += mod.value;
+                }
+            }
+
+            // Sockets
+            if (item.socketed) {
+                const itemClass = (item.slot === 'mainhand' || item.slot === 'offhand') ? item.slot : 'armor';
+                for (const gem of item.socketed) {
+                    if (gem && gem.socketEffect && gem.socketEffect[itemClass]) {
+                        const eff = gem.socketEffect[itemClass];
+                        if (s[eff.stat] !== undefined) s[eff.stat] += eff.value;
+                        else if (eff.stat === 'allRes') s.allRes += eff.value;
                     }
                 }
             }
         }
+
+        // Final totals
+        this.maxHp = Math.round((this.maxHp + s.flatHP) * (1 + (s.pctHP || 0) / 100));
+        this.armor = Math.round((this.armor + s.flatArmor) * (1 + (s.pctArmor || 0) / 100));
+        this.baseDmg = Math.round(this.baseDmg * (1 + s.pctDmg / 100));
+        this.atkSpeed = 1.2 * (1 + s.pctIAS / 100);
+        
+        this.resists = {
+            fire: Math.min(75, s.allRes + s.fireRes),
+            cold: Math.min(75, s.allRes + s.coldRes),
+            light: Math.min(75, s.allRes + s.lightRes),
+            pois: Math.min(75, s.allRes + s.poisRes)
+        };
+        
+        this.lifeStealPct = s.lifeStealPct;
         
         this.hp = Math.min(this.hp, this.maxHp);
     }

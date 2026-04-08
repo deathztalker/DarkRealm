@@ -43,6 +43,8 @@ let cube = Array(9).fill(null); // Horadric Cube
 let activeQuests = []; // { id, desc, target, progress, reward }
 let completedQuests = new Set();
 let killCount = 0;
+let totalMonstersSlain = 0;
+let totalGoldCollected = 0;
 let sessionGold = 0;
 let mercenary = null; // { name, hp, maxHp, dmg, icon, x, y }
 let lootFilter = 0; // 0=show all, 1=hide normal, 2=hide normal+magic
@@ -51,6 +53,7 @@ let unlockedAchievements = new Set();
 let isIdentifying = false; // Global identification state
 let isLarzukSocketing = false; // Global socketing service state
 let activeDialogueNpc = null; // Track NPC with open dialogue bubble
+let minimapZoom = 1.0; // 1.0, 1.5, 2.0
 
 // ─── RUNEWORDS ───
 const RUNEWORDS = [
@@ -268,6 +271,21 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         // New character
         zoneLevel = 0; // Start in Town
         activeSlotId = slotId || SaveSystem.newSlotId();
+        
+        // Starting Gear for new characters
+        if (!loadPlayerData) {
+            player = new Player(selectedClass);
+            if (charName) player.charName = charName;
+            
+            const idTome = { ...items.tome_identify, charges: 20, identified: true };
+            const tpTome = { ...items.tome_tp, charges: 20, identified: true };
+            player.addToInventory(idTome);
+            player.addToInventory(tpTome);
+            
+            if ($('hardcore-mode') && $('hardcore-mode').checked) {
+                player.isHardcore = true;
+            }
+        }
     }
     window._activeSlotId = activeSlotId;
 
@@ -435,7 +453,9 @@ function gameLoop(timestamp) {
     aoeZones = aoeZones.filter(a => a.active);
 
     // Update Statuses, DoTs, and physics (knockback)
-    updateStatuses([player, ...enemies, ...npcs], dt);
+    const statusTargets = [player, ...enemies, ...npcs];
+    if (mercenary) statusTargets.push(mercenary);
+    updateStatuses(statusTargets, dt);
 
     if (dialogue) {
         dialogue.timer -= dt;
@@ -483,8 +503,16 @@ function gameLoop(timestamp) {
     }
 
     // Mercenary follow & attack AI
-    if (mercenary && mercenary.hp > 0) {
-        mercenary.update(dt, player, enemies, dungeon);
+    if (mercenary) {
+        if (mercenary.hp > 0) {
+            mercenary.update(dt, player, enemies, dungeon);
+            mercenary._deadNotified = false;
+        } else if (!mercenary._deadNotified) {
+            addCombatLog(`Your companion ${mercenary.name} has fallen!`, 'log-dmg');
+            playDeathSfx();
+            mercenary._deadNotified = true;
+            updateHud();
+        }
     }
 
     checkDeaths();
@@ -779,28 +807,37 @@ function checkInteractions(pos) {
                 let buffName = '';
                 let duration = 60; // default 60s
                 
+                const buffData = { type: '', id: '', value: 0, duration: 60 };
+
                 if (sType === 'experience') {
                     buffName = 'Experience Shrine (+50% XP)';
-                    player._buffs.push({ type: 'exp', id: 'shrine_exp', value: 50, duration: 120 });
+                    buffData.type = 'exp'; buffData.id = 'shrine_exp'; buffData.value = 50; buffData.duration = 120;
                 } else if (sType === 'armor') {
                     buffName = 'Armor Shrine (+100% Defense)';
-                    player._buffs.push({ type: 'armor', id: 'shrine_armor', value: 100, duration: 60 });
+                    buffData.type = 'armor'; buffData.id = 'shrine_armor'; buffData.value = 100;
                 } else if (sType === 'combat') {
                     buffName = 'Combat Shrine (+50% Damage)';
-                    player._buffs.push({ type: 'damage', id: 'shrine_damage', value: 50, duration: 60 });
+                    buffData.type = 'damage'; buffData.id = 'shrine_damage'; buffData.value = 50;
                 } else if (sType === 'mana') {
                     buffName = 'Mana Shrine (+500% Mana Regen)';
-                    player._buffs.push({ type: 'mana', id: 'shrine_mana', value: 500, duration: 60 });
+                    buffData.type = 'mana'; buffData.id = 'shrine_mana'; buffData.value = 500;
                     player.mp = player.maxMp;
+                    if (mercenary) mercenary.mp = mercenary.maxMp;
                 } else if (sType === 'resist') {
                     buffName = 'Resist Shrine (+75 All Resists)';
-                    player._buffs.push({ type: 'resist', id: 'shrine_resist', value: 75, duration: 60 });
+                    buffData.type = 'resist'; buffData.id = 'shrine_resist'; buffData.value = 75;
                 } else if (sType === 'speed') {
                     buffName = 'Stamina Shrine (+30% Move Speed)';
-                    player._buffs.push({ type: 'speed', id: 'shrine_speed', value: 30, duration: 60 });
+                    buffData.type = 'speed'; buffData.id = 'shrine_speed'; buffData.value = 30;
                 }
                 
+                player._buffs.push({ ...buffData });
                 player._recalcStats();
+
+                if (mercenary && mercenary.hp > 0) {
+                    mercenary._buffs.push({ ...buffData });
+                    mercenary._recalcStats();
+                }
 
                 addCombatLog(`Touched ${buffName}`, 'log-heal');
                 fx.emitBurst(o.x, o.y, '#4080ff', 30, 2);
@@ -840,6 +877,7 @@ function checkInteractions(pos) {
             const distToPlayer = Math.sqrt((dg.x - player.x) ** 2 + (dg.y - player.y) ** 2);
             if (distToPlayer < 45) {
                 player.gold += dg.amount;
+                totalGoldCollected += dg.amount;
                 addCombatLog(`Picked up ${dg.amount} Gold`, 'log-heal');
                 bus.emit('gold:pickup', { amount: dg.amount });
                 droppedGold.splice(i, 1);
@@ -900,6 +938,7 @@ function checkDeaths() {
 
             // Kill counter
             killCount++;
+            if (player) player.totalMonstersSlain++;
 
             // Quest tracking
             for (const q of activeQuests) {
@@ -927,7 +966,8 @@ function checkDeaths() {
                 
                 setTimeout(() => {
                     $('victory-screen').classList.remove('hidden');
-                    $('victory-stats').textContent = `Level ${player.level} ${player.className} — ${bossMsg}`;
+                    $('victory-stats').innerHTML = `Level ${player.level} ${player.className} — ${bossMsg}<br>` +
+                                                 `<div style="font-size:12px;color:#888;margin-top:10px;">Total Slain: ${totalMonstersSlain} | Gold Collected: ${totalGoldCollected}</div>`;
                 }, 1500);
                 
                 const tp = new GameObject('portal', e.x, e.y - 40, 'env_water');
@@ -937,7 +977,7 @@ function checkDeaths() {
                 if (unlockedDiff) {
                     const diffName = player.maxDifficulty === 1 ? 'Nightmare' : 'Hell';
                     addCombatLog(`⭐ ${diffName} Difficulty Unlocked! ⭐`, 'log-crit');
-                    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: Array.from(discoveredWaypoints) });
+                    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: Array.from(discoveredWaypoints), mercenary: mercenary ? mercenary.serialize() : null });
                 }
             }
         }
@@ -970,13 +1010,18 @@ function checkDeaths() {
         playDeathSfx();
         $('death-screen').classList.remove('hidden');
         const zName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 7}`;
+        
+        let deathMsg = `You fell in ${zName} at Level ${player.level}.<br>`;
+        deathMsg += `<div style="font-size:12px;color:#888;margin-top:10px;">Total Slain: ${player.totalMonstersSlain} | Gold Collected: ${player.totalGoldCollected}</div>`;
+
         if (player.isHardcore) {
-            $('death-stats').textContent = `Your Hardcore hero fell in ${zName} at Level ${player.level}. Your deeds of valor will be remembered.`;
+            $('death-stats').innerHTML = `Your Hardcore hero fell in ${zName} at Level ${player.level}. Your deeds of valor will be remembered.<br>` + 
+                                       `<div style="font-size:12px;color:#888;margin-top:10px;">Total Slain: ${player.totalMonstersSlain} | Gold Collected: ${player.totalGoldCollected}</div>`;
             $('btn-respawn').style.display = 'none'; // No respawn for hardcore
             if (activeSlotId) SaveSystem.deleteSlot(activeSlotId);
             addCombatLog('HARDCORE DEATH. Save file deleted.', 'log-dmg');
         } else {
-            $('death-stats').textContent = `You fell in ${zName} at Level ${player.level}.`;
+            $('death-stats').innerHTML = deathMsg;
             $('btn-respawn').style.display = 'inline-block';
         }
     }
@@ -1149,6 +1194,20 @@ function updateHud() {
     const zoneName = $('zone-name');
     if (zoneName) zoneName.textContent = ZONE_NAMES[zoneLevel] || `Level ${zoneLevel}`;
 
+    // Potion Belt
+    for (let i = 0; i < 4; i++) {
+        const slotEl = $(`pi-${i}`);
+        if (!slotEl) continue;
+        const potion = player.belt[i];
+        if (potion) {
+            slotEl.style.backgroundImage = `url('assets/${potion.icon}.png')`;
+            slotEl.title = potion.name;
+        } else {
+            slotEl.style.backgroundImage = 'none';
+            slotEl.title = '';
+        }
+    }
+
     // Cooldowns
     for (let i = 0; i < 5; i++) {
         const cd = $(`cd-${i}`);
@@ -1174,6 +1233,19 @@ function updateHud() {
         }
     }
 
+    // Check for broken gear
+    let hasBroken = false;
+    if (player.equipment) {
+        for (const item of Object.values(player.equipment)) {
+            if (item && item.maxDurability > 0 && item.durability === 0) {
+                hasBroken = true;
+                break;
+            }
+        }
+    }
+    const brokenWarn = $('broken-gear-warning');
+    if (brokenWarn) brokenWarn.classList.toggle('hidden', !hasBroken);
+
     // Minion UI
     const mui = $('minions-ui');
     if (mui) {
@@ -1193,11 +1265,31 @@ function updateHud() {
     // Mercenary HUD
     const mh = $('mercenary-hud');
     if (mh) {
-        if (typeof mercenary !== 'undefined' && mercenary && mercenary.hp > 0) {
+        if (typeof mercenary !== 'undefined' && mercenary) {
             mh.classList.remove('hidden');
             $('merc-name').textContent = mercenary.name;
             const mPct = Math.max(0, Math.min(100, (mercenary.hp / mercenary.maxHp) * 100));
             $('merc-hp-fill').style.width = mPct + '%';
+            
+            if (mercenary.hp <= 0) {
+                $('merc-hp-fill').style.backgroundColor = '#600';
+                $('merc-name').style.color = '#f00';
+                $('merc-name').textContent = `${mercenary.name} (DEAD)`;
+                
+                if (!$('btn-revive-merc')) {
+                    const btn = document.createElement('button');
+                    btn.id = 'btn-revive-merc';
+                    btn.className = 'merc-dead-btn';
+                    btn.textContent = 'REVIVE (200g)';
+                    btn.onclick = () => { hireMercenary(); updateHud(); };
+                    mh.appendChild(btn);
+                }
+            } else {
+                $('merc-hp-fill').style.backgroundColor = '#4caf50';
+                $('merc-name').style.color = '#fff';
+                const existingBtn = $('btn-revive-merc');
+                if (existingBtn) existingBtn.remove();
+            }
         } else {
             mh.classList.add('hidden');
         }
@@ -1510,9 +1602,17 @@ function getItemHtml(item, cantEquip = false) {
     if (iconName === 'item_diamond') { iconName = 'item_emerald'; filterStyle = 'filter: brightness(2) saturate(0) contrast(1.2);'; }
     if (iconName === 'item_skull') { iconName = 'item_topaz'; filterStyle = 'filter: grayscale(1) brightness(0.8) contrast(1.5);'; }
     
-    return `<div class="inv-item ${rarityClass}${unidentifiedClass}${equipClass}">
-        <img src="assets/${iconName}.png" style="width:100%; height:100%; object-fit:contain; ${filterStyle}">
-    </div>`;
+    let html = `<div class="inv-item ${rarityClass}${unidentifiedClass}${equipClass}">
+        <img src="assets/${iconName}.png" style="width:100%; height:100%; object-fit:contain; ${filterStyle}">`;
+    
+    if (item.type === 'tome') {
+        const charges = item.charges || 0;
+        const color = charges === 0 ? '#f44336' : (charges < 5 ? '#ffeb3b' : '#fff');
+        html += `<div class="item-charges" style="color:${color}">${charges}</div>`;
+    }
+    
+    html += `</div>`;
+    return html;
 }
 
 function getIconForItem(iconStr) {
@@ -1667,7 +1767,6 @@ function renderMinimap() {
     if (!mc) return;
     const ctx = mc.getContext('2d');
     const mw = mc.width, mh = mc.height;
-    const sx = mw / dungeon.width, sy = mh / dungeon.height;
 
     // Update explored tiles based on camera view
     if (explored && camera) {
@@ -1682,37 +1781,72 @@ function renderMinimap() {
 
     ctx.clearRect(0, 0, mw, mh);
 
+    // Zoom Logic
+    const zoom = minimapZoom || 1.0;
+    const sx = (mw / dungeon.width) * zoom;
+    const sy = (mh / dungeon.height) * zoom;
+    
+    // Offset to center on player
+    const px_tile = player.x / dungeon.tileSize;
+    const py_tile = player.y / dungeon.tileSize;
+    
+    const ox = (mw / 2) - px_tile * sx;
+    const oy = (mh / 2) - py_tile * sy;
+
     // Draw tiles
     for (let r = 0; r < dungeon.height; r++) {
         for (let c = 0; c < dungeon.width; c++) {
             if (explored && !explored[r][c]) continue;
             const t = dungeon.grid[r][c];
-            if (t === 1) continue; // WALL = skip (black bg)
+            if (t === 1) continue; // WALL
+            
+            const dx = ox + c * sx;
+            const dy = oy + r * sy;
+            
+            // Bounds check for performance/clipping
+            if (dx + sx < 0 || dx > mw || dy + sy < 0 || dy > mh) continue;
+
             ctx.fillStyle = t === 0 ? '#3a3640' : t === 3 ? '#ffd700' : t === 6 ? '#2d5a27' : t === 7 ? '#5c4a3d' : t === 8 ? '#1e4b85' : '#4a4050';
-            ctx.fillRect(c * sx, r * sy, Math.ceil(sx), Math.ceil(sy));
+            ctx.fillRect(dx, dy, Math.ceil(sx), Math.ceil(sy));
+        }
+    }
+
+    // World Objects
+    for (const obj of gameObjects) {
+        const or = Math.floor(obj.y / dungeon.tileSize);
+        const oc = Math.floor(obj.x / dungeon.tileSize);
+        if (explored[or] && explored[or][oc]) {
+            const obx = ox + (obj.x / dungeon.tileSize) * sx;
+            const oby = oy + (obj.y / dungeon.tileSize) * sy;
+            if (obx < 0 || obx > mw || oby < 0 || oby > mh) continue;
+            ctx.fillStyle = obj.type === 'portal' ? '#30ccff' : (obj.type === 'shrine' ? '#ffd700' : '#8b4513');
+            ctx.fillRect(obx - 1, oby - 1, 2, 2);
         }
     }
 
     // Enemy dots
     for (const e of enemies) {
         if (e.hp <= 0) continue;
-        const ex = (e.x / dungeon.tileSize) * sx;
-        const ey = (e.y / dungeon.tileSize) * sy;
+        const ex = ox + (e.x / dungeon.tileSize) * sx;
+        const ey = oy + (e.y / dungeon.tileSize) * sy;
+        if (ex < 0 || ex > mw || ey < 0 || ey > mh) continue;
+
         if (e.type === 'boss') {
             ctx.fillStyle = '#ff0000';
             ctx.font = '8px Arial';
             ctx.textAlign = 'center';
             ctx.fillText('💀', ex, ey + 3);
         } else {
-            ctx.fillStyle = '#e04040';
+            ctx.fillStyle = e.type === 'unique' ? '#bf642f' : (e.type === 'rare' ? '#ffff00' : '#e04040');
             ctx.fillRect(ex - 1, ey - 1, 2, 2);
         }
     }
 
     // NPC dots
     for (const n of npcs) {
-        const nx = (n.x / dungeon.tileSize) * sx;
-        const ny = (n.y / dungeon.tileSize) * sy;
+        const nx = ox + (n.x / dungeon.tileSize) * sx;
+        const ny = oy + (n.y / dungeon.tileSize) * sy;
+        if (nx < 0 || nx > mw || ny < 0 || ny > mh) continue;
         ctx.fillStyle = '#40a0ff';
         ctx.beginPath();
         ctx.arc(nx, ny, 1.5, 0, Math.PI * 2);
@@ -1722,11 +1856,9 @@ function renderMinimap() {
         ctx.stroke();
     }
 
-    // Player dot
+    // Player dot (always center)
     ctx.fillStyle = '#00ff40';
-    const px = (player.x / dungeon.tileSize) * sx;
-    const py = (player.y / dungeon.tileSize) * sy;
-    ctx.fillRect(px - 2, py - 2, 4, 4);
+    ctx.fillRect(mw / 2 - 2, mh / 2 - 2, 4, 4);
 }
 // ─── POTION EVENTS ───
 for (let i = 0; i < 4; i++) {
@@ -1743,12 +1875,29 @@ bus.on('input:rightclick', p => {
     // Handle right-click for quick actions if needed
 });
 
+// Weapon Swap
+bus.on('action:weapon_swap', () => {
+    if (player && state === 'GAME') {
+        player.swapWeapons();
+        renderInventory();
+        renderCharacterPanel();
+    }
+});
+
 // ─── TOGGLES ───
 bus.on('ui:toggle:fullmap', () => { showFullMap = !showFullMap; });
 bus.on('ui:toggle:lootfilter', () => {
     lootFilter = (lootFilter + 1) % 3;
     const msg = lootFilter === 0 ? 'Loot Filter: Show All' : lootFilter === 1 ? 'Loot Filter: Hide Normal' : 'Loot Filter: Hide Normal & Magic';
     addCombatLog(msg, 'log-info');
+});
+
+// Minimap Zoom
+bus.on('ui:toggle:map', () => {
+    const zooms = [1.0, 1.5, 2.0];
+    let idx = zooms.indexOf(minimapZoom);
+    minimapZoom = zooms[(idx + 1) % zooms.length];
+    addCombatLog(`Minimap Zoom: ${minimapZoom}x`, 'log-info');
 });
 
 // ─── COMBAT EVENTS ───
@@ -1758,19 +1907,39 @@ bus.on('combat:damage', d => {
     }
     if (!d.target?.isPlayer) {
         const cls = d.isCrit ? 'log-crit' : 'log-dmg';
-        addCombatLog(`${d.dealt} ${d.type} damage${d.isCrit ? ' CRIT!' : ''}`, cls);
+        if (d.dealt === 0 && d.type !== 'physical') {
+            addCombatLog(`Target is IMMUNE to ${d.type}!`, 'log-dmg');
+        } else {
+            addCombatLog(`${d.dealt} ${d.type} damage${d.isCrit ? ' CRIT!' : ''}`, cls);
+        }
     }
     // Floating number
     if (camera && renderer) {
         const screen = camera.toScreen(d.worldX || d.target?.x || 0, d.worldY || d.target?.y || 0);
         const el = document.createElement('div');
         el.className = 'dmg-number';
-        el.textContent = d.dealt;
+        
+        let isSpecial = false;
+        if (d.dealt === 'Blocked!') {
+            el.textContent = 'BLOCKED!';
+            el.style.color = '#aaa';
+            isSpecial = true;
+            playLoot(); // Use loot sound as a 'clink' for now
+        } else if (d.dealt === 0 && d.type !== 'physical' && !d.target?.isPlayer) {
+            el.textContent = 'IMMUNE!';
+            el.style.color = '#fff';
+            el.style.fontWeight = 'bold';
+            isSpecial = true;
+            playLoot();
+        } else {
+            el.textContent = d.dealt;
+        }
+        
         el.style.left = screen.x + 'px';
         el.style.top = (screen.y - 20) + 'px';
         const dmgColors = { fire: '#ff6030', cold: '#30ccff', lightning: '#ffff40', poison: '#50ff50', shadow: '#cc60ff', physical: '#ffffff' };
         const baseColor = d.target?.isPlayer ? '#e05050' : (dmgColors[d.type] || '#fff');
-        el.style.color = d.isCrit ? '#ffa040' : baseColor;
+        el.style.color = d.isCrit ? '#ffa040' : (el.textContent === 'IMMUNE!' ? '#fff' : baseColor);
         el.style.fontSize = d.isCrit ? '18px' : '14px';
         el.style.textShadow = d.isCrit ? '0 0 8px #ff6000' : '1px 1px 2px #000';
         document.body.appendChild(el);
@@ -1792,11 +1961,35 @@ bus.on('combat:damage', d => {
 
         // Steal Visuals
         if (d.attacker?.isPlayer && !d.target?.isPlayer) {
-            if (d.attacker.lifeStealPct && Math.random() < 0.3) fx.emitHeal(d.attacker.x, d.attacker.y);
-            if (d.attacker.manaStealPct && Math.random() < 0.3) fx.emitManaSteal(d.attacker.x, d.attacker.y);
+            if (d.attacker.lifeStealPct && Math.random() < 0.3) {
+                fx.emitHeal(d.attacker.x, d.attacker.y);
+                const stolen = Math.round(d.dealt * d.attacker.lifeStealPct / 100);
+                if (stolen > 0) bus.emit('combat:text', { x: d.attacker.x, y: d.attacker.y - 15, text: `+${stolen}`, color: '#40ff40' });
+            }
+            if (d.attacker.manaStealPct && Math.random() < 0.3) {
+                fx.emitManaSteal(d.attacker.x, d.attacker.y);
+                const stolen = Math.round(d.dealt * d.attacker.manaStealPct / 100);
+                if (stolen > 0) bus.emit('combat:text', { x: d.attacker.x, y: d.attacker.y - 5, text: `+${stolen}`, color: '#4080ff' });
+            }
         }
     }
 });
+
+bus.on('combat:text', d => {
+    if (camera && renderer) {
+        const screen = camera.toScreen(d.x, d.y);
+        const el = document.createElement('div');
+        el.className = 'dmg-number';
+        el.textContent = d.text;
+        el.style.left = screen.x + 'px';
+        el.style.top = screen.y + 'px';
+        el.style.color = d.color || '#fff';
+        el.style.fontSize = '12px';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
+});
+
 
 bus.on('combat:spawnProjectile', d => projectiles.push(d.proj));
 bus.on('combat:spawnAoE', d => aoeZones.push(d.aoe));
@@ -1830,6 +2023,8 @@ bus.on('combat:spawnMinions', d => {
 
 bus.on('player:levelup', d => {
     addCombatLog(`LEVEL UP! Now level ${d.level}`, 'log-level');
+    if (player && fx) fx.emitBurst(player.x, player.y, '#ffd700', 50, 3);
+    playZoneTransition(); // Level up sound
     updateSkillBar();
 });
 
@@ -1870,6 +2065,13 @@ function togglePanel(name) {
     if (name === 'inventory' && !panel.classList.contains('hidden')) renderInventory();
     if (name === 'mercenary' && !panel.classList.contains('hidden')) renderMercenaryPanel();
 }
+
+$('btn-sort-inv')?.addEventListener('click', () => {
+    if (!player) return;
+    player.sortInventory();
+    renderInventory();
+    addCombatLog('Inventory Organized.', 'log-info');
+});
 
 bus.on('ui:toggle:inventory', () => togglePanel('inventory'));
 bus.on('ui:toggle:talents', () => togglePanel('talents'));
@@ -1913,6 +2115,16 @@ function renderMercenaryPanel() {
         }
     });
 
+    // Display buffs
+    let buffHtml = '';
+    if (mercenary._buffs && mercenary._buffs.length > 0) {
+        buffHtml = '<div style="display:flex; gap:4px; margin-top:8px; padding-top:5px; border-top:1px solid #444;">';
+        for (const b of mercenary._buffs) {
+            buffHtml += `<div style="width:16px; height:16px; background:#330; border:1px solid #aa0; color:#ff0; font-size:9px; display:flex; justify-content:center; align-items:center; border-radius:2px;" title="${b.type.toUpperCase()}: ${b.duration.toFixed(1)}s">⚡</div>`;
+        }
+        buffHtml += '</div>';
+    }
+
     $('merc-stats-display').innerHTML = `
         <div style="color:var(--gold); font-family:Cinzel,serif; margin-bottom:5px; border-bottom:1px solid #444;">${mercenary.name} (Lvl ${mercenary.level} ${mercenary.className})</div>
         <div>HP: <span style="color:#fff;">${Math.round(mercenary.hp)} / ${mercenary.maxHp}</span></div>
@@ -1923,6 +2135,7 @@ function renderMercenaryPanel() {
             <span style="color:#ff4;">L:${mercenary.resists.light}%</span> 
             <span style="color:#6f6;">P:${mercenary.resists.pois}%</span>
         </div>
+        ${buffHtml}
     `;
 }
 bus.on('ui:closeAll', () => {
@@ -2201,6 +2414,18 @@ function renderInventory() {
 
     // 1. Equip Slots (Paper Doll)
     const equipSlots = ['head', 'amulet', 'chest', 'mainhand', 'offhand', 'gloves', 'belt', 'boots', 'ring1', 'ring2'];
+    
+    // Update Weapon Set Indicators
+    if (player) {
+        const w1 = player.activeWeaponSet === 1;
+        const main1 = $('wset-main-1'), main2 = $('wset-main-2');
+        const off1 = $('wset-off-1'), off2 = $('wset-off-2');
+        if (main1) main1.classList.toggle('active', w1);
+        if (main2) main2.classList.toggle('active', !w1);
+        if (off1) off1.classList.toggle('active', w1);
+        if (off2) off2.classList.toggle('active', !w1);
+    }
+
     equipSlots.forEach(s => {
         const el = document.querySelector(`.equip-slot[data-slot="${s}"]`);
         if (!el) return;
@@ -2363,6 +2588,10 @@ function renderInventory() {
                         const old = mercenary.equipment[item.slot];
                         mercenary.equipment[item.slot] = item;
                         player.inventory[i] = old;
+                        
+                        // Mercenaries can use Runewords too!
+                        checkRuneword(item);
+                        
                         mercenary._recalcStats();
                         addCombatLog(`Equipped ${item.name} to ${mercenary.name}`, 'log-info');
                         renderInventory();
@@ -2514,6 +2743,37 @@ function renderInventory() {
                     player.inventory[i] = null; // Consume
                     renderInventory();
                 }
+                // Tome Logic
+                else if (item.type === 'tome') {
+                    const scrollType = item.baseId === 'tome_tp' ? 'scroll_town_portal' : 'scroll_identify';
+                    const scrollIdx = player.inventory.findIndex(it => it && it.baseId === scrollType);
+                    
+                    if (scrollIdx !== -1) {
+                        // Refill Tome
+                        item.charges = Math.min(item.maxCharges || 20, (item.charges || 0) + 1);
+                        player.inventory[scrollIdx] = null;
+                        addCombatLog(`Added scroll to ${item.name}.`, 'log-info');
+                        playLoot();
+                    } else if ((item.charges || 0) > 0) {
+                        // Use Tome
+                        if (item.baseId === 'tome_tp') {
+                            if (zoneLevel === 0) { addCombatLog('Cannot cast in Town!', 'log-dmg'); return; }
+                            const tp = new GameObject('portal', player.x, player.y - 40, 'env_water');
+                            tp.targetZone = 0; portalReturnZone = zoneLevel;
+                            gameObjects.push(tp);
+                            if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 50, 4);
+                            addCombatLog('Town Portal Opened!', 'log-level');
+                        } else {
+                            window.isIdentifying = true;
+                            document.body.style.cursor = 'crosshair';
+                            addCombatLog('Select an item to identify', 'log-info');
+                        }
+                        item.charges--;
+                    } else {
+                        addCombatLog(`${item.name} is empty!`, 'log-dmg');
+                    }
+                    renderInventory();
+                }
                 else if (item.type === 'gem') {
                     socketingGemIndex = i;
                     document.body.style.cursor = `url('assets/item_amulet.png'), crosshair`;
@@ -2569,12 +2829,15 @@ function showTooltip(item, x, y) {
 
     // Item comparison logic
     if (player && item.slot && item.slot !== 'none' && item.identified !== false) {
+        const mercPanelOpen = !$('panel-mercenary').classList.contains('hidden');
+        const targetEntity = (mercPanelOpen && mercenary) ? mercenary : player;
+        
         // Find if we have an item equipped in this slot
         let equippedItem = null;
         if (item.slot === 'ring') {
-            equippedItem = player.equipment['ring1'] || player.equipment['ring2'];
+            equippedItem = targetEntity.equipment['ring1'] || targetEntity.equipment['ring2'];
         } else {
-            equippedItem = player.equipment[item.slot];
+            equippedItem = targetEntity.equipment[item.slot];
         }
 
         // Make sure we aren't hovering the equipped item itself
@@ -2660,11 +2923,44 @@ function itemTooltipText(item, isComparison = false) {
         sockets: 'Sockets',
     };
 
+    // Comparison Helper
+    let compareItem = null;
+    if (!isComparison) {
+        const mercPanelOpen = !$('panel-mercenary').classList.contains('hidden');
+        const targetEntity = (mercPanelOpen && mercenary) ? mercenary : player;
+        if (item.slot === 'ring') compareItem = targetEntity.equipment['ring1'] || targetEntity.equipment['ring2'];
+        else compareItem = targetEntity.equipment[item.slot];
+        if (compareItem === item) compareItem = null;
+    }
+
+    const getCompareColor = (val, equippedVal, inverse = false) => {
+        if (isComparison || !compareItem || equippedVal === undefined) return '#fff';
+        if (val === equippedVal) return '#fff';
+        const isBetter = inverse ? (val < equippedVal) : (val > equippedVal);
+        return isBetter ? '#4caf50' : '#f44336';
+    };
+
+    const getDiffText = (val, equippedVal, inverse = false) => {
+        if (isComparison || !compareItem || equippedVal === undefined) return '';
+        const diff = val - equippedVal;
+        if (diff === 0) return '';
+        const color = (inverse ? diff < 0 : diff > 0) ? '#4caf50' : '#f44336';
+        return ` <span style="color:${color}; font-size:9px;">(${diff > 0 ? '+' : ''}${diff})</span>`;
+    };
+
     t += `<div class="tooltip-stats" style="color:#fff;">`;
-    if (item.minDmg) t += `<div>Damage: ${item.minDmg}–${item.maxDmg}</div>`;
-    if (item.armor) t += `<div>Armor: ${item.armor}</div>`;
-    if (item.block) t += `<div>Block: ${item.block}%</div>`;
+    if (item.minDmg) {
+        const avg = (item.minDmg + item.maxDmg) / 2;
+        const compAvg = compareItem ? (compareItem.minDmg + compareItem.maxDmg) / 2 : avg;
+        t += `<div style="color:${getCompareColor(avg, compAvg)}">Damage: ${item.minDmg}–${item.maxDmg}${getDiffText(avg, compAvg)}</div>`;
+    }
+    if (item.armor) t += `<div style="color:${getCompareColor(item.armor, compareItem?.armor)}">Armor: ${item.armor}${getDiffText(item.armor, compareItem?.armor)}</div>`;
+    if (item.block) t += `<div style="color:${getCompareColor(item.block, compareItem?.block)}">Block: ${item.block}%${getDiffText(item.block, compareItem?.block)}</div>`;
     if (item.atkSpd && item.atkSpd !== 1) t += `<div>Attack Speed: ${item.atkSpd.toFixed(2)}</div>`;
+    
+    if (item.type === 'tome') {
+        t += `<div style="color:var(--gold);">Charges: ${item.charges || 0} / ${item.maxCharges || 20}</div>`;
+    }
     
     // Support for Gem/Rune Socket Effects (Compact & Categorized)
     if (item.type === 'gem' && item.socketEffect) {
@@ -2868,6 +3164,16 @@ function renderDialoguePicker(npc) {
         options.push({ label: 'Gamble', action: () => { openGambleShop(); menu.remove(); activeDialogueNpc = null; } });
     }
 
+    // Special: Hire / Revive (Kashya)
+    if (npc.id === 'kashya') {
+        const isDead = mercenary && mercenary.hp <= 0;
+        options.push({ label: isDead ? 'Revive Mercenary (200g)' : 'Hire Mercenary (500g)', action: () => {
+            hireMercenary();
+            menu.remove();
+            activeDialogueNpc = null;
+        }});
+    }
+
     // Special: Socket (Larzuk)
     if (npc.id === 'larzuk') {
         // Remove Trade for Larzuk
@@ -3068,6 +3374,32 @@ function renderShop() {
     }
     container.appendChild(repairRow);
 
+    // Refill Tomes Service
+    let totalRefillCost = 0;
+    player.inventory.forEach(it => {
+        if (it && it.type === 'tome') {
+            totalRefillCost += ((it.maxCharges || 20) - (it.charges || 0)) * 5; // 5g per charge
+        }
+    });
+
+    const refillRow = document.createElement('div');
+    refillRow.style.cssText = `padding:8px; margin: 4px 0; border:1px solid ${totalRefillCost > 0 ? '#30ccff' : '#333'}; background:${totalRefillCost > 0 ? '#0a1a2a' : '#111'}; border-radius:4px; text-align:center; cursor:${totalRefillCost > 0 ? 'pointer' : 'default'}; font-family:Cinzel,serif; color:${totalRefillCost > 0 ? '#30ccff' : '#666'};`;
+    refillRow.innerHTML = `📖 Refill All Tomes (${totalRefillCost}g)`;
+    if (totalRefillCost > 0) {
+        refillRow.onclick = () => {
+            if (player.gold >= totalRefillCost) {
+                player.gold -= totalRefillCost;
+                player.inventory.forEach(it => { if (it && it.type === 'tome') it.charges = it.maxCharges || 20; });
+                addCombatLog(`Tomes refilled for ${totalRefillCost} gold.`, 'log-info');
+                renderShop();
+                renderInventory();
+            } else {
+                addCombatLog('Not enough gold!', 'log-dmg');
+            }
+        };
+    }
+    container.appendChild(refillRow);
+
     // Identify All Service
     const idAllRow = document.createElement('div');
     idAllRow.style.cssText = 'padding:6px; margin: 4px 0; border:1px solid #bf642f; background:#302010; border-radius:4px; text-align:center; cursor:pointer; font-family:Cinzel,serif; color:#ffd700;';
@@ -3103,6 +3435,8 @@ function renderShop() {
         { ...items.rejuv_potion, price: 75 },
         { ...items.scroll_identify, price: 100 },
         { ...items.scroll_town_portal, price: 100 },
+        { ...items.tome_tp, price: 500 },
+        { ...items.tome_identify, price: 500 },
     ];
 
     for (const item of shopInventory) {
@@ -3357,7 +3691,7 @@ const QUEST_POOL = [
     { id: 'slay_5', desc: 'Slay 5 monsters in the Blood Moor', target: 5, goldReward: 150, xpReward: 100 },
     { id: 'slay_10', desc: 'Slay 10 monsters in the wilderness', target: 10, goldReward: 350, xpReward: 250 },
     { id: 'slay_20', desc: 'Defeat 20 creatures of darkness', target: 20, goldReward: 800, xpReward: 500 },
-    { id: 'slay_boss', desc: 'Defeat the Act Boss', target: 1, goldReward: 1500, xpReward: 1000, bossOnly: true },
+    { id: 'slay_boss', desc: 'Defeat the Act Boss', target: 1, goldReward: 1500, xpReward: 1000, bossOnly: true, statReward: 5, skillReward: 1 },
 ];
 
 function offerQuest() {
@@ -3368,9 +3702,20 @@ function offerQuest() {
         if (q.progress >= q.target) {
             player.gold += q.goldReward;
             player.addXp(q.xpReward);
-            addCombatLog(`Quest Complete: "${q.desc}" — +${q.goldReward}g, +${q.xpReward} XP!`, 'log-level');
+            
+            // Special rewards
+            if (q.statReward) player.statPoints += q.statReward;
+            if (q.skillReward) player.talents.unspent += q.skillReward;
+
+            let rewardMsg = `+${q.goldReward}g, +${q.xpReward} XP`;
+            if (q.statReward) rewardMsg += `, +${q.statReward} Stat Points`;
+            if (q.skillReward) rewardMsg += `, +${q.skillReward} Skill Point`;
+
+            addCombatLog(`Quest Complete: "${q.desc}" — ${rewardMsg}!`, 'log-level');
             completedQuests.add(q.id);
             activeQuests.splice(i, 1);
+            if (fx) fx.emitBurst(player.x, player.y, '#4caf50', 50, 2.5);
+            playZoneTransition(); // Celebratory sound
             updateHud();
             return;
         }
@@ -3395,12 +3740,15 @@ function offerQuest() {
 // ─── MERCENARY HIRE ───
 function hireMercenary() {
     if (!player) return;
+    
+    // Revive cost scales with level (min 200, max 50000)
+    const cost = Math.min(50000, Math.max(200, player.level * 100));
+
     if (mercenary && mercenary.hp > 0) {
         addCombatLog('Kashya: "Your rogue still fights! Return when she falls."', 'log-info');
         return;
     }
     if (mercenary && mercenary.hp <= 0) {
-        const cost = 200;
         if (player.gold < cost) { addCombatLog(`Not enough gold! (${cost}g to resurrect)`, 'log-dmg'); return; }
         player.gold -= cost;
         mercenary.hp = mercenary.maxHp;
