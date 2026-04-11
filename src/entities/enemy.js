@@ -535,7 +535,7 @@ export class Enemy {
         renderer.ctx.fill();
 
 
-        // Sprite animation with Aggro Tint & Elite Aura
+        // Sprite animation with Aggro Tint & Status Tints
         const baseSize = this.isButcher ? 42 : (this.type === 'normal' ? 16 : (this.type === 'boss' ? 32 : 24));
         const isAggro = this.state === 'chase' || this.state === 'attack';
         
@@ -543,7 +543,18 @@ export class Enemy {
         let aggroFilter = '';
         if (isElite) aggroFilter += 'drop-shadow(0 0 6px #f0d030) ';
         if (this.type === 'boss') aggroFilter += 'drop-shadow(0 0 8px #ff0000) ';
-        if (isAggro) aggroFilter += 'sepia(1) saturate(3) hue-rotate(-50deg)';
+        if (isAggro) aggroFilter += 'sepia(0.5) saturate(2) hue-rotate(-50deg) ';
+        
+        // Status Tints
+        if (this._statuses) {
+            for (const s of this._statuses) {
+                if (s.type === 'chill' || s.type === 'frozen') {
+                    aggroFilter += ' hue-rotate(160deg) saturate(1.5) brightness(1.2) ';
+                } else if (s.type === 'burn') {
+                    aggroFilter += ' hue-rotate(-30deg) saturate(2) brightness(1.1) ';
+                }
+            }
+        }
         
         renderer.drawAnim(this.icon, this.x, this.y - 4, baseSize, this.animState, this.facingDir, time, aggroFilter || null);
 

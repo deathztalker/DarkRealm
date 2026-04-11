@@ -881,6 +881,10 @@ export class Player {
         const duration = 20 + slvl * 2;
         const name = skill.name || skillId.replace(/_/g, ' ');
 
+        // Check if stationary (Totems, Vines, Traps, or Sentries)
+        const isStationary = skill.group === 'totem' || 
+                             ['vine', 'trap', 'sentry', 'mine', 'turret'].some(k => skillId.includes(k));
+
         const minion = {
             id: `minion_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
             name,
@@ -889,13 +893,19 @@ export class Player {
             y: this.y + (Math.random() - 0.5) * 30,
             hp, maxHp: hp,
             damage: dmg,
-            moveSpeed: 80,
-            attackRange: 25,
+            moveSpeed: isStationary ? 0 : 80,
+            isStationary,
+            attackRange: (skill.group === 'totem' || skillId.includes('mage') || skillId.includes('imp')) ? 200 : 25,
             attackCd: 0,
             attackSpeed: 1.2,
             age: 0,
             duration,
             icon: `skill_${skillId}`,
+            // Random offset for formation
+            formationOffset: { 
+                x: (Math.random() - 0.5) * 80, 
+                y: (Math.random() - 0.5) * 80 
+            }
         };
         this.minions.push(minion);
         bus.emit('minion:spawned', { minion });
@@ -908,42 +918,76 @@ export class Player {
 
             m.attackCd = Math.max(0, m.attackCd - dt);
 
-            // Find nearest enemy
-            let nearest = null, nearDist = Infinity;
-            for (const e of enemies) {
-                if (e.hp <= 0 || e.state === 'dead') continue;
-                const d = Math.sqrt((e.x - m.x) ** 2 + (e.y - m.y) ** 2);
-                if (d < nearDist) { nearest = e; nearDist = d; }
-            }
-
-            if (nearest) {
-                if (nearDist > m.attackRange) {
-                    // Move toward enemy
-                    const angle = Math.atan2(nearest.y - m.y, nearest.x - m.x);
-                    const nx = m.x + Math.cos(angle) * m.moveSpeed * dt;
-                    const ny = m.y + Math.sin(angle) * m.moveSpeed * dt;
-                    if (!dungeon || dungeon.isWalkable(nx, ny)) {
-                        m.x = nx; m.y = ny;
-                    }
-                } else if (m.attackCd <= 0) {
-                    // Attack
+            // Stationary logic
+            if (m.isStationary) {
+                // Just scan and attack, no movement
+                let nearest = null, nearDist = m.attackRange || 200;
+                for (const e of enemies) {
+                    if (e.hp <= 0 || e.state === 'dead') continue;
+                    const d = Math.sqrt((e.x - m.x) ** 2 + (e.y - m.y) ** 2);
+                    if (d < nearDist) { nearest = e; nearDist = d; }
+                }
+                if (nearest && m.attackCd <= 0) {
                     const result = calcDamage(this, m.damage, 'physical', nearest);
                     applyDamage(this, nearest, result, m.skillId);
-                    
                     m.attackCd = m.attackSpeed;
+                    if (fx) fx.emitBurst(nearest.x, nearest.y, '#ffff00', 5);
                 }
-            } else {
-                // Follow player
-                const dx = this.x - m.x, dy = this.y - m.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist > 40) {
-                    const nx = m.x + (dx / dist) * m.moveSpeed * dt;
-                    const ny = m.y + (dy / dist) * m.moveSpeed * dt;
-                    if (!dungeon || dungeon.isWalkable(nx, ny)) {
-                        m.x = nx; m.y = ny;
+                return true;
+            }
+
+            // Mobile Minion Logic: Leashing
+            const dx = (this.x + m.formationOffset.x) - m.x;
+            const dy = (this.y + m.formationOffset.y) - m.y;
+            const distToPlayer = Math.sqrt(dx * dx + dy * dy);
+
+            // Hard Leash: Teleport
+            if (distToPlayer > 800) {
+                m.x = this.x + m.formationOffset.x;
+                m.y = this.y + m.formationOffset.y;
+                if (fx) fx.emitBurst(m.x, m.y, '#a0ffa0', 10, 1.5);
+                return true;
+            }
+
+            // Soft Leash: Forced follow if too far
+            const isForcedFollow = distToPlayer > 250;
+
+            if (!isForcedFollow) {
+                // Look for enemies
+                let nearest = null, nearDist = 300; // Aggro range
+                for (const e of enemies) {
+                    if (e.hp <= 0 || e.state === 'dead') continue;
+                    const d = Math.sqrt((e.x - m.x) ** 2 + (e.y - m.y) ** 2);
+                    if (d < nearDist) { nearest = e; nearDist = d; }
+                }
+
+                if (nearest) {
+                    if (nearDist > m.attackRange) {
+                        const angle = Math.atan2(nearest.y - m.y, nearest.x - m.x);
+                        const nx = m.x + Math.cos(angle) * m.moveSpeed * dt;
+                        const ny = m.y + Math.sin(angle) * m.moveSpeed * dt;
+                        if (!dungeon || dungeon.isWalkable(nx, ny)) {
+                            m.x = nx; m.y = ny;
+                        }
+                    } else if (m.attackCd <= 0) {
+                        const result = calcDamage(this, m.damage, 'physical', nearest);
+                        applyDamage(this, nearest, result, m.skillId);
+                        m.attackCd = m.attackSpeed;
                     }
+                    return true;
                 }
             }
+
+            // Default: Follow Player (Formation)
+            if (distToPlayer > 40) {
+                const speed = isForcedFollow ? m.moveSpeed * 1.5 : m.moveSpeed;
+                const nx = m.x + (dx / distToPlayer) * speed * dt;
+                const ny = m.y + (dy / distToPlayer) * speed * dt;
+                if (!dungeon || dungeon.isWalkable(nx, ny)) {
+                    m.x = nx; m.y = ny;
+                }
+            }
+            
             return true;
         });
     }
@@ -1107,8 +1151,8 @@ export class Player {
         if (item.baseId === 'health_potion') restoredHp = this.maxHp * 0.35;
         if (item.baseId === 'mana_potion') restoredMp = this.maxMp * 0.35;
         if (item.baseId === 'rejuv_potion') {
-            restoredHp = this.maxHp * 0.35;
-            restoredMp = this.maxMp * 0.35;
+            restoredHp = this.maxHp * 0.5; // Premium rejuv
+            restoredMp = this.maxMp * 0.5;
             instant = true;
         }
 
@@ -1121,41 +1165,85 @@ export class Player {
         }
 
         bus.emit('log:add', { text: `Used ${item.name}`, cls: instant ? 'log-crit' : 'log-heal' });
+        
+        // AUTO-REFILL Logic
+        const baseId = item.baseId;
         this.belt[slot] = null;
+        
+        const invIdx = this.inventory.findIndex(it => it && it.baseId === baseId);
+        if (invIdx !== -1) {
+            this.belt[slot] = this.inventory[invIdx];
+            this.inventory[invIdx] = null;
+            // No extra log to avoid spam, just seamless refill
+        }
+
         this._recalcStats();
     }
     addToInventory(item) {
-        if (item && item.type === 'potion') {
+        if (!item) return false;
+
+        // Auto-belt potions
+        if (item.type === 'potion') {
             const beltIdx = this.belt.indexOf(null);
             if (beltIdx !== -1) {
                 this.belt[beltIdx] = item;
                 return true;
             }
         }
+
+        // ─── STACKING LOGIC ───
+        const stackables = ['gem', 'rune', 'scroll'];
+        if (stackables.includes(item.type)) {
+            const stackLimit = 20;
+            // Find existing stack of same baseId
+            const existingIdx = this.inventory.findIndex(it => 
+                it && it.baseId === item.baseId && it.type === item.type && (it.quantity || 1) < stackLimit
+            );
+            
+            if (existingIdx !== -1) {
+                const existing = this.inventory[existingIdx];
+                existing.quantity = (existing.quantity || 1) + (item.quantity || 1);
+                // Handle overflow if needed (recursive call with remainder)
+                if (existing.quantity > stackLimit) {
+                    const remainder = existing.quantity - stackLimit;
+                    existing.quantity = stackLimit;
+                    const remainderItem = { ...item, quantity: remainder };
+                    return this.addToInventory(remainderItem);
+                }
+                return true;
+            }
+        }
+
         const idx = this.inventory.indexOf(null);
         if (idx === -1) return false;
         this.inventory[idx] = item;
+        if (!this.inventory[idx].quantity) this.inventory[idx].quantity = 1;
         return true;
     }
 
     // ─── Inventory Management ───
     sortInventory() {
-        // Filter out nulls, sort, then fill back up to 40
         const items = this.inventory.filter(it => it !== null);
         
-        const rarityWeights = { unique: 5, set: 4, rare: 3, magic: 2, normal: 1 };
-        const typeWeights = { weapon: 10, armor: 9, helm: 8, shield: 7, gloves: 6, boots: 5, belt: 4, ring: 3, amulet: 2, gem: 1, potion: 0, scroll: 0, charm: 0 };
+        const rarityWeights = { unique: 10, set: 9, rare: 8, magic: 7, normal: 6 };
+        const typeWeights = { weapon: 10, armor: 9, helm: 8, shield: 7, gloves: 6, boots: 5, belt: 4, amulet: 3, ring: 2, charm: 1, gem: 0, rune: 0, scroll: 0, potion: 0 };
 
         items.sort((a, b) => {
+            // First group by type
+            const ta = typeWeights[a.type] || -1;
+            const tb = typeWeights[b.type] || -1;
+            if (ta !== tb) return tb - ta;
+
+            // Then by rarity
             const ra = rarityWeights[a.rarity] || 0;
             const rb = rarityWeights[b.rarity] || 0;
-            if (ra !== rb) return rb - ra; // Rarity high to low
+            if (ra !== rb) return rb - ra;
 
-            const ta = typeWeights[a.type] || 0;
-            const tb = typeWeights[b.type] || 0;
-            if (ta !== tb) return tb - ta; // Type weight
-
-            return (b.ilvl || 0) - (a.ilvl || 0); // Level
+            // Then by name/base
+            if (a.baseId !== b.baseId) return (a.baseId || "").localeCompare(b.baseId || "");
+            
+            // Finally by quantity/level
+            return (b.quantity || 1) - (a.quantity || 1) || (b.ilvl || 0) - (a.ilvl || 0);
         });
 
         this.inventory = [...items];

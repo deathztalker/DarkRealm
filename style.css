@@ -522,6 +522,10 @@ body {
   animation: liquidPulse 4s ease-in-out infinite alternate;
 }
 
+.merc-dead-portrait {
+    filter: grayscale(1) brightness(0.5);
+}
+
 @keyframes liquidPulse {
   0% { background-position: 0% 100%; filter: brightness(0.9); }
   100% { background-position: 0% 0%; filter: brightness(1.2); }
@@ -1218,14 +1222,62 @@ body {
   text-align: center;
 }
 
-#tooltip.hidden {
+#tooltip.hidden, #tooltip-compare.hidden {
   display: none;
 }
 
-.tooltip-name {
-  font-family: 'Cinzel', serif;
-  font-size: 1rem;
-  margin-bottom: 6px;
+#tooltip-compare {
+  position: fixed;
+  z-index: 998;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px dashed #666;
+  padding: 10px 14px;
+  max-width: 300px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 1);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  text-align: center;
+  opacity: 0.85;
+}
+
+/* Tooltip Container for Comparison */
+.tooltip-compare-container {
+  display: flex !important;
+  gap: 12px;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.tooltip-inner {
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid #4a3520;
+  padding: 12px 16px;
+  min-width: 200px;
+  max-width: 320px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 15px rgba(186, 145, 88, 0.1);
+  border-radius: 4px;
+  text-align: center;
+  position: relative;
+}
+
+.tooltip-inner::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border: 1px solid rgba(255,255,255,0.05);
+  pointer-events: none;
+  border-radius: 3px;
+}
+
+#custom-tooltip {
+  position: fixed;
+  z-index: 999;
+  pointer-events: none;
+}
+
+#custom-tooltip.hidden {
+  display: none;
 }
 
 .tooltip-type {
@@ -1480,18 +1532,84 @@ body {
 /* =============================================
    INVENTORY — CAN'T EQUIP INDICATOR
    ============================================= */
+.item-quantity-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-size: 10px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid #444;
+  pointer-events: none;
+  z-index: 5;
+  font-family: 'Inter', sans-serif;
+  font-weight: bold;
+}
+
 .inv-item.cant-equip {
-  border-color: var(--red) !important;
+  border-color: rgba(255, 0, 0, 0.6) !important;
+  background: rgba(255, 0, 0, 0.15);
   position: relative;
+}
+
+.inv-item.cant-equip img {
+  filter: sepia(1) hue-rotate(-50deg) saturate(2) brightness(0.7) !important;
+  opacity: 0.8;
 }
 
 .inv-item.cant-equip::after {
   content: '\26D4';
   position: absolute;
-  bottom: 1px;
-  right: 1px;
-  font-size: 8px;
-  line-height: 1;
+  top: 2px;
+  right: 2px;
+  font-size: 10px;
+  color: #ff3030;
+  text-shadow: 0 0 4px #000;
+}
+
+/* Inventory Gold Row */
+.inventory-gold {
+  grid-column: 1 / span 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-top: 1px solid #333;
+  margin-top: 4px;
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  text-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+}
+
+/* Global Identifying / Socketing mode feedback */
+body.identifying-mode,
+body.socketing-mode {
+  cursor: crosshair !important;
+}
+
+body.identifying-mode .inv-item.unidentified {
+  animation: pulseGold 1.5s infinite;
+}
+
+body.socketing-mode .inv-slot {
+  border-color: rgba(216, 176, 104, 0.4);
+}
+
+@keyframes pulseGold {
+  0% {
+    box-shadow: 0 0 0px var(--gold);
+  }
+
+  50% {
+    box-shadow: 0 0 10px var(--gold);
+  }
+
+  100% {
+    box-shadow: 0 0 0px var(--gold);
+  }
 }
 
 /* =============================================
@@ -1624,15 +1742,72 @@ body {
 /* The bubble tail/pointer */
 .dialogue-picker-menu::after {
   content: "";
-  position: absolute;
-  bottom: -10px;
+}
+
+#dialog-box {
+  position: fixed;
+  bottom: 120px;
   left: 50%;
   transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 10px solid transparent;
-  border-right: 10px solid transparent;
-  border-top: 10px solid #bf642f;
+  width: 500px;
+  background: linear-gradient(135deg, rgba(20, 20, 20, 0.95) 0%, rgba(40, 40, 40, 0.9) 100%);
+  border: 2px solid #d4af37;
+  border-radius: 8px;
+  padding: 20px;
+  color: #eee;
+  z-index: 1500;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(212, 175, 55, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  backdrop-filter: blur(8px);
+}
+
+.npc-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  padding-bottom: 10px;
+}
+
+.npc-name {
+  font-family: 'Cinzel Decorative', serif;
+  color: #d4af37;
+  font-size: 1.25rem;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+}
+
+#dialog-text {
+  font-family: 'Inter', sans-serif;
+  line-height: 1.6;
+  font-style: italic;
+  color: #ccc;
+}
+
+#dialog-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.dialog-opt {
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid #d4af37;
+  color: #d4af37;
+  padding: 6px 15px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+}
+
+.dialog-opt:hover {
+  background: #d4af37;
+  color: #000;
 }
 
 .dialogue-option {
@@ -1694,7 +1869,129 @@ body {
 }
 .merc-dead-btn:hover { background: #800; }
 
-@keyframes bubblePop {
-  from { transform: scale(0.8) translateY(20px); opacity: 0; }
-  to { transform: scale(1) translateY(0); opacity: 1; }
+.merc-dead-portrait {
+  filter: grayscale(1) brightness(0.5) contrast(1.2) !important;
+}
+
+.marauder-glow {
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+  animation: marauderPulse 2s infinite alternate;
+}
+
+@keyframes marauderPulse {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+/* === PREMIUM BOSS HEALTH BAR === */
+#boss-hp-bar {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.8) !important;
+  border: 2px solid #5a0a0a !important;
+  border-radius: 4px;
+  box-shadow: 0 0 30px rgba(255, 0, 0, 0.4), inset 0 0 15px #2a0505;
+  padding: 2px;
+  overflow: visible;
+}
+
+#boss-hp-fill {
+  background: linear-gradient(to right, #4a0000 0%, #a00000 40%, #800000 60%, #4a0000 100%) !important;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+  border-radius: 2px;
+  position: relative;
+}
+
+#boss-hp-fill::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.2) 100%);
+}
+
+#boss-name {
+  font-family: 'Cinzel Decorative', serif !important;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #ff3a3a !important;
+  top: -34px !important;
+  filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.5));
+}
+
+.boss-elite-label {
+  position: absolute;
+  top: -50px;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  color: #888;
+  letter-spacing: 3px;
+}
+
+#boss-victory-announcement {
+  position: fixed;
+  top: 25%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2000;
+  text-align: center;
+  width: 100%;
+}
+
+.victory-banner {
+  animation: victorySlide 4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  opacity: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.vic-label {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 4rem;
+  color: #d4af37;
+  text-shadow: 0 0 20px rgba(212, 175, 55, 0.8), 0 0 40px rgba(255, 215, 0, 0.5);
+  letter-spacing: 0.15em;
+  margin-bottom: 0;
+}
+
+.vic-sub {
+  font-family: 'Cinzel', serif;
+  font-size: 1.5rem;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  opacity: 0.8;
+  text-shadow: 0 0 10px #000;
+}
+
+.vic-glow {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 200px;
+  background: radial-gradient(ellipse, rgba(212, 175, 55, 0.2) 0%, transparent 70%);
+  z-index: -1;
+}
+
+@keyframes victorySlide {
+  0% { transform: translateY(50px); opacity: 0; filter: blur(5px); }
+  20% { transform: translateY(0); opacity: 1; filter: blur(0); }
+  80% { transform: translateY(0); opacity: 1; filter: blur(0); }
+  100% { transform: translateY(-30px); opacity: 0; filter: blur(5px); }
+}
+
+#boss-victory-announcement.hidden { display: none; }
+
+@keyframes bossBarAppear {
+  from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+#boss-hp-bar:not(.hidden) {
+  animation: bossBarAppear 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }

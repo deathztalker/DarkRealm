@@ -53,7 +53,108 @@ let unlockedAchievements = new Set();
 let isIdentifying = false; // Global identification state
 let isLarzukSocketing = false; // Global socketing service state
 let activeDialogueNpc = null; // Track NPC with open dialogue bubble
+let activeWaypointObj = null; // Track Waypoint object for travel menu
 let minimapZoom = 1.0; // 1.0, 1.5, 2.0
+
+function syncInteractionStates() {
+    document.body.classList.toggle('identifying-mode', !!window.isIdentifying);
+    document.body.classList.toggle('socketing-mode', socketingGemIndex !== -1 || isLarzukSocketing);
+}
+
+// ─── Phase 12 GLOBALS ───
+let timeScale = 1.0;
+let uiActiveBoss = null;
+let lastBossWarnTime = 0;
+
+// ─── RIFT GLOBALS ───
+let riftProgress = 0; // 0-100
+let riftGuardianSpawned = false;
+let activeRiftMods = []; // { id, name, effect }
+
+const RIFT_MODS = [
+    { id: 'vampiric', name: 'Vampiric', hp: 1.2, dmg: 1.0, desc: 'Monsters heal on hit' },
+    { id: 'glass', name: 'Glass Cannon', hp: 0.6, dmg: 1.8, desc: 'Fragile but Deadly' },
+    { id: 'toxic', name: 'Toxic Clout', hp: 1.0, dmg: 1.2, desc: 'Monsters deal poison' },
+    { id: 'fortified', name: 'Fortified', hp: 2.0, dmg: 0.9, desc: 'Extreme Health' },
+    { id: 'frenzied', name: 'Frenzied', hp: 0.9, dmg: 1.1, speed: 1.4, desc: 'Increased Speed' },
+    { id: 'cursed', name: 'Cursed', hp: 1.0, dmg: 1.1, res: -20, desc: 'Player Armor Reduced' }
+];
+
+function generateRiftMods() {
+    activeRiftMods = [];
+    const count = 1 + Math.floor((zoneLevel - 7) / 5); // 1 mod at lvl 8, 2 at 13, etc
+    const pool = [...RIFT_MODS];
+    for (let i = 0; i < Math.min(count, 3); i++) {
+        if (pool.length === 0) break;
+        const idx = Math.floor(Math.random() * pool.length);
+        activeRiftMods.push(pool.splice(idx, 1)[0]);
+    }
+}
+
+function updateRiftHud() {
+    const hud = $('rift-hud');
+    if (zoneLevel < 7) {
+        hud.classList.add('hidden');
+        return;
+    }
+    hud.classList.remove('hidden');
+    $('rift-depth-label').textContent = `RIFT DEPTH ${zoneLevel - 6}`;
+    $('rift-gauge-fill').style.width = `${riftProgress}%`;
+
+    const modList = $('rift-mods-list');
+    modList.innerHTML = '';
+    activeRiftMods.forEach(mod => {
+        const badge = document.createElement('div');
+        badge.className = 'chaos-mod-badge';
+        badge.textContent = mod.name;
+        badge.title = mod.desc;
+        modList.appendChild(badge);
+    });
+}
+
+function spawnRiftGuardian() {
+    riftGuardianSpawned = true;
+
+    // Choose a random location near player (ensure walkable)
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 120;
+    const tx = player.x + Math.cos(angle) * dist;
+    const ty = player.y + Math.sin(angle) * dist;
+
+    // In actual game, we'd check dungeon.isWalkable here
+
+    const bossData = {
+        id: 'rift_guardian',
+        name: `Guardian of Depth ${zoneLevel - 6}`,
+        type: 'boss',
+        maxHp: 5000 * Math.pow(1.2, zoneLevel - 6),
+        dmg: 60 * Math.pow(1.1, zoneLevel - 6),
+        moveSpeed: 100,
+        attackSpeed: 1.5,
+        attackRange: 40,
+        xpReward: 1000 * (zoneLevel - 6),
+        color: '#ff00ff',
+        size: 35,
+        x: tx, y: ty
+    };
+
+    const boss = new Enemy(bossData);
+    enemies.push(boss);
+
+    playZoneTransition(); // reuse for sound/flash
+    fx.emitHolyBurst(tx, ty);
+    fx.emitBurst(tx, ty, '#f0f', 50, 4);
+    fx.shake(1000, 15);
+
+    addCombatLog('THE RIFT GUARDIAN HAS ARRIVED!', 'log-crit');
+    startAmbientBoss();
+
+    const bossBar = $('boss-hp-bar');
+    if (bossBar) {
+        bossBar.classList.remove('hidden');
+        $('boss-name').textContent = boss.name;
+    }
+}
 
 // ─── RUNEWORDS ───
 const RUNEWORDS = [
@@ -62,91 +163,91 @@ const RUNEWORDS = [
         types: ['armor'],
         sockets: 2,
         gems: ['rune_tal', 'rune_eth'],
-        mods: [{stat: 'pctFHR', value: 25}, {stat: 'manaRegenPerSec', value: 15}, {stat: 'flatDEX', value: 6}]
+        mods: [{ stat: 'pctFHR', value: 25 }, { stat: 'manaRegenPerSec', value: 15 }, { stat: 'flatDEX', value: 6 }]
     },
     {
         name: 'Lore',
         types: ['helm'],
         sockets: 2,
         gems: ['rune_ort', 'rune_sol'],
-        mods: [{stat: 'lightRes', value: 30}, {stat: 'flatMP', value: 20}, {stat: 'flatDmgReduce', value: 7}]
+        mods: [{ stat: 'lightRes', value: 30 }, { stat: 'flatMP', value: 20 }, { stat: 'flatDmgReduce', value: 7 }]
     },
     {
         name: 'Leaf',
         types: ['weapon'],
         sockets: 2,
         gems: ['rune_tir', 'rune_ral'],
-        mods: [{stat: 'flatFireDmg', value: 45}, {stat: 'manaAfterKill', value: 2}, {stat: 'coldRes', value: 33}]
+        mods: [{ stat: 'flatFireDmg', value: 45 }, { stat: 'manaAfterKill', value: 2 }, { stat: 'coldRes', value: 33 }]
     },
     {
         name: 'Zephyr',
         types: ['weapon'],
         sockets: 2,
         gems: ['rune_ort', 'rune_eth'],
-        mods: [{stat: 'pctIAS', value: 25}, {stat: 'flatLightDmg', value: 35}, {stat: 'targetDefenseReduce', value: 25}]
+        mods: [{ stat: 'pctIAS', value: 25 }, { stat: 'flatLightDmg', value: 35 }, { stat: 'targetDefenseReduce', value: 25 }]
     },
     {
         name: 'Spirit',
         types: ['weapon', 'shield'],
         sockets: 4,
         gems: ['rune_tal', 'rune_thul', 'rune_ort', 'rune_amn'],
-        mods: [{stat: 'pctFHR', value: 55}, {stat: 'flatMP', value: 90}, {stat: 'flatVIT', value: 22}]
+        mods: [{ stat: 'pctFHR', value: 55 }, { stat: 'flatMP', value: 90 }, { stat: 'flatVIT', value: 22 }]
     },
     {
         name: 'Insight',
         types: ['weapon'],
         sockets: 4,
         gems: ['rune_ral', 'rune_tir', 'rune_tal', 'rune_sol'],
-        mods: [{stat: 'manaRegenPerSec', value: 40}, {stat: 'pctDmg', value: 200}, {stat: 'magicFind', value: 23}]
+        mods: [{ stat: 'manaRegenPerSec', value: 40 }, { stat: 'pctDmg', value: 200 }, { stat: 'magicFind', value: 23 }]
     },
     {
         name: 'Ancient\'s Pledge',
         types: ['shield'],
         sockets: 3,
         gems: ['rune_ral', 'rune_ort', 'rune_tal'],
-        mods: [{stat: 'allRes', value: 35}, {stat: 'pctArmor', value: 50}]
+        mods: [{ stat: 'allRes', value: 35 }, { stat: 'pctArmor', value: 50 }]
     },
     {
         name: 'White',
         types: ['wand'],
         sockets: 2,
         gems: ['rune_dol', 'rune_io'],
-        mods: [{stat: '+skillGroup:bone', value: 3}, {stat: 'pctIAS', value: 20}, {stat: 'flatMP', value: 13}]
+        mods: [{ stat: '+skillGroup:bone', value: 3 }, { stat: 'pctIAS', value: 20 }, { stat: 'flatMP', value: 13 }]
     },
     {
         name: 'Rhyme',
         types: ['shield'],
         sockets: 2,
         gems: ['rune_shael', 'rune_eth'],
-        mods: [{stat: 'allRes', value: 25}, {stat: 'magicFind', value: 25}, {stat: 'cannotBeFrozen', value: 1}]
+        mods: [{ stat: 'allRes', value: 25 }, { stat: 'magicFind', value: 25 }, { stat: 'cannotBeFrozen', value: 1 }]
     },
     {
         name: 'Honor',
         types: ['weapon'],
         sockets: 5,
         gems: ['rune_amn', 'rune_el', 'rune_ith', 'rune_tir', 'rune_sol'],
-        mods: [{stat: 'pctDmg', value: 160}, {stat: 'lifeStealPct', value: 7}, {stat: 'flatSTR', value: 10}]
+        mods: [{ stat: 'pctDmg', value: 160 }, { stat: 'lifeStealPct', value: 7 }, { stat: 'flatSTR', value: 10 }]
     },
     {
         name: 'Steel',
         types: ['weapon', 'sword', 'axe', 'mace'],
         sockets: 2,
         gems: ['rune_tir', 'rune_el'],
-        mods: [{stat: 'pctIAS', value: 25}, {stat: 'pctDmg', value: 20}, {stat: 'flatMinDmg', value: 3}]
+        mods: [{ stat: 'pctIAS', value: 25 }, { stat: 'pctDmg', value: 20 }, { stat: 'flatMinDmg', value: 3 }]
     },
     {
         name: 'Malice',
         types: ['weapon'],
         sockets: 3,
         gems: ['rune_ith', 'rune_el', 'rune_eth'],
-        mods: [{stat: 'pctDmg', value: 33}, {stat: 'targetDefenseReduce', value: 25}, {stat: 'preventHeal', value: 1}]
+        mods: [{ stat: 'pctDmg', value: 33 }, { stat: 'targetDefenseReduce', value: 25 }, { stat: 'preventHeal', value: 1 }]
     }
 ];
 
 function checkRuneword(item) {
     if (!item.socketed || item.socketed.length === 0) return;
     if (item.socketed.length !== item.sockets) return;
-    
+
     // Group weapon types so recipes that say 'weapon' work across all weapons
     const weaponTypes = ['sword', 'axe', 'mace', 'staff', 'orb', 'bow', 'dagger', 'totem', 'wand'];
     const isWeapon = weaponTypes.includes(item.type);
@@ -155,9 +256,9 @@ function checkRuneword(item) {
         // Valid if exact type matches OR it's a weapon recipe applied to a weapon base
         const validMatch = rw.types.includes(item.type) || (rw.types.includes('weapon') && isWeapon);
         if (!validMatch) continue;
-        
+
         if (rw.sockets !== item.sockets) continue;
-        
+
         let match = true;
         for (let i = 0; i < rw.gems.length; i++) {
             if (item.socketed[i].baseId !== rw.gems[i]) {
@@ -165,11 +266,11 @@ function checkRuneword(item) {
                 break;
             }
         }
-        
+
         if (match) {
             item.name = `${rw.name} (${item.name})`;
-            item.rarity = 'unique'; 
-            if(!item.mods) item.mods = [];
+            item.rarity = 'unique';
+            if (!item.mods) item.mods = [];
             item.mods.push(...rw.mods.map(m => ({ stat: m.stat, value: m.value })));
             addCombatLog(`Runeword Created: ${rw.name}!`, 'log-crit');
             break;
@@ -201,6 +302,14 @@ const ZONE_NAMES = {
     5: 'The Cauterized Arena',
     6: 'Burning Hells',
     7: 'Pandemonium',
+    8: 'Lut Gholein',
+    9: 'Rocky Waste',
+    10: 'Dry Hills',
+    11: 'Far Oasis',
+    12: 'Lost City',
+    13: 'Valley of Snakes',
+    14: 'Canyon of the Magi',
+    15: 'Tal Rasha\'s Tomb',
 };
 
 const DIFFICULTY_NAMES = ['Normal', 'Nightmare', 'Hell'];
@@ -271,17 +380,17 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         // New character
         zoneLevel = 0; // Start in Town
         activeSlotId = slotId || SaveSystem.newSlotId();
-        
+
         // Starting Gear for new characters
         if (!loadPlayerData) {
             player = new Player(selectedClass);
             if (charName) player.charName = charName;
-            
+
             const idTome = { ...items.tome_identify, charges: 20, identified: true };
             const tpTome = { ...items.tome_tp, charges: 20, identified: true };
             player.addToInventory(idTome);
             player.addToInventory(tpTome);
-            
+
             if ($('hardcore-mode') && $('hardcore-mode').checked) {
                 player.isHardcore = true;
             }
@@ -364,15 +473,28 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     gameObjects = dungeon.objectSpawns.map(s => new GameObject(s.type, s.x, s.y, s.icon));
     enemies = dungeon.enemySpawns.map(s => new Enemy(s));
 
-    // Apply difficulty scaling to enemies
-    if (difficulty > 0) {
-        const mult = DIFFICULTY_MULT[difficulty];
-        for (const e of enemies) {
-            e.maxHp = Math.round(e.maxHp * mult);
-            e.hp = e.maxHp;
-            e.dmg = Math.round(e.dmg * mult);
-            e.xpReward = Math.round(e.xpReward * mult);
-        }
+    // Apply difficulty & Rift scaling to enemies
+    const diffMult = DIFFICULTY_MULT[difficulty] || 1;
+    let riftMult = 1.0;
+    if (zoneLevel >= 7) {
+        riftMult = Math.pow(1.15, zoneLevel - 6); // 15% more power per depth
+    }
+
+    for (const e of enemies) {
+        let hpM = diffMult * riftMult;
+        let dmgM = diffMult * riftMult;
+
+        // Modifiers
+        activeRiftMods.forEach(mod => {
+            if (mod.hp) hpM *= mod.hp;
+            if (mod.dmg) dmgM *= mod.dmg;
+            if (mod.speed) e.moveSpeed *= mod.speed;
+        });
+
+        e.maxHp = Math.round(e.maxHp * hpM);
+        e.hp = e.maxHp;
+        e.dmg = Math.round(e.dmg * dmgM);
+        e.xpReward = Math.round(e.xpReward * hpM);
     }
 
     player.setRefs(dungeon, camera, enemies);
@@ -383,6 +505,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     dialogue = null;
 
     updateHud();
+    updateRiftHud();
 
     // Ensure boss bar hidden unless zone 5 or rift boss
     const isBossZone = zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0);
@@ -411,8 +534,30 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
 // ─── GAME LOOP ───
 function gameLoop(timestamp) {
     if (state !== 'GAME') return;
-    const dt = Math.min(0.1, (timestamp - lastTime) / 1000);
+    const rawDt = Math.min(0.1, (timestamp - lastTime) / 1000);
+    const dt = rawDt * timeScale;
     lastTime = timestamp;
+
+    // TimeScale Recovery (Lerp back to 1.0)
+    if (timeScale < 1.0) {
+        timeScale = Math.min(1.0, timeScale + rawDt * 0.8);
+    }
+
+    // Boss Proximity Logic
+    let closestBoss = null;
+    let minDist = 400; // Activation range
+    for (const e of enemies) {
+        if (e.type === 'boss' && e.hp > 0) {
+            const d = Math.hypot(e.x - player.x, e.y - player.y);
+            if (d < minDist) {
+                minDist = d;
+                closestBoss = e;
+            }
+            // Emit aura
+            fx.emitBossAura(e.x, e.y, e.color || '#f0f');
+        }
+    }
+    uiActiveBoss = closestBoss;
 
     // Update
     if (input) input.update();
@@ -423,6 +568,13 @@ function gameLoop(timestamp) {
         // HP Regen out of combat (passive) + gear-based regen (always active)
         if (player.hp > 0 && player.hp < player.maxHp) {
             let hpRegen = (player.lifeRegenPerSec || 0) * dt;
+
+            // Rift Mod: Cursed (Armor/Res reduction)
+            const cursedMod = activeRiftMods.find(m => m.id === 'cursed');
+            if (cursedMod) {
+                // Apply invisible debuff or handle in calcDamage
+            }
+
             if (performance.now() - lastHitTime > 5000) {
                 hpRegen += player.maxHp * 0.005 * dt; // Passive OOC regen
             }
@@ -467,38 +619,54 @@ function gameLoop(timestamp) {
         input.click = null;
     }
 
+    // Gold Auto-Pickup (radius 45px)
+    if (player && droppedGold.length > 0) {
+        for (let i = droppedGold.length - 1; i >= 0; i--) {
+            const dg = droppedGold[i];
+            const dist = Math.sqrt((player.x - dg.x) ** 2 + (player.y - dg.y) ** 2);
+            if (dist < 45) {
+                player.gold += dg.amount;
+                addCombatLog(`Auto-picked ${dg.amount} Gold`, 'log-heal');
+                bus.emit('gold:pickup', { amount: dg.amount });
+                droppedGold.splice(i, 1);
+                updateHud();
+                renderInventory();
+            }
+        }
+    }
+
     // Update Floating Dialogue Position
-    if (activeDialogueNpc) {
+    const currentMenuFocus = activeDialogueNpc || activeWaypointObj;
+    if (currentMenuFocus) {
         const picker = document.getElementById('dialogue-picker');
         if (picker) {
-            const screen = camera.toScreen(activeDialogueNpc.x, activeDialogueNpc.y);
+            const screen = camera.toScreen(currentMenuFocus.x, currentMenuFocus.y);
             picker.style.left = `${screen.x - 110}px`;
             picker.style.top = `${screen.y - 180}px`;
 
             // Auto-close if too far
-            const d = Math.sqrt((player.x - activeDialogueNpc.x) ** 2 + (player.y - activeDialogueNpc.y) ** 2);
+            const d = Math.sqrt((player.x - currentMenuFocus.x) ** 2 + (player.y - currentMenuFocus.y) ** 2);
             if (d > 120) {
                 picker.remove();
                 activeDialogueNpc = null;
+                activeWaypointObj = null;
             }
         } else {
             activeDialogueNpc = null;
+            activeWaypointObj = null;
         }
     }
 
     // Boss check
-    if (zoneLevel === 5) {
-        const boss = enemies.find(e => e.type === 'boss');
-        const hpBar = $('boss-hp-bar');
-        if (boss && boss.hp > 0 && state === 'GAME') {
-            hpBar.classList.remove('hidden');
-            $('boss-hp-fill').style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
-            $('boss-name').textContent = boss.name || 'Act Boss';
-        } else {
-            if (hpBar) hpBar.classList.add('hidden');
-        }
+    const boss = enemies.find(e => e.type === 'boss');
+    const hpBar = $('boss-hp-bar');
+    if (boss && boss.hp > 0 && state === 'GAME') {
+        hpBar.classList.remove('hidden');
+        const pct = Math.max(0, (boss.hp / boss.maxHp) * 100);
+        $('boss-hp-fill').style.width = `${pct}%`;
+        $('boss-hp-text').textContent = `${Math.ceil(pct)}%`;
+        $('boss-name').textContent = boss.name || 'Act Boss';
     } else {
-        const hpBar = $('boss-hp-bar');
         if (hpBar) hpBar.classList.add('hidden');
     }
 
@@ -556,24 +724,36 @@ function gameLoop(timestamp) {
         if (lootFilter >= 1 && (!di.rarity || di.rarity === 'normal')) continue;
         if (lootFilter >= 2 && di.rarity === 'magic') continue;
 
-        // Loot Beam
+        // Loot Beam & Ground Glow
         if (di.rarity === 'unique' || di.rarity === 'rare' || di.rarity === 'set') {
             const ctx = renderer.ctx;
             ctx.save();
             ctx.globalCompositeOperation = 'screen';
             const color = di.rarity === 'unique' ? 'rgba(232, 160, 32, 0.6)' : di.rarity === 'set' ? 'rgba(0, 255, 0, 0.5)' : 'rgba(240, 208, 48, 0.5)';
+
+            // Ground Glow
+            const radial = ctx.createRadialGradient(di.x, di.y, 2, di.x, di.y, 12);
+            radial.addColorStop(0, color);
+            radial.addColorStop(1, 'transparent');
+            ctx.fillStyle = radial;
+            ctx.beginPath(); ctx.arc(di.x, di.y, 12, 0, Math.PI * 2); ctx.fill();
+
+            // Rhythmic Shimmer
+            const shimmer = 0.6 + Math.sin(lastTime * 0.005) * 0.3;
+            ctx.globalAlpha = shimmer;
+
             const g = ctx.createLinearGradient(0, di.y, 0, di.y - 120);
             g.addColorStop(0, color);
             g.addColorStop(1, 'transparent');
             ctx.fillStyle = g;
             ctx.beginPath();
-            ctx.moveTo(di.x - 4, di.y + 4);
-            ctx.lineTo(di.x + 4, di.y + 4);
+            ctx.moveTo(di.x - 4, di.y);
+            ctx.lineTo(di.x + 4, di.y);
             ctx.lineTo(di.x + 1, di.y - 120);
             ctx.lineTo(di.x - 1, di.y - 120);
             ctx.closePath();
             ctx.fill();
-            
+
             // Core beam
             const g2 = ctx.createLinearGradient(0, di.y, 0, di.y - 100);
             g2.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
@@ -692,17 +872,17 @@ function gameLoop(timestamp) {
     // Premium Ambient Lighting Mask (affecting everything)
     const cx = renderer.width / 2;
     const cy = renderer.height / 2;
-    
+
     // Dynamic pulsing and gear-based light radius
     const baseRadius = 450 + (player.lightRadius || 0) * 50;
     const pulse = Math.sin(lastTime * 0.002) * 15;
-    const radius = Math.max(100, baseRadius + pulse); 
-    
+    const radius = Math.max(100, baseRadius + pulse);
+
     const grd = renderer.ctx.createRadialGradient(cx, cy, 50, cx, cy, radius);
-    
+
     // In town or boss room, make it slightly brighter overall
     const minAlpha = (zoneLevel === 0) ? 0.6 : (isBossZone ? 0.8 : 0.95);
-    
+
     grd.addColorStop(0, 'rgba(0, 0, 0, 0)');      // Full visibility at center
     grd.addColorStop(0.3, 'rgba(0, 0, 0, 0)');    // Wider clear area
     grd.addColorStop(0.7, `rgba(0, 0, 0, ${minAlpha * 0.5})`);  // Atmospheric penumbra
@@ -737,7 +917,7 @@ function gameLoop(timestamp) {
                 renderer.ctx.fillRect(ox + c * ts * scale, oy + r * ts * scale, ts * scale + 1, ts * scale + 1);
             }
         }
-        
+
         // Objects (Shrines, Chests, Portals)
         for (const obj of gameObjects) {
             const or = Math.floor(obj.y / ts);
@@ -800,13 +980,13 @@ function checkInteractions(pos) {
                     SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: Array.from(discoveredWaypoints) });
                     if (fx) fx.emitBurst(o.x, o.y, '#ffd700', 30, 2.5);
                 } else {
-                    addCombatLog(`Waypoint already active.`, 'log-info');
+                    renderWaypointMenu(o);
                 }
             } else if (res && res.type === 'SHRINE') {
                 const sType = res.shrineType;
                 let buffName = '';
                 let duration = 60; // default 60s
-                
+
                 const buffData = { type: '', id: '', value: 0, duration: 60 };
 
                 if (sType === 'experience') {
@@ -830,7 +1010,7 @@ function checkInteractions(pos) {
                     buffName = 'Stamina Shrine (+30% Move Speed)';
                     buffData.type = 'speed'; buffData.id = 'shrine_speed'; buffData.value = 30;
                 }
-                
+
                 player._buffs.push({ ...buffData });
                 player._recalcStats();
 
@@ -902,14 +1082,31 @@ function checkDeaths() {
 
             player.addXp(e.xpReward);
 
-            // Bosses guarantee at least one Rare+ item
+            // Bosses guarantee a loot explosion (Multi-drop)
             if (e.type === 'boss') {
-                const bossItem = loot.generate(zoneLevel, Math.random() < 0.15 ? 'unique' : (Math.random() < 0.25 ? 'set' : 'rare'));
-                bossItem.x = e.x;
-                bossItem.y = e.y;
-                droppedItems.push(bossItem);
-                const beamColors = { rare: '#ffff00', unique: '#ff8000', set: '#00ff00' };
-                if (beamColors[bossItem.rarity]) fx.emitBurst(bossItem.x, bossItem.y - 20, beamColors[bossItem.rarity], 20, 2);
+                const dropCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
+                for (let i = 0; i < dropCount; i++) {
+                    const r = Math.random();
+                    const rarity = r < 0.05 ? 'unique' : (r < 0.15 ? 'set' : (r < 0.4 ? 'rare' : 'magic'));
+                    const bossItem = loot.generate(zoneLevel, rarity);
+                    bossItem.x = e.x + (Math.random() - 0.5) * 40;
+                    bossItem.y = e.y + (Math.random() - 0.5) * 40;
+                    droppedItems.push(bossItem);
+
+                    const beamColors = { rare: '#ffff00', unique: '#ff8000', set: '#00ff00', magic: '#8080ff' };
+                    if (beamColors[bossItem.rarity]) fx.emitBurst(bossItem.x, bossItem.y - 10, beamColors[bossItem.rarity], 8, 1);
+                }
+
+                // CEREMONIAL VICTORY
+                const banner = $('boss-victory-announcement');
+                if (banner) {
+                    $('vic-boss-name').textContent = e.name || 'Act Boss';
+                    banner.classList.remove('hidden');
+                    setTimeout(() => banner.classList.add('hidden'), 4000);
+                }
+                fx.shake(2000, 15); // Powerful shake
+                timeScale = 0.05; // Dramatic Slow-Mo Finish
+                addCombatLog('DEATH BLOW!', 'log-crit');
             }
 
             // Mana/Life after kill
@@ -940,6 +1137,17 @@ function checkDeaths() {
             killCount++;
             if (player) player.totalMonstersSlain++;
 
+            // Rift Progress
+            if (zoneLevel >= 7 && riftProgress < 100) {
+                const inc = e.type === 'boss' ? 15 : (e.type === 'elite' ? 6 : 2);
+                riftProgress = Math.min(100, riftProgress + inc);
+                updateRiftHud();
+
+                if (riftProgress >= 100 && !riftGuardianSpawned) {
+                    spawnRiftGuardian();
+                }
+            }
+
             // Quest tracking
             for (const q of activeQuests) {
                 if (q.progress < q.target) {
@@ -961,15 +1169,15 @@ function checkDeaths() {
                     player.maxDifficulty++;
                     unlockedDiff = true;
                 }
-                
+
                 const bossMsg = zoneLevel === 5 ? 'The butcher is no more.' : `Rift Guardian defeated at Depth ${zoneLevel - 7}.`;
-                
+
                 setTimeout(() => {
                     $('victory-screen').classList.remove('hidden');
                     $('victory-stats').innerHTML = `Level ${player.level} ${player.className} — ${bossMsg}<br>` +
-                                                 `<div style="font-size:12px;color:#888;margin-top:10px;">Total Slain: ${totalMonstersSlain} | Gold Collected: ${totalGoldCollected}</div>`;
+                        `<div style="font-size:12px;color:#888;margin-top:10px;">Total Slain: ${totalMonstersSlain} | Gold Collected: ${totalGoldCollected}</div>`;
                 }, 1500);
-                
+
                 const tp = new GameObject('portal', e.x, e.y - 40, 'env_water');
                 tp.targetZone = zoneLevel === 5 ? 6 : zoneLevel + 1;
                 gameObjects.push(tp);
@@ -1010,13 +1218,13 @@ function checkDeaths() {
         playDeathSfx();
         $('death-screen').classList.remove('hidden');
         const zName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 7}`;
-        
+
         let deathMsg = `You fell in ${zName} at Level ${player.level}.<br>`;
         deathMsg += `<div style="font-size:12px;color:#888;margin-top:10px;">Total Slain: ${player.totalMonstersSlain} | Gold Collected: ${player.totalGoldCollected}</div>`;
 
         if (player.isHardcore) {
-            $('death-stats').innerHTML = `Your Hardcore hero fell in ${zName} at Level ${player.level}. Your deeds of valor will be remembered.<br>` + 
-                                       `<div style="font-size:12px;color:#888;margin-top:10px;">Total Slain: ${player.totalMonstersSlain} | Gold Collected: ${player.totalGoldCollected}</div>`;
+            $('death-stats').innerHTML = `Your Hardcore hero fell in ${zName} at Level ${player.level}. Your deeds of valor will be remembered.<br>` +
+                `<div style="font-size:12px;color:#888;margin-top:10px;">Total Slain: ${player.totalMonstersSlain} | Gold Collected: ${player.totalGoldCollected}</div>`;
             $('btn-respawn').style.display = 'none'; // No respawn for hardcore
             if (activeSlotId) SaveSystem.deleteSlot(activeSlotId);
             addCombatLog('HARDCORE DEATH. Save file deleted.', 'log-dmg');
@@ -1043,7 +1251,14 @@ function nextZone(targetZone = null) {
         } else {
             zoneLevel++;
         }
-        
+
+        // Setup Rift state
+        if (zoneLevel >= 7) {
+            riftProgress = 0;
+            riftGuardianSpawned = false;
+            generateRiftMods();
+        }
+
         let theme = 'cathedral';
         if (zoneLevel === 0) theme = 'town';
         else if (zoneLevel <= 2) theme = 'wilderness';
@@ -1081,7 +1296,7 @@ function finishZoneLoad() {
         npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
         gameObjects = dungeon.objectSpawns.map(s => new GameObject(s.type, s.x, s.y, s.icon));
         enemies = [];
-        
+
         // If we came from a dungeon, spawn a portal back
         if (portalReturnZone > 0) {
             const portal = new GameObject('portal', player.x + 40, player.y, 'env_water');
@@ -1093,6 +1308,7 @@ function finishZoneLoad() {
         gameObjects = dungeon.objectSpawns ? dungeon.objectSpawns.map(s => {
             const obj = new GameObject(s.type, s.x, s.y, s.icon);
             if (s.type === 'shrine') obj.shrineType = s.shrineType;
+            if (s.type === 'waypoint') obj.zone = s.zone;
             return obj;
         }) : [];
         enemies = dungeon.enemySpawns.map(s => new Enemy(s));
@@ -1105,7 +1321,7 @@ function finishZoneLoad() {
                 e.hp = e.maxHp;
                 e.dmg = Math.round(e.dmg * mult);
                 e.xpReward = Math.round(e.xpReward * mult);
-                
+
                 // Immunities in Nightmare (10%) and Hell (35%)
                 const immChance = difficulty === 1 ? 0.10 : 0.35;
                 if (Math.random() < immChance) {
@@ -1125,10 +1341,10 @@ function finishZoneLoad() {
 
     const zoneName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 7}`;
     const diffLabel = difficulty > 0 ? ` (${DIFFICULTY_NAMES[difficulty]})` : '';
-    
+
     // Check if boss zone
     isBossZone = (zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0));
-    
+
     // Endgame: zones beyond 7 scale infinitely
     const endgameMult = zoneLevel > 7 ? 1 + (zoneLevel - 7) * 0.3 : 1;
     $('zone-name').textContent = zoneName + diffLabel;
@@ -1169,6 +1385,60 @@ function finishZoneLoad() {
 }
 
 // ─── HUD ───
+function updateQuestHud() {
+    const qhud = $('quest-hud');
+    if (!qhud) return;
+
+    // Use the first active quest from the array
+    const activeQuest = activeQuests[0];
+    if (!activeQuest) {
+        qhud.classList.add('hidden');
+        return;
+    }
+
+    qhud.classList.remove('hidden');
+    const qdesc = $('quest-desc');
+    const qprog = $('quest-progress');
+
+    if (qdesc) qdesc.textContent = activeQuest.name || activeQuest.desc;
+    if (qprog) {
+        const goal = activeQuest.goalCount || activeQuest.targetCount || 1;
+        const current = activeQuest.currentCount || activeQuest.progress || 0;
+        qprog.textContent = `${current}/${goal}`;
+        qprog.style.color = (current >= goal) ? '#00ff00' : '#ffd700';
+    }
+}
+
+function showDialogue(npc) {
+    const box = $('dialog-box');
+    if (!box) return;
+
+    const nameEl = $('npc-active-name');
+    const textEl = $('dialog-text');
+    const optsEl = $('dialog-options');
+
+    if (nameEl) nameEl.textContent = npc.name;
+    if (textEl) textEl.textContent = npc.greeting || "Greetings, traveler.";
+
+    if (optsEl) {
+        optsEl.innerHTML = '';
+        const options = npc.getDialogueOptions ? npc.getDialogueOptions() : [{ label: 'Goodbye', action: () => box.classList.add('hidden') }];
+
+        options.forEach(opt => {
+            const btn = document.createElement('div');
+            btn.className = 'dialog-opt';
+            btn.textContent = opt.label;
+            btn.addEventListener('click', () => {
+                opt.action();
+                if (opt.closesDialogue !== false) box.classList.add('hidden');
+            });
+            optsEl.appendChild(btn);
+        });
+    }
+
+    box.classList.remove('hidden');
+}
+
 function updateHud() {
     if (!player) return;
     
@@ -1191,8 +1461,43 @@ function updateHud() {
         $('xp-bar-container').title = `Level ${player.level} — ${Math.floor(xpPct)}%`;
     }
 
-    const zoneName = $('zone-name');
-    if (zoneName) zoneName.textContent = ZONE_NAMES[zoneLevel] || `Level ${zoneLevel}`;
+    // PROXIMITY BOSS HUD
+    const bossBar = $('boss-hp-bar');
+    if (bossBar) {
+        if (uiActiveBoss && uiActiveBoss.hp > 0) {
+            const dist = Math.hypot(uiActiveBoss.x - player.x, uiActiveBoss.y - player.y);
+            if (dist < 500) {
+                bossBar.classList.remove('hidden');
+                $('boss-name').textContent = uiActiveBoss.name;
+                const bPct = (uiActiveBoss.hp / uiActiveBoss.maxHp) * 100;
+                $('boss-hp-fill').style.width = bPct + '%';
+                
+                if (performance.now() - lastBossWarnTime > 60000) {
+                    fx.shake(500, 5);
+                    addCombatLog(`⚠ TARGET DETECTED: ${uiActiveBoss.name}`, 'log-warn');
+                    lastBossWarnTime = performance.now();
+                }
+            } else {
+                bossBar.classList.add('hidden');
+            }
+        } else {
+            bossBar.classList.add('hidden');
+        }
+    }
+
+    // Atmospheric Filter
+    const canvas = $('game-canvas');
+    if (canvas) {
+        let filter = 'none';
+        if (zoneLevel === 0) filter = 'sepia(0.2) saturate(1.2)';
+        else if (zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0)) filter = 'saturate(1.5) contrast(1.1) hue-rotate(-10deg)';
+        else if (typeof theme !== 'undefined' && theme === 'catacombs') filter = 'brightness(0.8) saturate(0.8) hue-rotate(20deg)';
+        else if (typeof theme !== 'undefined' && theme === 'wilderness') filter = 'saturate(1.1) contrast(1.05)';
+        canvas.style.filter = filter;
+    }
+
+    const zoneNameDisplay = $('zone-name');
+    if (zoneNameDisplay) zoneNameDisplay.textContent = ZONE_NAMES[zoneLevel] || `Level ${zoneLevel}`;
 
     // Potion Belt
     for (let i = 0; i < 4; i++) {
@@ -1246,6 +1551,21 @@ function updateHud() {
     const brokenWarn = $('broken-gear-warning');
     if (brokenWarn) brokenWarn.classList.toggle('hidden', !hasBroken);
 
+    // Level Up Awareness
+    const charBtn = $('btn-character');
+    if (charBtn) charBtn.classList.toggle('has-points', player.statPoints > 0);
+
+    // Quest Tracker
+    updateQuestHud();
+
+    // Loot Filter awareness
+    const filterBtn = $('btn-lootfilter');
+    if (filterBtn) {
+        const filterNames = ['ALL', 'HIDE_NORMAL', 'HIDE_MAGIC'];
+        filterBtn.title = `Loot Filter: ${filterNames[lootFilter || 0]} (F)`;
+        filterBtn.style.color = (lootFilter > 0) ? '#00ccff' : '#aaa';
+    }
+
     // Minion UI
     const mui = $('minions-ui');
     if (mui) {
@@ -1272,6 +1592,7 @@ function updateHud() {
             $('merc-hp-fill').style.width = mPct + '%';
             
             if (mercenary.hp <= 0) {
+                mh.classList.add('merc-dead-portrait');
                 $('merc-hp-fill').style.backgroundColor = '#600';
                 $('merc-name').style.color = '#f00';
                 $('merc-name').textContent = `${mercenary.name} (DEAD)`;
@@ -1285,6 +1606,7 @@ function updateHud() {
                     mh.appendChild(btn);
                 }
             } else {
+                mh.classList.remove('merc-dead-portrait');
                 $('merc-hp-fill').style.backgroundColor = '#4caf50';
                 $('merc-name').style.color = '#fff';
                 const existingBtn = $('btn-revive-merc');
@@ -1318,272 +1640,269 @@ function updateHud() {
 function getIconForSkill(id) {
     const iconMap = {
         // ══════════ WARRIOR ══════════
-        'warrior':            'ra-crossed-swords',
-        'arms':               'ra-sword',
-        'bash':               'ra-muscle-up',
-        'double_swing':       'ra-dervish-swords',
-        'rend':               'ra-dripping-sword',
-        'whirlwind':          'ra-spinning-sword',
-        'combat_mastery':     'ra-crossed-axes',
-        'berserk':            'ra-player-pyromaniac',
-        'cleave':             'ra-axe-swing',
-        'execute':            'ra-decapitation',
-        'defense':            'ra-heavy-shield',
-        'shield_bash':        'ra-bolt-shield',
-        'iron_skin':          'ra-knight-helmet',
-        'block_mastery':      'ra-round-shield',
-        'revenge':            'ra-player-dodge',
-        'taunt':              'ra-horn-call',
-        'fortify':            'ra-guarded-tower',
-        'life_tap':           'ra-crowned-heart',
-        'last_stand':         'ra-blast',
-        'battle':             'ra-castle-flag',
-        'warcry':             'ra-horn-call',
-        'shout':              'ra-speech-bubble',
-        'leap_attack':        'ra-boot-stomp',
-        'battle_orders':      'ra-hand-emblem',
-        'commanding_shout':   'ra-speech-bubbles',
-        'slam':               'ra-groundbreaker',
-        'avatar_of_war':      'ra-heavy-fall',
-        'war_syn':            'ra-all-for-one',
+        'warrior': 'ra-crossed-swords',
+        'arms': 'ra-sword',
+        'bash': 'ra-muscle-up',
+        'double_swing': 'ra-dervish-swords',
+        'rend': 'ra-dripping-sword',
+        'whirlwind': 'ra-spinning-sword',
+        'combat_mastery': 'ra-crossed-axes',
+        'berserk': 'ra-player-pyromaniac',
+        'cleave': 'ra-axe-swing',
+        'execute': 'ra-decapitation',
+        'defense': 'ra-heavy-shield',
+        'shield_bash': 'ra-bolt-shield',
+        'iron_skin': 'ra-knight-helmet',
+        'block_mastery': 'ra-round-shield',
+        'revenge': 'ra-player-dodge',
+        'taunt': 'ra-horn-call',
+        'fortify': 'ra-guarded-tower',
+        'life_tap': 'ra-crowned-heart',
+        'last_stand': 'ra-blast',
+        'battle': 'ra-castle-flag',
+        'warcry': 'ra-horn-call',
+        'shout': 'ra-speech-bubble',
+        'leap_attack': 'ra-boot-stomp',
+        'battle_orders': 'ra-hand-emblem',
+        'commanding_shout': 'ra-speech-bubbles',
+        'slam': 'ra-groundbreaker',
+        'avatar_of_war': 'ra-heavy-fall',
+        'war_syn': 'ra-all-for-one',
 
         // ══════════ SORCERESS ══════════
-        'sorceress':          'ra-crystal-wand',
-        'fire':               'ra-fire-symbol',
-        'fire_bolt':          'ra-small-fire',
-        'fireball':           'ra-fire-bomb',
-        'fire_mastery':       'ra-burning-embers',
-        'meteor':             'ra-burning-meteor',
-        'fire_storm':         'ra-arson',
-        'immolate':           'ra-campfire',
-        'enchant':            'ra-fireball-sword',
-        'inferno':            'ra-fire-breath',
-        'cold':               'ra-snowflake',
-        'ice_bolt':           'ra-frost-emblem',
-        'frost_nova':         'ra-frostfire',
-        'ice_blast':          'ra-cold-heart',
-        'frozen_armor':       'ra-crystal-cluster',
-        'blizzard':           'ra-ice-cube',
-        'cold_mastery':       'ra-frozen-arrow',
-        'frozen_orb':         'ra-crystal-ball',
-        'absolute_zero':      'ra-brain-freeze',
-        'lightning':          'ra-lightning-bolt',
-        'charged_bolt':       'ra-focused-lightning',
-        'lightning_bolt':     'ra-lightning',
-        'chain_lightning':    'ra-lightning-trio',
-        'static_field':       'ra-energise',
-        'teleport':           'ra-player-teleport',
-        'light_mastery':      'ra-lightning-sword',
-        'nova':               'ra-explosion',
-        'energy_shield':      'ra-bolt-shield',
-        'thunder_storm':      'ra-lightning-storm',
+        'sorceress': 'ra-crystal-wand',
+        'fire': 'ra-fire-symbol',
+        'fire_bolt': 'ra-small-fire',
+        'fireball': 'ra-fire-bomb',
+        'fire_mastery': 'ra-burning-embers',
+        'meteor': 'ra-burning-meteor',
+        'fire_storm': 'ra-arson',
+        'immolate': 'ra-campfire',
+        'enchant': 'ra-fireball-sword',
+        'inferno': 'ra-fire-breath',
+        'cold': 'ra-snowflake',
+        'ice_bolt': 'ra-frost-emblem',
+        'frost_nova': 'ra-frostfire',
+        'ice_blast': 'ra-cold-heart',
+        'frozen_armor': 'ra-crystal-cluster',
+        'blizzard': 'ra-ice-cube',
+        'cold_mastery': 'ra-frozen-arrow',
+        'frozen_orb': 'ra-crystal-ball',
+        'absolute_zero': 'ra-brain-freeze',
+        'lightning': 'ra-lightning-bolt',
+        'charged_bolt': 'ra-focused-lightning',
+        'lightning_bolt': 'ra-lightning',
+        'chain_lightning': 'ra-lightning-trio',
+        'static_field': 'ra-energise',
+        'teleport': 'ra-player-teleport',
+        'light_mastery': 'ra-lightning-sword',
+        'nova': 'ra-explosion',
+        'energy_shield': 'ra-bolt-shield',
+        'thunder_storm': 'ra-lightning-storm',
 
         // ══════════ NECROMANCER ══════════
-        'necromancer':        'ra-skull',
-        'summoning':          'ra-tombstone',
-        'summon_skeleton':    'ra-broken-bone',
-        'skeleton_mastery':   'ra-broken-skull',
-        'skeleton_mage':      'ra-death-skull',
-        'golem':              'ra-monster-skull',
-        'golem_mastery':      'ra-gear-hammer',
-        'summon_resist':      'ra-circular-shield',
-        'revive':             'ra-regeneration',
-        'army_of_dead':       'ra-dead-tree',
-        'curses':             'ra-eye-monster',
-        'amplify_damage':     'ra-broken-shield',
-        'weaken':             'ra-health-decrease',
-        'iron_maiden':        'ra-crown-of-thorns',
-        'life_tap_curse':     'ra-heart-bottle',
-        'decrepify':          'ra-noose',
-        'lower_resist':       'ra-acid',
-        'mass_curse':         'ra-overmind',
-        'bone':               'ra-bone-bite',
-        'teeth':              'ra-tooth',
-        'bone_spear':         'ra-spear-head',
-        'bone_armor':         'ra-bone-knife',
-        'bone_wall':          'ra-metal-gate',
-        'bone_spirit':        'ra-desert-skull',
-        'bone_mastery':       'ra-crossed-bones',
-        'bone_prison':        'ra-locked-fortress',
-        'bone_storm':         'ra-skull-trophy',
-        'poison_nova':        'ra-poison-cloud',
+        'necromancer': 'ra-skull',
+        'summoning': 'ra-tombstone',
+        'summon_skeleton': 'ra-broken-bone',
+        'skeleton_mastery': 'ra-broken-skull',
+        'skeleton_mage': 'ra-death-skull',
+        'golem': 'ra-monster-skull',
+        'golem_mastery': 'ra-gear-hammer',
+        'summon_resist': 'ra-circular-shield',
+        'revive': 'ra-regeneration',
+        'army_of_dead': 'ra-dead-tree',
+        'curses': 'ra-eye-monster',
+        'amplify_damage': 'ra-broken-shield',
+        'weaken': 'ra-health-decrease',
+        'iron_maiden': 'ra-crown-of-thorns',
+        'life_tap_curse': 'ra-heart-bottle',
+        'decrepify': 'ra-noose',
+        'lower_resist': 'ra-acid',
+        'mass_curse': 'ra-overmind',
+        'bone': 'ra-bone-bite',
+        'teeth': 'ra-tooth',
+        'bone_spear': 'ra-spear-head',
+        'bone_armor': 'ra-bone-knife',
+        'bone_wall': 'ra-metal-gate',
+        'bone_spirit': 'ra-desert-skull',
+        'bone_mastery': 'ra-crossed-bones',
+        'bone_prison': 'ra-locked-fortress',
+        'bone_storm': 'ra-skull-trophy',
+        'poison_nova': 'ra-poison-cloud',
 
         // ══════════ PALADIN ══════════
-        'paladin':            'ra-ankh',
-        'holy':               'ra-angel-wings',
-        'holy_light':         'ra-sunbeams',
-        'holy_smite':         'ra-sun-symbol',
-        'blessed_hammer':     'ra-hammer-drop',
-        'holy_shock':         'ra-player-thunder-struck',
-        'consecration':       'ra-aura',
-        'holy_mastery':       'ra-sun',
-        'divine_shield':      'ra-heavy-shield',
-        'divine_storm':       'ra-lightning-storm',
-        'foh':                'ra-shot-through-the-heart',
-        'auras':              'ra-radial-balance',
-        'might_aura':         'ra-muscle-up',
-        'prayer_aura':        'ra-health-increase',
-        'holy_fire_aura':     'ra-fire-ring',
-        'resist_all':         'ra-fire-shield',
-        'vigor':              'ra-forward',
-        'fanaticism':         'ra-flaming-claw',
-        'conviction':         'ra-gavel',
-        'aura_mastery':       'ra-triforce',
-        'combat':             'ra-crossed-swords',
-        'charge':             'ra-boot-stomp',
-        'smite':              'ra-flat-hammer',
-        'zeal':               'ra-dervish-swords',
-        'vengeance':          'ra-flaming-trident',
-        'cleansing':          'ra-hospital-cross',
-        'judgment':           'ra-crown',
+        'paladin': 'ra-ankh',
+        'holy': 'ra-angel-wings',
+        'holy_light': 'ra-sunbeams',
+        'holy_smite': 'ra-sun-symbol',
+        'blessed_hammer': 'ra-hammer-drop',
+        'holy_shock': 'ra-player-thunder-struck',
+        'consecration': 'ra-aura',
+        'holy_mastery': 'ra-sun',
+        'divine_shield': 'ra-heavy-shield',
+        'divine_storm': 'ra-lightning-storm',
+        'foh': 'ra-shot-through-the-heart',
+        'auras': 'ra-radial-balance',
+        'might_aura': 'ra-muscle-up',
+        'prayer_aura': 'ra-health-increase',
+        'holy_fire_aura': 'ra-fire-ring',
+        'resist_all': 'ra-fire-shield',
+        'vigor': 'ra-forward',
+        'fanaticism': 'ra-flaming-claw',
+        'conviction': 'ra-gavel',
+        'aura_mastery': 'ra-triforce',
+        'combat': 'ra-crossed-swords',
+        'charge': 'ra-boot-stomp',
+        'smite': 'ra-flat-hammer',
+        'zeal': 'ra-dervish-swords',
+        'vengeance': 'ra-flaming-trident',
+        'cleansing': 'ra-hospital-cross',
+        'judgment': 'ra-crown',
 
         // ══════════ SHAMAN ══════════
-        'shaman':             'ra-lightning',
-        'elemental':          'ra-lightning-bolt',
-        'lightning_bolt':     'ra-focused-lightning',
-        'chain_lightning':    'ra-lightning-trio',
-        'thunder_strike':     'ra-player-thunder-struck',
-        'elem_mastery':       'ra-energise',
-        'storm_caller':       'ra-lightning-storm',
-        'earthquake':         'ra-groundbreaker',
-        'cl_syn':             'ra-tesla',
-        'totems':             'ra-torch',
-        'searing_totem':      'ra-campfire',
-        'stoneskin_totem':    'ra-guarded-tower',
-        'windfury_totem':     'ra-feathered-wing',
-        'totem_mastery':      'ra-lit-candelabra',
-        'totemic_wrath':      'ra-bomb-explosion',
-        'totem_syn':          'ra-candle-fire',
-        'restoration':        'ra-heart-bottle',
-        'healing_wave':       'ra-health-increase',
-        'healing_stream':     'ra-water-drop',
-        'earth_shield':       'ra-circular-shield',
-        'mana_tide':          'ra-ocean-emblem',
-        'nature_swiftness':   'ra-feather-wing',
-        'resto_mastery':      'ra-crowned-heart',
-        'ancestral_spirit':   'ra-angel-wings',
-        'hw_syn':             'ra-droplets',
+        'shaman': 'ra-lightning',
+        'elemental': 'ra-lightning-bolt',
+        'lightning_bolt': 'ra-focused-lightning',
+        'chain_lightning': 'ra-lightning-trio',
+        'thunder_strike': 'ra-player-thunder-struck',
+        'elem_mastery': 'ra-energise',
+        'storm_caller': 'ra-lightning-storm',
+        'earthquake': 'ra-groundbreaker',
+        'cl_syn': 'ra-tesla',
+        'totems': 'ra-torch',
+        'searing_totem': 'ra-campfire',
+        'stoneskin_totem': 'ra-guarded-tower',
+        'windfury_totem': 'ra-feathered-wing',
+        'totem_mastery': 'ra-lit-candelabra',
+        'totemic_wrath': 'ra-bomb-explosion',
+        'totem_syn': 'ra-candle-fire',
+        'restoration': 'ra-heart-bottle',
+        'healing_wave': 'ra-health-increase',
+        'healing_stream': 'ra-water-drop',
+        'earth_shield': 'ra-circular-shield',
+        'mana_tide': 'ra-ocean-emblem',
+        'nature_swiftness': 'ra-feather-wing',
+        'resto_mastery': 'ra-crowned-heart',
+        'ancestral_spirit': 'ra-angel-wings',
+        'hw_syn': 'ra-droplets',
 
         // ══════════ ROGUE ══════════
-        'rogue':              'ra-hood',
-        'assassination':      'ra-daggers',
-        'backstab':           'ra-diving-dagger',
-        'ambush':             'ra-cloak-and-dagger',
-        'eviscerate':         'ra-dripping-knife',
-        'lethality':          'ra-bowie-knife',
-        'vanish':             'ra-hood',
-        'death_blossom':      'ra-shuriken',
-        'death_mark':         'ra-on-target',
-        'poison':             'ra-poison-cloud',
-        'poison_blade':       'ra-dripping-blade',
-        'envenom':            'ra-venomous-snake',
-        'noxious_cloud':      'ra-gloop',
-        'plague':             'ra-biohazard',
-        'virulence':          'ra-bottle-vapors',
-        'pandemic':           'ra-skull',
-        'traps':              'ra-bear-trap',
-        'fire_trap':          'ra-fire-bomb',
-        'shock_trap':         'ra-focused-lightning',
-        'blade_trap':         'ra-circular-saw',
-        'trap_mastery':       'ra-bear-trap',
-        'shadow_mine':        'ra-bombs',
-        'spike_trap':         'ra-spikeball',
-        'shadow_strike':      'ra-plain-dagger',
-        'death_sentry':       'ra-barbed-arrow',
-        'shadow_dance':       'ra-player-dodge',
+        'rogue': 'ra-hood',
+        'assassination': 'ra-daggers',
+        'backstab': 'ra-diving-dagger',
+        'ambush': 'ra-cloak-and-dagger',
+        'eviscerate': 'ra-dripping-knife',
+        'lethality': 'ra-bowie-knife',
+        'vanish': 'ra-hood',
+        'death_blossom': 'ra-shuriken',
+        'death_mark': 'ra-on-target',
+        'poison': 'ra-poison-cloud',
+        'poison_blade': 'ra-dripping-blade',
+        'envenom': 'ra-venomous-snake',
+        'noxious_cloud': 'ra-gloop',
+        'plague': 'ra-biohazard',
+        'virulence': 'ra-bottle-vapors',
+        'pandemic': 'ra-skull',
+        'traps': 'ra-bear-trap',
+        'fire_trap': 'ra-fire-bomb',
+        'shock_trap': 'ra-focused-lightning',
+        'blade_trap': 'ra-circular-saw',
+        'trap_mastery': 'ra-bear-trap',
+        'shadow_mine': 'ra-bombs',
+        'spike_trap': 'ra-spikeball',
+        'shadow_strike': 'ra-plain-dagger',
+        'death_sentry': 'ra-barbed-arrow',
+        'shadow_dance': 'ra-player-dodge',
 
         // ══════════ WARLOCK ══════════
-        'warlock':            'ra-burning-eye',
-        'destruction':        'ra-fire-symbol',
-        'shadow_bolt':        'ra-bottled-bolt',
-        'drain_life':         'ra-bleeding-hearts',
-        'soul_fire':          'ra-alien-fire',
-        'shadow_mastery':     'ra-arcane-mask',
-        'chaos_bolt':         'ra-beam-wake',
-        'seed':               'ra-sprout',
-        'dark_pact':          'ra-cut-palm',
-        'rain_of_chaos':      'ra-burning-meteor',
-        'affliction':         'ra-eye-monster',
-        'corruption':         'ra-gloop',
-        'agony':              'ra-broken-heart',
-        'haunt':              'ra-batwings',
-        'aff_mastery':        'ra-bleeding-eye',
-        'siphon_life':        'ra-glass-heart',
-        'unstable':           'ra-radioactive',
-        'dark_soul':          'ra-crescent-moon',
-        'doom':               'ra-death-skull',
-        'demonology':         'ra-dragon',
-        'imp':                'ra-small-fire',
-        'voidwalker':         'ra-tentacle',
-        'demon_armor':        'ra-vest',
-        'soul_link':          'ra-two-hearts',
-        'demonfire_passive':  'ra-hot-surface',
-        'succubus':           'ra-love-howl',
-        'infernal':           'ra-lava',
-        'metamorphosis':      'ra-hydra',
+        'warlock': 'ra-burning-eye',
+        'destruction': 'ra-fire-symbol',
+        'shadow_bolt': 'ra-bottled-bolt',
+        'drain_life': 'ra-bleeding-hearts',
+        'soul_fire': 'ra-alien-fire',
+        'shadow_mastery': 'ra-arcane-mask',
+        'chaos_bolt': 'ra-beam-wake',
+        'seed': 'ra-sprout',
+        'dark_pact': 'ra-cut-palm',
+        'rain_of_chaos': 'ra-burning-meteor',
+        'affliction': 'ra-eye-monster',
+        'corruption': 'ra-gloop',
+        'agony': 'ra-broken-heart',
+        'haunt': 'ra-batwings',
+        'aff_mastery': 'ra-bleeding-eye',
+        'siphon_life': 'ra-glass-heart',
+        'unstable': 'ra-radioactive',
+        'dark_soul': 'ra-crescent-moon',
+        'doom': 'ra-death-skull',
+        'demonology': 'ra-dragon',
+        'imp': 'ra-small-fire',
+        'voidwalker': 'ra-tentacle',
+        'demon_armor': 'ra-vest',
+        'soul_link': 'ra-two-hearts',
+        'demonfire_passive': 'ra-hot-surface',
+        'succubus': 'ra-love-howl',
+        'infernal': 'ra-lava',
+        'metamorphosis': 'ra-hydra',
 
         // ══════════ DRUID ══════════
-        'druid':              'ra-leaf',
-        'shapeshifting':      'ra-wolf-head',
-        'wolf_form':          'ra-wolf-howl',
-        'maul':               'ra-bear-trap',
-        'fury':               'ra-flaming-claw',
-        'feral_mastery':      'ra-pawprint',
-        'bear_form':          'ra-muscle-fat',
-        'bear_slam':          'ra-groundbreaker',
-        'primal_rage':        'ra-insect-jaws',
-        'rabies':             'ra-biohazard',
-        'elemental_druid':    'ra-mountains',
-        'fissure':            'ra-lava',
-        'cyclone_armor':      'ra-fluffy-swirl',
-        'tornado':            'ra-fluffy-swirl',
-        'twister':            'ra-cycle',
-        'hurricane':          'ra-heat-haze',
-        'volcano':            'ra-fire-ring',
-        'nature_mastery':     'ra-trefoil-lily',
-        'armageddon':         'ra-burning-meteor',
-        'summoning_druid':    'ra-sprout-emblem',
-        'raven':              'ra-raven',
-        'spirit_wolf':        'ra-wolf-head',
-        'summon_wolf':        'ra-wolf-howl',
-        'vine':               'ra-vine-whip',
-        'oak_sage':           'ra-acorn',
+        'druid': 'ra-leaf',
+        'shapeshifting': 'ra-wolf-head',
+        'wolf_form': 'ra-wolf-howl',
+        'maul': 'ra-bear-trap',
+        'fury': 'ra-flaming-claw',
+        'feral_mastery': 'ra-pawprint',
+        'bear_form': 'ra-muscle-fat',
+        'bear_slam': 'ra-groundbreaker',
+        'primal_rage': 'ra-insect-jaws',
+        'rabies': 'ra-biohazard',
+        'elemental_druid': 'ra-mountains',
+        'fissure': 'ra-lava',
+        'cyclone_armor': 'ra-fluffy-swirl',
+        'tornado': 'ra-fluffy-swirl',
+        'twister': 'ra-cycle',
+        'hurricane': 'ra-heat-haze',
+        'volcano': 'ra-fire-ring',
+        'nature_mastery': 'ra-trefoil-lily',
+        'armageddon': 'ra-burning-meteor',
+        'summoning_druid': 'ra-sprout-emblem',
+        'raven': 'ra-raven',
+        'spirit_wolf': 'ra-wolf-head',
+        'summon_wolf': 'ra-wolf-howl',
+        'vine': 'ra-vine-whip',
+        'oak_sage': 'ra-acorn',
         'heart_of_wolverine': 'ra-hearts',
-        'grizzly':            'ra-crab-claw',
-        'stampede':           'ra-lion',
-        'companion_hawk':     'ra-bird-claw',
+        'grizzly': 'ra-crab-claw',
+        'stampede': 'ra-lion',
+        'companion_hawk': 'ra-bird-claw',
 
         // ══════════ RANGER ══════════
-        'ranger':             'ra-archer',
-        'marksmanship':       'ra-archery-target',
-        'power_shot':         'ra-supersonic-arrow',
-        'multi_shot':         'ra-arrow-cluster',
-        'guided_arrow':       'ra-broadhead-arrow',
-        'bow_mastery':        'ra-crossbow',
-        'immolation_arrow':   'ra-flaming-arrow',
-        'strafe':             'ra-arrow-flights',
-        'rain_of_arrows':     'ra-target-arrows',
-        'nature_ranger':      'ra-pine-tree',
-        'companion_hawk':     'ra-bird-claw',
-        'viper_arrow':        'ra-chemical-arrow',
-        'comp_mastery':       'ra-thorn-arrow',
-        'wolf_pack':          'ra-wolf-howl',
-        'spirit_guide':       'ra-feather-wing',
-        'harmony':            'ra-trefoil-lily',
-        'stampede_ranger':    'ra-lion',
-        'traps_ranger':       'ra-bear-trap',
-        'ice_trap':           'ra-frost-emblem',
-        'fire_trap_r':        'ra-fire-bomb',
-        'explosive_trap':     'ra-cluster-bomb',
-        'trap_mastery_r':     'ra-grenade',
-        'scatter_shot':       'ra-cannon-shot',
-        'black_arrow':        'ra-barbed-arrow',
-        'minefield':          'ra-bombs',
-        'mark_death':         'ra-targeted',
+        'ranger': 'ra-archer',
+        'marksmanship': 'ra-archery-target',
+        'power_shot': 'ra-supersonic-arrow',
+        'multi_shot': 'ra-arrow-cluster',
+        'guided_arrow': 'ra-broadhead-arrow',
+        'bow_mastery': 'ra-crossbow',
+        'immolation_arrow': 'ra-flaming-arrow',
+        'strafe': 'ra-arrow-flights',
+        'rain_of_arrows': 'ra-target-arrows',
+        'nature_ranger': 'ra-pine-tree',
+        'companion_hawk': 'ra-bird-claw',
+        'viper_arrow': 'ra-chemical-arrow',
+        'comp_mastery': 'ra-thorn-arrow',
+        'wolf_pack': 'ra-wolf-howl',
+        'spirit_guide': 'ra-feather-wing',
+        'harmony': 'ra-trefoil-lily',
+        'stampede_ranger': 'ra-lion',
+        'traps_ranger': 'ra-bear-trap',
+        'ice_trap': 'ra-frost-emblem',
+        'fire_trap_r': 'ra-cannon-shot',
+        'black_arrow': 'ra-barbed-arrow',
+        'minefield': 'ra-bombs',
+        'mark_death': 'ra-targeted',
 
         // ══════════ MISC / SYNERGIES ══════════
-        'chain_reaction':     'ra-chain',
-        'fortress':           'ra-locked-fortress',
+        'chain_reaction': 'ra-chain',
+        'fortress': 'ra-locked-fortress',
     };
     return iconMap[id] || 'ra-cog';
 }
@@ -1591,34 +1910,20 @@ function getIconForSkill(id) {
 function getItemHtml(item, cantEquip = false) {
     if (!item) return '';
     const rarityClass = `rarity-${item.rarity || 'normal'}`;
-    const unidentifiedClass = (item.identified === false) ? ' unidentified' : '';
-    const equipClass = cantEquip ? ' cant-equip' : '';
-    
-    // Check if we have an HD version or use the base icon
-    let iconName = item.icon || 'item_amulet';
-    
-    // Support for tinted gems if we are missing specific HD icons (Diamond/Skull)
-    let filterStyle = '';
-    if (iconName === 'item_diamond') { iconName = 'item_emerald'; filterStyle = 'filter: brightness(2) saturate(0) contrast(1.2);'; }
-    if (iconName === 'item_skull') { iconName = 'item_topaz'; filterStyle = 'filter: grayscale(1) brightness(0.8) contrast(1.5);'; }
-    
-    let html = `<div class="inv-item ${rarityClass}${unidentifiedClass}${equipClass}">
-        <img src="assets/${iconName}.png" style="width:100%; height:100%; object-fit:contain; ${filterStyle}">`;
-    
-    if (item.type === 'tome') {
-        const charges = item.charges || 0;
-        const color = charges === 0 ? '#f44336' : (charges < 5 ? '#ffeb3b' : '#fff');
-        html += `<div class="item-charges" style="color:${color}">${charges}</div>`;
-    }
-    
-    html += `</div>`;
-    return html;
+    const ceClass = cantEquip ? 'cant-equip' : '';
+    const quantityBadge = (item.quantity > 1) ? `<div class="item-quantity-badge">${item.quantity}</div>` : '';
+
+    return `<div class="inv-item ${rarityClass} ${ceClass}">
+        ${quantityBadge}
+        <img src="assets/${item.icon}.png" onerror="this.src='assets/item_orb.png'">
+        <div class="rarity-glow"></div>
+    </div>`;
 }
 
 function getIconForItem(iconStr) {
     if (!iconStr) return 'ra-circle';
     const s = iconStr.toLowerCase();
-    
+
     // Weapons
     if (s.includes('sword') || s.includes('blade')) return 'ra-broadsword';
     if (s.includes('axe')) return 'ra-battered-axe';
@@ -1629,7 +1934,7 @@ function getIconForItem(iconStr) {
     if (s.includes('totem') || s.includes('idol')) return 'ra-totem';
     if (s.includes('wand')) return 'ra-crystal-wand';
     if (s.includes('orb') || s.includes('source')) return 'ra-gem-pendant';
-    
+
     // Armor
     if (s.includes('cap') || s.includes('helm') || s.includes('circlet')) return 'ra-helmet';
     if (s.includes('armor') || s.includes('mail') || s.includes('robe')) return 'ra-chain-mail'; // or ra-vest
@@ -1637,7 +1942,7 @@ function getIconForItem(iconStr) {
     if (s.includes('boot')) return 'ra-boot-stomp'; // boot
     if (s.includes('shield') || s.includes('buckler')) return 'ra-shield';
     if (s.includes('belt') || s.includes('sash')) return 'ra-belt-buckle';
-    
+
     // Accessories & Consumables
     if (s.includes('ring')) return 'ra-diamond-ring';
     if (s.includes('amulet')) return 'ra-necklace';
@@ -1648,7 +1953,7 @@ function getIconForItem(iconStr) {
     if (s.includes('gem_')) return 'ra-gem';
     if (s.includes('charm')) return 'ra-scroll-unfurled';
     if (s.includes('chest_open')) return 'ra-chest';
-    
+
     // Gems specifics
     if (s.includes('ruby')) return 'ra-drop'; // red
     if (s.includes('sapphire')) return 'ra-crystal-cluster'; // blue
@@ -1657,7 +1962,7 @@ function getIconForItem(iconStr) {
     if (s.includes('diamond')) return 'ra-diamond'; // white
     if (s.includes('amethyst')) return 'ra-eye-shield'; // purple
     if (s.includes('skull')) return 'ra-skull';
-    
+
     return 'ra-help';
 }
 
@@ -1681,14 +1986,14 @@ function updateSkillBar() {
     for (let i = 0; i < 5; i++) {
         const si = $(`si-${i}`);
         const skillId = player.hotbar[i];
-        
+
         // Remove old listeners by cloning
         const newSi = si.cloneNode(true);
         si.parentNode.replaceChild(newSi, si);
-        
+
         if (skillId && player.skillMap[skillId]) {
             newSi.innerHTML = `<i class="ra ${getIconForSkill(skillId)}" style="font-size: 28px; line-height: 48px; text-align: center; color: var(--gold); text-shadow: 0 0 5px #000; width: 100%; height: 100%; display: block; border-radius: 4px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);"></i>`;
-            
+
             newSi.addEventListener('mouseenter', (e) => showSkillTooltip(skillId, e.clientX, e.clientY));
             newSi.addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
             newSi.addEventListener('mouseleave', hideTooltip);
@@ -1708,45 +2013,45 @@ function showSkillTooltip(skillId, x, y) {
 function skillTooltipText(skillId) {
     const skill = player.skillMap[skillId];
     if (!skill) return '';
-    
+
     const effLvl = player.effectiveSkillLevel(skillId);
     const synBonus = player.talents.synergyBonus ? player.talents.synergyBonus(skillId) : 0;
-    
+
     let t = `<div class="tooltip-inner" style="color:#fff; min-width: 220px;">`;
     t += `<div class="tooltip-name" style="color:var(--gold);">${skill.name} <span style="color:#aaa; font-size:12px;">(Lv ${effLvl})</span></div>`;
     t += `<div class="tooltip-rarity" style="color:#666; margin-bottom: 8px;">— Active Skill —</div>`;
     t += `<div class="tooltip-stats" style="color:#ccc; font-size:12px;">${skill.desc}</div>`;
-    
+
     t += `<div style="margin-top:10px; padding-top:6px; border-top:1px solid #333;">`;
     if (skill.mana) t += `<div style="color:#4850b8;">Mana Cost: ${skill.mana}</div>`;
     if (skill.cd) t += `<div style="color:#aaa;">Cooldown: ${skill.cd}s</div>`;
-    
+
     if (skill.dmgBase) {
         const baseDmg = skill.dmgBase + (skill.dmgPerLvl || 0) * (effLvl - 1);
         const wepDmg = (player.wepMin + player.wepMax) / 2;
         let totalBase = baseDmg + (skill.wepDmgPct ? wepDmg * (skill.wepDmgPct / 100) : 0);
-        
+
         let typeMultiplier = 0;
         const dmgType = skill.group === 'fire' || skill.group === 'cold' || skill.group === 'lightning' || skill.group === 'poison' || skill.group === 'shadow' || skill.group === 'holy' ? skill.group : 'physical';
-        
+
         if (dmgType === 'fire') typeMultiplier = player.pctFireDmg || 0;
         if (dmgType === 'cold') typeMultiplier = player.pctColdDmg || 0;
         if (dmgType === 'lightning') typeMultiplier = player.pctLightDmg || 0;
         if (dmgType === 'poison') typeMultiplier = player.pctPoisonDmg || 0;
         if (dmgType === 'shadow') typeMultiplier = player.pctShadowDmg || 0;
         if (dmgType === 'holy') typeMultiplier = player.pctHolyDmg || 0;
-        
+
         const finalMultiplier = 1 + (player.pctDmg || 0) / 100 + synBonus + typeMultiplier / 100;
         const finalDmg = Math.round(totalBase * finalMultiplier);
-        
+
         const dmgColors = { fire: '#ff6030', cold: '#30ccff', lightning: '#ffff40', poison: '#50ff50', shadow: '#cc60ff', physical: '#ffffff', holy: '#ffd700' };
         t += `<div style="color:${dmgColors[dmgType] || '#fff'}; font-weight:bold; margin-top:4px;">Damage: ${finalDmg} ${dmgType}</div>`;
-        
+
         if (synBonus > 0) {
             t += `<div style="color:#00ff00; font-size:11px;">+${Math.round(synBonus * 100)}% from Synergies</div>`;
         }
     }
-    
+
     t += `</div></div>`;
     return t;
 }
@@ -1785,11 +2090,11 @@ function renderMinimap() {
     const zoom = minimapZoom || 1.0;
     const sx = (mw / dungeon.width) * zoom;
     const sy = (mh / dungeon.height) * zoom;
-    
+
     // Offset to center on player
     const px_tile = player.x / dungeon.tileSize;
     const py_tile = player.y / dungeon.tileSize;
-    
+
     const ox = (mw / 2) - px_tile * sx;
     const oy = (mh / 2) - py_tile * sy;
 
@@ -1799,10 +2104,10 @@ function renderMinimap() {
             if (explored && !explored[r][c]) continue;
             const t = dungeon.grid[r][c];
             if (t === 1) continue; // WALL
-            
+
             const dx = ox + c * sx;
             const dy = oy + r * sy;
-            
+
             // Bounds check for performance/clipping
             if (dx + sx < 0 || dx > mw || dy + sy < 0 || dy > mh) continue;
 
@@ -1819,8 +2124,19 @@ function renderMinimap() {
             const obx = ox + (obj.x / dungeon.tileSize) * sx;
             const oby = oy + (obj.y / dungeon.tileSize) * sy;
             if (obx < 0 || obx > mw || oby < 0 || oby > mh) continue;
-            ctx.fillStyle = obj.type === 'portal' ? '#30ccff' : (obj.type === 'shrine' ? '#ffd700' : '#8b4513');
-            ctx.fillRect(obx - 1, oby - 1, 2, 2);
+
+            if (obj.type === 'waypoint') {
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('⭐', obx, oby + 4);
+            } else if (obj.type === 'portal') {
+                ctx.fillStyle = '#30ccff';
+                ctx.beginPath(); ctx.arc(obx, oby, 3, 0, Math.PI * 2); ctx.fill();
+            } else {
+                ctx.fillStyle = obj.type === 'shrine' ? '#ffd700' : '#8b4513';
+                ctx.fillRect(obx - 1, oby - 1, 2, 2);
+            }
         }
     }
 
@@ -1847,13 +2163,13 @@ function renderMinimap() {
         const nx = ox + (n.x / dungeon.tileSize) * sx;
         const ny = oy + (n.y / dungeon.tileSize) * sy;
         if (nx < 0 || nx > mw || ny < 0 || ny > mh) continue;
+
         ctx.fillStyle = '#40a0ff';
-        ctx.beginPath();
-        ctx.arc(nx, ny, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        // Distinct icons for key NPCs
+        const nIcon = n.id === 'akara' ? '☥' : (n.id === 'gheed' ? '💰' : '👤');
+        ctx.fillText(nIcon, nx, ny + 4);
     }
 
     // Player dot (always center)
@@ -1871,7 +2187,7 @@ for (let i = 0; i < 4; i++) {
 
 // ─── INPUT EVENTS ───
 bus.on('input:click', p => { input.click = { x: p.screenX, y: p.screenY }; });
-bus.on('input:rightclick', p => { 
+bus.on('input:rightclick', p => {
     // Handle right-click for quick actions if needed
 });
 
@@ -1902,7 +2218,32 @@ bus.on('ui:toggle:map', () => {
 
 // ─── COMBAT EVENTS ───
 bus.on('combat:damage', d => {
-    if (d.target?.isPlayer) {
+    if (d.worldX && d.worldY) {
+        const colors = {
+            physical: '#ffffff',
+            fire: '#ff6600',
+            cold: '#00ccff',
+            lightning: '#ffff00',
+            poison: '#00ff00',
+            magic: '#ff00ff',
+            shadow: '#a040ff',
+            holy: '#ffd700'
+        };
+        const color = d.isCrit ? '#ffcc00' : (colors[d.type] || '#ffffff');
+        const text = d.dealt === 'Blocked!' ? 'BLOCKED' : d.dealt;
+        fx.emitText(d.worldX, d.worldY, text, color, d.isCrit);
+
+        // Impact FX
+        if (d.dealt !== 'Blocked!') {
+            fx.emitBurst(d.worldX, d.worldY, color, d.isCrit ? 12 : 5, 1.5);
+            if (d.isCrit) fx.shake(200, 4);
+        }
+    }
+
+    const cls = d.isCrit ? 'log-crit' : 'log-dmg';
+    if (d.dealt === 'Blocked!') {
+        addCombatLog(`Blocked attack!`, 'log-info');
+    } else if (d.target?.isPlayer) {
         lastHitTime = performance.now();
     }
     if (!d.target?.isPlayer) {
@@ -1918,7 +2259,7 @@ bus.on('combat:damage', d => {
         const screen = camera.toScreen(d.worldX || d.target?.x || 0, d.worldY || d.target?.y || 0);
         const el = document.createElement('div');
         el.className = 'dmg-number';
-        
+
         let isSpecial = false;
         if (d.dealt === 'Blocked!') {
             el.textContent = 'BLOCKED!';
@@ -1934,7 +2275,7 @@ bus.on('combat:damage', d => {
         } else {
             el.textContent = d.dealt;
         }
-        
+
         el.style.left = screen.x + 'px';
         el.style.top = (screen.y - 20) + 'px';
         const dmgColors = { fire: '#ff6030', cold: '#30ccff', lightning: '#ffff40', poison: '#50ff50', shadow: '#cc60ff', physical: '#ffffff' };
@@ -2040,6 +2381,23 @@ bus.on('item:broken', d => {
 });
 
 bus.on('skill:used', d => {
+    // Player Skill VFX
+    if (d.playerX && d.playerY) {
+        if (d.skillId?.includes('slash') || d.skillId?.includes('swing')) {
+            const angle = Math.atan2(input.mouseY - d.playerY, input.mouseX - d.playerX);
+            fx.emitSlash(d.playerX, d.playerY, angle, '#ffffff', 30);
+        } else if (d.skillId?.includes('fire')) {
+            fx.emitFireTrail(d.playerX, d.playerY);
+        } else if (d.skillId?.includes('holy') || d.skillId?.includes('heal') || d.skillId?.includes('smite')) {
+            fx.emitHolyBurst(d.playerX, d.playerY);
+        } else if (d.skillId?.includes('shock') || d.skillId?.includes('slam')) {
+            fx.emitShockwave(d.playerX, d.playerY, 50);
+        } else {
+            // Default burst
+            fx.emitBurst(d.playerX, d.playerY, '#ffffff', 5, 1);
+        }
+    }
+
     if (camera && renderer && player) {
         // Spellcast animation
         const screen = camera.toScreen(player.x, player.y - 10);
@@ -2085,18 +2443,18 @@ function renderMercenaryPanel() {
         return;
     }
     $('merc-paperdoll').style.opacity = '1';
-    
+
     const slots = ['head', 'chest', 'mainhand'];
     slots.forEach(s => {
         const el = document.querySelector(`.merc-slot[data-slot="${s}"]`);
         if (!el) return;
         const item = mercenary.equipment[s];
         el.innerHTML = item ? getItemHtml(item) : '';
-        
+
         if (item) {
             const itemEl = el.querySelector('.inv-item');
             setupTooltip(itemEl, item);
-            
+
             // Right-click to unequip
             itemEl.oncontextmenu = (e) => {
                 e.preventDefault();
@@ -2147,7 +2505,12 @@ bus.on('ui:closeAll', () => {
     isIdentifying = false;
     isLarzukSocketing = false;
     socketingGemIndex = -1;
+    activeDialogueNpc = null;
+    activeWaypointObj = null;
+    const existing = document.getElementById('dialogue-picker');
+    if (existing) existing.remove();
     document.body.style.cursor = 'default';
+    syncInteractionStates();
 });
 
 // Town Portal
@@ -2198,7 +2561,7 @@ function renderQuestLog() {
     const stats = $('quest-stats');
     if (!list || !stats) return;
     list.innerHTML = '';
-    
+
     if (activeQuests.length === 0 && completedQuests.size === 0) {
         list.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">No quests yet.<br>Visit Akara the Elder in town.</div>';
     }
@@ -2344,40 +2707,40 @@ function renderCharacterPanel() {
         ['Gold', player.gold],
         ['Stat Points', `<span style="color:${sp > 0 ? '#ffd700' : '#888'}">${sp}</span>`],
         ['─ ATTRIBUTES ─', ''],
-        ['Strength', `${player.str} ${btn('str')}`],
-        ['Dexterity', `${player.dex} ${btn('dex')}`],
-        ['Vitality', `${player.vit} ${btn('vit')}`],
-        ['Intellect', `${player.int} ${btn('int')}`],
+        ['Strength', `${player.str} ${btn('str')}`, `Strength: ${player.str} [Base: ${player.baseStr}, Gear: +${player.str - player.baseStr}]`],
+        ['Dexterity', `${player.dex} ${btn('dex')}`, `Dexterity: ${player.dex} [Base: ${player.baseDex}, Gear: +${player.dex - player.baseDex}]`],
+        ['Vitality', `${player.vit} ${btn('vit')}`, `Vitality: ${player.vit} [Base: ${player.baseVit}, Gear: +${player.vit - player.baseVit}]`],
+        ['Intellect', `${player.int} ${btn('int')}`, `Intellect: ${player.int} [Base: ${player.baseInt}, Gear: +${player.int - player.baseInt}]`],
         ['─ OFFENSE ─', ''],
-        ['Weapon Dmg', `${player.wepMin}–${player.wepMax}`],
-        ['Attack Speed', player.atkSpd.toFixed(2)],
-        ['Crit Chance', player.critChance + '%'],
-        ['Crit Multi', player.critMulti + '%'],
+        ['Weapon Dmg', `${player.wepMin}–${player.wepMax}`, `Physical Base: ${player.wepMin} to ${player.wepMax}`],
+        ['Attack Speed', player.atkSpd.toFixed(2), `Swings per second. Modified by Weapon Base and IAS.`],
+        ['Crit Chance', player.critChance + '%', `Chance to deal ${player.critMulti}% damage.`],
+        ['Crit Multi', player.critMulti + '%', `Damage multiplier on critical strikes.`],
         ['─ DEFENSE ─', ''],
-        ['HP', `${Math.round(player.hp)} / ${player.maxHp}`],
-        ['MP', `${Math.round(player.mp)} / ${player.maxMp}`],
-        ['Armor', Math.round(player.armor)],
-        ['Fire Res', player.fireRes + '%'],
-        ['Cold Res', player.coldRes + '%'],
-        ['Lightning Res', player.lightRes + '%'],
-        ['Poison Res', player.poisRes + '%'],
-        ['Life Steal', (player.lifeStealPct || 0) + '%'],
-        ['Mana Steal', (player.manaStealPct || 0) + '%'],
-        ['Move Speed', Math.round(player.moveSpeed)],
+        ['HP', `${Math.round(player.hp)} / ${player.maxHp}`, `Life: Keep this above zero!`],
+        ['MP', `${Math.round(player.mp)} / ${player.maxMp}`, `Mana: Used to cast powerful spells.`],
+        ['Armor', Math.round(player.armor), `Reduces physical damage taken by approximately ${Math.round(100 * player.armor / (player.armor + 400))}%`],
+        ['Fire Res', player.fireRes + '%', `Reduces Fire damage taken. Max 75%.`],
+        ['Cold Res', player.coldRes + '%', `Reduces Cold damage taken. Max 75%.`],
+        ['Lightning Res', player.lightRes + '%', `Reduces Lightning damage taken. Max 75%.`],
+        ['Poison Res', player.poisRes + '%', `Reduces Poison damage taken. Max 75%.`],
+        ['Life Steal', (player.lifeStealPct || 0) + '%', `Percentage of physical damage returned as life.`],
+        ['Mana Steal', (player.manaStealPct || 0) + '%', `Percentage of physical damage returned as mana.`],
+        ['Move Speed', Math.round(player.moveSpeed), `Current movement velocity.`],
         ['─ REGEN ─', ''],
-        ['Life Regen', (player.lifeRegenPerSec || 0).toFixed(1) + '/s'],
-        ['Mana Regen', (player.manaRegenPerSec || 0).toFixed(1) + '/s'],
+        ['Life Regen', (player.lifeRegenPerSec || 0).toFixed(1) + '/s', `Passive life recovery per second.`],
+        ['Mana Regen', (player.manaRegenPerSec || 0).toFixed(1) + '/s', `Passive mana recovery per second.`],
         ['─ ADVANCED ─', ''],
-        ['Dmg Reduction', (player.pctDmgReduce || 0) + '%'],
-        ['Flat Dmg Red', (player.flatDmgReduce || 0)],
-        ['Magic Dmg Red', (player.magicDmgReduce || 0)],
-        ['Thorns', (player.thorns || 0)],
+        ['Dmg Reduction', (player.pctDmgReduce || 0) + '%', `Percentage reduction to all incoming damage.`],
+        ['Flat Dmg Red', (player.flatDmgReduce || 0), `Integer reduction to incoming physical damage.`],
+        ['Magic Dmg Red', (player.magicDmgReduce || 0), `Integer reduction to incoming non-physical damage.`],
+        ['Thorns', (player.thorns || 0), `Reflects integer damage back to melee attackers.`],
         ['─ FIND ─', ''],
-        ['Magic Find', (player.magicFind || 0) + '%'],
-        ['Gold Find', (player.goldFind || 0) + '%'],
+        ['Magic Find', (player.magicFind || 0) + '%', `Chance to find better loot.`],
+        ['Gold Find', (player.goldFind || 0) + '%', `Increases gold dropped by enemies.`],
         ['─ DIFFICULTY ─', ''],
-        ['Current', DIFFICULTY_NAMES[difficulty]],
-        ['Resist Penalty', (difficulty === 2 ? '-100%' : (difficulty === 1 ? '-40%' : '0%'))],
+        ['Current', DIFFICULTY_NAMES[difficulty], `Current game difficulty level.`],
+        ['Resist Penalty', (difficulty === 2 ? '-100%' : (difficulty === 1 ? '-40%' : '0%')), `Resistance reduction from higher difficulty.`],
     ];
     panel.innerHTML = stats.map(([n, v, tooltip]) =>
         n.startsWith('─') ? `<div class="stat-row" style="border-bottom:none;"><span class="stat-name" style="color:var(--gold);font-size:0.75rem;">${n}</span><span></span></div>`
@@ -2411,10 +2774,11 @@ let socketingGemIndex = -1;
 
 function renderInventory() {
     if (!player) return;
+    syncInteractionStates();
 
     // 1. Equip Slots (Paper Doll)
     const equipSlots = ['head', 'amulet', 'chest', 'mainhand', 'offhand', 'gloves', 'belt', 'boots', 'ring1', 'ring2'];
-    
+
     // Update Weapon Set Indicators
     if (player) {
         const w1 = player.activeWeaponSet === 1;
@@ -2434,7 +2798,7 @@ function renderInventory() {
         if (item) {
             const itemEl = el.querySelector('.inv-item');
             setupTooltip(itemEl, item);
-            
+
             // Left-click to socket / identify / unequip
             itemEl.addEventListener('click', (e) => {
                 if (window.isIdentifying && item.identified === false) {
@@ -2447,7 +2811,7 @@ function renderInventory() {
                     renderCharacterPanel();
                     return;
                 }
-                
+
                 if (isLarzukSocketing) {
                     const maxSockets = {
                         'head': 2, 'chest': 4, 'mainhand': 4, 'offhand': 4
@@ -2513,41 +2877,9 @@ function renderInventory() {
     });
 
     // 2. Inventory Grid (10x4 = 40 slots)
-    let ig = $('inventory-grid');
-    if (!ig) {
-        // If the grid doesn't exist yet, we might be in an initialization state or the HTML structure changed.
-        // But based on common patterns, we expect it to exist. 
-        // Let's add the button to the parent of the grid.
-        const container = $('panel-inventory');
-        const header = document.createElement('div');
-        header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding: 4px 8px; border-bottom:1px solid #333; margin-bottom:4px;';
-        header.innerHTML = `
-            <span style="font-family:Cinzel,serif; color:var(--gold); font-size:12px;">INVENTORY</span>
-            <button id="btn-sort-inv" class="btn-secondary small" style="padding: 2px 8px; font-size:10px;">SORT</button>
-        `;
-        container.insertBefore(header, container.firstChild);
-        header.querySelector('#btn-sort-inv').onclick = () => {
-            player.sortInventory();
-            renderInventory();
-        };
-        ig = $('inventory-grid');
-    } else {
-        // Just ensure the button is there if we are re-rendering
-        if (!$('btn-sort-inv')) {
-            const container = ig.parentElement;
-            const header = document.createElement('div');
-            header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding: 4px 8px; border-bottom:1px solid #333; margin-bottom:4px;';
-            header.innerHTML = `
-                <span style="font-family:Cinzel,serif; color:var(--gold); font-size:12px;">INVENTORY</span>
-                <button id="btn-sort-inv" class="btn-secondary small" style="padding: 2px 8px; font-size:10px;">SORT</button>
-            `;
-            container.insertBefore(header, ig);
-            header.querySelector('#btn-sort-inv').onclick = () => {
-                player.sortInventory();
-                renderInventory();
-            };
-        }
-    }
+    const ig = $('inventory-grid');
+    if (!ig) return;
+
     ig.innerHTML = '';
     const MAX_INV_SLOTS = 40;
 
@@ -2555,9 +2887,12 @@ function renderInventory() {
         const cell = document.createElement('div');
         cell.className = 'inv-slot';
         const item = player.inventory[i];
-        
+
         // Highlight cell if socketing mode & item is selected
-        if (socketingGemIndex === i) cell.style.border = '2px solid #0f0';
+        if (socketingGemIndex === i) {
+            cell.style.border = '1px solid var(--gold)';
+            cell.style.background = 'rgba(216, 176, 104, 0.2)';
+        }
 
         if (item) {
             const div = document.createElement('div');
@@ -2566,10 +2901,63 @@ function renderInventory() {
             const innerDiv = div.firstChild; // The .inv-item div
             setupTooltip(innerDiv, item);
 
-            // Left click to equip / socket / sell
-            div.addEventListener('click', () => {
+            // Handle Item Clicks
+            div.addEventListener('click', (e) => {
+                // Quick-Move Logic (Shift + Click)
+                if (e.shiftKey) {
+                    // To Stash
+                    if (!$('panel-stash').classList.contains('hidden')) {
+                        const targetStash = currentStashTab === 'personal' ? stash : sharedStash;
+                        const emptySlot = targetStash.indexOf(null);
+                        if (emptySlot !== -1) {
+                            targetStash[emptySlot] = item;
+                            player.inventory[i] = null;
+                            if (currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
+                            addCombatLog(`Moved ${item.name} to Stash.`, 'log-info');
+                            hideTooltip();
+                            renderInventory();
+                            renderStash();
+                            return;
+                        } else {
+                            addCombatLog('Stash is full!', 'log-dmg');
+                            return;
+                        }
+                    }
+
+                    // To Cube
+                    if (!$('panel-cube').classList.contains('hidden')) {
+                        const emptySlot = cube.indexOf(null);
+                        if (emptySlot !== -1) {
+                            cube[emptySlot] = item;
+                            player.inventory[i] = null;
+                            addCombatLog(`Moved ${item.name} to Cube.`, 'log-info');
+                            hideTooltip();
+                            renderInventory();
+                            renderCube();
+                            return;
+                        } else {
+                            addCombatLog('Cube is full!', 'log-dmg');
+                            return;
+                        }
+                    }
+
+                    // To Vendor (Sell)
+                    if (!$('panel-shop').classList.contains('hidden')) {
+                        const price = Math.max(1, typeof calculateSellPrice === 'function' ? calculateSellPrice(item) : 5);
+                        player.gold += price;
+                        player.inventory[i] = null;
+                        addCombatLog(`Sold ${item.name} for ${price} gold.`, 'log-info');
+                        hideTooltip();
+                        renderInventory();
+                        renderCharacterPanel();
+                        if (typeof renderShop === 'function') renderShop();
+                        playLoot();
+                        return;
+                    }
+                }
+
                 if (!$('panel-shop').classList.contains('hidden')) {
-                    // Sell Logic
+                    // Standard Sell Logic (click without shift)
                     const price = Math.max(1, typeof calculateSellPrice === 'function' ? calculateSellPrice(item) : 5);
                     player.gold += price;
                     player.inventory[i] = null;
@@ -2588,10 +2976,10 @@ function renderInventory() {
                         const old = mercenary.equipment[item.slot];
                         mercenary.equipment[item.slot] = item;
                         player.inventory[i] = old;
-                        
+
                         // Mercenaries can use Runewords too!
                         checkRuneword(item);
-                        
+
                         mercenary._recalcStats();
                         addCombatLog(`Equipped ${item.name} to ${mercenary.name}`, 'log-info');
                         renderInventory();
@@ -2602,13 +2990,13 @@ function renderInventory() {
                         return;
                     }
                 }
-                
+
                 if (isLarzukSocketing) {
                     const maxSockets = {
                         'head': 2, 'chest': 4, 'mainhand': 4, 'offhand': 4, 'shield': 4, 'weapon': 4
                     };
                     const itemTypeMax = maxSockets[item.slot] || maxSockets[item.type] || 0;
-                    
+
                     if (itemTypeMax > 0 && (!item.sockets || item.sockets < itemTypeMax)) {
                         player.gold -= 2000;
                         item.sockets = (item.sockets || 0) + 1;
@@ -2674,7 +3062,7 @@ function renderInventory() {
             div.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 if (socketingGemIndex !== -1) return; // block
-                
+
                 // Merchant sell (via dialogue OR open shop panel)
                 const shopOpen = !$('panel-shop').classList.contains('hidden');
                 const merchantDialogue = dialogue && dialogue.timer > 0 && dialogue.npc && dialogue.npc.type === 'merchant';
@@ -2723,6 +3111,7 @@ function renderInventory() {
                 // Enter identify mode if it's a scroll or gem
                 else if (item.type === 'scroll' && item.baseId === 'scroll_identify') {
                     window.isIdentifying = true;
+                    syncInteractionStates();
                     document.body.style.cursor = `crosshair`;
                     addCombatLog('Select an item to identify', 'log-info');
                     player.inventory[i] = null; // Consume scroll
@@ -2735,9 +3124,9 @@ function renderInventory() {
                     }
                     const tp = new GameObject('portal', player.x, player.y - 40, 'env_water');
                     tp.targetZone = 0; // Town
-                    portalReturnZone = zoneLevel; 
+                    portalReturnZone = zoneLevel;
                     gameObjects.push(tp);
-                    
+
                     if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 50, 4);
                     addCombatLog('A Town Portal has opened.', 'log-level');
                     player.inventory[i] = null; // Consume
@@ -2747,7 +3136,7 @@ function renderInventory() {
                 else if (item.type === 'tome') {
                     const scrollType = item.baseId === 'tome_tp' ? 'scroll_town_portal' : 'scroll_identify';
                     const scrollIdx = player.inventory.findIndex(it => it && it.baseId === scrollType);
-                    
+
                     if (scrollIdx !== -1) {
                         // Refill Tome
                         item.charges = Math.min(item.maxCharges || 20, (item.charges || 0) + 1);
@@ -2776,12 +3165,13 @@ function renderInventory() {
                 }
                 else if (item.type === 'gem') {
                     socketingGemIndex = i;
+                    syncInteractionStates();
                     document.body.style.cursor = `url('assets/item_amulet.png'), crosshair`;
                     addCombatLog(`Select an item to socket ${item.name} into`, 'log-info');
                     renderInventory();
                     return;
                 }
-                
+
                 else {
                     const drop = { ...item };
                     drop.x = player.x + (Math.random() - 0.5) * 32;
@@ -2831,7 +3221,7 @@ function showTooltip(item, x, y) {
     if (player && item.slot && item.slot !== 'none' && item.identified !== false) {
         const mercPanelOpen = !$('panel-mercenary').classList.contains('hidden');
         const targetEntity = (mercPanelOpen && mercenary) ? mercenary : player;
-        
+
         // Find if we have an item equipped in this slot
         let equippedItem = null;
         if (item.slot === 'ring') {
@@ -2843,7 +3233,7 @@ function showTooltip(item, x, y) {
         // Make sure we aren't hovering the equipped item itself
         if (equippedItem && equippedItem !== item) {
             const equippedHtml = itemTooltipText(equippedItem, true);
-            html = `<div style="display:flex; gap:10px;">${html}${equippedHtml}</div>`;
+            html = `<div class="tooltip-compare-container">${html}${equippedHtml}</div>`;
         }
     }
 
@@ -2878,11 +3268,12 @@ function itemTooltipText(item, isComparison = false) {
         set: '#00ff00',
         unique: '#bf642f'
     };
-    const c = (item.identified === false) ? '#888' : (colors[item.rarity] || '#fff');
+    const c = (item.identified === false) ? '#888' :
+        ((item.rarity === 'normal' && item.sockets > 0) ? '#999' : (colors[item.rarity] || '#fff'));
 
     let t = `<div class="tooltip-inner" style="color:${c}; ${isComparison ? 'border-color: #444; opacity: 0.9;' : ''}">`;
     if (isComparison) t += `<div style="font-size:10px; color:#aaa; text-align:center; margin-bottom:4px;">— EQUIPPED —</div>`;
-    
+
     t += `<div class="tooltip-name">${item.identified === false ? 'Unidentified ' + (items[item.baseId]?.name || 'Item') : (item.name || items[item.baseId]?.name || 'Unknown Item')}</div>`;
 
     // Force gems/runes to be identified in tooltip always
@@ -2957,11 +3348,11 @@ function itemTooltipText(item, isComparison = false) {
     if (item.armor) t += `<div style="color:${getCompareColor(item.armor, compareItem?.armor)}">Armor: ${item.armor}${getDiffText(item.armor, compareItem?.armor)}</div>`;
     if (item.block) t += `<div style="color:${getCompareColor(item.block, compareItem?.block)}">Block: ${item.block}%${getDiffText(item.block, compareItem?.block)}</div>`;
     if (item.atkSpd && item.atkSpd !== 1) t += `<div>Attack Speed: ${item.atkSpd.toFixed(2)}</div>`;
-    
+
     if (item.type === 'tome') {
         t += `<div style="color:var(--gold);">Charges: ${item.charges || 0} / ${item.maxCharges || 20}</div>`;
     }
-    
+
     // Support for Gem/Rune Socket Effects (Compact & Categorized)
     if (item.type === 'gem' && item.socketEffect) {
         t += `<div style="background:rgba(191,100,47,0.1); border:1px solid rgba(191,100,47,0.3); padding:8px; margin-top:10px; border-radius:4px;">`;
@@ -2993,7 +3384,7 @@ function itemTooltipText(item, isComparison = false) {
             let statName = mod.stat;
             // Human readable skill bonuses
             // Mapping for human readable stat names
-            const fLabels = friendlyNames; 
+            const fLabels = friendlyNames;
             if (statName.startsWith('+skill:')) {
                 const skId = statName.split(':')[1];
                 statName = `to ${skId.replace(/_/g, ' ').toUpperCase()}`;
@@ -3018,7 +3409,7 @@ function itemTooltipText(item, isComparison = false) {
     if (req.dex) reqs.push(`Dex: ${req.dex}`);
     if (req.int) reqs.push(`Int: ${req.int}`);
     if (item.reqLvl) reqs.push(`Level: ${item.reqLvl}`);
-if (reqs.length) {
+    if (reqs.length) {
         t += `<div class="tooltip-requirements">Requires: ${reqs.join(', ')}</div>`;
     }
 
@@ -3133,7 +3524,7 @@ function renderDialoguePicker(npc) {
     const menu = document.createElement('div');
     menu.id = 'dialogue-picker';
     menu.className = 'dialogue-picker-menu';
-    
+
     // Initial position above head
     const screen = camera.toScreen(npc.x, npc.y);
     menu.style.cssText = `
@@ -3151,12 +3542,14 @@ function renderDialoguePicker(npc) {
 
     const options = [
         { label: 'Trade', action: () => { openShop(); menu.remove(); activeDialogueNpc = null; } },
-        { label: 'Talk', action: () => { 
-            dialogue = { text: `${npc.name}: "${npc.dialogue}"`, timer: 6, npc: npc };
-            addCombatLog(dialogue.text, 'log-info');
-            menu.remove();
-            activeDialogueNpc = null;
-        } }
+        {
+            label: 'Talk', action: () => {
+                dialogue = { text: `${npc.name}: "${npc.dialogue}"`, timer: 6, npc: npc };
+                addCombatLog(dialogue.text, 'log-info');
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        }
     ];
 
     // Special: Gamble (Gheed)
@@ -3167,11 +3560,13 @@ function renderDialoguePicker(npc) {
     // Special: Hire / Revive (Kashya)
     if (npc.id === 'kashya') {
         const isDead = mercenary && mercenary.hp <= 0;
-        options.push({ label: isDead ? 'Revive Mercenary (200g)' : 'Hire Mercenary (500g)', action: () => {
-            hireMercenary();
-            menu.remove();
-            activeDialogueNpc = null;
-        }});
+        options.push({
+            label: isDead ? 'Revive Mercenary (200g)' : 'Hire Mercenary (500g)', action: () => {
+                hireMercenary();
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
     }
 
     // Special: Socket (Larzuk)
@@ -3180,89 +3575,90 @@ function renderDialoguePicker(npc) {
         const tradeIdx = options.findIndex(o => o.label === 'Trade');
         if (tradeIdx >= 0) options.splice(tradeIdx, 1);
 
-        options.push({ label: 'Add Socket (2000g)', action: () => {
-            if (player.gold >= 2000) {
-                isLarzukSocketing = true;
-                togglePanel('inventory');
-                document.body.style.cursor = 'crosshair';
-                addCombatLog('Select an item to add a socket to.', 'log-info');
-            } else {
-                addCombatLog('Not enough gold! (2000g needed)', 'log-dmg');
+        options.push({
+            label: 'Add Socket (2000g)', action: () => {
+                if (player.gold >= 2000) {
+                    isLarzukSocketing = true;
+                    togglePanel('inventory');
+                    document.body.style.cursor = 'crosshair';
+                    addCombatLog('Select an item to add a socket to.', 'log-info');
+                } else {
+                    addCombatLog('Not enough gold! (2000g needed)', 'log-dmg');
+                }
+                menu.remove();
+                activeDialogueNpc = null;
             }
-            menu.remove();
-            activeDialogueNpc = null;
-        }});
+        });
     }
 
     // Special: Akara Services
     if (npc.id === 'akara') {
-        options.push({ label: 'Heal & Refill', action: () => {
-            player.hp = player.maxHp;
-            player.mp = player.maxMp;
-            addCombatLog('Akara has restored your health and mana.', 'log-heal');
-            fx.emitBurst(player.x, player.y, '#4caf50', 20, 2);
-            updateHud();
-            menu.remove();
-            activeDialogueNpc = null;
-        }});
-        options.push({ label: 'Reset (500g)', action: () => {
-             if (player.gold >= 500) {
-                 player.gold -= 500;
-                 player.talents.reset();
-                 player.hotbar = [null, null, null, null, null];
-                 updateSkillBar();
-                 renderTalentTree();
-                 addCombatLog('Talents reset!', 'log-level');
-             } else {
-                 addCombatLog('Not enough gold!', 'log-dmg');
-             }
-             menu.remove();
-             activeDialogueNpc = null;
-        }});
+        options.push({
+            label: 'Heal & Refill', action: () => {
+                player.hp = player.maxHp;
+                player.mp = player.maxMp;
+                addCombatLog('Akara has restored your health and mana.', 'log-heal');
+                fx.emitBurst(player.x, player.y, '#4caf50', 20, 2);
+                updateHud();
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+        options.push({
+            label: 'Reset (500g)', action: () => {
+                if (player.gold >= 500) {
+                    player.gold -= 500;
+                    player.talents.reset();
+                    player.hotbar = [null, null, null, null, null];
+                    updateSkillBar();
+                    renderTalentTree();
+                    addCombatLog('Talents reset!', 'log-level');
+                } else {
+                    addCombatLog('Not enough gold!', 'log-dmg');
+                }
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
     }
 
     // Special: Identify All
-    options.push({ label: 'Identify All (100g)', action: () => {
-        const cost = 100;
-        if (player.gold >= cost) {
-            let count = 0;
-            player.inventory.forEach(it => { if (it && it.identified === false) { it.identified = true; count++; } });
-            if (count > 0) {
-                player.gold -= cost;
-                addCombatLog(`Identified ${count} items.`, 'log-info');
-                playLoot();
-                renderInventory();
+    options.push({
+        label: 'Identify All (100g)', action: () => {
+            const cost = 100;
+            if (player.gold >= cost) {
+                let count = 0;
+                player.inventory.forEach(it => { if (it && it.identified === false) { it.identified = true; count++; } });
+                if (count > 0) {
+                    player.gold -= cost;
+                    addCombatLog(`Identified ${count} items.`, 'log-info');
+                    playLoot();
+                    renderInventory();
+                } else {
+                    addCombatLog("No unidentified items found.", "log-info");
+                }
             } else {
-                addCombatLog("No unidentified items found.", "log-info");
+                addCombatLog("Not enough gold!", "log-dmg");
             }
-        } else {
-            addCombatLog("Not enough gold!", "log-dmg");
+            menu.remove();
+            activeDialogueNpc = null;
         }
-        menu.remove();
-        activeDialogueNpc = null;
-    }});
+    });
 
     // Special: Warriv Waypoint Travel
     if (npc.id === 'warriv') {
-        // Remove Trade for Warriv — he's a travel NPC, not a merchant
-        const tradeIdx = options.findIndex(o => o.label === 'Trade');
-        if (tradeIdx >= 0) options.splice(tradeIdx, 1);
-
         const wpZones = [...discoveredWaypoints].sort((a, b) => a - b);
-        for (const wz of wpZones) {
-            if (wz === zoneLevel) continue; // Don't show current zone
-            const wzName = ZONE_NAMES[wz] || `Rift Level ${wz - 7}`;
-            const diffLabel = difficulty > 0 ? ` (${DIFFICULTY_NAMES[difficulty]})` : '';
+        wpZones.forEach(wz => {
+            if (wz === zoneLevel) return;
             options.push({
-                label: `⚡ ${wzName}${diffLabel}`,
+                label: `Travel: ${ZONE_NAMES[wz] || 'Unknown Area'}`,
                 action: () => {
+                    nextZone(wz);
                     menu.remove();
                     activeDialogueNpc = null;
-                    addCombatLog(`Warriv transports you to ${wzName}...`, 'log-level');
-                    nextZone(wz);
                 }
             });
-        }
+        });
     }
 
     options.push({ label: 'Cancel', action: () => { menu.remove(); activeDialogueNpc = null; } });
@@ -3281,6 +3677,58 @@ function renderDialoguePicker(npc) {
     $('game-screen').appendChild(menu);
 }
 
+function renderWaypointMenu(obj) {
+    activeWaypointObj = obj;
+    const existing = document.getElementById('dialogue-picker');
+    if (existing) existing.remove();
+
+    const menu = document.createElement('div');
+    menu.id = 'dialogue-picker';
+    menu.className = 'dialogue-picker-menu';
+
+    // Position near waypoint
+    const screen = camera.toScreen(obj.x, obj.y);
+    menu.style.cssText = `
+        position: absolute; left: ${screen.x - 110}px; top: ${screen.y - 180}px; width: 220px;
+        background: rgba(10, 8, 5, 0.95); border: 1px solid #bf642f;
+        padding: 15px; z-index: 1000; font-family: 'Cinzel', serif;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.9), inset 0 0 15px rgba(186, 145, 88, 0.1);
+        pointer-events: all; border-radius: 8px;
+    `;
+
+    const title = document.createElement('div');
+    title.style.cssText = 'color: #ffd700; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #4a3520; padding-bottom: 6px; text-align: center;';
+    title.textContent = 'WAYPOINT TRAVEL';
+    menu.appendChild(title);
+
+    const wpZones = [...discoveredWaypoints].sort((a, b) => a - b);
+    wpZones.forEach(wz => {
+        if (wz === zoneLevel) return;
+        const btn = document.createElement('div');
+        btn.className = 'dialogue-option';
+        btn.style.cssText = 'color: #d8b068; cursor: pointer; padding: 10px; margin: 4px 0; text-align: left; transition: all 0.2s; font-size: 13px; background: rgba(191,100,47,0.05); border: 1px solid transparent;';
+        btn.onmouseover = () => { btn.style.color = '#fff'; btn.style.background = 'rgba(191,100,47,0.2)'; btn.style.borderColor = '#bf642f'; };
+        btn.onmouseout = () => { btn.style.color = '#d8b068'; btn.style.background = 'rgba(191,100,47,0.05)'; btn.style.borderColor = 'transparent'; };
+        btn.textContent = `⚡ ${ZONE_NAMES[wz] || 'Area ' + wz}`;
+        btn.onclick = () => {
+            addCombatLog(`Teleporting to ${ZONE_NAMES[wz] || 'Area ' + wz}...`, 'log-level');
+            nextZone(wz);
+            menu.remove();
+            activeWaypointObj = null;
+        };
+        menu.appendChild(btn);
+    });
+
+    const cancelBtn = document.createElement('div');
+    cancelBtn.className = 'dialogue-option';
+    cancelBtn.style.cssText = 'color: #888; cursor: pointer; padding: 10px; margin: 4px 0; text-align: center; font-size: 12px;';
+    cancelBtn.textContent = 'CLOSE';
+    cancelBtn.onclick = () => { menu.remove(); activeWaypointObj = null; };
+    menu.appendChild(cancelBtn);
+
+    $('game-screen').appendChild(menu);
+}
+
 
 function openGambleShop() {
     $('panel-shop').classList.remove('hidden');
@@ -3295,7 +3743,7 @@ function renderGambleShop() {
     goldText.innerHTML = `Your Gold: <span style="color:var(--gold)">${player.gold}</span><div style="font-size:11px;color:#bf642f;margin-top:4px;">(Gheed's Gambling Service)</div>`;
 
     const bases = ['ring', 'amulet', 'leather_armor', 'short_sword', 'great_helm', 'circlet', 'gauntlets', 'leather_boots', 'buckler'];
-    
+
     // Gamble prices scale with level
     const cost = Math.max(100, player.level * 50);
 
@@ -3303,7 +3751,7 @@ function renderGambleShop() {
         const base = items[baseId];
         const row = document.createElement('div');
         row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:8px; border:1px solid #333; background:#111; border-radius:4px; transition:0.2s;';
-        
+
         row.innerHTML = `
             <div style="display:flex; align-items:center; gap:8px;">
                 <div style="width:32px; height:32px; border:1px solid #444; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;">
@@ -3448,7 +3896,7 @@ function renderShop() {
         row.style.border = '1px solid #333';
         row.style.background = '#1a1a1a';
         row.style.borderRadius = '4px';
-        
+
         row.innerHTML = `
             <div style="display:flex; align-items:center; gap:8px;">
                 <div style="width:32px; height:32px; border:1px solid #444; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;">
@@ -3458,7 +3906,7 @@ function renderShop() {
             </div>
             <button class="btn-secondary small">Buy (${item.price}g)</button>
         `;
-        
+
         row.querySelector('.tooltip-trigger').addEventListener('mouseenter', e => showTooltip(item, e.clientX, e.clientY));
         row.querySelector('.tooltip-trigger').addEventListener('mouseleave', hideTooltip);
 
@@ -3479,7 +3927,7 @@ function renderShop() {
                 addCombatLog('Not enough gold!', 'log-dmg');
             }
         });
-        
+
         container.appendChild(row);
     }
 
@@ -3528,20 +3976,20 @@ function renderStash() {
     const grid = $('stash-grid');
     if (!grid) return;
     grid.innerHTML = '';
-    
+
     const items = currentStashTab === 'personal' ? stash : sharedStash;
-    
+
     for (let i = 0; i < items.length; i++) {
         const cell = document.createElement('div');
         cell.className = 'inv-slot';
         const item = items[i];
-        
+
         if (item) {
             const div = document.createElement('div');
             div.innerHTML = getItemHtml(item);
             const innerDiv = div.firstChild;
             setupTooltip(innerDiv, item);
-            
+
             const moveToInv = (e) => {
                 e.preventDefault();
                 const empty = player.inventory.indexOf(null);
@@ -3607,28 +4055,29 @@ $('btn-stash-withdraw')?.addEventListener('click', () => {
 });
 
 $('btn-sort-stash')?.addEventListener('click', () => {
-    const items = currentStashTab === 'personal' ? stash : sharedStash;
-    
-    // Weight map for sorting
-    const rarityWeights = { unique: 5, set: 4, rare: 3, magic: 2, normal: 1 };
-    const typeWeights = { weapon: 10, armor: 9, helm: 8, shield: 7, gloves: 6, boots: 5, belt: 4, ring: 3, amulet: 2, gem: 1, potion: 0, scroll: 0, charm: 0 };
+    const target = (currentStashTab === 'personal') ? stash : sharedStash;
+    sortArray(target);
+    renderStash();
+    addCombatLog('Stash Sorted', 'log-info');
+});
 
-    const sorted = items.filter(i => i !== null).sort((a, b) => {
-        if (rarityWeights[b.rarity] !== rarityWeights[a.rarity]) 
-            return rarityWeights[b.rarity] - rarityWeights[a.rarity];
-        if (typeWeights[b.type] !== typeWeights[a.type]) 
-            return typeWeights[b.type] - typeWeights[a.type];
-        return b.ilvl - a.ilvl;
+function sortArray(arr) {
+    const items = arr.filter(i => i !== null);
+    const typeWeights = { weapon: 10, armor: 9, helm: 8, shield: 7, gloves: 6, boots: 5, belt: 4, amulet: 3, ring: 2, charm: 1, gem: 0, rune: 0, scroll: 0, potion: 0 };
+    const rarityWeights = { unique: 4, set: 3, rare: 2, magic: 1, common: 0 };
+
+    items.sort((a, b) => {
+        if (typeWeights[a.type] !== typeWeights[b.type]) return typeWeights[b.type] - typeWeights[a.type];
+        const ra = rarityWeights[a.rarity] || 0;
+        const rb = rarityWeights[b.rarity] || 0;
+        if (ra !== rb) return rb - ra;
+        return a.baseId.localeCompare(b.baseId);
     });
 
-    for (let i = 0; i < items.length; i++) {
-        items[i] = sorted[i] || null;
+    for (let i = 0; i < arr.length; i++) {
+        arr[i] = items[i] || null;
     }
-    
-    if (currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
-    renderStash();
-    addCombatLog('Stash Organized.', 'log-info');
-});
+}
 
 
 
@@ -3636,18 +4085,20 @@ function renderCube() {
     const grid = $('cube-grid');
     if (!grid) return;
     grid.innerHTML = '';
-    
+
+    let itemsInCube = [];
     for (let i = 0; i < cube.length; i++) {
         const cell = document.createElement('div');
         cell.className = 'inv-slot';
         const item = cube[i];
-        
+
         if (item) {
+            itemsInCube.push(item);
             const div = document.createElement('div');
             div.innerHTML = getItemHtml(item);
             const innerDiv = div.firstChild;
             setupTooltip(innerDiv, item);
-            
+
             const moveToInv = (e) => {
                 e.preventDefault();
                 const empty = player.inventory.indexOf(null);
@@ -3668,11 +4119,32 @@ function renderCube() {
         }
         grid.appendChild(cell);
     }
+
+    // Auto-detect recipes
+    checkCubeRecipe(itemsInCube);
+}
+
+function checkCubeRecipe(items) {
+    const btn = $('btn-transmute');
+    if (!btn) return;
+
+    btn.classList.remove('btn-ready');
+    btn.textContent = 'Transmute';
+
+    if (items.length === 3) {
+        const id1 = items[0].baseId;
+        const allSame = items.every(it => it.baseId === id1 && (it.type === 'gem' || it.type === 'rune'));
+
+        if (allSame) {
+            btn.classList.add('btn-ready');
+            btn.textContent = 'UPGRADE ARTIFACTS';
+        }
+    }
 }
 
 $('btn-transmute')?.addEventListener('click', () => {
     const resultItem = loot.transmuteCube(cube);
-    
+
     if (resultItem) {
         addCombatLog(`Transmutation Successful! Crafted: ${resultItem.name}`, 'log-crit');
         // Clear all non-null items that were used in the recipe
@@ -3702,7 +4174,7 @@ function offerQuest() {
         if (q.progress >= q.target) {
             player.gold += q.goldReward;
             player.addXp(q.xpReward);
-            
+
             // Special rewards
             if (q.statReward) player.statPoints += q.statReward;
             if (q.skillReward) player.talents.unspent += q.skillReward;
@@ -3740,7 +4212,7 @@ function offerQuest() {
 // ─── MERCENARY HIRE ───
 function hireMercenary() {
     if (!player) return;
-    
+
     // Revive cost scales with level (min 200, max 50000)
     const cost = Math.min(50000, Math.max(200, player.level * 100));
 
@@ -3756,9 +4228,9 @@ function hireMercenary() {
         updateHud();
         return;
     }
-    const cost = 500;
-    if (player.gold < cost) { addCombatLog(`Not enough gold! (${cost}g to hire)`, 'log-dmg'); return; }
-    player.gold -= cost;
+    const hireCost = 500;
+    if (player.gold < hireCost) { addCombatLog(`Not enough gold! (${hireCost}g to hire)`, 'log-dmg'); return; }
+    player.gold -= hireCost;
     const names = ['Aliza', 'Blaise', 'Paige', 'Kyra', 'Ryann'];
     const lvl = player.level || 1;
     mercenary = new Mercenary({
@@ -3768,7 +4240,7 @@ function hireMercenary() {
         icon: 'class_rogue',
         x: player.x + 20, y: player.y
     });
-    
+
     addCombatLog(`Hired Mercenary ${mercenary.name}! She will fight by your side.`, 'log-level');
     updateHud();
 }
@@ -3779,7 +4251,16 @@ function checkAchievements() {
         if (!unlockedAchievements.has(ach.id) && ach.check()) {
             unlockedAchievements.add(ach.id);
             addCombatLog(`🏆 Achievement Unlocked: ${ach.name}!`, 'log-crit');
-            addCombatLog(`    ${ach.desc}`, 'log-info');
+
+            // CELEBRATORY BANNER
+            const banner = $('achievement-announcement');
+            if (banner) {
+                $('ach-name').textContent = ach.name;
+                banner.classList.remove('hidden');
+                setTimeout(() => banner.classList.add('hidden'), 4000);
+            }
+            fx.emitBurst(renderer.width / 2, 100, '#00ccff', 20, 3);
+
             if (ach.reward > 0 && player) {
                 player.gold += ach.reward;
                 addCombatLog(`    Reward: ${ach.reward} gold`, 'log-item');
@@ -3912,15 +4393,15 @@ function renderSaveSlots() {
             const saveData = SaveSystem.loadSlot(slot.id);
             if (saveData) {
                 let pData = null;
-                try { pData = typeof saveData.player === 'string' ? JSON.parse(saveData.player) : saveData.player; } catch(err){}
+                try { pData = typeof saveData.player === 'string' ? JSON.parse(saveData.player) : saveData.player; } catch (err) { }
                 const maxDiff = (pData && pData.maxDifficulty) ? pData.maxDifficulty : 0;
-                
+
                 if (maxDiff > 0) {
                     const picker = document.createElement('div');
                     picker.className = 'dialogue-picker-menu';
                     picker.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(10,8,5,0.95); border:1px solid #bf642f; padding:20px; z-index:2000; text-align:center; box-shadow:0 0 20px #000;';
                     picker.innerHTML = `<h3 style="color:var(--gold); margin-bottom:15px; font-family:'Cinzel',serif;">Select Difficulty</h3>`;
-                    
+
                     for (let d = 0; d <= maxDiff; d++) {
                         const btn = document.createElement('button');
                         btn.className = 'btn-secondary';
@@ -3935,13 +4416,13 @@ function renderSaveSlots() {
                         };
                         picker.appendChild(btn);
                     }
-                    
+
                     const cancelBtn = document.createElement('button');
                     cancelBtn.className = 'btn-secondary small';
                     cancelBtn.textContent = 'Cancel';
                     cancelBtn.onclick = (ev) => { ev.stopPropagation(); picker.remove(); };
                     picker.appendChild(cancelBtn);
-                    
+
                     document.body.appendChild(picker);
                 } else {
                     initAudio();

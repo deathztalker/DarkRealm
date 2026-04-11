@@ -141,8 +141,21 @@ export class Mercenary {
 
         const mx = player.x - this.x, my = player.y - this.y;
         const md = Math.sqrt(mx * mx + my * my);
+        
+        // --- LEASHING & FOLLOW LOGIC ---
+        // Hard Leash: Teleport if too far
+        if (md > 800) {
+            this.x = player.x + (Math.random() - 0.5) * 40;
+            this.y = player.y + (Math.random() - 0.5) * 40;
+            fx.emitBurst(this.x, this.y, '#ffffff', 15, 2);
+            return; // Skip combat this frame after TP
+        }
+
+        // Soft Leash: Prioritize following if distance becomes significant
+        const isFar = md > 250;
+        const speed = isFar ? 140 : 85; // Faster when catching up
+
         if (md > 60) {
-            const speed = 85;
             const moveX = (mx / md) * speed * dt;
             const moveY = (my / md) * speed * dt;
             if (dungeon.isWalkable(this.x + moveX, this.y + moveY)) {
@@ -150,6 +163,9 @@ export class Mercenary {
                 this.y += moveY;
             }
         }
+
+        // Only look for enemies if NOT in "urgent follow" mode
+        if (isFar) return; 
 
         // Combat AI
         let closestEnemy = null, closestDist = 250;

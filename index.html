@@ -76,11 +76,24 @@
   <div id="game-screen" class="screen">
     <canvas id="game-canvas"></canvas>
 
+    <!-- Rift Progress HUD (End-Game) -->
+    <div id="rift-hud" class="hidden" style="position:absolute; top:80px; left:50%; transform:translateX(-50%); width:500px; text-align:center; z-index:100; pointer-events:none;">
+      <div id="rift-depth-label" style="font-family:'Cinzel Decorative', serif; color:#c080ff; font-size:16px; margin-bottom:5px; text-shadow:0 0 10px #8000ff;">RIFT DEPTH 1</div>
+      <div id="rift-gauge" style="width:100%; height:12px; border:1px solid #c080ff; background:rgba(0,0,0,0.8); border-radius:10px; overflow:hidden; box-shadow:0 0 10px rgba(128,0,255,0.3);">
+        <div id="rift-gauge-fill" style="width:0%; height:100%; background:linear-gradient(to right, #400080, #8000ff, #c080ff); transition:width 0.3s ease-out; box-shadow:0 0 15px #c080ff;"></div>
+      </div>
+      <div id="rift-mods-list" style="display:flex; justify-content:center; gap:10px; margin-top:8px;">
+        <!-- Chaos Mods pop here -->
+      </div>
+    </div>
+
     <!-- Boss HP Bar Overlay -->
     <div id="boss-hp-bar" class="hidden"
       style="position:absolute; top:40px; left:50%; transform:translateX(-50%); width:600px; height:24px; border:2px solid #311; background:#111; z-index:100; box-shadow:0 0 20px rgba(255,0,0,0.3); pointer-events:none;">
+      <div class="boss-elite-label">BOSS</div>
       <div id="boss-hp-fill"
-        style="width:100%; height:100%; background:linear-gradient(to right, #600, #c00); transition:width 0.1s linear;">
+        style="width:100%; height:100%; background:linear-gradient(to right, #600, #c00); transition:width 0.1s linear; position:relative;">
+        <div id="boss-hp-text" style="position:absolute; width:100%; text-align:center; color:#fff; font-size:10px; line-height:24px; font-family:'Cinzel',serif; text-shadow:1px 1px 2px #000;">100%</div>
       </div>
       <div id="boss-name"
         style="position:absolute; top:-28px; left:0; width:100%; text-align:center; color:#ff4040; font-family:'Cinzel', serif; font-size:22px; text-shadow:2px 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;">
@@ -313,6 +326,25 @@
 
   <!-- Tooltip -->
   <div id="tooltip" class="hidden"></div>
+  <div id="tooltip-compare" class="hidden"></div>
+
+  <!-- Boss Victory Announcement -->
+  <div id="boss-victory-announcement" class="hidden">
+    <div class="victory-banner">
+      <div class="vic-glow"></div>
+      <div class="vic-label">BOSS DEFEATED</div>
+      <div id="vic-boss-name" class="vic-sub">The Butcher</div>
+    </div>
+  </div>
+
+  <!-- Achievement Announcement -->
+  <div id="achievement-announcement" class="hidden">
+    <div class="achievement-banner">
+      <div class="ach-glow"></div>
+      <div class="ach-label">ACHIEVEMENT UNLOCKED</div>
+      <div id="ach-name" class="ach-sub">First Blood</div>
+    </div>
+  </div>
 
   <!-- Death Screen -->
   <div id="death-screen" class="screen overlay hidden">
@@ -329,6 +361,18 @@
     <div id="victory-stats" style="margin:20px 0; color:#aaa;"></div>
     <button class="btn-primary" id="btn-continue-rift">Enter the Infinite Rifts</button>
     <button class="btn-secondary" id="btn-victory-menu">Return to Main Menu</button>
+  </div>
+
+  <!-- Dialogue Box -->
+  <div id="dialog-box" class="hidden">
+    <div class="npc-header">
+      <div class="npc-portrait-sub" style="width:48px;height:48px;background:rgba(212,175,55,0.1);border:1px solid #d4af37;border-radius:4px;display:flex;justify-content:center;align-items:center;font-size:24px;">👤</div>
+      <div class="npc-name" id="npc-active-name">Merchant</div>
+    </div>
+    <div id="dialog-text">Greetings, traveler. How can I help you?</div>
+    <div id="dialog-options">
+      <!-- Options pop here -->
+    </div>
   </div>
 
   <script type="module" src="src/main.js"></script>
