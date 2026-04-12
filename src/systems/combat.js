@@ -216,15 +216,22 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
     }
 
     // --- Knockback logic ---
-    // If damage is high enough (e.g. >10% of maxHp) or specifically has knockback
     const threshold = target.maxHp * 0.1;
-    if (dealt > threshold || attacker.knockback) {
+    if (finalDealt > threshold || attacker.knockback) {
         const force = attacker.knockbackForce || 20;
         const dx = target.x - attacker.x;
         const dy = target.y - attacker.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        target.vx = (dx / dist) * force;
-        target.vy = (dy / dist) * force;
+        const kbX = (dx / dist) * force;
+        const kbY = (dy / dist) * force;
+        // Player uses pushX/pushY, enemies use vx/vy
+        if (target.isPlayer) {
+            target.pushX = kbX;
+            target.pushY = kbY;
+        } else {
+            target.vx = kbX;
+            target.vy = kbY;
+        }
     }
 
     bus.emit('combat:damage', {

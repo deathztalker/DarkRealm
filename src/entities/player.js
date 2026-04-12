@@ -472,16 +472,22 @@ export class Player {
     update(dt, input, enemies, dungeon, addAoE) {
         if (this.hp <= 0) return;
 
-        // Apply push momentum
-        if (Math.abs(this.pushX) > 1 || Math.abs(this.pushY) > 1) {
+        // Apply push momentum (knockback from enemy hits)
+        if (Math.abs(this.pushX) > 0.5 || Math.abs(this.pushY) > 0.5) {
             const nextX = this.x + this.pushX * dt;
             const nextY = this.y + this.pushY * dt;
             if (dungeon && dungeon.isWalkable(nextX, nextY)) {
                 this.x = nextX;
                 this.y = nextY;
             }
-            this.pushX *= 0.9; // Friction
-            this.pushY *= 0.9;
+            this.pushX *= 0.85; // Stronger friction for faster decay
+            this.pushY *= 0.85;
+            // Hard zero to prevent infinite drift
+            if (Math.abs(this.pushX) < 0.5) this.pushX = 0;
+            if (Math.abs(this.pushY) < 0.5) this.pushY = 0;
+        } else {
+            this.pushX = 0;
+            this.pushY = 0;
         }
 
         if (this.hitFlashTimer > 0) this.hitFlashTimer -= dt;
