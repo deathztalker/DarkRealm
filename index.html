@@ -14,6 +14,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/rpg-awesome@0.2.0/css/rpg-awesome.min.css">
   <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
@@ -21,6 +22,13 @@
   <div id="main-menu" class="screen active">
     <div class="menu-bg-particles" id="particles"></div>
     <div class="menu-content">
+      <!-- Supabase Auth Status -->
+      <div id="auth-status-container" style="position:absolute; top:20px; right:20px; text-align:right; font-family:'Cinzel',serif; font-size:12px;">
+         <span id="auth-status-text" style="color:#aaa;">Playing as Guest (Local Saves)</span><br>
+         <button id="btn-open-auth" class="btn-secondary small" style="margin-top:5px; padding:4px 8px;">Log In / Register</button>
+         <button id="btn-logout" class="btn-secondary small hidden" style="margin-top:5px; padding:4px 8px;">Logout</button>
+      </div>
+
       <div class="title-block">
         <h1 class="game-title">Dark Realm</h1>
         <p class="game-subtitle">The Abyss Awaits</p>
@@ -40,9 +48,13 @@
         </div>
       </div>
       <div class="menu-buttons">
-        <div style="margin-bottom: 12px;">
-          <input type="checkbox" id="hardcore-mode" style="transform: scale(1.2); cursor: pointer;">
-          <label for="hardcore-mode" style="color:#ff3030; font-family:'Cinzel', serif; font-weight:bold; cursor:pointer;" title="Permadeath Mode: If you die, your save is deleted forever.">HARDCORE MODE</label>
+        <div id="difficulty-selection" style="margin-bottom: 20px; text-align: center;">
+          <p style="font-family: 'Cinzel', serif; font-size: 11px; color: var(--gold); margin-bottom: 6px; letter-spacing: 1px;">WORLD TIER</p>
+          <div class="difficulty-group">
+            <button class="diff-btn active" data-diff="0" title="The classic experience. Standard challenge and rewards.">NORMAL</button>
+            <button class="diff-btn" data-diff="1" title="Nightmare: 2.5x Enemy Stats. +50% XP, +30% Magic Find.">NIGHTMARE</button>
+            <button class="diff-btn" data-diff="2" title="Hell: 5.0x Enemy Stats. +150% XP, +100% Magic Find.">HELL</button>
+          </div>
         </div>
         <button id="btn-new-game" class="btn-primary" disabled>Enter the Realm</button>
         <button id="btn-continue" class="btn-secondary">Continue</button>
@@ -54,16 +66,19 @@
       </div>
       
       <div id="keybinds-legend" style="margin-top: 30px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 11px; color: #888; font-family: 'Cinzel', serif; border-top: 1px solid #333; padding-top: 15px;">
+          <div>[WASD] Movement</div>
+          <div>[1-4] Potions</div>
+          <div>[Q-G] Skills</div>
           <div>[I] Inventory</div>
           <div>[C] Stats</div>
           <div>[T] Talents</div>
-          <div>[O] Companion</div>
-          <div>[Q] Quests</div>
-          <div>[W] Swap Weapons</div>
-          <div>[TAB] Map</div>
-          <div>[M] Map Zoom</div>
-          <div>[F] Loot Filter</div>
+          <div>[J] Journal</div>
+          <div>[H] Achievements</div>
+          <div>[L] Loot Filter</div>
           <div>[P] Town Portal</div>
+          <div>[X] Weapon Swap</div>
+          <div>[TAB] Full Map</div>
+          <div>[U] Cube | [N] Stash</div>
       </div>
 
       <div class="save-slots" id="save-slots" style="display:none;">
@@ -102,7 +117,7 @@
 
     <!-- Minimap -->
     <canvas id="minimap" width="160" height="120"
-      style="position:absolute; top:54px; right:8px; border:2px solid #444; background:#000; z-index:50; opacity:0.85; border-radius:4px; pointer-events:none;"></canvas>
+      style="position:absolute; top:54px; right:8px; border:2px solid #444; background:#000; z-index:50; opacity:0.85; border-radius:4px; cursor:crosshair;"></canvas>
 
     <div id="quest-hud" class="hidden"
       style="position:absolute; right:10px; top:140px; width:150px; background:rgba(0,0,0,0.8); border:1px solid #bf642f; padding:8px; border-radius:4px; font-family:'Cinzel',serif; box-sizing:border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.5); z-index:50;">
@@ -135,47 +150,50 @@
           <div id="xp-bar"></div>
         </div>
         <div id="potion-belt">
-          <div class="potion-slot" id="belt-1" data-slot="0"><span class="belt-key">Q</span>
+          <div class="potion-slot" id="belt-1" data-slot="0"><span class="belt-key">1</span>
             <div class="potion-icon" id="pi-0"></div>
           </div>
-          <div class="potion-slot" id="belt-2" data-slot="1"><span class="belt-key">W</span>
+          <div class="potion-slot" id="belt-2" data-slot="1"><span class="belt-key">2</span>
             <div class="potion-icon" id="pi-1"></div>
           </div>
-          <div class="potion-slot" id="belt-3" data-slot="2"><span class="belt-key">E</span>
+          <div class="potion-slot" id="belt-3" data-slot="2"><span class="belt-key">3</span>
             <div class="potion-icon" id="pi-2"></div>
           </div>
-          <div class="potion-slot" id="belt-4" data-slot="3"><span class="belt-key">R</span>
+          <div class="potion-slot" id="belt-4" data-slot="3"><span class="belt-key">4</span>
             <div class="potion-icon" id="pi-3"></div>
           </div>
         </div>
         <div id="skill-bar">
           <div class="skill-slot" id="skill-1" data-slot="0">
-            <span class="skill-key">1</span>
+            <span class="skill-key">Q</span>
             <div class="skill-icon" id="si-0"></div>
             <div class="cd-overlay" id="cd-0"></div>
           </div>
           <div class="skill-slot" id="skill-2" data-slot="1">
-            <span class="skill-key">2</span>
+            <span class="skill-key">E</span>
             <div class="skill-icon" id="si-1"></div>
             <div class="cd-overlay" id="cd-1"></div>
           </div>
           <div class="skill-slot" id="skill-3" data-slot="2">
-            <span class="skill-key">3</span>
+            <span class="skill-key">R</span>
             <div class="skill-icon" id="si-2"></div>
             <div class="cd-overlay" id="cd-2"></div>
           </div>
           <div class="skill-slot" id="skill-4" data-slot="3">
-            <span class="skill-key">4</span>
+            <span class="skill-key">F</span>
             <div class="skill-icon" id="si-3"></div>
             <div class="cd-overlay" id="cd-3"></div>
           </div>
           <div class="skill-slot" id="skill-5" data-slot="4">
-            <span class="skill-key">5</span>
+            <span class="skill-key">G</span>
             <div class="skill-icon" id="si-4"></div>
             <div class="cd-overlay" id="cd-4"></div>
           </div>
         </div>
-        <div id="zone-label"><span id="zone-name">Blood Moor</span></div>
+        <div id="zone-label">
+          <span id="zone-name">Blood Moor</span>
+          <div id="hud-loot-filter" style="font-size:9px; color:#aaa; margin-top:2px;">FILTER: ALL</div>
+        </div>
       </div>
 
       <div id="hud-right">
@@ -194,7 +212,7 @@
       <button class="hud-btn" id="btn-inventory" title="Inventory (I)">🎒</button>
       <button class="hud-btn" id="btn-talents" title="Talents (T)">✨</button>
       <button class="hud-btn" id="btn-character" title="Character (C)">📊</button>
-      <button class="hud-btn" id="btn-stash" title="Stash (H)">📦</button>
+      <button class="hud-btn" id="btn-stash" title="Stash (N)">📦</button>
       <button class="hud-btn" id="btn-cube" title="Horadric Cube (U)">🎲</button>
       <button class="hud-btn" id="btn-quests" title="Quests (Q)">📜</button>
     </div>
@@ -211,8 +229,14 @@
   <!-- Quest Log Panel -->
   <div id="panel-quests" class="panel hidden" style="width:320px;">
     <div class="panel-header"><span>📜 Quest Log</span><button class="panel-close" data-panel="quests">✕</button></div>
-    <div id="quest-list" style="padding:10px;"></div>
-    <div id="quest-stats" style="padding:10px;border-top:1px solid #333;color:#888;font-size:12px;"></div>
+    <div id="quest-list" style="padding:15px; max-height: 350px; overflow-y: auto;"></div>
+    <div id="quest-stats" style="padding:10px; border-top:1px solid #333; color:#888; font-size:11px;"></div>
+  </div>
+
+  <!-- Achievements Panel -->
+  <div id="panel-achievements" class="panel hidden" style="width: 400px;">
+    <div class="panel-header"><span>🏆 Achievements</span><button class="panel-close" data-panel="achievements">✕</button></div>
+    <div id="achievements-list" style="padding:15px; max-height: 450px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
   </div>
 
   <!-- Panels (toggled) -->
@@ -249,7 +273,13 @@
   </div>
 
   <div id="panel-shop" class="panel hidden">
-    <div class="panel-header"><span>Merchant</span><button class="panel-close" data-panel="shop">✕</button></div>
+    <div class="panel-header">
+      <span>Merchant</span>
+      <div style="display:flex; gap:5px;">
+        <button id="btn-sell-junk" class="btn-secondary small" style="padding: 2px 8px; font-size:10px; color:#ff4444; border-color:#880000;">SELL JUNK</button>
+        <button class="panel-close" data-panel="shop">✕</button>
+      </div>
+    </div>
     <div id="shop-items" style="display:flex; flex-direction:column; gap:8px; padding:10px; overflow-y:auto; flex:1;">
       <!-- Populated by JS -->
     </div>
@@ -315,7 +345,10 @@
       <div id="merc-paperdoll" style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:15px;">
         <div class="equip-slot merc-slot" data-slot="head" data-label="Helm" style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
         <div class="equip-slot merc-slot" data-slot="chest" data-label="Armor" style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
-        <div class="equip-slot merc-slot" data-slot="mainhand" data-label="Weapon" style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+        <div style="display:flex; gap:8px;">
+          <div class="equip-slot merc-slot" data-slot="mainhand" data-label="Weapon" style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+          <div class="equip-slot merc-slot" data-slot="offhand" data-label="Shield" style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+        </div>
       </div>
       <div id="merc-stats-display" style="font-size:11px; text-align:left; color:#aaa; background:rgba(0,0,0,0.3); padding:8px; border-radius:4px;">
         <!-- Stats here -->
@@ -372,6 +405,22 @@
     <div id="dialog-text">Greetings, traveler. How can I help you?</div>
     <div id="dialog-options">
       <!-- Options pop here -->
+    </div>
+  </div>
+
+  <!-- Auth Modal -->
+  <div id="auth-modal" class="screen overlay hidden" style="z-index: 10000; background: rgba(0,0,0,0.85);">
+    <div style="background: #111; border: 2px solid #4a3520; padding: 30px; width: 300px; text-align: center; border-radius: 8px; box-shadow: 0 0 20px #000;">
+      <h2 style="font-family: 'Cinzel', serif; color: var(--gold); margin-bottom: 20px;">Realm Account</h2>
+      <input type="email" id="auth-email" placeholder="Email Address" style="width:100%; padding: 10px; margin-bottom: 10px; background: #222; border: 1px solid #333; color: #fff; font-family: 'Cinzel', serif;">
+      <input type="password" id="auth-password" placeholder="Password" style="width:100%; padding: 10px; margin-bottom: 20px; background: #222; border: 1px solid #333; color: #fff; font-family: 'Cinzel', serif;">
+      <div id="auth-error" style="color: #ff4444; font-size: 11px; margin-bottom: 15px; min-height: 15px;"></div>
+      <div style="display: flex; gap: 10px; justify-content: space-between;">
+        <button id="btn-auth-login" class="btn-primary" style="flex:1;">Log In</button>
+        <button id="btn-auth-register" class="btn-secondary" style="flex:1;">Register</button>
+      </div>
+      <button onclick="document.getElementById('auth-modal').classList.add('hidden')" style="margin-top: 15px; background: transparent; border: none; color: #888; cursor: pointer;">Cancel</button>
+      <div style="margin-top: 15px; font-size: 10px; color: #555;">Cloud saves will automatically sync to your account.</div>
     </div>
   </div>
 

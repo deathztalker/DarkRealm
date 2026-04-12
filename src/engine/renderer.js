@@ -36,6 +36,39 @@ export class Renderer {
         this.ctx.clearRect(0, 0, this.width, this.height);
     }
 
+    /**
+     * Post-process Lighting Pass
+     * Creates a radial light mask centered on the player.
+     * @param {number} sx - Player screen X
+     * @param {number} sy - Player screen Y
+     * @param {number} radius - Light radius
+     * @param {string} ambientColor - The color of the darkness (e.g. 'rgba(0,0,0,0.9)')
+     */
+    applyLighting(sx, sy, radius, ambientColor = 'rgba(0,0,0,0.85)') {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset to screen space
+        
+        // Use a separate canvas or a multiply operation to darken the screen
+        // But for 2D canvas, the easiest/fastest high-quality way is to draw the darkness
+        // with a hole carved out.
+        
+        const grad = ctx.createRadialGradient(sx, sy, radius * 0.2, sx, sy, radius);
+        grad.addColorStop(0, 'rgba(0,0,0,0)');
+        grad.addColorStop(1, ambientColor);
+
+        ctx.fillStyle = grad;
+        ctx.globalCompositeOperation = 'source-over'; // Standard overlay
+        ctx.fillRect(0, 0, this.width, this.height);
+        
+        // Optional: darken borders even more
+        ctx.fillStyle = ambientColor;
+        // Optimization: instead of a full rect, just the areas outside the grad are already filled by the grad's last stop if we use a different technique.
+        // Actually, simple fillRect with the grad is effective if the grad covers the screen.
+        
+        ctx.restore();
+    }
+
     // Draw a filled rectangle in world space (camera must be applied already)
     fillRect(x, y, w, h, color) {
         this.ctx.fillStyle = color;
@@ -112,17 +145,26 @@ export class Renderer {
     }
 
     // Draw frame from Spritesheet
-    drawAnim(spriteName, x, y, size, state, dir, time, filter = null, equipment = null) {
+    drawAnim(spriteName, x, y, size, state, dir, time, filter = null, equipment = null, hitFlash = 0) {
         const img = Assets.get(spriteName);
         if (!img || !img.complete || img.width <= 64 || img.width === img.height) {
-            this.drawSprite(spriteName, x, y, size, state === 'walk', time, filter);
+            this.drawSprite(spriteName, x, y, size, state === 'idle', time, filter);
             
             // Dynamic Equipment Layering — Canvas-drawn overlays
             if (equipment) {
+                const ctx = this.ctx;
+                ctx.save();
+                
+                // Multi-layered filters
+                let combinedFilter = filter || '';
+                if (hitFlash > 0) {
+                    combinedFilter += ' brightness(5)';
+                }
+                if (combinedFilter) ctx.filter = combinedFilter.trim();
+                
                 const anim = state === 'walk';
                 const bob = anim ? Math.sin(time * 0.005) * 2 : 0;
                 const drawY = y + bob;
-                const ctx = this.ctx;
 
                 // Helper: get color from armor type
                 const armorColor = (item) => {

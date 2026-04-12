@@ -24,6 +24,10 @@ export function initAudio() {
         bus.on('level_up', () => playLevelUp());
         bus.on('item:pickup', () => playLoot());
         bus.on('gold:pickup', () => playGold());
+        bus.on('ui:click', () => playClick());
+        bus.on('item:move', () => playItemMove());
+        bus.on('cube:transmute', () => playTransmute());
+        bus.on('ui:error', () => playError());
     } catch (e) {
         console.warn("AudioContext not supported or blocked", e);
     }
@@ -35,7 +39,9 @@ export function playHit(isCrit) {
     const gain = ctx.createGain();
     
     osc.type = isCrit ? 'square' : 'sawtooth';
-    osc.frequency.setValueAtTime(isCrit ? 200 : 120, ctx.currentTime);
+    // Add 10% pitch variation for more organic feel
+    const pitchMod = 0.9 + Math.random() * 0.2;
+    osc.frequency.setValueAtTime((isCrit ? 200 : 120) * pitchMod, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.1);
     
     gain.gain.setValueAtTime(0.05, ctx.currentTime);
@@ -260,6 +266,61 @@ export function playDeathSfx() {
     osc.start(); osc.stop(ctx.currentTime + 0.3);
 }
 
+// ─── UI & INTERACTION SFX ───
+export function playClick() {
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.05);
+    gain.gain.setValueAtTime(0.02, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.05);
+}
+
+export function playItemMove() {
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(200, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(300, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.03, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.1);
+}
+
+export function playTransmute() {
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(100, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.5);
+    osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.8);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.2);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.8);
+}
+
+export function playError() {
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(100, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 0.2);
+    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.2);
+}
+
 // ─── AMBIENT AUDIO ───
 let ambientOsc = null;
 let ambientGain = null;
@@ -268,17 +329,15 @@ let ambientLfoGain = null;
 
 export function stopAmbient() {
     if (ambientOsc) {
-        ambientOsc.stop();
-        ambientOsc.disconnect();
+        try { ambientOsc.stop(); ambientOsc.disconnect(); } catch {}
         ambientOsc = null;
     }
     if (ambientLfo) {
-        ambientLfo.stop();
-        ambientLfo.disconnect();
+        try { ambientLfo.stop(); ambientLfo.disconnect(); } catch {}
         ambientLfo = null;
     }
     if (ambientGain) {
-        ambientGain.disconnect();
+        try { ambientGain.disconnect(); } catch {}
         ambientGain = null;
     }
 }

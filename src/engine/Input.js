@@ -156,29 +156,79 @@ export class Input {
         this.mouse.y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
     }
 
-    _onKeyDown(e) {
-        this.keys[e.code] = true;
-        const map = {
-            // Potions
-            'KeyQ': 'potion:use:0', 'KeyW': 'potion:use:1', 'KeyE': 'potion:use:2', 'KeyR': 'potion:use:3',
-            // Skills
-            'Digit1': 'skill:use:0', 'Digit2': 'skill:use:1', 'Digit3': 'skill:use:2',
-            'Digit4': 'skill:use:3', 'Digit5': 'skill:use:4',
+    _isInputBlocked() {
+        const activeEl = document.activeElement;
+        const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+        
+        return isTyping ||
+               document.querySelectorAll('.panel:not(.hidden)').length > 0 || 
+               document.getElementById('dialogue-ui')?.classList.contains('active') ||
+               document.getElementById('stash-panel')?.classList.contains('active');
+    }
 
-            'KeyI': 'ui:toggle:inventory', 'KeyC': 'ui:toggle:character',
-            'KeyO': 'ui:toggle:mercenary', 'KeyT': 'ui:toggle:talents',
-            'Escape': 'ui:closeAll',
-            'KeyM': 'ui:toggle:map',
-            'Tab': 'ui:toggle:fullmap',
-            'KeyF': 'ui:toggle:lootfilter',
+    _onKeyDown(e) {
+        const isRepeat = e.repeat;
+        this.keys[e.code] = true;
+
+        // Escape always works to close panels/clear focus
+        if (e.code === 'Escape') {
+            if (isRepeat) return;
+            bus.emit('ui:closeAll', {});
+            if (document.activeElement) document.activeElement.blur();
+            return;
+        }
+
+        // --- WASD & Combat Hotkeys: Block if typing or UI is open ---
+        const isBlocked = this._isInputBlocked();
+        const map = {
+            // Potions (1, 2, 3, 4)
+            'Digit1': 'potion:use:0', 'Digit2': 'potion:use:1', 'Digit3': 'potion:use:2', 'Digit4': 'potion:use:3',
+            // Skills (Q, E, R, F, G)
+            'KeyQ': 'skill:use:0', 'KeyE': 'skill:use:1', 'KeyR': 'skill:use:2',
+            'KeyF': 'skill:use:3', 'KeyG': 'skill:use:4',
+
             'KeyP': 'action:town_portal',
-            'KeyW': 'action:weapon_swap',
+            'KeyX': 'action:weapon_swap',
+            'Space': 'action:interact',
         };
+
         if (map[e.code]) {
+            if (isBlocked) return;
             e.preventDefault();
             bus.emit(map[e.code], { mouse: this.mouse });
+            return;
+        }
+
+        // --- UI Toggle Hotkeys: Allow through even if UI is open (for toggling), but block repeat ---
+        const uiMap = {
+            'KeyI': 'ui:toggle:inventory', 
+            'KeyC': 'ui:toggle:character',
+            'KeyO': 'ui:toggle:mercenary', 
+            'KeyT': 'ui:toggle:talents',
+            'KeyJ': 'ui:toggle:journal', 
+            'KeyH': 'ui:toggle:achievements',
+            'KeyM': 'ui:toggle:map',
+            'Tab': 'ui:toggle:fullmap',
+            'KeyL': 'ui:toggle:lootfilter',
+            'KeyN': 'ui:toggle:stash',
+            'KeyU': 'ui:toggle:cube',
+        };
+
+        if (uiMap[e.code]) {
+            if (isRepeat) return;
+            // Only block if typing, NOT if a panel is open (so we can toggle it close)
+            const activeEl = document.activeElement;
+            const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+            if (isTyping) return;
+
+            e.preventDefault();
+            bus.emit(uiMap[e.code], { mouse: this.mouse });
         }
     }
 
-    isDown(code) { return !!this.keys[code]; }
+    isDown(code) { 
+        // Stop movement/input if UI is open
+        if (this._isInputBlocked()) return false;
+        return !!this.keys[code]; 
+    }
 }

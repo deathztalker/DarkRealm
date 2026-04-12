@@ -3,11 +3,39 @@
  * Each character has an independent save slot identified by a unique ID.
  */
 import { Player } from '../entities/player.js';
+import { DB } from './db.js';
 
 const SLOTS_KEY = 'darkRealm_slots';
 const SHARED_STASH_KEY = 'DARK_REALM_SHARED_STASH';
+const PANTHEON_KEY = 'DARK_REALM_PANTHEON';
 
 export const SaveSystem = {
+    /** Pantheon: Monuments of Valor (Persistence for dead HC heroes) */
+    getPantheon() {
+        try {
+            const data = localStorage.getItem(PANTHEON_KEY);
+            return data ? JSON.parse(data) : [];
+        } catch { return []; }
+    },
+
+    saveToPantheon(char) {
+        try {
+            const pan = this.getPantheon();
+            pan.push({
+                name: char.name || char.charName,
+                className: char.className,
+                level: char.level,
+                gold: char.totalGoldCollected || char.gold || 0,
+                killer: char.lastAttacker || 'The Shadows',
+                date: Date.now(),
+                isHardcore: true
+            });
+            // Keep only latest 50 for storage sanity
+            localStorage.setItem(PANTHEON_KEY, JSON.stringify(pan.slice(-50)));
+            return true;
+        } catch { return false; }
+    },
+
     /** Get all saved character slots (summary info for menu) */
     listSlots() {
         try {
@@ -31,6 +59,7 @@ export const SaveSystem = {
                 level: player.level,
                 zoneLevel,
                 stash: stash || [],
+                cube: extras?.cube || [],
                 mercenary: extras?.mercenary || null,
                 timestamp: Date.now(),
                 player: player.serialize(),
@@ -41,6 +70,12 @@ export const SaveSystem = {
             if (idx >= 0) slots[idx] = entry;
             else slots.push(entry);
             localStorage.setItem(SLOTS_KEY, JSON.stringify(slots));
+
+            // [Supabase] Background Cloud Sync
+            if (DB.isLoggedIn()) {
+                DB.upsertSave(slotId, entry).catch(e => console.error('Cloud save failed:', e));
+            }
+
             return true;
         } catch (e) {
             console.error('Failed to save slot:', e);
@@ -58,6 +93,7 @@ export const SaveSystem = {
                 player: slot.player,
                 zoneLevel: slot.zoneLevel || 0,
                 stash: slot.stash || [],
+                cube: slot.cube || [],
                 mercenary: slot.mercenary || null,
                 slotId: slot.id,
                 difficulty: slot.difficulty || 0,
@@ -75,6 +111,12 @@ export const SaveSystem = {
             let slots = this.listSlots();
             slots = slots.filter(s => s.id !== slotId);
             localStorage.setItem(SLOTS_KEY, JSON.stringify(slots));
+
+            // [Supabase] Background Cloud Sync
+            if (DB.isLoggedIn()) {
+                DB.deleteSave(slotId).catch(e => console.error('Cloud delete failed:', e));
+            }
+
             return true;
         } catch { return false; }
     },
@@ -108,6 +150,12 @@ export const SaveSystem = {
     saveSharedStash(items, gold) {
         try {
             localStorage.setItem(SHARED_STASH_KEY, JSON.stringify({ items, gold }));
+
+            // [Supabase] Background Cloud Sync
+            if (DB.isLoggedIn()) {
+                DB.upsertSharedStash(items, gold).catch(e => console.error('Cloud stash save failed:', e));
+            }
+
             return true;
         } catch { return false; }
     },

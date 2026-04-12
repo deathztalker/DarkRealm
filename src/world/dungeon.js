@@ -2,14 +2,18 @@
  * Dungeon Generator — BSP room-corridor procedural generation
  */
 
-export const TILE = { FLOOR: 0, WALL: 1, DOOR: 2, STAIRS_DOWN: 3, STAIRS_UP: 4, SPAWN: 5, GRASS: 6, PATH: 7, WATER: 8, TREE: 9, BRIDGE: 10 };
+export const TILE = { FLOOR: 0, WALL: 1, DOOR: 2, STAIRS_DOWN: 3, STAIRS_UP: 4, SPAWN: 5, GRASS: 6, PATH: 7, WATER: 8, TREE: 9, BRIDGE: 10, SAND: 11, CACTUS: 12, LAVA: 13, SNOW: 14, ICE: 15 };
 const TILE_ICONS = { 0: '·', 1: '█', 2: '+', 3: '▼', 4: '▲' };
 
 export const TILE_COLORS = {
     [TILE.FLOOR]: '#2c2838', [TILE.WALL]: '#161320', [TILE.DOOR]: '#5a3a20',
     [TILE.STAIRS_DOWN]: '#3a2a4a', [TILE.STAIRS_UP]: '#2a1a3a',
     [TILE.GRASS]: '#2d5a27', [TILE.PATH]: '#5c4a3d', [TILE.WATER]: '#1e4b85',
-    [TILE.TREE]: '#1b4018', [TILE.BRIDGE]: '#503525'
+    [TILE.TREE]: '#1b4018', [TILE.BRIDGE]: '#503525',
+    [TILE.SAND]: '#d4a017', [TILE.CACTUS]: '#4a6b2c',
+    [TILE.LAVA]: '#ff4500', // Molten orange
+    [TILE.SNOW]: '#ffffff', // Pure white
+    [TILE.ICE]: '#a0e0ff'   // Light cyan
 };
 
 export class Dungeon {
@@ -26,7 +30,7 @@ export class Dungeon {
     }
 
     generate(zoneLevel = 1, theme = 'cathedral') {
-        if (zoneLevel === 0) return this.generateTown();
+        if (zoneLevel === 0) return this.generateTown(theme);
         if (zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0)) return this.generateBossRoom(theme, zoneLevel);
 
         this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
@@ -34,19 +38,76 @@ export class Dungeon {
         this.enemySpawns = [];
         this.lootSpawns = [];
 
-        // BSP split
-        const root = { x: 1, y: 1, w: this.width - 2, h: this.height - 2 };
-        const leaves = this._bsp(root, 0, 6);
+        // Organic vs Structural Generation
+        const isOrganicTheme = ['jungle', 'desert', 'snow', 'hell'].includes(theme);
 
-        // Carve rooms in leaves
-        for (const leaf of leaves) {
-            const room = this._carveRoom(leaf);
-            if (room) this.rooms.push(room);
+        if (!isOrganicTheme) {
+            // BSP split
+            const root = { x: 1, y: 1, w: this.width - 2, h: this.height - 2 };
+            const leaves = this._bsp(root, 0, 6);
+
+            // Carve rooms in leaves
+            for (const leaf of leaves) {
+                const room = this._carveRoom(leaf);
+                if (room) this.rooms.push(room);
+            }
+
+            // Connect rooms with corridors
+            for (let i = 1; i < this.rooms.length; i++) {
+                this._corridor(this.rooms[i - 1], this.rooms[i]);
+            }
+        } else {
+            // Cellular Automata
+            this._generateAutomata();
         }
 
-        // Connect rooms with corridors
-        for (let i = 1; i < this.rooms.length; i++) {
-            this._corridor(this.rooms[i - 1], this.rooms[i]);
+        // --- Theme Post-Processing ---
+        if (theme === 'desert') {
+            for (let r = 0; r < this.height; r++) {
+                for (let c = 0; c < this.width; c++) {
+                    if (this.grid[r][c] === TILE.FLOOR) {
+                        this.grid[r][c] = TILE.SAND;
+                        // Random cacti in rooms
+                        if (Math.random() < 0.05) this.grid[r][c] = TILE.CACTUS;
+                    }
+                }
+            }
+        } else if (theme === 'tomb') {
+            // Tombs stay FLOOR but with different vibe (walls handled by renderer colors)
+        } else if (theme === 'jungle') {
+            for (let r = 0; r < this.height; r++) {
+                for (let c = 0; c < this.width; c++) {
+                    if (this.grid[r][c] === TILE.FLOOR) {
+                        this.grid[r][c] = TILE.GRASS;
+                        if (Math.random() < 0.1) this.grid[r][c] = TILE.TREE;
+                    }
+                }
+            }
+        } else if (theme === 'temple') {
+            for (let r = 0; r < this.height; r++) {
+                for (let c = 0; c < this.width; c++) {
+                    if (this.grid[r][c] === TILE.FLOOR && Math.random() < 0.1) {
+                        this.grid[r][c] = TILE.WATER;
+                    }
+                }
+            }
+        } else if (theme === 'hell') {
+            for (let r = 0; r < this.height; r++) {
+                for (let c = 0; c < this.width; c++) {
+                    if (this.grid[r][c] === TILE.FLOOR && Math.random() < 0.08) {
+                        this.grid[r][c] = TILE.LAVA;
+                    }
+                }
+            }
+        } else if (theme === 'snow') {
+            for (let r = 0; r < this.height; r++) {
+                for (let c = 0; c < this.width; c++) {
+                    if (this.grid[r][c] === TILE.FLOOR) {
+                        this.grid[r][c] = TILE.SNOW;
+                        if (Math.random() < 0.05) this.grid[r][c] = TILE.ICE;
+                    }
+                }
+            }
         }
 
         // Place player start in first room center
@@ -116,8 +177,9 @@ export class Dungeon {
         return this;
     }
 
-    generateTown() {
-        this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.GRASS));
+    generateTown(theme) {
+        const bgTile = theme === 'desert' ? TILE.SAND : theme === 'snow' ? TILE.SNOW : TILE.GRASS;
+        this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(bgTile));
         this.rooms = [];
         this.enemySpawns = [];
         this.lootSpawns = [];
@@ -228,7 +290,17 @@ export class Dungeon {
             x: (cx + 4) * this.tileSize,
             y: (cy + 2) * this.tileSize,
             icon: "npc_merchant",
-            dialogue: "I know the roads well. Tell me where you wish to go."
+            dialogue: "You are the one who will lead us to the East. But first, the pass must be cleared."
+        });
+
+        this.npcSpawns.push({
+            id: "charsi",
+            name: "Charsi",
+            type: "merchant",
+            x: (cx + 5) * this.tileSize,
+            y: (cy - 3) * this.tileSize,
+            icon: "npc_merchant",
+            dialogue: "Need a new blade? I can keep your gear in fighting shape."
         });
 
         this.npcSpawns.push({
@@ -293,12 +365,35 @@ export class Dungeon {
 
         this.playerStart = { x: cx * this.tileSize, y: (cy + radius + 8) * this.tileSize };
 
+        // Boss Selection based on level
+        let bossName = "Blood Raven";
+        let bossIcon = "enemy_ghost";
+        let hpMult = 2.0;
+        let isAndariel = false;
+        let isDuriel = false;
+        let isMephisto = false;
+        let isDiablo = false;
+        let isBaal = false;
+        let isUber = false;
+
+        if (zoneLevel === 5) { bossName = "Andariel"; bossIcon = "enemy_demon"; hpMult = 4.0; isAndariel = true; }
+        else if (zoneLevel === 10) { bossName = "Duriel"; bossIcon = "enemy_demon"; hpMult = 6.0; isDuriel = true; }
+        else if (zoneLevel === 15) { bossName = "Mephisto"; bossIcon = "enemy_skeleton"; hpMult = 8.0; isMephisto = true; }
+        else if (zoneLevel === 20) { bossName = "Diablo"; bossIcon = "enemy_demon"; hpMult = 12.0; isDiablo = true; }
+        else if (zoneLevel === 25) { bossName = "Baal"; bossIcon = "enemy_demon"; hpMult = 15.0; isBaal = true; }
+        else if (zoneLevel === 100) { bossName = "Uber Diablo"; bossIcon = "enemy_demon"; hpMult = 50.0; isUber = true; }
+
         // Boss Spawn in center
         this.enemySpawns.push({
             x: cx * this.tileSize,
             y: cy * this.tileSize,
             type: 'boss',
             level: zoneLevel,
+            name: bossName,
+            icon: bossIcon,
+            hpMult: hpMult,
+            dmgMult: 2.0 + (zoneLevel / 20),
+            isAndariel, isDuriel, isMephisto, isDiablo, isBaal, isUber
         });
 
         // The exit is unreachable until the boss dies (handled in main.js)
@@ -376,7 +471,8 @@ export class Dungeon {
             [TILE.FLOOR]: 'env_floor', [TILE.WALL]: 'env_wall', [TILE.DOOR]: 'env_door',
             [TILE.STAIRS_DOWN]: 'env_stairs_down', [TILE.STAIRS_UP]: 'env_stairs_up',
             [TILE.GRASS]: 'env_grass', [TILE.PATH]: 'env_path', [TILE.WATER]: 'env_water',
-            [TILE.TREE]: 'env_tree', [TILE.BRIDGE]: 'env_bridge'
+            [TILE.TREE]: 'env_tree', [TILE.BRIDGE]: 'env_bridge',
+            [TILE.SAND]: 'env_sand', [TILE.CACTUS]: 'env_cactus'
         };
 
         for (let r = camTop; r < camBottom; r++) {
@@ -389,14 +485,15 @@ export class Dungeon {
                     [TILE.FLOOR]: '#1a1820', [TILE.WALL]: '#0a080c', [TILE.DOOR]: '#3a2a1a',
                     [TILE.STAIRS_DOWN]: '#151525', [TILE.STAIRS_UP]: '#151525',
                     [TILE.GRASS]: '#1a2e1a', [TILE.PATH]: '#2a201a', [TILE.WATER]: '#0a1a2e',
-                    [TILE.TREE]: '#0a1d0a', [TILE.BRIDGE]: '#2a1a10'
+                    [TILE.TREE]: '#0a1d0a', [TILE.BRIDGE]: '#2a1a10',
+                    [TILE.SAND]: '#3d2e14', [TILE.CACTUS]: '#1e2b12'
                 };
                 ctx.fillStyle = baseColors[tile] || '#000';
                 ctx.fillRect(c * ts, r * ts, ts, ts);
 
                 // Draw tile sprite
                 if (spriteName) {
-                    if (tile === TILE.TREE) {
+                    if (tile === TILE.TREE || tile === TILE.CACTUS) {
                         renderer.drawSprite(spriteName, c * ts + ts / 2, r * ts + ts / 2, ts);
                     } else {
                         renderer.drawTile(spriteName, c * ts + ts / 2, r * ts + ts / 2, ts);
@@ -428,6 +525,139 @@ export class Dungeon {
         const tile = this.grid[r][c];
         // Walkable tiles: floor, door, stairs, spawn, grass, path, bridge
         return tile !== TILE.WALL && tile !== TILE.WATER && tile !== TILE.TREE;
+    }
+
+    /** Raycast using Digital Differential Analyzer (DDA) to check Line of Sight */
+    hasLineOfSight(x0, y0, x1, y1) {
+        const c0 = Math.floor(x0 / this.tileSize);
+        const r0 = Math.floor(y0 / this.tileSize);
+        const c1 = Math.floor(x1 / this.tileSize);
+        const r1 = Math.floor(y1 / this.tileSize);
+
+        let dx = Math.abs(c1 - c0);
+        let dy = Math.abs(r1 - r0);
+        let x = c0;
+        let y = r0;
+        let n = 1 + dx + dy;
+        const x_inc = (c1 > c0) ? 1 : -1;
+        const y_inc = (r1 > r0) ? 1 : -1;
+        let error = dx - dy;
+        dx *= 2;
+        dy *= 2;
+
+        for (; n > 0; --n) {
+            // Check current tile validity
+            if (y < 0 || y >= this.height || x < 0 || x >= this.width) return false;
+            const tile = this.grid[y][x];
+            // If it's a solid wall or tree, vision is blocked. Water/Pits don't block vision.
+            if (tile === TILE.WALL || tile === TILE.TREE) return false;
+
+            if (error > 0) {
+                x += x_inc;
+                error -= dy;
+            } else if (error < 0) {
+                y += y_inc;
+                error += dx;
+            } else { // error == 0 (diagonals)
+                x += x_inc;
+                error -= dy;
+                y += y_inc;
+                error += dx;
+                n--; 
+            }
+        }
+        return true;
+    }
+
+    _generateAutomata() {
+        // Initialize random noise
+        for (let r = 0; r < this.height; r++) {
+            for (let c = 0; c < this.width; c++) {
+                this.grid[r][c] = Math.random() < 0.45 ? TILE.WALL : TILE.FLOOR;
+            }
+        }
+
+        // Cellular Automata smooth passes
+        for (let pass = 0; pass < 5; pass++) {
+            const next = this.grid.map(arr => [...arr]);
+            for (let r = 1; r < this.height - 1; r++) {
+                for (let c = 1; c < this.width - 1; c++) {
+                    let walls = 0;
+                    for (let yy = -1; yy <= 1; yy++) {
+                        for (let xx = -1; xx <= 1; xx++) {
+                            if (this.grid[r + yy][c + xx] === TILE.WALL) walls++;
+                        }
+                    }
+                    next[r][c] = walls >= 5 ? TILE.WALL : TILE.FLOOR;
+                }
+            }
+            this.grid = next;
+        }
+
+        // Ensure borders
+        for (let r = 0; r < this.height; r++) { this.grid[r][0] = TILE.WALL; this.grid[r][this.width - 1] = TILE.WALL; }
+        for (let c = 0; c < this.width; c++) { this.grid[0][c] = TILE.WALL; this.grid[this.height - 1][c] = TILE.WALL; }
+
+        // Find regions via flood-fill
+        const visited = Array.from({ length: this.height }, () => Array(this.width).fill(false));
+        const regions = [];
+
+        for (let r = 1; r < this.height - 1; r++) {
+            for (let c = 1; c < this.width - 1; c++) {
+                if (this.grid[r][c] === TILE.FLOOR && !visited[r][c]) {
+                    const region = [];
+                    const queue = [{x: c, y: r}];
+                    visited[r][c] = true;
+                    let head = 0;
+                    while (head < queue.length) {
+                        const pt = queue[head++];
+                        region.push(pt);
+                        const dirs = [[0,1],[1,0],[0,-1],[-1,0]];
+                        for (const dir of dirs) {
+                            const nx = pt.x + dir[0], ny = pt.y + dir[1];
+                            if (this.grid[ny][nx] === TILE.FLOOR && !visited[ny][nx]) {
+                                visited[ny][nx] = true;
+                                queue.push({x: nx, y: ny});
+                            }
+                        }
+                    }
+                    regions.push(region);
+                }
+            }
+        }
+
+        // Keep largest region, wall off the rest
+        if (regions.length > 0) {
+            regions.sort((a, b) => b.length - a.length);
+            const mainRegion = regions[0];
+            
+            // Wall off everything
+            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
+            // Carve main region
+            for (const pt of mainRegion) {
+                this.grid[pt.y][pt.x] = TILE.FLOOR;
+            }
+
+            // Faux rooms for spawning compatibility
+            this.rooms = [];
+            const roomCount = Math.max(4, Math.floor(mainRegion.length / 150));
+            for (let i = 0; i < roomCount; i++) {
+                const pt = mainRegion[Math.floor(Math.random() * mainRegion.length)];
+                // carve a 3x3 to ensure space for things (e.g. portals/waypoints)
+                for(let yy=-1; yy<=1; yy++) {
+                   for(let xx=-1; xx<=1; xx++) {
+                       if (pt.y+yy > 0 && pt.y+yy < this.height-1 && pt.x+xx > 0 && pt.x+xx < this.width-1) {
+                           this.grid[pt.y+yy][pt.x+xx] = TILE.FLOOR;
+                       }
+                   }
+                }
+                this.rooms.push({ x: pt.x - 1, y: pt.y - 1, w: 3, h: 3 });
+            }
+        } else {
+            // Failsafe
+            this.rooms = [{ x: 4, y: 4, w: 2, h: 2 }];
+            this.grid[4][4] = TILE.FLOOR;
+        }
     }
 }
 

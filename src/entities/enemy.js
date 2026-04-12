@@ -2,7 +2,7 @@
  * Enemy Entity — Types, AI states, loot drop on death
  */
 import { bus } from '../engine/EventBus.js';
-import { calcDamage, applyDamage, DMG_TYPE, isCCd, getSlowFactor } from '../systems/combat.js';
+import { calcDamage, applyDamage, DMG_TYPE, isCCd, getSlowFactor, isFeared, isRooted } from '../systems/combat.js';
 import { fx } from '../engine/ParticleSystem.js';
 import { Projectile } from './projectile.js';
 
@@ -20,7 +20,17 @@ const ENEMY_TYPES = {
     wraith: { icon: 'enemy_ghost', name: 'Wraith', hp: 45, dmg: 10, spd: 55, xp: 30, armor: 0, group: 'undead', lightRes: 50, attackType: 'melee', element: 'lightning' },
     fetish: { icon: 'enemy_goblin', name: 'Fetish', hp: 25, dmg: 8, spd: 90, xp: 15, armor: 0, group: 'humanoid', attackType: 'melee' },
     vampire: { icon: 'enemy_cultist', name: 'Vampire', hp: 90, dmg: 22, spd: 45, xp: 60, armor: 12, group: 'undead', fireRes: 40, attackType: 'caster', element: 'fire', projColor: '#ff0000', projRadius: 14 },
-    scarab: { icon: 'enemy_bat', name: 'Death Beetle', hp: 70, dmg: 12, spd: 40, xp: 40, armor: 25, group: 'beast', lightRes: 75, attackType: 'melee', isLightningEnchanted: true },
+    scarab: { icon: 'enemy_demon', name: 'Death Beetle', hp: 70, dmg: 12, spd: 40, xp: 40, armor: 25, group: 'beast', lightRes: 75, attackType: 'melee', isLightningEnchanted: true },
+    sand_leaper: { icon: 'enemy_bat', name: 'Sand Leaper', hp: 45, dmg: 9, spd: 85, xp: 22, armor: 2, group: 'beast', attackType: 'melee' },
+    mummy: { icon: 'enemy_zombie', name: 'Dried Corpse', hp: 120, dmg: 18, spd: 25, xp: 50, armor: 15, group: 'undead', poisonRes: 60, attackType: 'melee', leavesPoisonCloud: true },
+    thorn_hulk: { icon: 'enemy_golem', name: 'Thorn Hulk', hp: 160, dmg: 25, spd: 35, xp: 75, armor: 40, group: 'beast', attackType: 'melee' },
+    zakarum_priest: { icon: 'enemy_cultist', name: 'High Priest', hp: 55, dmg: 18, spd: 45, xp: 45, armor: 5, group: 'human', lightRes: 50, attackType: 'caster', element: 'lightning', projColor: '#ffff80', projRadius: 10 },
+    venom_lord: { icon: 'enemy_demon', name: 'Venom Lord', hp: 180, dmg: 32, spd: 65, xp: 90, armor: 20, group: 'demon', fireRes: 75, attackType: 'melee' },
+    doom_knight: { icon: 'enemy_skeleton', name: 'Doom Knight', hp: 150, dmg: 28, spd: 40, xp: 80, armor: 60, group: 'undead', attackType: 'melee' },
+    oblivion_knight: { icon: 'enemy_ghost', name: 'Oblivion Knight', hp: 80, dmg: 22, spd: 50, xp: 100, armor: 10, group: 'undead', shadowRes: 75, attackType: 'caster', element: 'shadow', projColor: '#ff00ff', projRadius: 12 },
+    death_maul: { icon: 'enemy_golem', name: 'Death Maul', hp: 220, dmg: 40, spd: 30, xp: 120, armor: 50, group: 'beast', attackType: 'melee' },
+    hell_lord: { icon: 'enemy_demon', name: 'Hell Lord', hp: 140, dmg: 35, spd: 75, xp: 110, armor: 15, group: 'demon', attackType: 'melee', extraDmgType: 'fire' },
+    overseer: { icon: 'enemy_cultist', name: 'Overseer', hp: 100, dmg: 25, spd: 45, xp: 130, armor: 20, group: 'demon', attackType: 'ranged', element: 'physical', projColor: '#884400', projRadius: 10 },
 };
 
 const BOSS_POOL = [
@@ -29,8 +39,12 @@ const BOSS_POOL = [
     { icon: 'enemy_skeleton', name: 'Bone Lord Varkath', hpMult: 12, dmgMult: 2.5, xpMult: 18 },
     { icon: 'enemy_golem', name: 'Infernal Sentinel', hpMult: 9, dmgMult: 3.5, xpMult: 14 },
     { icon: 'enemy_demon', name: 'Azmodan, Lord of Sin', hpMult: 18, dmgMult: 4.5, xpMult: 25, riftOnly: true, element: 'fire' },
-    { icon: 'enemy_ghost', name: 'Mephisto, Lord of Hatred', hpMult: 15, dmgMult: 5.5, xpMult: 30, riftOnly: true, element: 'lightning' },
     { icon: 'enemy_cultist', name: 'Baal, Lord of Destruction', hpMult: 22, dmgMult: 3.5, xpMult: 35, riftOnly: true, element: 'cold' },
+    { icon: 'enemy_ghost', name: 'Mephisto, Lord of Hatred', hpMult: 18, dmgMult: 4.8, xpMult: 40 },
+    // --- Phase 27: Uber Bosses ---
+    { id: 'uber_mephisto', name: 'Uber Mephisto', hpMult: 60, dmgMult: 12, xpMult: 100, isUber: true },
+    { id: 'uber_diablo', name: 'Uber Diablo', hpMult: 80, dmgMult: 15, xpMult: 150, isUber: true },
+    { id: 'uber_baal', name: 'Uber Baal', hpMult: 100, dmgMult: 14, xpMult: 200, isUber: true },
 ];
 
 const ELITE_AFFIXES = [
@@ -45,7 +59,7 @@ const ELITE_AFFIXES = [
     { name: 'Multi Shot', mod: e => { e.isMultiShot = true; } },
     { name: 'Fire Enchanted', mod: e => { e.fireRes = 50; e.isFireEnchanted = true; } },
     { name: 'Cold Enchanted', mod: e => { e.coldRes = 50; e.isColdEnchanted = true; } },
-    { name: 'Aura Enchanted', mod: e => { e.hasAura = true; e.auraType = ['might', 'holy_fire', 'conviction'][Math.floor(Math.random()*3)]; } }
+    { name: 'Aura Enchanted', mod: e => { e.hasAura = true; e.auraType = ['might', 'holy_fire', 'conviction'][Math.floor(Math.random() * 3)]; } }
 ];
 
 const RARE_PREFIX = ['Gore', 'Blight', 'Bone', 'Blood', 'Onyx', 'Storm', 'Shadow', 'Plague', 'Dread', 'Night', 'Doom', 'Foul', 'Rot'];
@@ -61,7 +75,38 @@ const UNIQUE_ENEMIES = [
 
 export class Enemy {
     constructor(spawn) {
-        const types = Object.keys(ENEMY_TYPES);
+        let types = Object.keys(ENEMY_TYPES);
+        const zone = spawn.level || 1;
+
+        const act3Enemies = ['fetish', 'wraith', 'spider', 'bat', 'zombie', 'ghost'];
+        const act4Enemies = ['venom_lord', 'doom_knight', 'oblivion_knight', 'hell_lord', 'wraith', 'demon'];
+
+        // --- Act II Spawning Logic ---
+        if (zone >= 6 && zone <= 9) {
+            // Favor desert enemies
+            const desertEnemies = ['scarab', 'sand_leaper', 'mummy', 'wraith', 'bat', 'spider'];
+            types = types.filter(t => desertEnemies.includes(t));
+            if (types.length === 0) types = Object.keys(ENEMY_TYPES); // Fallback
+        } else if (zone < 6) {
+            // Favor Act I enemies
+            const act1Enemies = ['skeleton', 'skeleton_archer', 'goblin', 'zombie', 'ghost', 'fetish'];
+            types = types.filter(t => act1Enemies.includes(t));
+            if (types.length === 0) types = Object.keys(ENEMY_TYPES);
+        } else if (zone >= 11 && zone <= 14) {
+            // Favor Act III enemies
+            types = types.filter(t => act3Enemies.includes(t));
+            if (types.length === 0) types = Object.keys(ENEMY_TYPES);
+        } else if (zone >= 16 && zone <= 19) {
+            // Favor Act IV enemies
+            types = types.filter(t => act4Enemies.includes(t));
+            if (types.length === 0) types = Object.keys(ENEMY_TYPES);
+        } else if (zone >= 21 && zone <= 24) {
+            // Favor Act V enemies
+            const act5Enemies = ['death_maul', 'hell_lord', 'overseer', 'venom_lord', 'doom_knight', 'wraith'];
+            types = types.filter(t => act5Enemies.includes(t));
+            if (types.length === 0) types = Object.keys(ENEMY_TYPES);
+        }
+
         const typeKey = types[Math.floor(Math.random() * types.length)];
         const base = ENEMY_TYPES[typeKey];
 
@@ -71,29 +116,65 @@ export class Enemy {
         this.homeY = spawn.y;
         this.radius = 6;
         this.level = spawn.level || 1;
-        this.type = spawn.type; // 'normal' | 'elite' | 'boss'
+        this.type = spawn.type || 'normal'; // 'normal' | 'elite' | 'boss'
 
         this.patrolTimer = 0;
         this.fleeing = false;
         this.state = 'idle'; // idle, chase, attack, flee
+        this.hitFlashTimer = 0;
+        this.lostTargetTimer = 0; // Timer for losing LOS
 
         const scale = 1 + (this.level - 1) * 0.12;
+        const riftScale = (this.level >= 7 && window.riftLevel > 1) ? Math.pow(1.18, window.riftLevel - 1) : 1.0;
+        const diffMult = (window._difficulty !== undefined ? window.DIFFICULTY_MULT[window._difficulty] : 1.0) * riftScale;
+
+        const eliteScale = this.type === 'boss' ? 2.2 : (this.type === 'elite' ? 1.4 : 1.0);
+        this.renderScale = eliteScale;
+        this.radius = 6 * eliteScale;
+
         if (this.type === 'boss') {
-            let availableBosses = BOSS_POOL;
-            if (this.level > 7) {
-                availableBosses = BOSS_POOL.filter(b => b.riftOnly);
-                if (availableBosses.length === 0) availableBosses = BOSS_POOL;
+            let bossSource;
+            if (spawn.name) {
+                // Pre-defined Campaign Boss
+                bossSource = spawn;
             } else {
-                availableBosses = BOSS_POOL.filter(b => !b.riftOnly);
+                // Random Rift Boss
+                let availableBosses = BOSS_POOL;
+                if (this.level > 7) {
+                    availableBosses = BOSS_POOL.filter(b => b.riftOnly);
+                    if (availableBosses.length === 0) availableBosses = BOSS_POOL;
+                } else {
+                    availableBosses = BOSS_POOL.filter(b => !b.riftOnly);
+                }
+                bossSource = availableBosses[Math.floor(Math.random() * availableBosses.length)];
             }
-            
-            const boss = availableBosses[Math.floor(Math.random() * availableBosses.length)];
-            this.icon = boss.icon || base.icon;
-            this.name = boss.name;
-            this.maxHp = Math.round(base.hp * scale * boss.hpMult);
-            this.dmg = Math.round(base.dmg * scale * boss.dmgMult);
-            this.xpReward = Math.round(base.xp * scale * boss.xpMult);
-            
+
+            this.icon = bossSource.icon || base.icon;
+            this.name = bossSource.name;
+            this.maxHp = Math.round(base.hp * scale * (bossSource.hpMult || 10) * diffMult);
+            this.dmg = Math.round(base.dmg * scale * (bossSource.dmgMult || 3) * diffMult);
+            this.xpReward = Math.round(base.xp * scale * (bossSource.xpMult || 20) * (1 + (window._difficulty || 0) * 0.5));
+
+            // Set specific boss flags for special AI behaviors
+            this.isAndariel = spawn.isAndariel || bossSource.id === 'andariel';
+            this.isDuriel = spawn.isDuriel || bossSource.id === 'duriel';
+            this.isMephisto = spawn.isMephisto || bossSource.id === 'mephisto';
+            this.isDiablo = spawn.isDiablo || bossSource.id === 'diablo';
+            this.isBaal = spawn.isBaal || bossSource.id === 'baal';
+            this.isUber = spawn.isUber || bossSource.isUber;
+            this.isButcher = spawn.isButcher || bossSource.id === 'butcher';
+
+            if (this.isAndariel) this.poisonRadius = 120;
+            if (this.isDuriel) { this.holyFreezeRadius = 100; this.holyFreezeSlow = 0.4; }
+
+            // --- Phase 29: Night Fury Bonus ---
+            if (window.isNight) {
+                this.maxHp = Math.round(this.maxHp * 1.15);
+                this.dmg = Math.round(this.dmg * 1.15);
+                this.xpReward = Math.round(this.xpReward * 1.25);
+                this.isNightFury = true; // Visual indicator flag
+            }
+
             this.isButcher = this.level === 5 && Math.random() < 1.0;
             if (this.isButcher) {
                 this.name = "The Butcher";
@@ -103,11 +184,89 @@ export class Enemy {
                 this.chargeCd = 5;
             }
 
-            if (boss.riftOnly) {
-                this.isRiftBoss = true;
-                this.element = boss.element || 'shadow';
+            this.isAndariel = spawn.isAndariel || spawn.id === 'andariel';
+            if (this.isAndariel) {
+                this.name = "Andariel";
+                this.icon = 'enemy_demon';
+                this.maxHp = Math.round(this.maxHp * 2.5);
+                this.dmg = Math.round(this.dmg * 1.5);
+                this.poisonRadius = 70;
             }
-        } else {
+
+            this.isDuriel = this.isDuriel || spawn.isDuriel || spawn.id === 'duriel';
+            this.isMephisto = this.isMephisto || spawn.isMephisto || spawn.id === 'mephisto' || spawn.id === 'uber_mephisto';
+            this.isDiablo = this.isDiablo || spawn.isDiablo || spawn.id === 'diablo' || spawn.id === 'uber_diablo';
+            this.isBaal = this.isBaal || spawn.isBaal || spawn.id === 'baal' || spawn.id === 'uber_baal';
+            this.isUber = bossSource.isUber || false;
+            if (this.isUber) {
+                this.name = bossSource.name;
+                this.renderScale *= 1.5;
+                this.radius *= 1.5;
+                this.allRes = 50;
+                this.fireRes = 75;
+                this.coldRes = 75;
+                this.lightRes = 75;
+            }
+
+            if (bossSource.riftOnly) {
+                this.isRiftBoss = true;
+                this.element = bossSource.element || 'shadow';
+            }
+        }
+
+        // --- Phase 23: Duriel Specialized States ---
+        this.isDuriel = this.isDuriel || (spawn.level === 10) || false;
+        if (this.isDuriel) {
+            this.name = "Duriel, Lord of Pain";
+            this.icon = 'enemy_demon';
+            this.maxHp = Math.round(this.maxHp * 3.5);
+            this.dmg = Math.round(this.dmg * 2.0);
+            this.hp = this.maxHp;
+            this.holyFreezeRadius = 250;
+            this.holyFreezeSlow = 0.5;
+        }
+
+        // --- Phase 24: Mephisto Specialized States ---
+        this.isMephisto = this.isMephisto || (spawn.level === 15) || (this.name === 'Mephisto, Lord of Hatred');
+        if (this.isMephisto) {
+            this.name = "Mephisto, Lord of Hatred";
+            this.icon = 'enemy_ghost';
+            this.maxHp = Math.round(this.maxHp * 2.5); // On top of boss pool base
+            this.hp = this.maxHp;
+            this.element = 'lightning';
+        }
+
+        // --- Phase 25: Diablo Specialized States ---
+        this.isDiablo = this.isDiablo || (spawn.level === 20);
+        if (this.isDiablo) {
+            this.name = "Diablo, Lord of Terror";
+            this.icon = 'enemy_demon';
+            this.maxHp = Math.round(this.maxHp * 3.5); // 7x base
+            this.dmg = Math.round(this.dmg * 2.5);
+            this.hp = this.maxHp;
+            this.element = 'fire';
+        }
+
+        // --- Phase 26: Baal Specialized States ---
+        this.isBaal = this.isBaal || (spawn.level === 25);
+        if (this.isBaal) {
+            this.name = "Baal, Lord of Destruction";
+            this.icon = 'enemy_cultist';
+            this.maxHp = Math.round(this.maxHp * 4.0); // 8x base
+            this.dmg = Math.round(this.dmg * 3.2);
+            this.hp = this.maxHp;
+            this.element = 'cold';
+        }
+        if (this.isBaal) {
+            this.name = "Baal, Lord of Destruction";
+            this.icon = 'enemy_cultist';
+            this.maxHp = Math.round(this.maxHp * 4.0); // 8x base
+            this.dmg = Math.round(this.dmg * 3.2);
+            this.hp = this.maxHp;
+            this.element = 'cold';
+        }
+
+        if (this.type !== 'boss') {
             this.icon = base.icon;
             this.name = base.name;
             if (this.type === 'elite') {
@@ -182,6 +341,21 @@ export class Enemy {
 
             this.affixDesc = chosen.map(a => a.name).join(', ');
 
+            // Affix Initialization
+            this.abilityCd = 4 + Math.random() * 4;
+            this.isMultiShot = base.isMultiShot || false;
+            this.isLightningEnchanted = base.isLightningEnchanted || false;
+
+            if (this.type === 'elite') {
+                const affix = ELITE_AFFIXES[Math.floor(Math.random() * ELITE_AFFIXES.length)];
+                this.name = `${RARE_PREFIX[Math.floor(Math.random() * RARE_PREFIX.length)]} ${RARE_SUFFIX[Math.floor(Math.random() * RARE_SUFFIX.length)]} (${affix.name})`;
+                affix.mod(this);
+                this.affix = affix;
+                this.xpReward *= 3;
+            }
+
+            this.hp = this.maxHp;
+
             if (this.type === 'rare') {
                 const pref = RARE_PREFIX[Math.floor(Math.random() * RARE_PREFIX.length)];
                 const suff = RARE_SUFFIX[Math.floor(Math.random() * RARE_SUFFIX.length)];
@@ -196,6 +370,7 @@ export class Enemy {
         this.stateTimer = 0;
 
         this._dots = [];
+        this.hitFlashTimer = 0;
     }
 
     update(dt, player, dungeon, allEnemies) {
@@ -216,7 +391,7 @@ export class Enemy {
                 fx.emitBurst(this.x, this.y, this.auraType === 'might' ? '#ffd700' : '#4080ff', 12, 1.5);
                 for (const other of allEnemies) {
                     if (other === this || other.hp <= 0) continue;
-                    const d = Math.sqrt((other.x - this.x)**2 + (other.y - this.y)**2);
+                    const d = Math.sqrt((other.x - this.x) ** 2 + (other.y - this.y) ** 2);
                     if (d < 200) {
                         if (this.auraType === 'might') {
                             other._auraBuff = { dmg: 1.5, timer: 1.5 };
@@ -228,9 +403,10 @@ export class Enemy {
             }
         }
 
-        // Lightning Enchanted reaction
-        if (this.isLightningEnchanted && this.hp < this._prevHp) {
-            if (Math.random() < 0.25) {
+        // Lightning Enchanted reaction & Hit Flash
+        if (this.hp < this._prevHp) {
+            this.hitFlashTimer = 0.1; // Flash for 100ms
+            if (this.isLightningEnchanted && Math.random() < 0.25) {
                 for (let i = 0; i < 4; i++) {
                     const angle = (Math.PI / 2) * i + Math.random();
                     const tx = this.x + Math.cos(angle) * 100;
@@ -242,12 +418,13 @@ export class Enemy {
             }
         }
         this._prevHp = this.hp;
+        this.hitFlashTimer = Math.max(0, this.hitFlashTimer - dt);
 
         // Teleporter AI
         if (this.canTeleport && player && this.state !== 'idle') {
             this._teleportCd = (this._teleportCd || 0) - dt;
             if (this._teleportCd <= 0) {
-                const dist = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
+                const dist = Math.sqrt((player.x - this.x) ** 2 + (player.y - this.y) ** 2);
                 if (dist < 80 || (this.attackType !== 'melee' && dist > 250)) {
                     const angle = Math.random() * Math.PI * 2;
                     const tx = player.x + Math.cos(angle) * 120;
@@ -266,7 +443,7 @@ export class Enemy {
         if (this.isRiftBoss && this.state !== 'dead') {
             const hpPct = this.hp / this.maxHp;
             if (!this._novaThresholds) this._novaThresholds = [0.75, 0.50, 0.25];
-            
+
             if (this._novaThresholds.length > 0 && hpPct <= this._novaThresholds[0]) {
                 this._novaThresholds.shift();
                 this._castRiftNova(this.element || 'shadow');
@@ -274,7 +451,19 @@ export class Enemy {
         }
 
         // Standard AI
+        this._updateStatus(dt);
         if (isCCd(this)) return;
+
+        // Fear Logic
+        if (isFeared(this)) {
+            const angle = Math.atan2(this.y - player.y, this.x - player.x) + (Math.random() - 0.5) * 0.5;
+            tryMove(Math.cos(angle) * this.moveSpeed * dt, Math.sin(angle) * this.moveSpeed * dt);
+            this._setAnimState('chase');
+            return; // Skip normal AI while feared
+        }
+
+        // Affix Abilities
+        if (this.type !== 'normal') this._tickEliteAbilities(dt);
 
         let currentMoveSpeed = this.moveSpeed;
         const slow = getSlowFactor(this);
@@ -283,12 +472,23 @@ export class Enemy {
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const distSq = dx * dx + dy * dy;
+
+        // --- Phase 23: Duriel Holy Freeze Aura ---
+        if (this.isDuriel && !this.fleeing) {
+            if (distSq < this.holyFreezeRadius * this.holyFreezeRadius) {
+                // Pulse 10 times a second for status, 1 time for damage
+                bus.emit('player:applyAuraSlow', { factor: this.holyFreezeSlow, duration: 0.2 });
+                if (Math.random() < 0.05) bus.emit('combat:applyDoT', { target: player, dmg: 2, duration: 1.0, type: 'cold' });
+            }
+        }
+
         const aggroRange = this.aggroRange;
 
         // Helper: try to move, allow sliding along walls if diagonal is blocked
         let movedThisFrame = false;
         let moveDx = 0, moveDy = 0;
         const tryMove = (mx, my) => {
+            if (isRooted(this)) return; // Rooted enemies cannot move
             moveDx = mx; moveDy = my;
             movedThisFrame = true;
             if (!dungeon) {
@@ -309,23 +509,54 @@ export class Enemy {
             this.state = 'flee';
         }
 
+        let effectiveDistSq = distSq;
+        if (effectiveDistSq < aggroRange * aggroRange) {
+            if ((this.state === 'patrol' || this.state === 'idle') && dungeon) {
+                if (!dungeon.hasLineOfSight(this.x, this.y, player.x, player.y)) {
+                    effectiveDistSq = Infinity;
+                }
+            }
+        }
+
         if (this.fleeing) {
             const angle = Math.atan2(-dy, -dx);
             tryMove(Math.cos(angle) * this.moveSpeed * 1.2 * dt, Math.sin(angle) * this.moveSpeed * 1.2 * dt);
-            if (distSq > aggroRange * aggroRange * 2) this.fleeing = false;
+            if (effectiveDistSq > aggroRange * aggroRange * 2) this.fleeing = false;
         }
-        else if (distSq < aggroRange * aggroRange) {
+        else if (effectiveDistSq < aggroRange * aggroRange) {
             this.state = 'chase';
             const angle = Math.atan2(dy, dx);
-            
+
+            // Harden LOS: If target obstructed, increment timer. If >4s, drop aggro.
+            const hasLOS = dungeon ? dungeon.hasLineOfSight(this.x, this.y, player.x, player.y) : true;
+            if (!hasLOS) {
+                this.lostTargetTimer += dt;
+                if (this.lostTargetTimer > 4.0) {
+                    this.state = 'patrol';
+                    this.targetX = this.homeX;
+                    this.targetY = this.homeY;
+                    this.lostTargetTimer = 0;
+                    return;
+                }
+            } else {
+                this.lostTargetTimer = 0;
+            }
+
             // Special Boss skill: Charge
-            if (this.isButcher && distSq < 150*150 && distSq > 60*60) {
+            if (this.isButcher && distSq < 150 * 150 && distSq > 60 * 60) {
                 this.chargeCd = (this.chargeCd || 0) - dt;
                 if (this.chargeCd <= 0 && !this.isCharging) {
                     this.isCharging = true;
                     this.chargeTimer = 0.8;
                     this.chargeAngle = angle;
-                    bus.emit('combat:log', { text: "FRESH MEAT!", type: 'log-crit' });
+                    if (this.leavesPoisonCloud && fx && fx.emitPoisonCloud) {
+                        fx.emitPoisonCloud(this.x, this.y, 40);
+                        // Also apply a small burst of dmg to nearby players
+                        const d = Math.hypot(this.x - player.x, this.y - player.y);
+                        if (d < 40) bus.emit('combat:applyDoT', { target: player, dmg: this.dmg * 0.5, duration: 4, type: 'poison' });
+                    }
+
+                    bus.emit('combat:log', { text: `${this.name} falls!`, type: 'log-info' });
                 }
             }
 
@@ -336,10 +567,50 @@ export class Enemy {
                 bus.emit('combat:spawnMinions', { x: this.x, y: this.y, count: 4 });
             }
 
+            // Special Boss skill: Poison Nova (Andariel)
+            if (this.isAndariel && Math.random() < 0.04) {
+                if (fx && fx.emitPoisonCloud) {
+                    fx.emitPoisonCloud(this.x, this.y, this.poisonRadius);
+                    // Check if player in poison area
+                    const d = Math.hypot(player.x - this.x, player.y - this.y);
+                    if (d < this.poisonRadius) {
+                        bus.emit('combat:log', { text: " Maiden of Anguish poisons you!", type: 'log-dmg' });
+                        bus.emit('combat:applyDoT', { target: player, dmg: this.dmg * 0.25, duration: 6, type: 'poison' });
+                    }
+                }
+            }
+
+            // --- Phase 30 Mastery: Endgame Boss Skills ---
+            if (this.isDiablo && Math.random() < 0.03) {
+                bus.emit('combat:log', { text: "Diablo unleashes Fire Nova!", type: 'log-crit' });
+                if (fx) fx.emitShockwave(this.x, this.y, 150, '#ff4000');
+                const dist = Math.hypot(player.x - this.x, player.y - this.y);
+                if (dist < 150) {
+                    bus.emit('combat:applyDamage', { attacker: this, target: player, dealt: this.dmg * 1.5, type: 'fire' });
+                }
+            }
+
+            if (this.isBaal && Math.random() < 0.02) {
+                bus.emit('combat:log', { text: "Baal casts Hoarfrost!", type: 'log-crit' });
+                if (fx) fx.emitShockwave(this.x, this.y, 120, '#4080ff');
+                const dist = Math.hypot(player.x - this.x, player.y - this.y);
+                if (dist < 120) {
+                    bus.emit('combat:applyDamage', { attacker: this, target: player, dealt: this.dmg, type: 'cold' });
+                    player.pushX = (player.x - this.x) * 5;
+                    player.pushY = (player.y - this.y) * 5;
+                }
+            }
+
+            if (this.isMephisto && Math.random() < 0.03) {
+                bus.emit('combat:log', { text: "Mephisto summons Lightning Storm!", type: 'log-crit' });
+                if (fx) fx.emitBurst(player.x, player.y, '#ffff40', 30, 2);
+                bus.emit('combat:applyDamage', { attacker: this, target: player, dealt: this.dmg * 1.2, type: 'lightning' });
+            }
+
             if (this.isCharging) {
                 this.chargeTimer -= dt;
                 tryMove(Math.cos(this.chargeAngle) * this.moveSpeed * 4 * dt, Math.sin(this.chargeAngle) * this.moveSpeed * 4 * dt);
-                if (distSq < 15*15) {
+                if (distSq < 15 * 15) {
                     // Hit player during charge
                     player.hp -= this.dmg * 1.5;
                     this.isCharging = false;
@@ -349,7 +620,8 @@ export class Enemy {
                     this.isCharging = false;
                     this.chargeCd = 6;
                 }
-            } else if (distSq > this.attackRange * this.attackRange) {
+            } else if (distSq > this.attackRange * this.attackRange || (dungeon && !dungeon.hasLineOfSight(this.x, this.y, player.x, player.y))) {
+                // Not in range OR obstructed by wall -> Move closer
                 tryMove(Math.cos(angle) * this.moveSpeed * dt, Math.sin(angle) * this.moveSpeed * dt);
             } else if (this.attackType !== 'melee' && distSq < (this.attackRange * 0.4) ** 2) {
                 // Kiting: Ranged/Caster enemies back away if player gets too close
@@ -411,11 +683,227 @@ export class Enemy {
         }
     }
 
+    _updateStatus(dt) {
+        if (!this._statuses) return;
+        for (let i = this._statuses.length - 1; i >= 0; i--) {
+            const s = this._statuses[i];
+            s.timer -= dt;
+            if (s.timer <= 0) this._statuses.splice(i, 1);
+        }
+    }
+
+    _tickEliteAbilities(dt) {
+        if (this.abilityCd > 0) {
+            this.abilityCd -= dt;
+            return;
+        }
+
+        const player = window.player;
+        if (!player) return;
+
+        const distSq = (player.x - this.x) ** 2 + (player.y - this.y) ** 2;
+        if (distSq > 350 * 350) return; // Only if somewhat near player
+
+        const affixName = this.affix?.name || (this.type === 'boss' ? 'Boss' : '');
+        let used = false;
+
+        if (affixName === 'Frozen' || (this.type === 'boss' && Math.random() < 0.2)) {
+            // Spawn an Ice Orb AoE
+            const ox = player.x + (Math.random() - 0.5) * 40;
+            const oy = player.y + (Math.random() - 0.5) * 40;
+            bus.emit('combat:spawnAoE', {
+                aoe: {
+                    x: ox, y: oy, radius: 60, duration: 2.5, dmg: this.dmg * 1.5, type: 'cold', source: this, active: true,
+                    isOrb: true, timer: 2.0,
+                    update: function (dt, enemies, p) {
+                        this.timer -= dt;
+                        if (this.timer <= 0 && this.active) {
+                            this.active = false;
+                            fx.emitBurst(this.x, this.y, '#80d0ff', 20, 2);
+                            fx.emitShockwave(this.x, this.y, this.radius, '#ffffff');
+                            const d = Math.hypot(p.x - this.x, p.y - this.y);
+                            if (d < this.radius) {
+                                import('../systems/combat.js').then(c => {
+                                    c.applyDamage(this.source, p, { dealt: this.dmg, isCrit: false, type: 'cold' });
+                                    c.applyStatus(p, 'frozen', 1.5);
+                                });
+                            }
+                            this.duration = 0.1; // Kill AoE
+                        }
+                    },
+                    render: function (renderer) {
+                        const ctx = renderer.ctx || renderer;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius * (1 - this.timer / 2), 0, Math.PI * 2);
+                        ctx.strokeStyle = '#80d0ff';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        // Pulse core
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, 10 + Math.sin(Date.now() / 100) * 5, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(128, 208, 255, 0.4)';
+                        ctx.fill();
+                    }
+                }
+            });
+            used = true;
+        } else if (affixName === 'Teleporter' || (this.type === 'boss' && Math.random() < 0.1)) {
+            fx.emitShadow(this.x, this.y);
+            this.x = player.x + (Math.random() - 0.5) * 200;
+            this.y = player.y + (Math.random() - 0.5) * 200;
+            fx.emitShadow(this.x, this.y);
+            used = true;
+        } else if (this.isMephisto && Math.random() < 0.3) {
+            // Mephisto Skill: Skull Missile (Cold/Magic)
+            const angle = Math.atan2(player.y - this.y, player.x - this.x);
+            const tx = this.x + Math.cos(angle) * 100;
+            const ty = this.y + Math.sin(angle) * 100;
+            const proj = new Projectile(
+                this.x, this.y, tx, ty, 180, '#fff', this.dmg * 2.0, 'cold', this, false, 15, 0, 0, 'mephisto_skull'
+            );
+            bus.emit('combat:spawnProjectile', { proj });
+            used = true;
+        } else if (this.isMephisto && Math.random() < 0.2) {
+            // Mephisto Skill: Lightning Storm
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const tx = this.x + Math.cos(angle) * 100;
+                const ty = this.y + Math.sin(angle) * 100;
+                const proj = new Projectile(
+                    this.x, this.y, tx, ty, 220, '#ffff80', this.dmg * 1.5, 'lightning', this, false, 8, 0, 0, 'mephisto_lightning'
+                );
+                bus.emit('combat:spawnProjectile', { proj });
+            }
+            used = true;
+        } else if (this.isBaal && Math.random() < 0.4) {
+            // Baal Skill: Hoarfrost
+            const angle = Math.atan2(player.y - this.y, player.x - this.x);
+            const tx = this.x + Math.cos(angle) * 100;
+            const ty = this.y + Math.sin(angle) * 100;
+            const proj = new Projectile(
+                this.x, this.y, tx, ty, 180, '#fff', this.dmg * 2.0, 'cold', this, false, 25, 0, 0, 'baal_hoarfrost'
+            );
+            bus.emit('combat:spawnProjectile', { proj });
+            used = true;
+        } else if (this.isBaal && Math.random() < 0.3) {
+            // Baal Skill: Festering Appendages
+            for (let i = 0; i < 3; i++) {
+                const tx = player.x + (Math.random() - 0.5) * 100;
+                const ty = player.y + (Math.random() - 0.5) * 100;
+                bus.emit('combat:spawnAoE', {
+                    aoe: {
+                        x: tx, y: ty, radius: 30, duration: 6.0, dmg: this.dmg * 0.5, tickRate: 0.5, type: 'physical', source: this, active: true,
+                        update: function (dt, enemies, player) {
+                            this.duration -= dt;
+                            if (this.duration <= 0) { this.active = false; return; }
+                            this.nextTick = (this.nextTick || 0) - dt;
+                            if (this.nextTick <= 0) {
+                                this.nextTick = this.tickRate;
+                                const d = Math.hypot(player.x - this.x, player.y - this.y);
+                                if (d < this.radius) {
+                                    import('../systems/combat.js').then(c => {
+                                        c.applyDamage(this.source, player, { dealt: this.dmg, isCrit: false, type: 'physical' });
+                                    });
+                                }
+                            }
+                        },
+                        render: function (renderer, time) {
+                            const ctx = renderer.ctx || renderer;
+                            ctx.beginPath();
+                            ctx.arc(this.x, this.y, this.radius * (0.8 + Math.sin(time / 200) * 0.2), 0, Math.PI * 2);
+                            ctx.fillStyle = 'rgba(100, 30, 20, 0.6)';
+                            ctx.fill();
+                            ctx.strokeStyle = '#600000';
+                            ctx.stroke();
+                            // Tentacle spike
+                            ctx.fillStyle = '#400000';
+                            ctx.fillRect(this.x - 4, this.y - 20, 8, 40);
+                        }
+                    }
+                });
+            }
+            used = true;
+        } else if (this.isBaal && Math.random() < 0.15) {
+            // Baal Skill: Duplicate (Visual/Simplified)
+            bus.emit('combat:log', { text: "Baal: 'My brothers will not have died in vain!'", type: 'log-info' });
+            fx.emitBurst(this.x, this.y, '#8040ff', 40, 3);
+            // We don't have a clean mid-combat enemy injector here without more logic, 
+            // so we'll just buff his attack speed and damage briefly to simulate the dual-threat
+            this.dmg *= 1.2;
+            this.atkSpeed *= 1.5;
+            setTimeout(() => { if (this.hp > 0) { this.dmg /= 1.2; this.atkSpeed /= 1.5; } }, 5000);
+            used = true;
+        } else if (this.isDiablo && Math.random() < 0.4) {
+            // Diablo Skill: Fire Nova
+            for (let i = 0; i < 16; i++) {
+                const angle = (i / 16) * Math.PI * 2;
+                const tx = this.x + Math.cos(angle) * 100;
+                const ty = this.y + Math.sin(angle) * 100;
+                const proj = new Projectile(
+                    this.x, this.y, tx, ty, 150, '#ff4000', this.dmg * 1.2, 'fire', this, false, 10, 0, 0, 'diablo_fire_nova'
+                );
+                bus.emit('combat:spawnProjectile', { proj });
+            }
+            used = true;
+        } else if (this.isDiablo && Math.random() < 0.3) {
+            // Diablo Skill: Red Lightning Hose
+            const baseAngle = Math.atan2(player.y - this.y, player.x - this.x);
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    if (this.hp <= 0) return;
+                    const angle = baseAngle + (Math.random() - 0.5) * 0.2;
+                    const tx = this.x + Math.cos(angle) * 100;
+                    const ty = this.y + Math.sin(angle) * 100;
+                    const proj = new Projectile(
+                        this.x, this.y, tx, ty, 300, '#ff2020', this.dmg * 0.8, 'lightning', this, false, 12, 0, 0, 'diablo_lightning_hose'
+                    );
+                    bus.emit('combat:spawnProjectile', { proj });
+                }, i * 100);
+            }
+            used = true;
+        } else if ((this.isDiablo && Math.random() < 0.2) || affixName === 'Waller' || (this.type === 'boss' && Math.random() < 0.15)) {
+            // Diablo Skill: Bone Prison (or standard Waller)
+            const count = this.isDiablo ? 8 : 4;
+            const radius = this.isDiablo ? 60 : 100;
+            for (let i = 0; i < count; i++) {
+                const angle = (i / count) * Math.PI * 2 + (this.isDiablo ? 0 : Math.random());
+                const wx = player.x + Math.cos(angle) * radius;
+                const wy = player.y + Math.sin(angle) * radius;
+                bus.emit('combat:spawnAoE', {
+                    aoe: {
+                        x: wx, y: wy, radius: 25, duration: 4.0, dmg: 0, type: 'wall', source: this, active: true,
+                        isWall: true,
+                        update: function (dt) {
+                            this.duration -= dt;
+                            if (this.duration <= 0) this.active = false;
+                        },
+                        render: function (renderer) {
+                            const ctx = renderer.ctx || renderer;
+                            ctx.beginPath();
+                            ctx.rect(this.x - 12, this.y - 12, 24, 24);
+                            ctx.fillStyle = this.source.isDiablo ? 'rgba(200, 50, 50, 0.8)' : 'rgba(100, 100, 100, 0.8)';
+                            ctx.fill();
+                            ctx.strokeStyle = '#fff';
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                            // Inner glow
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                            ctx.fillRect(this.x - 8, this.y - 8, 16, 16);
+                        }
+                    }
+                });
+            }
+            used = true;
+        }
+
+        if (used) this.abilityCd = 6 + Math.random() * 4;
+    }
+
     _onDeath(player) {
         if (this.isFireEnchanted) {
             fx.emitBurst(this.x, this.y, '#ff4000', 40, 3);
             fx.emitShockwave(this.x, this.y, 100, '#ff6000');
-            const d = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
+            const d = Math.sqrt((player.x - this.x) ** 2 + (player.y - this.y) ** 2);
             if (d < 100) {
                 import('../systems/combat.js').then(c => c.applyDamage(this, player, { dealt: this.dmg * 2.5, isCrit: false, type: 'fire' }));
                 bus.emit('combat:log', { text: "Fire Enchanted explosion hit you!", type: 'log-dmg' });
@@ -424,7 +912,7 @@ export class Enemy {
         if (this.isColdEnchanted) {
             fx.emitBurst(this.x, this.y, '#4080ff', 35, 2.5);
             fx.emitShockwave(this.x, this.y, 120, '#80d0ff');
-            const d = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
+            const d = Math.sqrt((player.x - this.x) ** 2 + (player.y - this.y) ** 2);
             if (d < 120) {
                 import('../systems/combat.js').then(c => {
                     c.applyDamage(this, player, { dealt: this.dmg * 1.5, isCrit: false, type: 'cold' });
@@ -433,27 +921,52 @@ export class Enemy {
                 bus.emit('combat:log', { text: "Cold Enchanted nova froze you!", type: 'log-dmg' });
             }
         }
+
+        // --- Phase 27: Hellfire Key Drops ---
+        const bossKeys = ['andariel', 'duriel', 'mephisto', 'diablo', 'baal'];
+        if (bossKeys.includes(this.id) && Math.random() < 0.1) {
+            import('../systems/lootSystem.js').then(l => {
+                const keyItem = { id: 'hellfire_key', name: "Hellfire Key", rarity: 'normal', icon: 'item_key', type: 'key' };
+                // We'll trust the caller (main.js) already has a droppedItems array or similar. 
+                // Actually, bosses already drop items in the main game loop via loot.roll.
+                // I'll signal main.js instead.
+                bus.emit('loot:special', { item: keyItem, x: this.x, y: this.y });
+            });
+        }
+
+        // Uber Boss Reward: Hellfire Torch
+        if (this.isUber) {
+            import('../systems/lootSystem.js').then(l => {
+                // The actual drop is handled in the main loop's death check for bosses usually,
+                // but we can force a guaranteed unique here.
+                bus.emit('loot:special', { itemId: 'hellfire_torch', x: this.x, y: this.y });
+            });
+        }
     }
 
     _castRiftNova(element) {
         bus.emit('combat:log', { text: `${this.name} unleashes a devastating ${element} nova!`, type: 'log-crit' });
         const colors = { fire: '#ff4000', cold: '#4080ff', lightning: '#ffff40', shadow: '#cc60ff', physical: '#aaaaaa' };
-        bus.emit('combat:spawnAoE', { aoe: {
-            x: this.x, y: this.y, radius: 150, duration: 1.0, dmg: this.dmg * 2, type: element, source: this, active: true, hasHit: false,
-            update: function(dt, enemies, player) {
-                if (!this.hasHit) {
-                    const d = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
-                    if (d < this.radius) { 
-                        import('../systems/combat.js').then(c => c.applyDamage(this.source, player, { dealt: this.dmg, isCrit: false, type: this.type }));
+        bus.emit('combat:spawnAoE', {
+            aoe: {
+                x: this.x, y: this.y, radius: 150, duration: 1.0, dmg: this.dmg * 2, type: element, source: this, active: true, hasHit: false,
+                update: function (dt, enemies, player) {
+                    this.duration -= dt;
+                    if (this.duration <= 0) { this.active = false; return; }
+                    if (!this.hasHit) {
+                        const d = Math.sqrt((player.x - this.x) ** 2 + (player.y - this.y) ** 2);
+                        if (d < this.radius) {
+                            import('../systems/combat.js').then(c => c.applyDamage(this.source, player, { dealt: this.dmg, isCrit: false, type: this.type }));
+                        }
+                        this.hasHit = true;
                     }
-                    this.hasHit = true;
+                },
+                render: (r) => {
+                    fx.emitBurst(this.x, this.y, colors[element] || '#ff0000', 40, 3);
+                    fx.emitShockwave(this.x, this.y, 150, colors[element] || '#ff0000');
                 }
-            },
-            render: (r) => { 
-                fx.emitBurst(this.x, this.y, colors[element] || '#ff0000', 40, 3); 
-                fx.emitShockwave(this.x, this.y, 150, colors[element] || '#ff0000'); 
             }
-        }});
+        });
     }
 
     _setAnimState(state) {
@@ -479,7 +992,8 @@ export class Enemy {
             this._setAnimState('attack');
 
             if (this.attackType === 'melee') {
-                const result = calcDamage(this, this.dmg, DMG_TYPE.PHYSICAL, target);
+                const finalDmg = this.dmg * (1 - (this.damageDebuff || 0) / 100);
+                const result = calcDamage(this, finalDmg, DMG_TYPE.PHYSICAL, target);
                 applyDamage(this, target, result);
 
                 // Enemy attack VFX on the target (player)
@@ -496,12 +1010,13 @@ export class Enemy {
                 const targetX = target.x + (Math.random() - 0.5) * 20;
                 const targetY = target.y + (Math.random() - 0.5) * 20;
 
+                const finalDmg = this.dmg * (1 - (this.damageDebuff || 0) / 100);
                 const proj = new Projectile(
-                    this.x, this.y, targetX, targetY, speed, this.projColor, 
-                    this.dmg, this.element, this, false, this.projRadius, 0, 0, 'enemy_attack'
+                    this.x, this.y, targetX, targetY, speed, this.projColor,
+                    finalDmg, this.element, this, false, this.projRadius, 0, 0, 'enemy_attack'
                 );
                 bus.emit('combat:spawnProjectile', { proj });
-                
+
                 // Caster VFX
                 if (this.attackType === 'caster') {
                     if (this.element === 'fire') fx.emitBurst(this.x, this.y, '#ff4000', 10, 2);
@@ -529,22 +1044,36 @@ export class Enemy {
         }
 
         // Shadow
+        // Shadow
         renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)';
         renderer.ctx.beginPath();
         renderer.ctx.ellipse(this.x, this.y + 6, this.type === 'normal' ? 6 : 10, 3, 0, 0, Math.PI * 2);
         renderer.ctx.fill();
 
+        // Aura
+        if (this.type !== 'normal') {
+            const auraColor = this.type === 'boss' ? 'rgba(200, 0, 255, 0.4)' : 'rgba(212, 175, 55, 0.4)';
+            renderer.ctx.save();
+            renderer.ctx.beginPath();
+            const pulse = 1 + Math.sin(Date.now() / 200) * 0.1;
+            renderer.ctx.arc(this.x, this.y, (this.radius || 10) * 1.3 * pulse, 0, Math.PI * 2);
+            renderer.ctx.strokeStyle = auraColor;
+            renderer.ctx.lineWidth = 3;
+            renderer.ctx.setLineDash([5, 5]); // Dashed aura ring
+            renderer.ctx.lineDashOffset = Date.now() / 50;
+            renderer.ctx.stroke();
+            renderer.ctx.restore();
+        }
 
         // Sprite animation with Aggro Tint & Status Tints
         const baseSize = this.isButcher ? 42 : (this.type === 'normal' ? 16 : (this.type === 'boss' ? 32 : 24));
         const isAggro = this.state === 'chase' || this.state === 'attack';
-        
-        // Elites get a yellow/gold aura, Bosses get a red aura, aggro gets a red tint
+
         let aggroFilter = '';
         if (isElite) aggroFilter += 'drop-shadow(0 0 6px #f0d030) ';
         if (this.type === 'boss') aggroFilter += 'drop-shadow(0 0 8px #ff0000) ';
         if (isAggro) aggroFilter += 'sepia(0.5) saturate(2) hue-rotate(-50deg) ';
-        
+
         // Status Tints
         if (this._statuses) {
             for (const s of this._statuses) {
@@ -552,24 +1081,28 @@ export class Enemy {
                     aggroFilter += ' hue-rotate(160deg) saturate(1.5) brightness(1.2) ';
                 } else if (s.type === 'burn') {
                     aggroFilter += ' hue-rotate(-30deg) saturate(2) brightness(1.1) ';
+                } else if (s.type === 'stun') {
+                    aggroFilter += ' brightness(1.5) saturate(1.5) sepia(0.3) ';
+                } else if (s.type === 'blind') {
+                    aggroFilter += ' grayscale(0.8) brightness(0.7) ';
                 }
             }
         }
-        
-        renderer.drawAnim(this.icon, this.x, this.y - 4, baseSize, this.animState, this.facingDir, time, aggroFilter || null);
+
+        renderer.drawAnim(this.icon, this.x, this.y - 4, baseSize, this.animState, this.facingDir, time, aggroFilter || null, null, this.hitFlashTimer);
 
         // HP Bar
         const barW = 20;
         const barH = 2;
         renderer.ctx.fillStyle = '#333';
         renderer.ctx.fillRect(this.x - barW / 2, this.y - 15, barW, barH);
-        
+
         let hpColor = '#c0392b'; // Default red
         if (this.type === 'unique') hpColor = '#bf642f'; // Unique Gold
         else if (this.type === 'rare') hpColor = '#ffff00'; // Rare Yellow
         else if (this.type === 'champion') hpColor = '#4850b8'; // Champion Blue
         else if (this.type === 'boss') hpColor = '#eeca2c'; // Boss Bright Gold
-        
+
         renderer.ctx.fillStyle = hpColor;
         renderer.ctx.fillRect(this.x - barW / 2, this.y - 15, barW * (this.hp / this.maxHp), barH);
 

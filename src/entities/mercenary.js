@@ -10,27 +10,31 @@ import { fx } from '../engine/ParticleSystem.js';
 export class Mercenary {
     constructor(data) {
         this.name = data.name || 'Mercenary';
-        this.className = data.className || 'Rogue';
+        this.className = data.className || 'Rogue'; // Rogue, Desert Warrior, Iron Wolf
         this.level = data.level || 1;
         this.icon = data.icon || 'class_rogue';
         
         this.x = data.x || 0;
         this.y = data.y || 0;
         
-        this.maxHp = data.maxHp || (60 + this.level * 15);
-        this.hp = data.hp || this.maxHp;
-        this.dmg = data.dmg || (5 + this.level * 2);
+        this.xp = data.xp || 0;
+        this.xpToNextLevel = this._calcXpReq(this.level);
+        
+        this.maxHp = 100; // Base, will be recalced
+        this.hp = data.hp || 100;
+        this.dmg = 10;
         
         this.isMercenary = true;
         this.isPlayer = true; // For faction targeting
-        
         this.equipment = data.equipment || {
             head: null,
             chest: null,
-            mainhand: null
+            mainhand: null,
+            offhand: null
         };
         
         this._atkCd = 0;
+        this._auraCd = 0;
         this.atkSpeed = 1.2;
         
         this.resists = { fire: 0, cold: 0, light: 0, pois: 0 };
@@ -38,11 +42,29 @@ export class Mercenary {
         this._recalcStats();
     }
 
+    _calcXpReq(lvl) {
+        return Math.floor(100 * Math.pow(lvl, 1.8));
+    }
+
+    gainXp(amount) {
+        this.xp += amount;
+        if (this.xp >= this.xpToNextLevel) {
+            this.level++;
+            this.xp -= this.xpToNextLevel;
+            this.xpToNextLevel = this._calcXpReq(this.level);
+            this._recalcStats();
+            this.hp = this.maxHp;
+            fx.emitBurst(this.x, this.y, '#ffd700', 30, 3);
+            bus.emit('combat:log', { text: `${this.name} has reached level ${this.level}!`, type: 'log-level' });
+        }
+    }
+
     serialize() {
         return {
             name: this.name,
             className: this.className,
             level: this.level,
+            xp: this.xp,
             icon: this.icon,
             maxHp: this.maxHp,
             hp: this.hp,
@@ -148,14 +170,22 @@ export class Mercenary {
             this.x = player.x + (Math.random() - 0.5) * 40;
             this.y = player.y + (Math.random() - 0.5) * 40;
             fx.emitBurst(this.x, this.y, '#ffffff', 15, 2);
-            return; // Skip combat this frame after TP
+            return;
         }
 
-        // Soft Leash: Prioritize following if distance becomes significant
-        const isFar = md > 250;
-        const speed = isFar ? 140 : 85; // Faster when catching up
+        // --- Phase 28: Auras (Act 2 Desert Warrior) ---
+        if (this.className === 'Desert Warrior') {
+            this._auraCd -= dt;
+            if (this._auraCd <= 0) {
+                this._auraCd = 3.0; // Pulse every 3s
+                this.pulseAura(player);
+            }
+        }
 
-        if (md > 60) {
+        const isFar = md > 250;
+        const speed = isFar ? 150 : 90;
+
+        if (md > 70) {
             const moveX = (mx / md) * speed * dt;
             const moveY = (my / md) * speed * dt;
             if (dungeon.isWalkable(this.x + moveX, this.y + moveY)) {
@@ -164,11 +194,10 @@ export class Mercenary {
             }
         }
 
-        // Only look for enemies if NOT in "urgent follow" mode
         if (isFar) return; 
 
         // Combat AI
-        let closestEnemy = null, closestDist = 250;
+        let closestEnemy = null, closestDist = (this.className === 'Rogue') ? 350 : (this.className === 'Iron Wolf' ? 300 : 80);
         for (const e of enemies) {
             if (e.hp <= 0) continue;
             const ed = Math.sqrt((e.x - this.x) ** 2 + (e.y - this.y) ** 2);
@@ -179,26 +208,49 @@ export class Mercenary {
             this._atkCd -= dt;
             if (this._atkCd <= 0) {
                 this.attack(closestEnemy);
-                this._atkCd = 1.2;
+                this._atkCd = 1 / this.atkSpeed;
             }
         }
 
-        // Passive regen
-        this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.005 * dt);
+        this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.008 * dt);
+    }
+
+    pulseAura(player) {
+        fx.emitShockwave(this.x, this.y, 120, 'rgba(255, 215, 0, 0.3)');
+        const dist = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
+        if (dist < 200) {
+            // Might Aura: +20% Dmg for 4s
+            import('../systems/combat.js').then(c => {
+                c.applyStatus(player, 'might', 4, 1.25);
+                bus.emit('log:add', { text: `${this.name}'s Might Aura empowers you!`, type: 'log-info' });
+            });
+        }
     }
 
     attack(target) {
-        const dmg = this.baseDmg + Math.floor(Math.random() * 5);
-        let pType = 'physical', sprite = 'ra-arrow', pDmg = dmg;
-        const roll = Math.random();
-        if (roll < 0.15) { pType = 'fire'; pDmg *= 1.3; }
-        else if (roll < 0.30) { pType = 'cold'; pDmg *= 1.2; }
-
-        const proj = new Projectile(
-            this.x, this.y,
-            target.x, target.y,
-            300, sprite, pDmg, pType, this, false, 8, 0, 0, 'arrow'
-        );
-        bus.emit('combat:spawnProjectile', { proj });
+        const dmg = this.baseDmg + Math.floor(Math.random() * (this.level * 2));
+        
+        if (this.className === 'Iron Wolf') {
+            // Spellcast
+            const spells = [
+                { type: 'fire', color: '#ff4000', life: 1.2, speed: 250 },
+                { type: 'cold', color: '#4080ff', life: 1.5, speed: 220 },
+                { type: 'lightning', color: '#ffff40', life: 1.0, speed: 400 }
+            ];
+            const s = spells[Math.floor(Math.random() * spells.length)];
+            const proj = new Projectile(this.x, this.y, target.x, target.y, s.speed, 'ra-circle', dmg * 1.5, s.type, this, false, 15, 0, 0, 'bolt');
+            bus.emit('combat:spawnProjectile', { proj });
+            fx.emitBurst(this.x, this.y, s.color, 15, 1.5);
+        } else if (this.className === 'Desert Warrior') {
+            // Melee Poke
+            import('../systems/combat.js').then(c => {
+                c.applyDamage(this, target, { dealt: dmg * 1.2, isCrit: Math.random() < 0.1, type: 'physical' });
+            });
+            fx.emitSlash(this.x, this.y, Math.atan2(target.y - this.y, target.x - this.x), '#cccccc', 40);
+        } else {
+            // Default Rogue Archer
+            const proj = new Projectile(this.x, this.y, target.x, target.y, 350, 'ra-arrow', dmg, 'physical', this, false, 8, 0, 0, 'arrow');
+            bus.emit('combat:spawnProjectile', { proj });
+        }
     }
 }

@@ -9,6 +9,7 @@ import { calcDamage, applyDamage, applyDot, skillDamage, skillType, DMG_TYPE } f
 import { RARITY, SETS } from '../systems/lootSystem.js';
 import { Projectile, AoEZone } from './projectile.js';
 import { fx } from '../engine/ParticleSystem.js';
+import { SkillLogic } from '../systems/skillLogic.js';
 
 const XP_TABLE = Array.from({ length: 100 }, (_, i) => Math.round(80 * Math.pow(1.18, i)));
 const MOVE_SPEED_BASE = 100; // px/s in world space
@@ -31,6 +32,18 @@ export class Player {
         // Base stats
         this.level = 1;
         this.xp = 0;
+        
+        // Paragon System (Phase 23)
+        this.paragonLevel = 0;
+        this.paragonXp = 0;
+        this.paragonPoints = 0;
+        this.paragonStats = {
+            core: { str: 0, dex: 0, int: 0, vit: 0 },
+            offense: { ias: 0, crit: 0 },
+            defense: { armor: 0, res: 0 },
+            utility: { mf: 0, gf: 0 }
+        };
+
         this.statPoints = 0;
         this.gold = 0;
         this.totalMonstersSlain = 0;
@@ -41,6 +54,9 @@ export class Player {
         this.baseVit = cls.stats.vit;
         this.baseInt = cls.stats.int;
 
+        this.fleeTimer = 0;
+        this.hitFlashTimer = 0;
+        this.lastAttacker = null;
 
         // Talent tree
         this.talents = new TalentTree(classId);
@@ -64,6 +80,7 @@ export class Player {
         this.moveSpeed = MOVE_SPEED_BASE;
         this.attackTarget = null;
         this.attackCd = 0;
+        this.pushX = 0; this.pushY = 0;
 
         // Active effects
         this._dots = [];
@@ -79,6 +96,11 @@ export class Player {
 
         // Listen
         bus.on('input:click', d => this._onClick(d));
+        bus.on('player:applyAuraSlow', d => {
+            if (this.hp <= 0) return;
+            this._auraSlow = d.factor; // e.g. 0.5 for 50% slow
+            this._auraSlowTimer = d.duration; // e.g. 0.2s
+        });
         for (let i = 0; i < 5; i++) {
             bus.on(`skill:use:${i}`, d => this._useSkill(i, d));
         }
@@ -111,10 +133,22 @@ export class Player {
             // shrine_exp is handled locally in the kill loop where XP is awarded
         }
 
+        // --- Phase 23: Paragon Stats ---
+        const p = this._paragonStats();
+        for (const k in p) s[k] = (s[k] || 0) + p[k];
+
         this.str = this.baseStr + (s.flatSTR || 0);
         this.dex = this.baseDex + (s.flatDEX || 0);
         this.vit = this.baseVit + (s.flatVIT || 0);
         this.int = this.baseInt + (s.flatINT || 0);
+
+        // Phase 23: Paragon stats integration
+        const ps = this._paragonStats();
+        if (ps. flatSTR) this.str += ps.flatSTR;
+        if (ps.flatDEX) this.dex += ps.flatDEX;
+        if (ps.flatVIT) this.vit += ps.flatVIT;
+        if (ps.flatINT) this.int += ps.flatINT;
+        for (const k in ps) { if (!k.startsWith('flat')) s[k] = (s[k]||0) + ps[k]; }
 
         this.maxHp = Math.round((50 + this.vit * 8 + this.level * 5 + (s.flatHP || 0)) * (1 + (s.pctHP || 0) / 100));
         this.maxMp = Math.round((30 + this.int * 5 + this.level * 3 + (s.flatMP || 0)) * (1 + (s.pctMP || 0) / 100));
@@ -125,6 +159,15 @@ export class Player {
         this.lifeStealPct = s.lifeStealPct || 0;
         this.manaStealPct = s.manaStealPct || 0;
         this.moveSpeed = MOVE_SPEED_BASE * (1 + (s.pctMoveSpeed || 0) / 100);
+
+        // --- Phase 23: Apply Aura Slow ---
+        if (this._auraSlowTimer > 0) {
+            const factor = this._auraSlow || 0;
+            this.moveSpeed *= (1 - factor);
+            // atkSpd is defined later in some files or earlier? 
+            // In player.js recalcStats, atkSpd seems to be missing from the viewed snippet but exists in the class.
+            if (this.atkSpd) this.atkSpd *= (1 - factor * 0.5);
+        }
 
         // Damage reduction (from uniques like Shaft of Anguish, Doombringer, set bonuses)
         this.pctDmgReduce = s.pctDmgReduce || 0;
@@ -174,9 +217,13 @@ export class Player {
         this.flatMinDmg = s.flatMinDmg || 0;
         this.pctIAS = s.pctIAS || 0;
 
-        // Magic Find & Gold Find
-        this.magicFind = s.magicFind || 0;
-        this.goldFind = s.goldFind || 0;
+        // Magic Find & Gold Find (Difficulty Bonuses)
+        let diffMF = 0;
+        if (diff === 1) diffMF = 30;
+        else if (diff === 2) diffMF = 100;
+
+        this.magicFind = (s.magicFind || 0) + diffMF;
+        this.goldFind = (s.goldFind || 0) + diffMF;
 
         // Poison damage (from affixes like Pestilent weapons)
         this.poisonDmgPerSec = s.poisonDmgPerSec || 0;
@@ -191,7 +238,9 @@ export class Player {
         this.attackRange = wep && wep.range ? Math.max(30, wep.range) : 30;
 
         // Light Radius
-        this.lightRadius = s.lightRadius || 0;
+        // Base is now 0, added to 240 in main.js. Let's make it more substantial.
+        const radianceLvl = this.effectiveSkillLevel('radiance');
+        this.lightRadius = (s.lightRadius || 0) + (radianceLvl * 15);
 
         // Special flags
         this.cannotBeFrozen = !!s.cannotBeFrozen;
@@ -227,18 +276,30 @@ export class Player {
                     const mods = def.bonuses[tier];
                     if (mods) {
                         for (const mod of mods) {
-                            if (mod.stat.startsWith('+')) continue;
-                            s[mod.stat] = (s[mod.stat] || 0) + mod.value;
+                            if (mod.stat.startsWith('+') && !['+allSkills', '+classSkills', '+skill', '+skillGroup'].some(p => mod.stat.startsWith(p))) {
+                                // Allow '+' stats like '+10 Strength' if they aren't skills
+                                s[mod.stat] = (s[mod.stat] || 0) + mod.value;
+                            } else if (!mod.stat.startsWith('+')) {
+                                s[mod.stat] = (s[mod.stat] || 0) + mod.value;
+                            }
                         }
                     }
                 }
             }
         }
 
-        // 2. Charms in Inventory
-        for (const item of this.inventory) {
-            if (item && item.type === 'charm' && item.identified !== false) {
-                this._addItemStats(item, s);
+        // 2. Charms in Inventory (Phase 30 Finalization)
+        const activeUniques = new Set();
+        if (this.inventory && Array.isArray(this.inventory)) {
+            for (const item of this.inventory) {
+                if (item && item.type === 'charm' && item.identified !== false) {
+                    // Unique check: Only one of each unique charm ID counts
+                    if (item.rarity === RARITY.UNIQUE || item.rarity === 'unique') {
+                        if (activeUniques.has(item.id)) continue;
+                        activeUniques.add(item.id);
+                    }
+                    this._addItemStats(item, s);
+                }
             }
         }
         return s;
@@ -270,6 +331,11 @@ export class Player {
             if (skillId === 'demon_armor') { ts.flatArmor = (ts.flatArmor||0) + 20*slvl; ts.allRes = (ts.allRes||0) + 2*slvl; }
             if (skillId === 'lethality') ts.critMulti = (ts.critMulti||0) + 10*slvl;
             if (skillId === 'chain_reaction') ts.critChance = (ts.critChance||0) + 1*slvl;
+            
+            // Phase 20: Radiance (Light Radius & Resists)
+            if (skillId === 'radiance') {
+                ts.allRes = (ts.allRes || 0) + 2 * slvl;
+            }
         }
         return ts;
     }
@@ -281,8 +347,12 @@ export class Player {
         if (item.mods) {
             for (const mod of item.mods) {
                 if (mod && mod.stat) {
-                    if (mod.stat.startsWith('+')) continue;
-                    s[mod.stat] = (s[mod.stat] || 0) + (mod.value || 0);
+                    if (mod.stat.startsWith('+') && !['+allSkills', '+classSkills', '+skill', '+skillGroup'].some(p => mod.stat.startsWith(p))) {
+                        // Allow '+' stats like '+10 Strength' if they aren't skills
+                        s[mod.stat] = (s[mod.stat] || 0) + mod.value;
+                    } else if (!mod.stat.startsWith('+')) {
+                        s[mod.stat] = (s[mod.stat] || 0) + (mod.value || 0);
+                    }
                 }
             }
         }
@@ -399,7 +469,32 @@ export class Player {
         this._enemies = enemies;
     }
 
-    update(dt, input) {
+    update(dt, input, enemies, dungeon, addAoE) {
+        if (this.hp <= 0) return;
+
+        // Apply push momentum
+        if (Math.abs(this.pushX) > 1 || Math.abs(this.pushY) > 1) {
+            const nextX = this.x + this.pushX * dt;
+            const nextY = this.y + this.pushY * dt;
+            if (dungeon && dungeon.isWalkable(nextX, nextY)) {
+                this.x = nextX;
+                this.y = nextY;
+            }
+            this.pushX *= 0.9; // Friction
+            this.pushY *= 0.9;
+        }
+
+        if (this.hitFlashTimer > 0) this.hitFlashTimer -= dt;
+        
+        // --- Phase 23: Aura Slow Logic ---
+        if (this._auraSlowTimer > 0) {
+            this._auraSlowTimer -= dt;
+            if (this._auraSlowTimer <= 0) {
+                this._auraSlow = 0;
+                this._recalcStats();
+            }
+        }
+
         // Mana regen
         this.mp = Math.min(this.maxMp, this.mp + (2 + this.int * 0.05) * dt);
 
@@ -434,8 +529,8 @@ export class Player {
                 
                 if (this.activeAura === 'holy_fire_aura') {
                     const dmg = 3 + slvl * 2;
-                    if (this._enemies) {
-                        this._enemies.forEach(e => {
+                    if (enemies) {
+                        enemies.forEach(e => {
                             const dx = e.x - this.x, dy = e.y - this.y;
                             if (dx*dx+dy*dy < 150*150) { // 150px range
                                 applyDamage(this, e, { dealt: dmg, isCrit: false, type: 'fire' }, 'holy_fire_aura');
@@ -447,8 +542,8 @@ export class Player {
 
                 if (this.activeAura === 'conviction') {
                     const debuff = 30 + slvl * 2;
-                    if (this._enemies) {
-                        this._enemies.forEach(e => {
+                    if (enemies) {
+                        enemies.forEach(e => {
                             const dx = e.x - this.x, dy = e.y - this.y;
                             if (dx*dx+dy*dy < 180*180) { // 180px range
                                 e.armorDebuff = debuff;
@@ -465,8 +560,8 @@ export class Player {
             }
         } else {
             // Clear debuffs if aura is off
-            if (this._enemies) {
-                this._enemies.forEach(e => { e.armorDebuff = 0; e.resDebuff = 0; });
+            if (enemies) {
+                enemies.forEach(e => { e.armorDebuff = 0; e.resDebuff = 0; });
             }
         }
 
@@ -494,14 +589,20 @@ export class Player {
         const tryMove = (dx, dy) => {
             moveDx = dx; moveDy = dy;
             movedThisFrame = true;
-            if (!this._dungeon) {
+            if (!dungeon) {
                 this.x += dx; this.y += dy; return;
             }
-            if (this._dungeon.isWalkable(this.x + dx, this.y + dy)) {
+            // Waller check
+            const walls = (window.aoeZones || []).filter(z => z.active && z.isWall);
+            const isBlockedByWall = (tx, ty) => {
+                return walls.some(w => Math.hypot(tx - w.x, ty - w.y) < w.radius);
+            };
+
+            if (dungeon.isWalkable(this.x + dx, this.y + dy) && !isBlockedByWall(this.x + dx, this.y + dy)) {
                 this.x += dx; this.y += dy;
-            } else if (dx !== 0 && this._dungeon.isWalkable(this.x + dx, this.y)) {
+            } else if (dx !== 0 && dungeon.isWalkable(this.x + dx, this.y) && !isBlockedByWall(this.x + dx, this.y)) {
                 this.x += dx;
-            } else if (dy !== 0 && this._dungeon.isWalkable(this.x, this.y + dy)) {
+            } else if (dy !== 0 && dungeon.isWalkable(this.x, this.y + dy) && !isBlockedByWall(this.x, this.y + dy)) {
                 this.y += dy;
             }
         };
@@ -564,7 +665,8 @@ export class Player {
             const dist = Math.sqrt(dx * dx + dy * dy);
             const spd = this.moveSpeed * dt;
             if (dist < spd) {
-                this.x = target.x; this.y = target.y;
+                this.x = target.x;
+                this.y = target.y;
                 this.path.shift();
             } else {
                 tryMove((dx / dist) * spd, (dy / dist) * spd);
@@ -774,6 +876,8 @@ export class Player {
                     if (dist < meleeRange) {
                         const result = calcDamage(this, totalBase, type, target);
                         applyDamage(this, target, result, skillId);
+                        // Apply skill effects
+                        SkillLogic.onHit(this, target, skillId, slvl, totalBase);
 
                         // Melee VFX based on skill
                         if (fx) {
@@ -868,6 +972,7 @@ export class Player {
         }
 
         bus.emit('skill:used', { skillId, slotIdx, target, type });
+        SkillLogic.onCast(this, skillId, slvl, targetX, targetY, this._enemies);
     }
 
     _spawnMinion(skillId, slvl, skill) {
@@ -1035,15 +1140,30 @@ export class Player {
             if (expBuff) mult += expBuff.value / 100;
         }
         this.xp += Math.round(amount * mult);
-        while (this.xp >= this.xpToNext) {
-            this.xp -= this.xpToNext;
-            this.level++;
-            this.statPoints += 5;
-            this.talents.unspent++;
-            this._recalcStats();
-            this.hp = this.maxHp;
-            this.mp = this.maxMp;
-            bus.emit('player:levelup', { level: this.level });
+        
+        // --- Standard Leveling (1-99) ---
+        if (this.level < 99) {
+            while (this.xp >= this.xpToNext) {
+                this.xp -= this.xpToNext;
+                this.level++;
+                this.statPoints += 5;
+                this.talents.unspent++;
+                this._recalcStats();
+                this.hp = this.maxHp;
+                this.mp = this.maxMp;
+                bus.emit('player:levelup', { level: this.level });
+            }
+        } 
+        // --- Paragon Leveling (99+) ---
+        else {
+            const paragonXpNeeded = 100000 + (this.paragonLevel * 50000); // Scaling Paragon curve
+            while (this.xp >= paragonXpNeeded) {
+                this.xp -= paragonXpNeeded;
+                this.paragonLevel++;
+                this.paragonPoints++;
+                bus.emit('player:paragonup', { level: this.paragonLevel });
+                addCombatLog(`Paragon Level UP! (${this.paragonLevel})`, 'log-crit');
+            }
         }
     }
 
@@ -1064,6 +1184,36 @@ export class Player {
         return true;
     }
 
+    // ─── Phase 23: Paragon Support ───
+    _paragonStats() {
+        if (!this.paragonStats) return {};
+        const s = {};
+        const p = this.paragonStats;
+
+        if (p.core.str) s.flatSTR = p.core.str * 5;
+        if (p.core.dex) s.flatDEX = p.core.dex * 5;
+        if (p.core.int) s.flatINT = p.core.int * 5;
+        if (p.core.vit) s.flatVIT = p.core.vit * 5;
+        if (p.offense.ias) s.pctIAS = p.offense.ias * 0.5;
+        if (p.offense.crit) s.critChance = p.offense.crit * 0.2;
+        if (p.defense.armor) s.flatArmor = p.defense.armor * 100;
+        if (p.defense.res) s.allRes = p.defense.res * 1.5;
+        if (p.utility.mf) s.magicFind = p.utility.mf * 2;
+        if (p.utility.gf) s.goldFind = p.utility.gf * 2;
+
+        return s;
+    }
+
+    allocateParagonPoint(category, stat) {
+        if (this.paragonPoints <= 0) return false;
+        if (!this.paragonStats[category]) return false;
+        
+        this.paragonStats[category][stat]++;
+        this.paragonPoints--;
+        this._recalcStats();
+        return true;
+    }
+
     // ─── Equipment Requirement Check ───
     canEquip(item) {
         if (!item) return { ok: false, reason: 'No item' };
@@ -1077,22 +1227,29 @@ export class Player {
     }
 
     // ─── Equip ───
-    equip(item) {
+    equip(item, targetSlot = null) {
         const check = this.canEquip(item);
         if (!check.ok) return { error: check.reason };
 
-        let slot = item.slot;
+        let slot = targetSlot || item.slot;
 
-        // Smart Jewelry Slotting (D2 style)
-        if (slot === 'ring1') {
+        // Smart Jewelry Slotting (D2 style) - Only if targetSlot not specified
+        if (!targetSlot && slot === 'ring1') {
             if (!this.equipment.ring1) slot = 'ring1';
             else if (!this.equipment.ring2) slot = 'ring2';
-            else slot = 'ring1'; // Swap first ring by default if both full
+            else slot = 'ring1'; 
+        }
+
+        // Validate if item can go into this slot (e.g. helm in belt slot)
+        // If targetSlot was passed, we should check if it's compatible
+        if (targetSlot && item.slot.startsWith('ring') && !targetSlot.startsWith('ring')) return { error: 'Incompatible slot' };
+        if (targetSlot && !item.slot.startsWith('ring') && item.slot !== targetSlot) {
+             // Basic check: Allow mainhand/offhand crossing? handled by canEquip? 
+             // Normally slot 'head' only goes in 'head'.
         }
 
         // Two-Handed Logic
         if (item.twoHanded && slot === 'mainhand') {
-            // If we have something in offhand, we must unequip it
             const off = this.equipment.offhand;
             if (off) {
                 if (this.inventory.indexOf(null) === -1) return { error: 'Inventory full (cannot unequip offhand)' };
@@ -1101,7 +1258,6 @@ export class Player {
             }
         }
 
-        // If equipping offhand but have 2H weapon
         if (slot === 'offhand' && this.equipment.mainhand?.twoHanded) {
             if (this.inventory.indexOf(null) === -1) return { error: 'Inventory full (cannot unequip 2H weapon)' };
             this.addToInventory(this.unequip('mainhand'));
@@ -1110,7 +1266,7 @@ export class Player {
         const old = this.equipment[slot] || null;
         this.equipment[slot] = item;
         this._recalcStats();
-        return old;
+        return { success: true, swapped: old };
     }
 
     unequip(slot) {
@@ -1223,31 +1379,90 @@ export class Player {
 
     // ─── Inventory Management ───
     sortInventory() {
+        const stackables = ['gem', 'rune', 'scroll'];
         const items = this.inventory.filter(it => it !== null);
         
+        // 1. Consolidate Stacks
+        for (let i = 0; i < items.length; i++) {
+            const itm = items[i];
+            if (!itm || !stackables.includes(itm.type) || (itm.quantity || 1) >= 20) continue;
+            
+            for (let j = i + 1; j < items.length; j++) {
+                const other = items[j];
+                if (other && other.baseId === itm.baseId && other.type === itm.type && (other.quantity || 1) < 20) {
+                    const room = 20 - (itm.quantity || 1);
+                    const transfer = Math.min(room, (other.quantity || 1));
+                    itm.quantity = (itm.quantity || 1) + transfer;
+                    other.quantity = (other.quantity || 1) - transfer;
+                    if (other.quantity <= 0) items[j] = null;
+                    if (itm.quantity >= 20) break;
+                }
+            }
+        }
+
+        // 2. Main Sort
+        const sorted = items.filter(it => it !== null);
         const rarityWeights = { unique: 10, set: 9, rare: 8, magic: 7, normal: 6 };
         const typeWeights = { weapon: 10, armor: 9, helm: 8, shield: 7, gloves: 6, boots: 5, belt: 4, amulet: 3, ring: 2, charm: 1, gem: 0, rune: 0, scroll: 0, potion: 0 };
 
-        items.sort((a, b) => {
-            // First group by type
+        sorted.sort((a, b) => {
             const ta = typeWeights[a.type] || -1;
             const tb = typeWeights[b.type] || -1;
             if (ta !== tb) return tb - ta;
-
-            // Then by rarity
             const ra = rarityWeights[a.rarity] || 0;
             const rb = rarityWeights[b.rarity] || 0;
             if (ra !== rb) return rb - ra;
-
-            // Then by name/base
             if (a.baseId !== b.baseId) return (a.baseId || "").localeCompare(b.baseId || "");
-            
-            // Finally by quantity/level
             return (b.quantity || 1) - (a.quantity || 1) || (b.ilvl || 0) - (a.ilvl || 0);
         });
 
-        this.inventory = [...items];
+        this.inventory = [...sorted];
         while (this.inventory.length < 40) this.inventory.push(null);
+
+        this.autoRefillBelt();
+    }
+
+    swapWeaponSet() {
+        if (!this.secondaryEquipment) {
+            this.secondaryEquipment = { mainhand: null, offhand: null };
+        }
+        
+        // Swap mainhand
+        const oldMain = this.equipment.mainhand;
+        this.equipment.mainhand = this.secondaryEquipment.mainhand;
+        this.secondaryEquipment.mainhand = oldMain;
+        
+        // Swap offhand
+        const oldOff = this.equipment.offhand;
+        this.equipment.offhand = this.secondaryEquipment.offhand;
+        this.secondaryEquipment.offhand = oldOff;
+        
+        this.activeWeaponSet = (this.activeWeaponSet === 1) ? 2 : 1;
+        this._recalcStats();
+    }
+
+    autoRefillBelt() {
+        if (!this.belt) return;
+        let refilled = false;
+
+        for (let i = 0; i < this.belt.length; i++) {
+            if (this.belt[i] === null) {
+                // Find first potion in inventory
+                const potIdx = this.inventory.findIndex(it => it && it.type === 'potion');
+                if (potIdx !== -1) {
+                    this.belt[i] = this.inventory[potIdx];
+                    this.inventory[potIdx] = null;
+                    refilled = true;
+                }
+            }
+        }
+
+        if (refilled) {
+            // Re-pack inventory since we removed items
+            const items = this.inventory.filter(it => it !== null);
+            this.inventory = [...items];
+            while (this.inventory.length < 40) this.inventory.push(null);
+        }
     }
 
     // ─── Render ───

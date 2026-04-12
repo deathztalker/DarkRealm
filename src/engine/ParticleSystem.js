@@ -223,9 +223,94 @@ export class ParticleSystem {
         this.particles.push(p);
     }
 
+    emitLootBeam(x, y, color = '#ffd700') {
+        // Core beam particles (vertical)
+        for (let i = 0; i < 2; i++) {
+            const p = new Particle(x + (Math.random() - 0.5) * 10, y, 0, -(0.4 + Math.random() * 0.8), 800 + Math.random() * 400, color, 1.5 + Math.random() * 1.5);
+            p.gravity = -0.01;
+            this.particles.push(p);
+        }
+    }
+
+    emitLevelUp(x, y) {
+        // Golden Nova
+        for (let i = 0; i < 60; i++) {
+            const angle = (i / 60) * Math.PI * 2;
+            const speed = 2.5 + Math.random() * 1.5;
+            const p = new Particle(x, y, Math.cos(angle) * speed, Math.sin(angle) * speed, 1200, '#ffd700', 3 + Math.random() * 2);
+            p.gravity = 0;
+            p.shape = 'circle';
+            this.particles.push(p);
+        }
+        // Expanding shockwave circles
+        for (let i = 0; i < 3; i++) {
+            setTimeout(() => {
+                this.emitShockwave(x, y, 60 + i * 20, '#ffffff');
+            }, i * 200);
+        }
+        // Sparks
+        for (let i = 0; i < 40; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const p = new Particle(x, y, Math.cos(angle) * 4, Math.sin(angle) * 4, 800, '#ffffff', 2);
+            p.shape = 'spark';
+            this.particles.push(p);
+        }
+    }
+
     shake(duration, intensity) {
         this.shakeTimer = duration;
         this.shakeIntensity = intensity;
+    }
+
+    emitRain(width, height) {
+        for (let i = 0; i < 3; i++) {
+            const px = Math.random() * width;
+            const py = -20;
+            const p = new Particle(px, py, 1, 15 + Math.random() * 5, 1200, 'rgba(100, 150, 255, 0.4)', 1);
+            p.shape = 'line';
+            p.length = 15;
+            p.rotation = Math.PI / 2;
+            this.particles.push(p);
+        }
+    }
+
+    emitSnow(width, height) {
+        if (Math.random() < 0.3) {
+            const px = Math.random() * width;
+            const py = -20;
+            const p = new Particle(px, py, (Math.random() - 0.5) * 1, 1 + Math.random() * 2, 8000, '#fff', 1 + Math.random() * 2);
+            p.shape = 'snowflake';
+            p.rotationSpeed = (Math.random() - 0.5) * 0.05;
+            this.particles.push(p);
+        }
+    }
+
+    emitSand(width, height) {
+        for (let i = 0; i < 2; i++) {
+            const px = -20;
+            const py = Math.random() * height;
+            const p = new Particle(px, py, 4 + Math.random() * 4, (Math.random() - 0.5) * 0.5, 4000, 'rgba(212, 160, 23, 0.2)', 1 + Math.random() * 2);
+            this.particles.push(p);
+        }
+    }
+
+    emitEmbers(width, height) {
+        if (Math.random() < 0.2) {
+            const px = Math.random() * width;
+            const py = height + 20;
+            const p = new Particle(px, py, (Math.random() - 0.5) * 1, -(1 + Math.random() * 1.5), 3000, '#ff4500', 1.5);
+            p.gravity = -0.01;
+            this.particles.push(p);
+        }
+    }
+
+    emitMist(width, height) {
+        if (Math.random() < 0.1) {
+            const px = Math.random() * width;
+            const py = Math.random() * height;
+            const p = new Particle(px, py, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2, 5000, 'rgba(200, 200, 200, 0.05)', 40 + Math.random() * 40);
+            this.particles.push(p);
+        }
     }
 
     update(dt) {

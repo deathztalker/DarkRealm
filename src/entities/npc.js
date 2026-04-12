@@ -42,6 +42,17 @@ export class NPC {
         }
     }
 
+    interact(player) {
+        // Face the player
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        this.moveDir = { x: 0, y: 0 };
+        this.moveTimer = 5; // Stop moving for a bit
+        
+        // Return dialogue logic (handled by state in main.js)
+        return this.dialogue;
+    }
+
     render(renderer, time) {
         // Sprite with LPC animation - always idle or default walk
         renderer.drawAnim(this.icon, this.x, this.y - 4, 16, 'idle', 'down', time);

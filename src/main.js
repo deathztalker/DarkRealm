@@ -13,8 +13,10 @@ import { getAllClasses, getClass } from './data/classes.js';
 import { loot, SETS } from './systems/lootSystem.js';
 import { updateStatuses } from './systems/combat.js';
 import { SaveSystem } from './systems/saveSystem.js';
+import { DB } from './systems/db.js';
 import { NPC } from './entities/npc.js';
 import { Mercenary } from './entities/mercenary.js';
+import { Pet } from './entities/pet.js';
 import { GameObject } from './entities/object.js';
 import { ASSET_NAMES } from './data/assets_list.js';
 import { initAudio, playLoot, playCastFire, playCastCold, playCastLightning, playCastPoison, playCastShadow, playDeathSfx, playZoneTransition, startAmbientDungeon, startAmbientBoss, stopAmbient } from './engine/audio.js';
@@ -26,11 +28,16 @@ let renderer, camera, input, dungeon, player;
 let enemies = [], npcs = [], gameObjects = [];
 let projectiles = [], aoeZones = [];
 let droppedItems = [], droppedGold = [];
+let floatingTexts = []; // Phase 15: Damage Numbers
 let state = 'MENU', selectedClass = null;
 let lastTime = 0, lastSaveTime = 0;
+let worldTime = 8 * 60; // Start at 08:00 AM
+let isNightManual = false; // Internal flag for state checks
 let portalReturnZone = 0;
 let zoneLevel = 0;
+window.currentTheme = 'town';
 let isBossZone = false;
+let isZoneLocked = false;
 let isTransitioning = false;
 let dialogue = null;
 let activeSlotId = null;
@@ -41,6 +48,7 @@ let discoveredWaypoints = new Set([0]); // Always have Town
 let stash = Array(20).fill(null); // Personal stash
 let cube = Array(9).fill(null); // Horadric Cube
 let activeQuests = []; // { id, desc, target, progress, reward }
+let activeBounties = []; // Phase 28: { id, desc, target, progress, targetCount, reward }
 let completedQuests = new Set();
 let killCount = 0;
 let totalMonstersSlain = 0;
@@ -52,9 +60,20 @@ let showFullMap = false;
 let unlockedAchievements = new Set();
 let isIdentifying = false; // Global identification state
 let isLarzukSocketing = false; // Global socketing service state
+let isImbuing = false; // Phase 21: Charsi Imbue state
+let activePet = null; // Phase 30: Persistent companion
+let isReforging = false; // Phase 22: Charsi Reforge state
+let isParagonOpen = false; // Phase 23: Paragon UI state
 let activeDialogueNpc = null; // Track NPC with open dialogue bubble
 let activeWaypointObj = null; // Track Waypoint object for travel menu
+
+// --- Phase 30: Drag & Drop Global State ---
+let dragGhost = null;
+let draggedItem = null;
+let dragSource = null;
+let dragSourceIdx = null;
 let minimapZoom = 1.0; // 1.0, 1.5, 2.0
+window._corpses = []; // For skills like Corpse Explosion
 
 function syncInteractionStates() {
     document.body.classList.toggle('identifying-mode', !!window.isIdentifying);
@@ -67,9 +86,10 @@ let uiActiveBoss = null;
 let lastBossWarnTime = 0;
 
 // ─── RIFT GLOBALS ───
-let riftProgress = 0; // 0-100
-let riftGuardianSpawned = false;
-let activeRiftMods = []; // { id, name, effect }
+window.riftProgress = 0; // 0-100
+window.riftLevel = 1; // Phase 22: Infinite Rift Depth
+window.riftGuardianSpawned = false;
+window.activeRiftMods = []; // { id, name, effect }
 
 const RIFT_MODS = [
     { id: 'vampiric', name: 'Vampiric', hp: 1.2, dmg: 1.0, desc: 'Monsters heal on hit' },
@@ -81,13 +101,13 @@ const RIFT_MODS = [
 ];
 
 function generateRiftMods() {
-    activeRiftMods = [];
+    window.activeRiftMods = [];
     const count = 1 + Math.floor((zoneLevel - 7) / 5); // 1 mod at lvl 8, 2 at 13, etc
     const pool = [...RIFT_MODS];
     for (let i = 0; i < Math.min(count, 3); i++) {
         if (pool.length === 0) break;
         const idx = Math.floor(Math.random() * pool.length);
-        activeRiftMods.push(pool.splice(idx, 1)[0]);
+        window.activeRiftMods.push(pool.splice(idx, 1)[0]);
     }
 }
 
@@ -98,12 +118,12 @@ function updateRiftHud() {
         return;
     }
     hud.classList.remove('hidden');
-    $('rift-depth-label').textContent = `RIFT DEPTH ${zoneLevel - 6}`;
-    $('rift-gauge-fill').style.width = `${riftProgress}%`;
+    $('rift-depth-label').textContent = `INFERNAL RIFT LEVEL ${window.riftLevel}`;
+    $('rift-gauge-fill').style.width = `${window.riftProgress}%`;
 
     const modList = $('rift-mods-list');
     modList.innerHTML = '';
-    activeRiftMods.forEach(mod => {
+    window.activeRiftMods.forEach(mod => {
         const badge = document.createElement('div');
         badge.className = 'chaos-mod-badge';
         badge.textContent = mod.name;
@@ -113,7 +133,7 @@ function updateRiftHud() {
 }
 
 function spawnRiftGuardian() {
-    riftGuardianSpawned = true;
+    window.riftGuardianSpawned = true;
 
     // Choose a random location near player (ensure walkable)
     const angle = Math.random() * Math.PI * 2;
@@ -140,6 +160,13 @@ function spawnRiftGuardian() {
 
     const boss = new Enemy(bossData);
     enemies.push(boss);
+
+    bus.on('combat:damage', (data) => {
+        const { worldX, worldY, dealt, isCrit, type } = data;
+        if (typeof dealt === 'number' || dealt === 'Blocked!') {
+            spawnFloatingText(worldX, worldY, dealt, type, isCrit);
+        }
+    });
 
     playZoneTransition(); // reuse for sound/flash
     fx.emitHolyBurst(tx, ty);
@@ -241,22 +268,48 @@ const RUNEWORDS = [
         sockets: 3,
         gems: ['rune_ith', 'rune_el', 'rune_eth'],
         mods: [{ stat: 'pctDmg', value: 33 }, { stat: 'targetDefenseReduce', value: 25 }, { stat: 'preventHeal', value: 1 }]
+    },
+    {
+        name: 'Stealth',
+        types: ['armor'],
+        sockets: 2,
+        gems: ['rune_tal', 'rune_eth'],
+        mods: [{ stat: 'pctMoveSpeed', value: 25 }, { stat: 'pctFCR', value: 25 }, { stat: 'pctFHR', value: 25 }, { stat: 'manaRegenPerSec', value: 15 }]
+    },
+    {
+        name: 'Spirit',
+        types: ['sword', 'shield'],
+        sockets: 4,
+        gems: ['rune_tal', 'rune_thul', 'rune_ort', 'rune_amn'],
+        mods: [{ stat: '+allSkills', value: 2 }, { stat: 'pctFCR', value: 35 }, { stat: 'flatMP', value: 100 }, { stat: 'allRes', value: 35 }]
+    },
+    {
+        name: 'Lore',
+        types: ['helm'],
+        sockets: 2,
+        gems: ['rune_ort', 'rune_sol'],
+        mods: [{ stat: '+allSkills', value: 1 }, { stat: 'lightRes', value: 30 }, { stat: 'flatDmgReduce', value: 7 }, { stat: 'lightRadius', value: 2 }]
+    },
+    {
+        name: 'White',
+        types: ['wand'],
+        sockets: 2,
+        gems: ['rune_dol', 'rune_io'],
+        mods: [{ stat: '+allSkills', value: 3 }, { stat: 'pctFCR', value: 20 }, { stat: 'flatVIT', value: 10 }]
     }
 ];
 
 function checkRuneword(item) {
     if (!item.socketed || item.socketed.length === 0) return;
     if (item.socketed.length !== item.sockets) return;
+    if (item.rarity !== 'normal') return; // Must be white/grey base
 
-    // Group weapon types so recipes that say 'weapon' work across all weapons
     const weaponTypes = ['sword', 'axe', 'mace', 'staff', 'orb', 'bow', 'dagger', 'totem', 'wand'];
     const isWeapon = weaponTypes.includes(item.type);
 
     for (const rw of RUNEWORDS) {
-        // Valid if exact type matches OR it's a weapon recipe applied to a weapon base
         const validMatch = rw.types.includes(item.type) || (rw.types.includes('weapon') && isWeapon);
         if (!validMatch) continue;
-
         if (rw.sockets !== item.sockets) continue;
 
         let match = true;
@@ -268,11 +321,11 @@ function checkRuneword(item) {
         }
 
         if (match) {
-            item.name = `${rw.name} (${item.name})`;
-            item.rarity = 'unique';
+            item.name = `${rw.name} [${item.name}]`;
+            item.rarity = 'runeword'; // Custom rarity for gold color
             if (!item.mods) item.mods = [];
             item.mods.push(...rw.mods.map(m => ({ stat: m.stat, value: m.value })));
-            addCombatLog(`Runeword Created: ${rw.name}!`, 'log-crit');
+            addCombatLog(`Runeword Manifested: ${rw.name}!`, 'log-crit');
             break;
         }
     }
@@ -300,20 +353,31 @@ const ZONE_NAMES = {
     3: 'Dark Wood',
     4: 'Catacombs',
     5: 'The Cauterized Arena',
-    6: 'Burning Hells',
-    7: 'Pandemonium',
-    8: 'Lut Gholein',
-    9: 'Rocky Waste',
-    10: 'Dry Hills',
-    11: 'Far Oasis',
-    12: 'Lost City',
-    13: 'Valley of Snakes',
-    14: 'Canyon of the Magi',
-    15: 'Tal Rasha\'s Tomb',
+    6: 'Lut Gholein',
+    7: 'Rocky Waste',
+    8: 'Dry Hills',
+    9: 'Far Oasis',
+    10: 'Tal Rasha\'s Chamber',
+    11: 'Kurast Docks',
+    12: 'Spider Forest',
+    13: 'Flayer Jungle',
+    14: 'Travincal',
+    15: 'Durance of Hate',
+    16: 'Pandemonium Fortress',
+    17: 'Outer Steppes',
+    18: 'Plains of Despair',
+    19: 'River of Flame',
+    20: 'Chaos Sanctuary',
+    21: 'Harrogath',
+    22: 'Bloody Foothills',
+    23: 'Arreat Summit',
+    24: 'Worldstone Keep',
+    25: 'Worldstone Chamber',
+    26: 'Infinite Rift',
 };
 
-const DIFFICULTY_NAMES = ['Normal', 'Nightmare', 'Hell'];
-const DIFFICULTY_MULT = [1.0, 2.5, 5.0]; // enemy stat multiplier
+window.DIFFICULTY_NAMES = ['Normal', 'Nightmare', 'Hell', 'Rift Mode'];
+window.DIFFICULTY_MULT = [1.0, 2.5, 5.0, 5.0]; // Rift mode uses Hell base stats
 
 // ─── DOM REFS ───
 const $ = id => document.getElementById(id);
@@ -409,15 +473,40 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     camera = new Camera(renderer.width, renderer.height);
     input = new Input(canvas);
 
+    // Extract early fields for generation theming
+    let curHighestZone = 0;
+    if (loadPlayerData && loadPlayerData.highestZone) {
+        curHighestZone = loadPlayerData.highestZone;
+    }
+
+    // Set initial theme
+    function getTheme(z, hz) {
+        if (z === 0) {
+            if (hz >= 21) return 'snow';
+            if (hz >= 16) return 'hell';
+            if (hz >= 11) return 'jungle';
+            if (hz >= 6) return 'desert';
+            return 'town';
+        } else {
+            if (z >= 21) return 'snow';
+            if (z >= 16) return 'hell';
+            if (z >= 11) return 'jungle';
+            if (z >= 6) return 'desert';
+            return 'cathedral';
+        }
+    }
+    window.currentTheme = getTheme(zoneLevel, curHighestZone);
+
     // Generate dungeon
     dungeon = new Dungeon(80, 60, 16);
-    dungeon.generate(zoneLevel, 'cathedral');
+    dungeon.generate(zoneLevel, window.currentTheme);
 
     // Create player
     if (loadPlayerData && loadPlayerData.player) {
         player = Player.deserialize(loadPlayerData.player);
         player.x = dungeon.playerStart.x;
         player.y = dungeon.playerStart.y;
+        player.highestZone = loadPlayerData.highestZone || 0;
         // Restore stash
         if (loadPlayerData.stash && Array.isArray(loadPlayerData.stash)) {
             stash = loadPlayerData.stash;
@@ -469,12 +558,15 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     }
 
     camera.follow(player);
+    window.player = player;
+    window.aoeZones = aoeZones;
+    window._difficulty = window._difficulty || 0; // Ensure it exists
     npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
     gameObjects = dungeon.objectSpawns.map(s => new GameObject(s.type, s.x, s.y, s.icon));
     enemies = dungeon.enemySpawns.map(s => new Enemy(s));
 
     // Apply difficulty & Rift scaling to enemies
-    const diffMult = DIFFICULTY_MULT[difficulty] || 1;
+    const diffMult = window.DIFFICULTY_MULT[window._difficulty] || 1;
     let riftMult = 1.0;
     if (zoneLevel >= 7) {
         riftMult = Math.pow(1.15, zoneLevel - 6); // 15% more power per depth
@@ -508,12 +600,18 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     updateRiftHud();
 
     // Ensure boss bar hidden unless zone 5 or rift boss
-    const isBossZone = zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0);
+    const isBossZone = zoneLevel === 5 || zoneLevel === 10 || zoneLevel === 15 || zoneLevel === 20 || (zoneLevel > 21 && zoneLevel % 5 === 0);
     const bossBar = $('boss-hp-bar');
     if (bossBar && !isBossZone) bossBar.classList.add('hidden');
 
     // Initial save
-    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: [...discoveredWaypoints], mercenary: mercenary ? mercenary.serialize() : null });
+    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
+        difficulty: window._difficulty,
+        waypoints: [...discoveredWaypoints],
+        mercenary: mercenary ? mercenary.serialize() : null,
+        cube,
+        achievements: Array.from(unlockedAchievements)
+    });
 
     // Initial ambient audio
     if (isBossZone) {
@@ -560,9 +658,14 @@ function gameLoop(timestamp) {
     uiActiveBoss = closestBoss;
 
     // Update
+    // --- Phase 29: World Time Tick (1 sec real = 10 game mins) ---
+    worldTime = (worldTime + dt * 10) % 1440;
+    const hour = worldTime / 60;
+    window.isNight = (hour >= 20 || hour < 6);
+
     if (input) input.update();
     if (player) {
-        player.update(dt, input);
+        player.update(dt, input, enemies, dungeon, (aoe) => aoeZones.push(aoe));
         fx.update(dt * 1000); // Particle update expects ms
 
         // HP Regen out of combat (passive) + gear-based regen (always active)
@@ -585,6 +688,13 @@ function gameLoop(timestamp) {
             const mpRegen = player.maxMp * 0.003 * dt + (player.manaRegenPerSec || 0) * dt;
             player.mp = Math.min(player.maxMp, player.mp + mpRegen);
         }
+
+        // --- Phase 27: Atmospheric Biome Effects ---
+        if (window.currentTheme === 'snow') fx.emitSnow(renderer.width, renderer.height);
+        else if (window.currentTheme === 'jungle' || window.currentTheme === 'temple') fx.emitRain(renderer.width, renderer.height);
+        else if (window.currentTheme === 'desert') fx.emitSand(renderer.width, renderer.height);
+        else if (window.currentTheme === 'hell') fx.emitEmbers(renderer.width, renderer.height);
+        else if (window.currentTheme === 'wilderness') fx.emitMist(renderer.width, renderer.height);
     }
     if (camera) {
         camera.w = renderer.width;
@@ -595,19 +705,42 @@ function gameLoop(timestamp) {
     // Update entities — pass dungeon for collision checks
     for (const e of (enemies || [])) e.update(dt, player, dungeon, enemies);
     for (const n of npcs) n.update(dt);
+    if (activePet) activePet.update(dt, player, droppedGold);
     if (player) player.updateMinions(dt, enemies, dungeon);
 
     // Update Projectiles & AoEs
-    projectiles.forEach(p => p.update(dt, enemies, player, dungeon, (aoe) => aoeZones.push(aoe)));
-    projectiles = projectiles.filter(p => p.active);
+    projectiles.forEach(p => {
+        if (p && p.update) p.update(dt, enemies, player, dungeon, (aoe) => { if (aoe) aoeZones.push(aoe); });
+    });
+    projectiles = projectiles.filter(p => p && p.active);
 
-    aoeZones.forEach(a => a.update(dt, enemies, player));
-    aoeZones = aoeZones.filter(a => a.active);
+    aoeZones.forEach(a => {
+        if (a && a.update) a.update(dt, enemies, player);
+    });
+    aoeZones = aoeZones.filter(a => a && a.active);
 
     // Update Statuses, DoTs, and physics (knockback)
     const statusTargets = [player, ...enemies, ...npcs];
     if (mercenary) statusTargets.push(mercenary);
     updateStatuses(statusTargets, dt);
+
+    // Update Loot Beams (Tick the particle system for persistence)
+    for (const drop of droppedItems) {
+        if (drop.rarity === 'unique' || drop.rarity === 'set') {
+            const color = drop.rarity === 'unique' ? '#bf642f' : '#00ff00';
+            if (fx && Math.random() < 0.1) fx.emitLootBeam(drop.x, drop.y, color);
+        }
+    }
+
+    // Phase 15: Update Floating Text
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.y -= 30 * dt; // Float up
+        ft.life -= dt;
+        if (ft.life <= 0) {
+            floatingTexts.splice(i, 1);
+        }
+    }
 
     if (dialogue) {
         dialogue.timer -= dt;
@@ -690,34 +823,75 @@ function gameLoop(timestamp) {
 
     // Check portal walk-over collisions
     for (const o of gameObjects) {
-        if (o.type === 'portal') {
+        if (o.type === 'portal' || o.type === 'uber_portal' || o.type === 'rift_exit') {
             const dist = Math.sqrt((player.x - o.x) ** 2 + (player.y - o.y) ** 2);
             if (dist < 20) {
-                const res = o.interact(player);
-                if (res && res.type === 'PORTAL') {
+                if (o.type === 'portal') {
+                    const res = o.interact(player);
+                    if (res && res.type === 'PORTAL') {
+                        addCombatLog('Entering Portal...', 'log-level');
+                        nextZone(res.targetZone);
+                        break;
+                    }
+                } else {
+                    // Direct targetZone objects
                     addCombatLog('Entering Portal...', 'log-level');
-                    nextZone(res.targetZone);
+                    nextZone(o.targetZone);
                     break;
                 }
             }
         }
     }
+    // Update Pets
+    if (activePet) {
+        activePet.update(dt, player, droppedGold, droppedItems);
+    }
+    // Secondary cleanup for items picked by pet
+    for (let i = droppedGold.length - 1; i >= 0; i--) {
+        if (droppedGold[i]._pickedByPet) {
+            droppedGold.splice(i, 1);
+            updateHud();
+        }
+    }
 
     if (player.hp <= 0 && state === 'GAME') {
-        state = 'DEAD';
-        $('death-screen').classList.remove('hidden');
-        $('death-stats').textContent = `Level ${player.level} ${player.className} — Zone ${zoneLevel}`;
+        checkDeaths(); // Triggers final sequence
         return;
     }
 
     const distToExit = Math.sqrt((player.x - dungeon.exitPos.x) ** 2 + (player.y - dungeon.exitPos.y) ** 2);
-    if (distToExit < 20) nextZone();
+    if (distToExit < 20) {
+        if (isZoneLocked) {
+            if (player.path) player.path = []; // stop moving
+            // Move player back slightly to prevent spam
+            player.x -= (dungeon.exitPos.x - player.x) * 0.1;
+            player.y -= (dungeon.exitPos.y - player.y) * 0.1;
+            bus.emit('combat:log', { text: "The ancient evil blocks your path forward!", type: 'log-dmg' });
+        } else {
+            nextZone();
+        }
+    }
 
     // Render
     renderer.clear();
     dungeon.render(renderer, camera);
 
     camera.apply(renderer.ctx);
+
+    // Path Breadcrumbs (Phase 31 Mastery)
+    if (player.path && player.path.length > 0) {
+        renderer.ctx.save();
+        renderer.ctx.globalAlpha = 0.4;
+        renderer.ctx.fillStyle = '#ffff00';
+        for (let i = 0; i < player.path.length; i++) {
+            const p = player.path[i];
+            const size = 2 - (i / player.path.length); // Tapering trail
+            renderer.ctx.beginPath();
+            renderer.ctx.arc(p.x, p.y, Math.max(0.5, size), 0, Math.PI * 2);
+            renderer.ctx.fill();
+        }
+        renderer.ctx.restore();
+    }
 
     // Dropped items (with loot filter)
     for (const di of droppedItems) {
@@ -770,6 +944,9 @@ function gameLoop(timestamp) {
         renderer.ctx.fillText(di.name, di.x, di.y + 10);
     }
 
+    // --- Phase 29: World Time Overlay (Post-Objects) ---
+    renderWorldOverlay(renderer.ctx, renderer.width, renderer.height);
+
     for (const g of droppedGold) {
         renderer.fillCircle(g.x, g.y, 4, '#ffd700');
         renderer.strokeCircle(g.x, g.y, 4, '#c8972a', 1);
@@ -806,7 +983,7 @@ function gameLoop(timestamp) {
                 renderer.ctx.restore();
             }
 
-            renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 18, e.animState, e.facingDir, lastTime, null, e.equipment);
+            renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 18, e.animState, e.facingDir, lastTime, null, e.equipment, e.hitFlashTimer);
             e.renderMinions(renderer, lastTime);
         } else {
             e.render(renderer, lastTime);
@@ -848,9 +1025,42 @@ function gameLoop(timestamp) {
     projectiles.forEach(p => p.render(renderer, lastTime));
     aoeZones.forEach(a => a.render(renderer, lastTime));
 
+    // Phase 15: Render Floating Combat Text (in World Space)
+    for (const ft of floatingTexts) {
+        const alpha = Math.min(1.0, ft.life * 2.5);
+        const size = ft.isCrit ? 16 : 10;
+        const colorWithAlpha = ft.color + Math.floor(alpha * 255).toString(16).padStart(2, '0');
+
+        renderer.ctx.save();
+        renderer.ctx.font = `${ft.isCrit ? 'bold ' : ''}${size}px Cinzel, serif`;
+        renderer.ctx.fillStyle = `rgba(0,0,0,${alpha * 0.8})`; // Shadow
+        renderer.ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
+        renderer.ctx.fillStyle = ft.color;
+        renderer.ctx.globalAlpha = alpha;
+        renderer.ctx.fillText(ft.text, ft.x, ft.y);
+        renderer.ctx.restore();
+    }
+
     bus.emit('render:effects', { renderer, lastTime });
 
     fx.render(renderer.ctx);
+
+    // --- Phase 20: Narrative Vision: Atmospheric Lighting Pass ---
+    if (zoneLevel > 0 && player && renderer) {
+        const sx = (player.x - camera.x) * camera.zoom;
+        const sy = (player.y - camera.y) * camera.zoom;
+        // Base radius is now slightly larger for better readability, plus player stats
+        const baseRadius = 260 + (player.lightRadius || 0);
+        const flicker = Math.sin(Date.now() / 120) * 12; // Faster, more intense flicker
+
+        let ambient = 'rgba(0, 0, 0, 0.95)'; // Default (Darker)
+        if (zoneLevel <= 3) ambient = 'rgba(8, 12, 18, 0.85)'; // blood moor
+        else if (zoneLevel === 4) ambient = 'rgba(10, 20, 10, 0.92)'; // catacombs
+        else if (zoneLevel >= 5 && zoneLevel <= 25) ambient = 'rgba(20, 4, 4, 0.95)'; // hell
+        else if (zoneLevel === 100) ambient = 'rgba(60, 0, 0, 0.98)'; // Uber Tristram (Blood Moon)
+
+        renderer.applyLighting(sx, sy, (baseRadius + flicker) * camera.zoom, ambient);
+    }
 
     camera.reset(renderer.ctx);
 
@@ -863,7 +1073,13 @@ function gameLoop(timestamp) {
     // Auto-save every 30 seconds
     if (timestamp - lastSaveTime > 30000 && activeSlotId) {
         lastSaveTime = timestamp;
-        SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: [...discoveredWaypoints], mercenary: mercenary ? mercenary.serialize() : null });
+        SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
+            difficulty: window._difficulty,
+            waypoints: [...discoveredWaypoints],
+            mercenary: mercenary ? mercenary.serialize() : null,
+            cube,
+            achievements: Array.from(unlockedAchievements)
+        });
         addCombatLog('Progress Saved.', 'log-info');
     }
 
@@ -953,6 +1169,10 @@ function checkInteractions(pos) {
     for (const o of gameObjects) {
         const d = Math.sqrt((o.x - worldPos.x) ** 2 + (o.y - worldPos.y) ** 2);
         if (d < 20) {
+            if (o.type === 'pantheon_monument') {
+                renderDialoguePicker({ id: 'pantheon_monument', name: o.name, x: o.x, y: o.y });
+                return;
+            }
             const res = o.interact(player);
             if (res && res.type === 'LOOT') {
                 for (let i = 0; i < res.count; i++) {
@@ -1130,12 +1350,25 @@ function checkDeaths() {
                 const beamC = beamColors[item.rarity];
                 if (beamC) fx.emitBurst(item.x, item.y - 20, beamC, 12, 1);
             }
+
+            // --- Phase 29: Horadric Fragment Drops ---
+            const fragRoll = Math.random();
+            const fragChance = e.type === 'boss' ? 0.15 : (e.type === 'elite' ? 0.05 : 0);
+            if (fragRoll < fragChance) {
+                const fragment = { id: 'horadric_fragment', name: "Horadric Fragment", rarity: 'unique', icon: 'item_emerald', x: e.x + 10, y: e.y + 10, identified: true };
+                droppedItems.push(fragment);
+                fx.emitLootBeam(e.x + 10, e.y + 10, '#ffffff');
+            }
+
             const goldAmt = loot.rollGold(e, player.goldFind || 0);
-            addCombatLog(`${e.name} slain! +${e.xpReward} XP`, item ? 'log-item' : 'log-level');
+            addCombatLog(`${e.name} slain! +${e.xpReward} XP`, (item || fragRoll < fragChance) ? 'log-item' : 'log-level');
 
             // Kill counter
             killCount++;
             if (player) player.totalMonstersSlain++;
+
+            // Phase 28: Bounty Progress
+            checkBountyProgress(e);
 
             // Rift Progress
             if (zoneLevel >= 7 && riftProgress < 100) {
@@ -1163,14 +1396,27 @@ function checkDeaths() {
 
             if (e.type === 'boss' && isBossZone) {
                 // Progression Unlock!
+                isZoneLocked = false;
+                fx.shake(800, 15);
+                player.highestZone = Math.max(player.highestZone || 0, zoneLevel);
                 if (!player.maxDifficulty) player.maxDifficulty = 0;
+                
                 let unlockedDiff = false;
-                if (difficulty === player.maxDifficulty && player.maxDifficulty < 2 && zoneLevel === 5) {
+                // Transition difficulty after Baal (Zone 25)
+                if (difficulty === player.maxDifficulty && player.maxDifficulty < 3 && zoneLevel === 25) {
                     player.maxDifficulty++;
                     unlockedDiff = true;
                 }
 
-                const bossMsg = zoneLevel === 5 ? 'The butcher is no more.' : `Rift Guardian defeated at Depth ${zoneLevel - 7}.`;
+                // Dynamic Boss Victory Messaging
+                const bossMessages = {
+                    5: 'Andariel, the Maiden of Anguish, has been defeated.',
+                    10: 'Duriel, the Lord of Pain, is no more.',
+                    15: 'Mephisto, the Lord of Hatred, has been banished.',
+                    20: 'Diablo, the Lord of Terror, has fallen!',
+                    25: 'Baal, the Lord of Destruction, is slain! The Worldstone is safe.'
+                };
+                const bossMsg = bossMessages[zoneLevel] || (zoneLevel > 25 ? `Rift Guardian defeated at Depth ${zoneLevel - 7}.` : 'The Guardian has been slain.');
 
                 setTimeout(() => {
                     $('victory-screen').classList.remove('hidden');
@@ -1179,14 +1425,35 @@ function checkDeaths() {
                 }, 1500);
 
                 const tp = new GameObject('portal', e.x, e.y - 40, 'env_water');
-                tp.targetZone = zoneLevel === 5 ? 6 : zoneLevel + 1;
+                // Act Transitions: 5->6 (Act 2 Town), 10->11 (Act 3), 15->16 (Act 4), 20->21 (Act 5), 25->0 (Back to Town)
+                const actTransitions = { 5: 6, 10: 11, 15: 16, 20: 21, 25: 0 };
+                tp.targetZone = actTransitions[zoneLevel] || zoneLevel + 1;
                 gameObjects.push(tp);
-                addCombatLog(zoneLevel === 5 ? `The Ancient Evil has been defeated! The path forward opens...` : `The Rift Portal has opened!`, 'log-crit');
-                if (unlockedDiff) {
-                    const diffName = player.maxDifficulty === 1 ? 'Nightmare' : 'Hell';
-                    addCombatLog(`⭐ ${diffName} Difficulty Unlocked! ⭐`, 'log-crit');
-                    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: Array.from(discoveredWaypoints), mercenary: mercenary ? mercenary.serialize() : null });
+
+                if (actTransitions[zoneLevel] !== undefined) {
+                    discoveredWaypoints.add(actTransitions[zoneLevel]);
+                    addCombatLog(`Victory! The path to the next Act is open.`, 'log-crit');
+                } else {
+                    addCombatLog(`The Realm Portal has opened!`, 'log-crit');
                 }
+
+                if (unlockedDiff) {
+                    let diffName = '';
+                    if (player.maxDifficulty === 1) diffName = 'Nightmare';
+                    else if (player.maxDifficulty === 2) diffName = 'Hell';
+                    else if (player.maxDifficulty === 3) diffName = 'Rift Mode';
+                    
+                    if (diffName) {
+                        addCombatLog(`⭐ ${diffName} Unlocked! ⭐`, 'log-crit');
+                    }
+                }
+                
+                // Phase 33: Always save after boss kill
+                SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { 
+                    difficulty, 
+                    waypoints: Array.from(discoveredWaypoints), 
+                    mercenary: mercenary ? mercenary.serialize() : null 
+                });
             }
         }
     }
@@ -1204,9 +1471,11 @@ function checkDeaths() {
         return true;
     });
     droppedGold = droppedGold.filter(g => {
+        if (g._pickedByPet) return false; // Pet already handled it
         const dx = g.x - player.x, dy = g.y - player.y;
         if (dx * dx + dy * dy < 600) {
             player.gold += g.amount;
+            player.totalGoldCollected += g.amount;
             return false;
         }
         return true;
@@ -1226,6 +1495,9 @@ function checkDeaths() {
             $('death-stats').innerHTML = `Your Hardcore hero fell in ${zName} at Level ${player.level}. Your deeds of valor will be remembered.<br>` +
                 `<div style="font-size:12px;color:#888;margin-top:10px;">Total Slain: ${player.totalMonstersSlain} | Gold Collected: ${player.totalGoldCollected}</div>`;
             $('btn-respawn').style.display = 'none'; // No respawn for hardcore
+
+            SaveSystem.saveToPantheon(player);
+
             if (activeSlotId) SaveSystem.deleteSlot(activeSlotId);
             addCombatLog('HARDCORE DEATH. Save file deleted.', 'log-dmg');
         } else {
@@ -1233,6 +1505,29 @@ function checkDeaths() {
             $('btn-respawn').style.display = 'inline-block';
         }
     }
+}
+
+function spawnFloatingText(x, y, text, type = 'physical', isCrit = false) {
+    const colors = {
+        physical: '#ffffff',
+        fire: '#ff9000',
+        cold: '#00ccff',
+        lightning: '#ffff00',
+        poison: '#00ff00',
+        magic: '#ff00ff',
+        shadow: '#a040ff',
+        holy: '#ffd700',
+        blocked: '#888888'
+    };
+
+    floatingTexts.push({
+        x: x + (Math.random() - 0.5) * 20,
+        y: y - 20,
+        text,
+        color: type === 'Blocked!' ? colors.blocked : (colors[type] || '#ffffff'),
+        isCrit,
+        life: isCrit ? 1.6 : 1.2
+    });
 }
 
 function nextZone(targetZone = null) {
@@ -1250,29 +1545,36 @@ function nextZone(targetZone = null) {
             zoneLevel = targetZone;
         } else {
             zoneLevel++;
+            if (zoneLevel > 7 && riftGuardianSpawned) {
+                // We defeated the guardian and took the portal forward
+                riftLevel++;
+            }
         }
 
         // Setup Rift state
-        if (zoneLevel >= 7) {
+        if (zoneLevel >= 26) {
             riftProgress = 0;
             riftGuardianSpawned = false;
             generateRiftMods();
         }
 
-        let theme = 'cathedral';
-        if (zoneLevel === 0) theme = 'town';
-        else if (zoneLevel <= 2) theme = 'wilderness';
-        else if (zoneLevel <= 4) theme = 'cathedral';
-        else if (zoneLevel === 5) theme = 'arena';
-        else if (zoneLevel <= 7) theme = 'catacombs';
+        window.currentTheme = 'cathedral';
+        if (zoneLevel === 0) window.currentTheme = 'town';
+        else if (zoneLevel <= 2) window.currentTheme = 'wilderness';
+        else if (zoneLevel <= 10) window.currentTheme = (zoneLevel >= 6) ? 'desert' : 'cathedral';
+        else if (zoneLevel <= 13) window.currentTheme = 'jungle';
+        else if (zoneLevel <= 15) window.currentTheme = 'temple';
+        else if (zoneLevel <= 20) window.currentTheme = 'hell';
+        else if (zoneLevel <= 25) window.currentTheme = 'snow';
+        else if (zoneLevel === 100) window.currentTheme = 'hell'; // Uber Tristram
         else {
             // Infinite Rifts: Random theme
-            const themes = ['cathedral', 'catacombs', 'wilderness'];
-            theme = themes[Math.floor(Math.random() * themes.length)];
+            const themes = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow'];
+            window.currentTheme = themes[Math.floor(Math.random() * themes.length)];
         }
 
         dungeon = new Dungeon(80, 60, 16);
-        dungeon.generate(zoneLevel, theme);
+        dungeon.generate(zoneLevel, window.currentTheme);
 
         finishZoneLoad();
         isTransitioning = false;
@@ -1303,6 +1605,17 @@ function finishZoneLoad() {
             portal.targetZone = portalReturnZone;
             gameObjects.push(portal);
         }
+
+        // --- Phase 30: Pantheon Monument ---
+        const monument = new GameObject('pantheon_monument', 550, 350, 'ra-pillar');
+        monument.name = "Monument of Valor";
+        monument.description = "A monolith inscribed with the names of fallen legends.";
+        gameObjects.push(monument);
+
+        // --- Phase 30: Pet Initialization ---
+        if (!activePet) {
+            activePet = new Pet({ name: "Wolf Cub", type: "wolf", x: player.x, y: player.y });
+        }
     } else {
         npcs = [];
         gameObjects = dungeon.objectSpawns ? dungeon.objectSpawns.map(s => {
@@ -1314,7 +1627,7 @@ function finishZoneLoad() {
         enemies = dungeon.enemySpawns.map(s => new Enemy(s));
         // Apply difficulty scaling
         if (difficulty > 0) {
-            const mult = DIFFICULTY_MULT[difficulty];
+            const mult = window.DIFFICULTY_MULT[window._difficulty];
             const immunityTypes = ['physical', 'fire', 'cold', 'lightning', 'poison'];
             for (const e of enemies) {
                 e.maxHp = Math.round(e.maxHp * mult);
@@ -1337,19 +1650,43 @@ function finishZoneLoad() {
     player.setRefs(dungeon, camera, enemies);
     droppedItems = [];
     droppedGold = [];
+    aoeZones = []; // Clear old AoEs
     dialogue = null;
 
     const zoneName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 7}`;
-    const diffLabel = difficulty > 0 ? ` (${DIFFICULTY_NAMES[difficulty]})` : '';
+    const diffLabel = (difficulty > 0 && difficulty < 3) ? ` (${DIFFICULTY_NAMES[difficulty]})` : (difficulty === 3 ? ' (Rift Mode)' : '');
 
     // Check if boss zone
-    isBossZone = (zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0));
+    isBossZone = (zoneLevel === 5 || zoneLevel === 10 || zoneLevel === 15 || zoneLevel === 20 || zoneLevel === 25 || (zoneLevel > 26 && zoneLevel % 5 === 0));
+    isZoneLocked = isBossZone;
 
     // Endgame: zones beyond 7 scale infinitely
     const endgameMult = zoneLevel > 7 ? 1 + (zoneLevel - 7) * 0.3 : 1;
     $('zone-name').textContent = zoneName + diffLabel;
     addCombatLog(`Entered ${zoneName}${diffLabel}!`, 'log-level');
-    if (activeSlotId) SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: [...discoveredWaypoints], mercenary: mercenary ? mercenary.serialize() : null });
+    if (activeSlotId) SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
+        difficulty: window._difficulty,
+        waypoints: [...discoveredWaypoints],
+        mercenary: mercenary ? mercenary.serialize() : null,
+        cube,
+        achievements: Array.from(unlockedAchievements),
+        highestZone: player.highestZone || 0
+    });
+
+    // Apply thematic changes
+    function getTheme(z) {
+        let referenceZone = z;
+        if (z === 0 && player && player.highestZone) {
+            referenceZone = player.highestZone;
+        }
+
+        if (referenceZone >= 21) return 'snow';
+        if (referenceZone >= 16) return 'hell';
+        if (referenceZone >= 11) return 'jungle';
+        if (referenceZone >= 6) return 'desert';
+        return 'cathedral';
+    }
+    window.currentTheme = getTheme(zoneLevel);
 
     // Apply endgame scaling
     if (endgameMult > 1 && enemies.length > 0) {
@@ -1363,13 +1700,13 @@ function finishZoneLoad() {
 
     // Discover waypoint
     discoveredWaypoints.add(zoneLevel);
-
-    // Difficulty advancement: clearing Zone 5 advances difficulty
-    if (zoneLevel > 5 && difficulty < 2) {
-        difficulty++;
-        window._difficulty = difficulty;
-        addCombatLog(`Difficulty increased to ${DIFFICULTY_NAMES[difficulty]}!`, 'log-crit');
+    // Town zones automatically discover their waypoint if it exists
+    if ([0, 6, 11, 16, 21].includes(zoneLevel)) {
+        discoveredWaypoints.add(zoneLevel);
     }
+
+    // Difficulty advancement: clearing Zone 5 advances difficulty (Legacy logic, handled by Baal now)
+    // if (zoneLevel > 5 && difficulty < 2) { ... }
 
     // Ambient Audio Update
     if (zoneLevel === 5) {
@@ -1389,9 +1726,7 @@ function updateQuestHud() {
     const qhud = $('quest-hud');
     if (!qhud) return;
 
-    // Use the first active quest from the array
-    const activeQuest = activeQuests[0];
-    if (!activeQuest) {
+    if (!player) {
         qhud.classList.add('hidden');
         return;
     }
@@ -1400,12 +1735,36 @@ function updateQuestHud() {
     const qdesc = $('quest-desc');
     const qprog = $('quest-progress');
 
-    if (qdesc) qdesc.textContent = activeQuest.name || activeQuest.desc;
+    let questName = "";
+    let questTarget = "";
+    let color = '#ffd700';
+
+    const hz = player.highestZone || 0;
+    if (hz < 5) {
+        questName = "Act I: Blood and Ash";
+        questTarget = "Defeat Andariel (Zone 5)";
+    } else if (hz < 10) {
+        questName = "Act II: The Desert Wastes";
+        questTarget = "Defeat Duriel (Zone 10)";
+    } else if (hz < 15) {
+        questName = "Act III: The Corrupted Jungle";
+        questTarget = "Defeat Mephisto (Zone 15)";
+    } else if (hz < 20) {
+        questName = "Act IV: The Gates of Hell";
+        questTarget = "Defeat Diablo (Zone 20)";
+    } else if (hz < 25) {
+        questName = "Act V: The Frozen Peak";
+        questTarget = "Defeat Baal (Zone 25)";
+    } else {
+        questName = "Epilogue: Infinite Rifts";
+        questTarget = `Delve deeper... (Max: ${hz})`;
+        color = '#00ff00';
+    }
+
+    if (qdesc) qdesc.textContent = questName;
     if (qprog) {
-        const goal = activeQuest.goalCount || activeQuest.targetCount || 1;
-        const current = activeQuest.currentCount || activeQuest.progress || 0;
-        qprog.textContent = `${current}/${goal}`;
-        qprog.style.color = (current >= goal) ? '#00ff00' : '#ffd700';
+        qprog.textContent = questTarget;
+        qprog.style.color = color;
     }
 }
 
@@ -1441,7 +1800,8 @@ function showDialogue(npc) {
 
 function updateHud() {
     if (!player) return;
-    
+    updateWorldClockUI();
+
     // Orbs
     const hpFill = $('hp-fill');
     if (hpFill) hpFill.style.height = (player.hp / player.maxHp * 100) + '%';
@@ -1471,7 +1831,7 @@ function updateHud() {
                 $('boss-name').textContent = uiActiveBoss.name;
                 const bPct = (uiActiveBoss.hp / uiActiveBoss.maxHp) * 100;
                 $('boss-hp-fill').style.width = bPct + '%';
-                
+
                 if (performance.now() - lastBossWarnTime > 60000) {
                     fx.shake(500, 5);
                     addCombatLog(`⚠ TARGET DETECTED: ${uiActiveBoss.name}`, 'log-warn');
@@ -1495,9 +1855,17 @@ function updateHud() {
         else if (typeof theme !== 'undefined' && theme === 'wilderness') filter = 'saturate(1.1) contrast(1.05)';
         canvas.style.filter = filter;
     }
-
+    // Zone Label
     const zoneNameDisplay = $('zone-name');
     if (zoneNameDisplay) zoneNameDisplay.textContent = ZONE_NAMES[zoneLevel] || `Level ${zoneLevel}`;
+
+    // Loot Filter HUD
+    const lfh = $('hud-loot-filter');
+    if (lfh) {
+        const labels = ['FILTER: ALL', 'FILTER: HIDE NORMAL', 'FILTER: HIDE MAGIC'];
+        lfh.textContent = labels[lootFilter || 0];
+        lfh.style.color = (lootFilter === 0) ? '#aaa' : (lootFilter === 1) ? '#fff' : '#0cf';
+    }
 
     // Potion Belt
     for (let i = 0; i < 4; i++) {
@@ -1525,16 +1893,47 @@ function updateHud() {
         }
     }
 
-    // Active buffs bar
+    // Phase 31: Advanced Status UI
     const bb = $('buff-bar');
     if (bb) {
         bb.innerHTML = '';
-        for (const b of (player._buffs || [])) {
+
+        const createStatusIcon = (id, iconChar, color, titleText) => {
             const el = document.createElement('div');
-            el.style.cssText = 'width:24px;height:24px;border:1px solid #aa0;background:#330;border-radius:4px;display:flex;justify-content:center;align-items:center;font-size:12px;color:#ff0;position:relative;cursor:help;pointer-events:auto;';
-            el.textContent = '⚡';
-            el.title = `${b.type.toUpperCase()}: ${(b.duration || 0).toFixed(1)}s left`;
+            el.className = 'status-icon';
+            el.style.cssText = `width:28px;height:28px;border:1px solid ${color};background:rgba(0,0,0,0.6);border-radius:4px;display:flex;justify-content:center;align-items:center;font-size:14px;color:${color};position:relative;cursor:help;pointer-events:auto;box-shadow:inset 0 0 5px ${color};`;
+            el.textContent = iconChar;
+            el.title = titleText;
             bb.appendChild(el);
+        };
+
+        // Active Aura
+        if (player.activeAura) {
+            createStatusIcon(player.activeAura, '🔆', '#ffd700', `Aura: ${player.activeAura.replace('_', ' ').toUpperCase()}`);
+        }
+
+        // Shrine / Skill Buffs
+        for (const b of (player._buffs || [])) {
+            let icon = '🛡️'; let color = '#00ff00';
+            const bid = b.id || b.type || '';
+            if (bid.includes('speed')) { icon = '💨'; color = '#00ccff'; }
+            else if (bid.includes('damage') || bid.includes('berserk')) { icon = '⚔️'; color = '#ff3300'; }
+            else if (bid.includes('mana')) { icon = '💧'; color = '#3366ff'; }
+            else if (bid.includes('resist')) { icon = '🔮'; color = '#ff00ff'; }
+            else if (bid.includes('exp')) { icon = '✨'; color = '#ffffcc'; }
+
+            createStatusIcon(bid, icon, color, `${bid.replace('shrine_', '').toUpperCase()}: ${Math.ceil(b.duration || 0)}s`);
+        }
+
+        // Debuffs (Slows, DoTs, Curses)
+        if (player._auraSlowTimer > 0) {
+            createStatusIcon('slow', '❄️', '#88ccff', `SLOWED: ${Math.ceil(player._auraSlowTimer)}s`);
+        }
+
+        for (const d of (player._dots || [])) {
+            let icon = '🔥'; let color = '#ff0000';
+            if (d.type === 'poison') { icon = '☠️'; color = '#00ff00'; }
+            createStatusIcon(d.type, icon, color, `${d.type.toUpperCase()} DoT: ${Math.ceil(d.duration)}s`);
         }
     }
 
@@ -1590,13 +1989,13 @@ function updateHud() {
             $('merc-name').textContent = mercenary.name;
             const mPct = Math.max(0, Math.min(100, (mercenary.hp / mercenary.maxHp) * 100));
             $('merc-hp-fill').style.width = mPct + '%';
-            
+
             if (mercenary.hp <= 0) {
                 mh.classList.add('merc-dead-portrait');
                 $('merc-hp-fill').style.backgroundColor = '#600';
                 $('merc-name').style.color = '#f00';
                 $('merc-name').textContent = `${mercenary.name} (DEAD)`;
-                
+
                 if (!$('btn-revive-merc')) {
                     const btn = document.createElement('button');
                     btn.id = 'btn-revive-merc';
@@ -1907,15 +2306,34 @@ function getIconForSkill(id) {
     return iconMap[id] || 'ra-cog';
 }
 
-function getItemHtml(item, cantEquip = false) {
+function getItemHtml(item, cantEquip = false, isGamble = false) {
     if (!item) return '';
-    const rarityClass = `rarity-${item.rarity || 'normal'}`;
-    const ceClass = cantEquip ? 'cant-equip' : '';
-    const quantityBadge = (item.quantity > 1) ? `<div class="item-quantity-badge">${item.quantity}</div>` : '';
+    const rarityClass = isGamble ? 'rarity-normal' : `rarity-${item.rarity || 'normal'}`;
+    let iconName = isGamble ? 'item_orb' : item.icon;
 
-    return `<div class="inv-item ${rarityClass} ${ceClass}">
+    // Fallback for misnamed or legacy purple potion assets
+    if (iconName === 'item_potion_purple') iconName = 'item_potion_rejuv';
+
+    const ceClass = cantEquip ? 'cant-equip' : '';
+    const quantityBadge = (!isGamble && item.quantity > 1) ? `<div class="item-quantity-badge">${item.quantity}</div>` : '';
+
+    // Phase 30: Visual Sockets
+    let socketsHtml = '';
+    if (!isGamble && item.sockets > 0) {
+        socketsHtml = '<div class="sockets-container">';
+        for (let i = 0; i < item.sockets; i++) {
+            const gem = item.socketed && item.socketed[i];
+            const gemClass = gem ? 'filled' : 'empty';
+            const gemColor = gem ? (gem.color || '#fff') : 'transparent';
+            socketsHtml += `<div class="socket-hole ${gemClass}" style="background-color: ${gemColor}"></div>`;
+        }
+        socketsHtml += '</div>';
+    }
+
+    return `<div class="inv-item ${rarityClass} ${ceClass} ${isGamble ? 'mystery-item' : ''}">
         ${quantityBadge}
-        <img src="assets/${item.icon}.png" onerror="this.src='assets/item_orb.png'">
+        ${socketsHtml}
+        <img src="assets/${iconName}.png" onerror="this.src='assets/item_orb.png'">
         <div class="rarity-glow"></div>
     </div>`;
 }
@@ -2130,9 +2548,14 @@ function renderMinimap() {
                 ctx.font = '10px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText('⭐', obx, oby + 4);
-            } else if (obj.type === 'portal') {
+            } else if (obj.type === 'portal' || obj.type === 'uber_portal' || obj.type === 'rift_exit') {
                 ctx.fillStyle = '#30ccff';
                 ctx.beginPath(); ctx.arc(obx, oby, 3, 0, Math.PI * 2); ctx.fill();
+            } else if (obj.type === 'stairs_down') {
+                ctx.fillStyle = '#ff00ff'; // Bright purple for exit
+                ctx.beginPath();
+                ctx.moveTo(obx, oby - 4); ctx.lineTo(obx + 4, oby + 2); ctx.lineTo(obx - 4, oby + 2);
+                ctx.fill();
             } else {
                 ctx.fillStyle = obj.type === 'shrine' ? '#ffd700' : '#8b4513';
                 ctx.fillRect(obx - 1, oby - 1, 2, 2);
@@ -2174,7 +2597,42 @@ function renderMinimap() {
 
     // Player dot (always center)
     ctx.fillStyle = '#00ff40';
-    ctx.fillRect(mw / 2 - 2, mh / 2 - 2, 4, 4);
+    const pSize = showFullMap ? 6 : 4;
+    ctx.fillRect(mw / 2 - pSize / 2, mh / 2 - pSize / 2, pSize, pSize);
+
+    // Path destination marker
+    if (player.path && player.path.length > 0) {
+        const dest = player.path[player.path.length - 1];
+        const destX = ox + (dest.x / dungeon.tileSize) * sx;
+        const destY = oy + (dest.y / dungeon.tileSize) * sy;
+        if (destX >= 0 && destX <= mw && destY >= 0 && destY <= mh) {
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(destX - 4, destY - 4); ctx.lineTo(destX + 4, destY + 4);
+            ctx.moveTo(destX + 4, destY - 4); ctx.lineTo(destX - 4, destY + 4);
+            ctx.stroke();
+        }
+    }
+
+    if (showFullMap) {
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(2, 2, mw - 4, mh - 4);
+
+        // Area Label
+        const zoneName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 7}`;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(mw / 2 - 100, 10, 200, 30);
+        ctx.strokeStyle = '#bf642f';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(mw / 2 - 100, 10, 200, 30);
+
+        ctx.fillStyle = '#ffd700';
+        ctx.font = '16px Cinzel, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(zoneName.toUpperCase(), mw / 2, 32);
+    }
 }
 // ─── POTION EVENTS ───
 for (let i = 0; i < 4; i++) {
@@ -2193,19 +2651,53 @@ bus.on('input:rightclick', p => {
 
 // Weapon Swap
 bus.on('action:weapon_swap', () => {
-    if (player && state === 'GAME') {
+    if (player && (state === 'GAME' || state === 'INVENTORY')) {
         player.swapWeapons();
         renderInventory();
         renderCharacterPanel();
+        if (fx) fx.emitBurst(player.x, player.y, '#ffd700', 15, 1.5);
+        bus.emit('item:move');
     }
 });
 
 // ─── TOGGLES ───
-bus.on('ui:toggle:fullmap', () => { showFullMap = !showFullMap; });
+bus.on('ui:toggle:fullmap', () => {
+    showFullMap = !showFullMap;
+    bus.emit('ui:click');
+});
+bus.on('ui:toggle:journal', () => {
+    const panel = $('panel-quests');
+    if (!panel) return;
+    if (panel.classList.contains('hidden')) {
+        document.querySelectorAll('.panel, .ui-panel, .window, .side-panel').forEach(p => p.classList.add('hidden'));
+        panel.classList.remove('hidden');
+        renderQuestJournal();
+    } else {
+        panel.classList.add('hidden');
+    }
+    bus.emit('ui:click');
+});
+
+bus.on('ui:toggle:achievements', () => {
+    const panel = $('panel-achievements');
+    if (!panel) return;
+    if (panel.classList.contains('hidden')) {
+        document.querySelectorAll('.panel, .ui-panel, .window, .side-panel').forEach(p => p.classList.add('hidden'));
+        panel.classList.remove('hidden');
+        renderAchievementsList();
+    } else {
+        panel.classList.add('hidden');
+    }
+    bus.emit('ui:click');
+});
+
+// Consolidated Loot Filter
 bus.on('ui:toggle:lootfilter', () => {
     lootFilter = (lootFilter + 1) % 3;
-    const msg = lootFilter === 0 ? 'Loot Filter: Show All' : lootFilter === 1 ? 'Loot Filter: Hide Normal' : 'Loot Filter: Hide Normal & Magic';
+    const labels = ['SHOW ALL', 'HIDE NORMAL', 'HIDE MAGIC'];
+    const msg = `Loot Filter: ${labels[lootFilter]}`;
     addCombatLog(msg, 'log-info');
+    updateHud(); // Refresh HUD text immediately
 });
 
 // Minimap Zoom
@@ -2214,6 +2706,41 @@ bus.on('ui:toggle:map', () => {
     let idx = zooms.indexOf(minimapZoom);
     minimapZoom = zooms[(idx + 1) % zooms.length];
     addCombatLog(`Minimap Zoom: ${minimapZoom}x`, 'log-info');
+});
+
+// Interactive Minimap Navigation
+$('minimap')?.addEventListener('click', (e) => {
+    if (!dungeon || !player || state !== 'GAME') return;
+    const mc = $('minimap');
+    const rect = mc.getBoundingClientRect();
+    // Use scaling in case CSS width/height differs from canvas attributes
+    const scaleX = mc.width / rect.width;
+    const scaleY = mc.height / rect.height;
+    const cx = (e.clientX - rect.left) * scaleX;
+    const cy = (e.clientY - rect.top) * scaleY;
+
+    const mw = mc.width, mh = mc.height;
+    const zoom = minimapZoom || 1.0;
+    const sx = (mw / dungeon.width) * zoom;
+    const sy = (mh / dungeon.height) * zoom;
+
+    const px_tile = player.x / dungeon.tileSize;
+    const py_tile = player.y / dungeon.tileSize;
+
+    const ox = (mw / 2) - px_tile * sx;
+    const oy = (mh / 2) - py_tile * sy;
+
+    const targetX = ((cx - ox) / sx) * dungeon.tileSize;
+    const targetY = ((cy - oy) / sy) * dungeon.tileSize;
+
+    if (targetX < 0 || targetX >= dungeon.width * dungeon.tileSize || targetY < 0 || targetY >= dungeon.height * dungeon.tileSize) return;
+
+    player.attackTarget = null;
+    player.path = player.pathfinder.find(dungeon.grid, player.x, player.y, targetX, targetY, dungeon.tileSize);
+    if (player.path.length > 0) {
+        addCombatLog('Auto-navigating to map location...', 'log-info');
+        bus.emit('ui:click'); // Auditory feedback
+    }
 });
 
 // ─── COMBAT EVENTS ───
@@ -2343,8 +2870,8 @@ bus.on('combat:spawnMinions', d => {
         if (dungeon && dungeon.isWalkable(tx, ty)) {
             const minionSpawn = {
                 type: 'skeleton',
-                maxHp: 200 * (difficulty > 0 ? DIFFICULTY_MULT[difficulty] : 1),
-                dmg: 25 * (difficulty > 0 ? DIFFICULTY_MULT[difficulty] : 1),
+                maxHp: 200 * (window._difficulty > 0 ? window.DIFFICULTY_MULT[window._difficulty] : 1),
+                dmg: 25 * (window._difficulty > 0 ? window.DIFFICULTY_MULT[window._difficulty] : 1),
                 moveSpeed: 70,
                 attackSpeed: 1.2,
                 attackRange: 25,
@@ -2364,13 +2891,34 @@ bus.on('combat:spawnMinions', d => {
 
 bus.on('player:levelup', d => {
     addCombatLog(`LEVEL UP! Now level ${d.level}`, 'log-level');
-    if (player && fx) fx.emitBurst(player.x, player.y, '#ffd700', 50, 3);
+    if (player && fx) {
+        fx.emitLevelUp(player.x, player.y);
+        spawnFloatingText(player.x, player.y, 'LEVEL UP!', 'holy', true);
+    }
     playZoneTransition(); // Level up sound
     updateSkillBar();
 });
 
 bus.on('log:add', d => {
     addCombatLog(d.text, d.cls || '');
+});
+
+// --- Phase 27: Special Loot Handling ---
+bus.on('loot:special', d => {
+    const { item, itemId, x, y } = d;
+    let dropped = item;
+    if (itemId === 'hellfire_torch') {
+        const torch = loot.generateFixedUnique('hellfire_torch');
+        torch.x = x; torch.y = y;
+        droppedItems.push(torch);
+        fx.emitLootBeam(x, y, '#ff8000');
+        return;
+    }
+    if (dropped) {
+        dropped.x = x; dropped.y = y;
+        droppedItems.push(dropped);
+        fx.emitLootBeam(x, y, '#ffd700');
+    }
 });
 
 bus.on('item:broken', d => {
@@ -2422,19 +2970,37 @@ function togglePanel(name) {
     if (name === 'character' && !panel.classList.contains('hidden')) renderCharacterPanel();
     if (name === 'inventory' && !panel.classList.contains('hidden')) renderInventory();
     if (name === 'mercenary' && !panel.classList.contains('hidden')) renderMercenaryPanel();
+    if (name === 'bounties' && !panel.classList.contains('hidden')) renderBountyBoard();
 }
 
 $('btn-sort-inv')?.addEventListener('click', () => {
     if (!player) return;
     player.sortInventory();
     renderInventory();
-    addCombatLog('Inventory Organized.', 'log-info');
+    updateHud(); // update belt display
+    addCombatLog('Inventory & Belt Organized.', 'log-info');
+});
+
+$('btn-sort-stash')?.addEventListener('click', () => {
+    if (!player) return;
+    sortStash();
+    renderStash();
+    addCombatLog('Stash Organized.', 'log-info');
+});
+
+$('btn-sell-junk')?.addEventListener('click', () => {
+    if (!player) return;
+    sellAllJunk();
+    renderInventory();
+    renderCharacterPanel();
 });
 
 bus.on('ui:toggle:inventory', () => togglePanel('inventory'));
 bus.on('ui:toggle:talents', () => togglePanel('talents'));
 bus.on('ui:toggle:character', () => togglePanel('character'));
 bus.on('ui:toggle:mercenary', () => togglePanel('mercenary'));
+
+// renderInventory was merged down to line 3147
 
 function renderMercenaryPanel() {
     if (!mercenary) {
@@ -2444,12 +3010,21 @@ function renderMercenaryPanel() {
     }
     $('merc-paperdoll').style.opacity = '1';
 
-    const slots = ['head', 'chest', 'mainhand'];
+    const slots = ['head', 'chest', 'mainhand', 'offhand'];
     slots.forEach(s => {
         const el = document.querySelector(`.merc-slot[data-slot="${s}"]`);
         if (!el) return;
         const item = mercenary.equipment[s];
         el.innerHTML = item ? getItemHtml(item) : '';
+
+        // Drag & Drop for Mercenary Slots
+        el.onmousedown = (e) => {
+            if (item) startDrag(e, item, 'merc', s);
+        };
+        el.onmouseup = (e) => {
+            e.stopPropagation();
+            handleDrop('merc', s);
+        };
 
         if (item) {
             const itemEl = el.querySelector('.inv-item');
@@ -2493,8 +3068,30 @@ function renderMercenaryPanel() {
             <span style="color:#ff4;">L:${mercenary.resists.light}%</span> 
             <span style="color:#6f6;">P:${mercenary.resists.pois}%</span>
         </div>
+        <div class="merc-xp-bar"><div class="merc-xp-fill" style="width:${(mercenary.xp / mercenary.xpToNextLevel * 100).toFixed(1)}%"></div></div>
+        <div style="font-size:8px; text-align:right; color:#66a; margin-top:1px;">XP: ${Math.floor(mercenary.xp)} / ${mercenary.xpToNextLevel}</div>
         ${buffHtml}
     `;
+}
+
+function renderBountyBoard() {
+    const list = $('bounty-list');
+    if (!list) return;
+    if (activeBounties.length === 0) generateDailyBounties();
+
+    list.innerHTML = '';
+    activeBounties.forEach(b => {
+        const isDone = b.progress >= b.targetCount;
+        const card = document.createElement('div');
+        card.className = `bounty-card ${isDone ? 'bounty-complete' : ''}`;
+        card.innerHTML = `
+            <div class="bounty-title">${b.title} ${isDone ? '✅' : ''}</div>
+            <div style="font-size:11px; font-style:italic;">${b.desc}</div>
+            <div class="bounty-progress">Progress: ${b.progress} / ${b.targetCount}</div>
+            <div class="bounty-reward">Reward: ${b.reward.gold} Gold, ${b.reward.xp} XP</div>
+        `;
+        list.appendChild(card);
+    });
 }
 bus.on('ui:closeAll', () => {
     ['inventory', 'talents', 'character', 'shop', 'stash', 'cube', 'quests', 'mercenary'].forEach(p => {
@@ -2515,7 +3112,7 @@ bus.on('ui:closeAll', () => {
 
 // Town Portal
 bus.on('action:town_portal', () => {
-    if (state !== 'GAME' || player.hp <= 0) return;
+    if (state !== 'GAME' && state !== 'INVENTORY') return;
     if (zoneLevel > 0) {
         portalReturnZone = zoneLevel;
         addCombatLog('Town Portal Opened!', 'log-level');
@@ -2524,6 +3121,84 @@ bus.on('action:town_portal', () => {
         gameObjects.push(tp);
     } else {
         addCombatLog('You are already in town.', 'log-dmg');
+    }
+});
+
+// Interaction
+bus.on('action:interact', () => {
+    if (state !== 'GAME' || (player && player.hp <= 0)) return;
+    
+    // Interaction range
+    const range = 53;
+    
+    // 1. Closest NPC / Object
+    const interactables = [...npcs, ...gameObjects];
+    let closest = null;
+    let minDist = range;
+    for (const t of interactables) {
+        const d = Math.sqrt((t.x - player.x)**2 + (t.y - player.y)**2);
+        if (d < minDist) { minDist = d; closest = t; }
+    }
+    
+    if (closest) {
+        if (closest instanceof NPC) renderDialoguePicker(closest);
+        else if (closest.interact) closest.interact(player);
+        return;
+    }
+    
+    // 2. Closest Item
+    let closestItem = null;
+    let minItemDist = 45;
+    for (const di of droppedItems) {
+        const d = Math.sqrt((di.x - player.x)**2 + (di.y - player.y)**2);
+        if (d < minItemDist) { minItemDist = d; closestItem = di; }
+    }
+    if (closestItem) {
+        if (player.addToInventory(closestItem)) {
+            addCombatLog(`Picked up ${closestItem.name}`, 'log-item');
+            droppedItems.splice(droppedItems.indexOf(closestItem), 1);
+            playLoot();
+            renderInventory();
+        } else {
+            addCombatLog('Inventory full!', 'log-dmg');
+        }
+        return;
+    }
+
+    // 3. Closest Gold
+    let closestGold = null;
+    let minGoldDist = 45;
+    for (const dg of droppedGold) {
+        const d = Math.sqrt((dg.x - player.x)**2 + (dg.y - player.y)**2);
+        if (d < minGoldDist) { minGoldDist = d; closestGold = dg; }
+    }
+    if (closestGold) {
+        player.gold += closestGold.amount;
+        totalGoldCollected += closestGold.amount;
+        addCombatLog(`Picked up ${closestGold.amount} Gold`, 'log-heal');
+        droppedGold.splice(droppedGold.indexOf(closestGold), 1);
+        updateHud();
+        renderInventory();
+    }
+});
+
+// Loot Filter Cycle
+bus.on('ui:toggle:lootfilter', () => {
+    lootFilter = (lootFilter + 1) % 3;
+    const labels = ['ALL', 'MAGIC+', 'RARE+'];
+    const label = document.getElementById('hud-loot-filter');
+    if (label) label.textContent = `FILTER: ${labels[lootFilter]}`;
+    addCombatLog(`Loot Filter: ${labels[lootFilter]}`, 'log-info');
+});
+
+// Weapon Swapping
+bus.on('action:weapon_swap', () => {
+    if (player && state === 'GAME') {
+        player.swapWeaponSet();
+        addCombatLog(`Swapped to Weapon Set ${player.activeWeaponSet}`, 'log-info');
+        renderInventory();
+        renderCharacterPanel();
+        updateHud();
     }
 });
 
@@ -2556,7 +3231,7 @@ $('btn-quests')?.addEventListener('click', () => {
 });
 
 // ─── QUEST LOG ───
-function renderQuestLog() {
+function renderQuestJournal() {
     const list = $('quest-list');
     const stats = $('quest-stats');
     if (!list || !stats) return;
@@ -2607,12 +3282,48 @@ function renderQuestLog() {
     `;
 }
 
+let lastAchievementRenderTime = 0;
+function renderAchievementsList() {
+    const list = $('achievements-list');
+    if (!list) return;
+
+    // Throttle rendering to once every 500ms if actually needed
+    const now = performance.now();
+    if (now - lastAchievementRenderTime < 500) return;
+    lastAchievementRenderTime = now;
+
+    list.innerHTML = '';
+    const frag = document.createDocumentFragment();
+
+    ACHIEVEMENTS.forEach(ach => {
+        const isUnlocked = unlockedAchievements.has(ach.id);
+        const card = document.createElement('div');
+        card.style.cssText = `
+            padding: 10px; margin-bottom: 8px; border: 1px solid ${isUnlocked ? '#bf642f' : '#333'};
+            background: ${isUnlocked ? 'rgba(191,100,47,0.1)' : 'rgba(0,0,0,0.4)'};
+            border-radius: 4px; display: flex; align-items: center; gap: 12px;
+            opacity: ${isUnlocked ? '1' : '0.5'}; transition: 0.3s;
+        `;
+
+        card.innerHTML = `
+            <div style="font-size: 24px;">${isUnlocked ? '🏆' : '🔒'}</div>
+            <div style="flex: 1;">
+                <div style="color: ${isUnlocked ? '#ffd700' : '#888'}; font-weight: bold; font-family: Cinzel, serif;">${ach.name}</div>
+                <div style="font-size: 11px; color: #aaa;">${ach.desc}</div>
+                ${ach.reward ? `<div style="font-size: 10px; color: #4caf50; margin-top: 2px;">Reward: ${ach.reward} Gold</div>` : ''}
+            </div>
+            ${isUnlocked ? '<div style="color: #4caf50; font-size: 10px; font-weight: bold;">UNLOCKED</div>' : ''}
+        `;
+        frag.appendChild(card);
+    });
+    list.appendChild(frag);
+}
+
 // ─── AUTO-BELT REFILL ───
 function autoBeltRefill() {
     if (!player) return;
     for (let i = 0; i < 4; i++) {
         if (!player.belt[i]) {
-            // Find a potion in inventory
             const potIdx = player.inventory.findIndex(it => it && it.type === 'potion');
             if (potIdx !== -1) {
                 player.belt[i] = player.inventory[potIdx];
@@ -2703,9 +3414,10 @@ function renderCharacterPanel() {
     const btn = (stat) => sp > 0 ? `<button class="stat-alloc-btn" data-stat="${stat}">+</button>` : '';
     const stats = [
         ['Class', `<i class="ra ${getIconForClass(player.classId)}" style="font-size:16px;vertical-align:middle;color:var(--gold);"></i> ${player.className}`],
-        ['Level', player.level],
+        ['Level', player.level + (player.paragonLevel > 0 ? ` (+${player.paragonLevel} Paragon)` : '')],
         ['Gold', player.gold],
         ['Stat Points', `<span style="color:${sp > 0 ? '#ffd700' : '#888'}">${sp}</span>`],
+        ['Paragon Pts', `<span style="color:${player.paragonPoints > 0 ? 'var(--cyan)' : '#888'}">${player.paragonPoints}</span> ${player.level >= 99 ? `<button id="btn-open-paragon" style="padding:0 4px;font-size:10px;">VIEW</button>` : ''}`],
         ['─ ATTRIBUTES ─', ''],
         ['Strength', `${player.str} ${btn('str')}`, `Strength: ${player.str} [Base: ${player.baseStr}, Gear: +${player.str - player.baseStr}]`],
         ['Dexterity', `${player.dex} ${btn('dex')}`, `Dexterity: ${player.dex} [Base: ${player.baseDex}, Gear: +${player.dex - player.baseDex}]`],
@@ -2738,6 +3450,7 @@ function renderCharacterPanel() {
         ['─ FIND ─', ''],
         ['Magic Find', (player.magicFind || 0) + '%', `Chance to find better loot.`],
         ['Gold Find', (player.goldFind || 0) + '%', `Increases gold dropped by enemies.`],
+        ['Light Radius', '+' + (player.lightRadius || 0), `Increases your vision range in dark areas.`],
         ['─ DIFFICULTY ─', ''],
         ['Current', DIFFICULTY_NAMES[difficulty], `Current game difficulty level.`],
         ['Resist Penalty', (difficulty === 2 ? '-100%' : (difficulty === 1 ? '-40%' : '0%')), `Resistance reduction from higher difficulty.`],
@@ -2766,6 +3479,58 @@ function renderCharacterPanel() {
         el.addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
         el.addEventListener('mouseleave', hideTooltip);
     });
+
+    const openParagon = $('btn-open-paragon');
+    if (openParagon) {
+        openParagon.addEventListener('click', () => {
+            isParagonOpen = true;
+            renderParagonPanel();
+        });
+    }
+}
+
+function renderParagonPanel() {
+    if (!player) return;
+    let modal = $('paragon-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'paragon-modal';
+        modal.className = 'premium-modal';
+        document.body.appendChild(modal);
+    }
+
+    modal.classList.remove('hidden');
+    modal.innerHTML = `
+        <div class="modal-content" style="width:400px;background:rgba(15,10,20,0.95);border:2px solid var(--cyan);box-shadow:0 0 20px var(--cyan-dark);">
+            <div class="modal-header" style="border-bottom:1px solid var(--cyan-dark);">
+                <span style="color:var(--cyan);font-family:Cinzel,serif;letter-spacing:2px;">PARAGON POINTS: ${player.paragonPoints}</span>
+                <button class="modal-close" onclick="document.getElementById('paragon-modal').classList.add('hidden'); isParagonOpen=false;">&times;</button>
+            </div>
+            <div class="modal-body stats-grid" style="padding:15px;max-height:400px;overflow-y:auto;">
+                ${['core', 'offense', 'defense', 'utility'].map(cat => `
+                    <div class="paragon-category" style="margin-bottom:15px; border:1px solid #333; padding:8px; background:rgba(0,0,0,0.3);">
+                        <div style="color:var(--gold);font-size:12px;margin-bottom:5px;border-bottom:1px solid #444;text-transform:uppercase;">${cat}</div>
+                        ${Object.keys(player.paragonStats[cat]).map(stat => `
+                            <div class="stat-row" style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;">
+                                <span style="font-size:11px;color:#aaa;">${stat.toUpperCase()} (+${player.paragonStats[cat][stat]})</span>
+                                <button class="paragon-add-btn" data-cat="${cat}" data-stat="${stat}" ${player.paragonPoints <= 0 ? 'disabled' : ''}>+</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `).join('')}
+            </div>
+            <div style="padding:10px;text-align:center;font-size:10px;color:#666;font-style:italic;">Gain 1 Paragon Point per Paragon Level (unlimited)</div>
+        </div>
+    `;
+
+    modal.querySelectorAll('.paragon-add-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (player.allocateParagonPoint(btn.dataset.cat, btn.dataset.stat)) {
+                renderParagonPanel();
+                renderCharacterPanel();
+            }
+        });
+    });
 }
 
 // ─── INVENTORY ───
@@ -2775,6 +3540,30 @@ let socketingGemIndex = -1;
 function renderInventory() {
     if (!player) return;
     syncInteractionStates();
+
+    // 0. Belt (Phase 30 Finalization)
+    const beltGrid = $('belt-grid');
+    if (beltGrid) {
+        beltGrid.innerHTML = '';
+        player.belt.forEach((item, i) => {
+            const slot = document.createElement('div');
+            slot.className = 'belt-slot';
+            slot.innerHTML = item ? getItemHtml(item) : '';
+            if (item) {
+                const itemEl = slot.querySelector('.inv-item');
+                setupTooltip(itemEl, item);
+                itemEl.onmousedown = (e) => { if (e.button === 0) startDrag(e, item, 'belt', i); };
+                itemEl.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    player.useItem(i, true);
+                    renderInventory();
+                    updateHud();
+                };
+            }
+            slot.onmouseup = () => handleDrop('belt', i);
+            beltGrid.appendChild(slot);
+        });
+    }
 
     // 1. Equip Slots (Paper Doll)
     const equipSlots = ['head', 'amulet', 'chest', 'mainhand', 'offhand', 'gloves', 'belt', 'boots', 'ring1', 'ring2'];
@@ -2799,7 +3588,13 @@ function renderInventory() {
             const itemEl = el.querySelector('.inv-item');
             setupTooltip(itemEl, item);
 
-            // Left-click to socket / identify / unequip
+            // Left-click to socket / identify / start drag
+            itemEl.addEventListener('mousedown', (e) => {
+                if (e.button === 0) startDrag(e, item, 'equip', s);
+            });
+
+            el.onmouseup = () => handleDrop('equip', s);
+
             itemEl.addEventListener('click', (e) => {
                 if (window.isIdentifying && item.identified === false) {
                     item.identified = true;
@@ -2901,6 +3696,11 @@ function renderInventory() {
             const innerDiv = div.firstChild; // The .inv-item div
             setupTooltip(innerDiv, item);
 
+            // Drag support
+            innerDiv.onmousedown = (e) => { 
+                if (e.button === 0 && !e.shiftKey) startDrag(e, item, 'inventory', i); 
+            };
+
             // Handle Item Clicks
             div.addEventListener('click', (e) => {
                 // Quick-Move Logic (Shift + Click)
@@ -2971,7 +3771,7 @@ function renderInventory() {
                 }
 
                 if (!$('panel-mercenary').classList.contains('hidden') && mercenary) {
-                    const validSlots = ['head', 'chest', 'mainhand'];
+                    const validSlots = ['head', 'chest', 'mainhand', 'offhand'];
                     if (validSlots.includes(item.slot)) {
                         const old = mercenary.equipment[item.slot];
                         mercenary.equipment[item.slot] = item;
@@ -2989,6 +3789,37 @@ function renderInventory() {
                         addCombatLog(`${mercenary.name} cannot equip this!`, 'log-dmg');
                         return;
                     }
+                }
+
+                if (isImbuing) {
+                    if (item.rarity !== 'normal' || item.type === 'potion' || item.type === 'gem' || item.type === 'scroll') {
+                        addCombatLog('Charsi: "I can only imbue normal equipment!"', 'log-dmg');
+                        return;
+                    }
+                    loot.imbueItem(item, player.level);
+                    player.hasImbue = false;
+                    isImbuing = false;
+                    addCombatLog(`Charsi: "There! A weapon fit for a hero!"`, 'log-level');
+                    playLoot();
+                    hideTooltip();
+                    renderInventory();
+                    return;
+                }
+
+                if (isReforging) {
+                    if (item.rarity !== 'rare') {
+                        addCombatLog('Charsi: "I can only reforge Rare equipment!"', 'log-dmg');
+                        return;
+                    }
+                    player.gold -= 5000;
+                    loot.reforgeItem(item, player.level);
+                    isReforging = false;
+                    addCombatLog(`Charsi: "The spirits have blessed your ${item.baseId} with new power!"`, 'log-level');
+                    playLoot();
+                    hideTooltip();
+                    renderInventory();
+                    renderCharacterPanel();
+                    return;
                 }
 
                 if (isLarzukSocketing) {
@@ -3047,12 +3878,12 @@ function renderInventory() {
                     return;
                 }
 
-                const result = player.equip(item);
-                if (result && result.error) {
-                    addCombatLog(result.error, 'log-dmg');
+                const res = player.equip(item);
+                if (res.error) {
+                    addCombatLog(res.error, 'log-dmg');
                     return;
                 }
-                player.inventory[i] = result; // could be null or old item
+                player.inventory[i] = res.swapped;
                 renderInventory();
                 renderCharacterPanel();
                 updateHud();
@@ -3197,6 +4028,7 @@ function renderInventory() {
                 }
             });
         }
+        cell.onmouseup = () => handleDrop('inventory', i);
         ig.appendChild(cell);
     }
 
@@ -3380,7 +4212,7 @@ function itemTooltipText(item, isComparison = false) {
     if (item.mods && item.mods.length > 0) {
         t += `<div class="tooltip-mods" style="color:#4850b8;">`;
         for (const mod of item.mods) {
-            const val = mod.value > 0 ? `+${mod.value}` : `${mod.value}`;
+            let val = mod.value > 0 ? `+${mod.value}` : `${mod.value}`;
             let statName = mod.stat;
             // Human readable skill bonuses
             // Mapping for human readable stat names
@@ -3394,6 +4226,10 @@ function itemTooltipText(item, isComparison = false) {
                 statName = `to ${statName.split(':')[1].toUpperCase()} Spells`;
             } else if (statName === '+allSkills') {
                 statName = "to All Skills";
+            } else if (statName.startsWith('+')) {
+                // For cases like "+10 Strength" where stat is "+flatSTR"
+                statName = statName.substring(1);
+                statName = fLabels[statName] || statName.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
             } else {
                 statName = fLabels[statName] || statName.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
             }
@@ -3455,6 +4291,29 @@ function itemTooltipText(item, isComparison = false) {
                 t += `<div style="color:${color}; font-size:11px;">(${tier}) ${modText}</div>`;
             }
             t += `</div>`;
+        }
+    }
+
+    // Comparison logic
+    if (!isComparison && (state === 'INVENTORY' || state === 'STASH' || state === 'VENDOR')) {
+        const slot = item.slot;
+        const equippedItem = player.equipment[slot] || (slot === 'ring1' ? player.equipment.ring2 : null);
+
+        if (equippedItem && equippedItem !== item) {
+            const getDiff = (stat) => {
+                const cur = (item.mods?.find(m => m.stat === stat)?.value || 0) + (item[stat] || 0);
+                const old = (equippedItem.mods?.find(m => m.stat === stat)?.value || 0) + (equippedItem[stat] || 0);
+                const diff = cur - old;
+                if (diff === 0) return '';
+                const color = diff > 0 ? '#4caf50' : '#f44336';
+                return `<span style="color:${color}; font-size:10px; margin-left:5px;">(${diff > 0 ? '+' : ''}${diff})</span>`;
+            };
+
+            const dmgDiff = (item.maxDmg || 0) - (equippedItem.maxDmg || 0);
+            const armDiff = (item.armor || 0) - (equippedItem.armor || 0);
+
+            if (dmgDiff !== 0) t = t.replace(`${item.maxDmg} Damage`, `${item.maxDmg} Damage <span style="color:${dmgDiff > 0 ? '#4caf50' : '#f44336'}">(${dmgDiff > 0 ? '+' : ''}${dmgDiff})</span>`);
+            if (armDiff !== 0) t = t.replace(`${item.armor} Defense`, `${item.armor} Defense <span style="color:${armDiff > 0 ? '#4caf50' : '#f44336'}">(${armDiff > 0 ? '+' : ''}${armDiff})</span>`);
         }
     }
 
@@ -3544,24 +4403,72 @@ function renderDialoguePicker(npc) {
         { label: 'Trade', action: () => { openShop(); menu.remove(); activeDialogueNpc = null; } },
         {
             label: 'Talk', action: () => {
-                dialogue = { text: `${npc.name}: "${npc.dialogue}"`, timer: 6, npc: npc };
-                addCombatLog(dialogue.text, 'log-info');
+                const questOffered = offerQuest(npc.id);
+                if (!questOffered) {
+                    dialogue = { text: `${npc.name}: "${npc.dialogue}"`, timer: 6, npc: npc };
+                    addCombatLog(dialogue.text, 'log-info');
+                }
                 menu.remove();
                 activeDialogueNpc = null;
             }
         }
     ];
 
+    // Priority: If quest is available or ready to turn in, add the 'Quest' button
+    const hasQuestAction = QUEST_POOL.some(q => q.giver === npc.id && !completedQuests.has(q.id));
+    if (hasQuestAction) {
+        options.unshift({
+            label: 'Quest', action: () => {
+                offerQuest(npc.id);
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+    }
+
     // Special: Gamble (Gheed)
     if (npc.id === 'gheed') {
         options.push({ label: 'Gamble', action: () => { openGambleShop(); menu.remove(); activeDialogueNpc = null; } });
     }
 
+    // Special: Imbue (Charsi)
+    if (npc.id === 'charsi' && player.hasImbue) {
+        options.push({
+            label: 'Imbue Item', action: () => {
+                addCombatLog('Select an item in your inventory to Imbue (Transform to Rare).', 'log-info');
+                isImbuing = true; // Need to handle click in renderInventory
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+    }
+
+    // Special: Reforge (Phase 22: Charsi)
+    if (npc.id === 'charsi') {
+        options.push({
+            label: 'Forge Equipment (5 Fragments)', action: () => {
+                renderCraftingMenu();
+                if (menu) menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+        options.push({
+            label: 'Reforge Rare (5000g)', action: () => {
+                if (player.gold < 5000) { addCombatLog('Not enough gold!', 'log-dmg'); return; }
+                addCombatLog('Select a Rare item in your inventory to Reforge (Reroll Affixes).', 'log-info');
+                isReforging = true;
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+    }
+
     // Special: Hire / Revive (Kashya)
     if (npc.id === 'kashya') {
         const isDead = mercenary && mercenary.hp <= 0;
+        const mercName = mercenary ? mercenary.name : 'Mercenary';
         options.push({
-            label: isDead ? 'Revive Mercenary (200g)' : 'Hire Mercenary (500g)', action: () => {
+            label: isDead ? `Revive ${mercName} (200g)` : 'Hire Mercenary (500g)', action: () => {
                 hireMercenary();
                 menu.remove();
                 activeDialogueNpc = null;
@@ -3645,6 +4552,29 @@ function renderDialoguePicker(npc) {
         }
     });
 
+    // --- Phase 30: Pantheon Monument ---
+    if (npc.id === 'pantheon_monument') {
+        // Clear default options for the monument
+        options.length = 0;
+        options.push({
+            label: 'View Legacies',
+            action: () => {
+                renderPantheonList();
+                if (menu) menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+        options.push({
+            label: 'Touch the Stone', action: () => {
+                fx.emitHeal(player.x, player.y);
+                addCombatLog('A cold chill runs down your spine as you touch the ancient stone.', 'log-info');
+                if (menu) menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+        options.push({ label: 'Leave', action: () => { if (menu) menu.remove(); activeDialogueNpc = null; } });
+    }
+
     // Special: Warriv Waypoint Travel
     if (npc.id === 'warriv') {
         const wpZones = [...discoveredWaypoints].sort((a, b) => a - b);
@@ -3701,23 +4631,48 @@ function renderWaypointMenu(obj) {
     title.textContent = 'WAYPOINT TRAVEL';
     menu.appendChild(title);
 
+    const scrollArea = document.createElement('div');
+    scrollArea.style.cssText = 'max-height: 250px; overflow-y: auto; padding-right: 5px;';
+
+    const acts = [
+        { name: 'ACT I', range: [0, 5] },
+        { name: 'ACT II', range: [6, 10] },
+        { name: 'ACT III', range: [11, 15] },
+        { name: 'ACT IV', range: [16, 20] },
+        { name: 'ACT V', range: [21, 25] },
+        { name: 'RIFT', range: [26, 1000] }
+    ];
+
     const wpZones = [...discoveredWaypoints].sort((a, b) => a - b);
-    wpZones.forEach(wz => {
-        if (wz === zoneLevel) return;
-        const btn = document.createElement('div');
-        btn.className = 'dialogue-option';
-        btn.style.cssText = 'color: #d8b068; cursor: pointer; padding: 10px; margin: 4px 0; text-align: left; transition: all 0.2s; font-size: 13px; background: rgba(191,100,47,0.05); border: 1px solid transparent;';
-        btn.onmouseover = () => { btn.style.color = '#fff'; btn.style.background = 'rgba(191,100,47,0.2)'; btn.style.borderColor = '#bf642f'; };
-        btn.onmouseout = () => { btn.style.color = '#d8b068'; btn.style.background = 'rgba(191,100,47,0.05)'; btn.style.borderColor = 'transparent'; };
-        btn.textContent = `⚡ ${ZONE_NAMES[wz] || 'Area ' + wz}`;
-        btn.onclick = () => {
-            addCombatLog(`Teleporting to ${ZONE_NAMES[wz] || 'Area ' + wz}...`, 'log-level');
-            nextZone(wz);
-            menu.remove();
-            activeWaypointObj = null;
-        };
-        menu.appendChild(btn);
+
+    acts.forEach(act => {
+        const discoveredInAct = wpZones.filter(wz => wz >= act.range[0] && wz <= act.range[1]);
+        if (discoveredInAct.length === 0) return;
+
+        const header = document.createElement('div');
+        header.style.cssText = 'color: #888; font-size: 10px; margin: 8px 0 4px; border-bottom: 1px solid #333;';
+        header.textContent = act.name;
+        scrollArea.appendChild(header);
+
+        discoveredInAct.forEach(wz => {
+            if (wz === zoneLevel) return;
+            const btn = document.createElement('div');
+            btn.className = 'dialogue-option';
+            btn.style.cssText = 'color: #d8b068; cursor: pointer; padding: 8px; margin: 2px 0; text-align: left; transition: all 0.2s; font-size: 12px; background: rgba(191,100,47,0.05); border: 1px solid transparent;';
+            btn.onmouseover = () => { btn.style.color = '#fff'; btn.style.background = 'rgba(191,100,47,0.2)'; btn.style.borderColor = '#bf642f'; };
+            btn.onmouseout = () => { btn.style.color = '#d8b068'; btn.style.background = 'rgba(191,100,47,0.05)'; btn.style.borderColor = 'transparent'; };
+            btn.textContent = `⚡ ${ZONE_NAMES[wz] || 'Area ' + wz}`;
+            btn.onclick = () => {
+                addCombatLog(`Teleporting to ${ZONE_NAMES[wz] || 'Area ' + wz}...`, 'log-level');
+                nextZone(wz);
+                menu.remove();
+                activeWaypointObj = null;
+            };
+            scrollArea.appendChild(btn);
+        });
     });
+
+    menu.appendChild(scrollArea);
 
     const cancelBtn = document.createElement('div');
     cancelBtn.className = 'dialogue-option';
@@ -3990,12 +4945,18 @@ function renderStash() {
             const innerDiv = div.firstChild;
             setupTooltip(innerDiv, item);
 
+            // Drag support
+            innerDiv.onmousedown = (e) => {
+                if (e.button === 0) startDrag(e, item, 'stash', i);
+            };
+
             const moveToInv = (e) => {
                 e.preventDefault();
                 const empty = player.inventory.indexOf(null);
                 if (empty !== -1) {
                     player.inventory[empty] = item;
-                    items[i] = null;
+                    const itemsArr = currentStashTab === 'personal' ? stash : sharedStash;
+                    itemsArr[i] = null;
                     if (currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
                     addCombatLog(`Took ${item.name} from Stash`, 'log-info');
                     hideTooltip();
@@ -4009,6 +4970,7 @@ function renderStash() {
             div.addEventListener('contextmenu', moveToInv);
             cell.appendChild(div);
         }
+        cell.onmouseup = () => handleDrop('stash', i);
         grid.appendChild(cell);
     }
 
@@ -4018,12 +4980,14 @@ function renderStash() {
 
 // Wire Stash Tabs
 $('btn-stash-personal')?.addEventListener('click', () => {
+    bus.emit('ui:click');
     currentStashTab = 'personal';
     $('btn-stash-personal').classList.add('active');
     $('btn-stash-shared').classList.remove('active');
     renderStash();
 });
 $('btn-stash-shared')?.addEventListener('click', () => {
+    bus.emit('ui:click');
     currentStashTab = 'shared';
     $('btn-stash-shared').classList.add('active');
     $('btn-stash-personal').classList.remove('active');
@@ -4034,6 +4998,7 @@ $('btn-stash-shared')?.addEventListener('click', () => {
 $('btn-stash-deposit')?.addEventListener('click', () => {
     const amt = player.gold;
     if (amt > 0) {
+        bus.emit('ui:click');
         sharedGold += amt;
         player.gold = 0;
         SaveSystem.saveSharedStash(sharedStash, sharedGold);
@@ -4042,17 +5007,76 @@ $('btn-stash-deposit')?.addEventListener('click', () => {
         addCombatLog(`Deposited ${amt} gold into global bank.`, 'log-heal');
     }
 });
+
 $('btn-stash-withdraw')?.addEventListener('click', () => {
     if (sharedGold > 0) {
-        player.gold += sharedGold;
-        const amt = sharedGold;
+        bus.emit('ui:click');
+        bus.emit('gold:pickup');
+        const toTake = sharedGold;
+        player.gold += toTake;
         sharedGold = 0;
         SaveSystem.saveSharedStash(sharedStash, sharedGold);
         renderStash();
         updateHud();
-        addCombatLog(`Withdrew ${amt} gold.`, 'log-heal');
+        addCombatLog(`Withdrew ${toTake} gold from global bank.`, 'log-info');
     }
 });
+
+function sortStash() {
+    const items = currentStashTab === 'personal' ? stash : sharedStash;
+    const itemsRef = items.filter(it => it !== null);
+
+    const rarityWeights = { unique: 10, set: 9, rare: 8, magic: 7, normal: 6 };
+    const typeWeights = { weapon: 10, armor: 9, helm: 8, shield: 7, gloves: 6, boots: 5, belt: 4, amulet: 3, ring: 2, charm: 1, gem: 0, rune: 0, scroll: 0, potion: 0 };
+
+    itemsRef.sort((a, b) => {
+        const ta = typeWeights[a.type] || -1;
+        const tb = typeWeights[b.type] || -1;
+        if (ta !== tb) return tb - ta;
+
+        const ra = rarityWeights[a.rarity] || 0;
+        const rb = rarityWeights[b.rarity] || 0;
+        if (ra !== rb) return rb - ra;
+
+        if (a.baseId !== b.baseId) return (a.baseId || "").localeCompare(b.baseId || "");
+        return (b.quantity || 1) - (a.quantity || 1) || (b.ilvl || 0) - (a.ilvl || 0);
+    });
+
+    // Replace contents of original array
+    items.fill(null);
+    itemsRef.forEach((it, i) => items[i] = it);
+
+    if (currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
+}
+
+function sellAllJunk() {
+    if (!player) return;
+    bus.emit('ui:click');
+    let totalSold = 0;
+    let goldEarned = 0;
+
+    for (let i = 0; i < player.inventory.length; i++) {
+        const item = player.inventory[i];
+        // Junk: normal rarity equipment (not runes/gems/potions)
+        if (item && item.rarity === 'normal' && !['potion', 'scroll', 'gem', 'rune'].includes(item.type)) {
+            const price = Math.max(1, Math.floor(item.ilvl * 0.5));
+            player.gold += price;
+            player.totalGoldCollected += price;
+            goldEarned += price;
+            player.inventory[i] = null;
+            totalSold++;
+        }
+    }
+
+    if (totalSold > 0) {
+        bus.emit('gold:pickup');
+        addCombatLog(`Sold ${totalSold} items for ${goldEarned} gold.`, 'log-info');
+        renderInventory();
+        updateHud();
+    } else {
+        addCombatLog("No junk items found to sell.", "log-dmg");
+    }
+}
 
 $('btn-sort-stash')?.addEventListener('click', () => {
     const target = (currentStashTab === 'personal') ? stash : sharedStash;
@@ -4099,6 +5123,11 @@ function renderCube() {
             const innerDiv = div.firstChild;
             setupTooltip(innerDiv, item);
 
+            // Drag support
+            innerDiv.onmousedown = (e) => {
+                if (e.button === 0) startDrag(e, item, 'cube', i);
+            };
+
             const moveToInv = (e) => {
                 e.preventDefault();
                 const empty = player.inventory.indexOf(null);
@@ -4117,6 +5146,7 @@ function renderCube() {
             div.addEventListener('contextmenu', moveToInv);
             cell.appendChild(div);
         }
+        cell.onmouseup = () => handleDrop('cube', i);
         grid.appendChild(cell);
     }
 
@@ -4139,6 +5169,12 @@ function checkCubeRecipe(items) {
             btn.classList.add('btn-ready');
             btn.textContent = 'UPGRADE ARTIFACTS';
         }
+    } else if (items.length === 1 && items[0].id === 'hellfire_key_set') {
+        btn.classList.add('btn-ready');
+        btn.textContent = 'OPEN PANDEMONIUM PORTAL';
+    } else if (items.length === 1 && items[0].id === 'item_cow_portal') {
+        btn.classList.add('btn-ready');
+        btn.textContent = 'OPEN SECRET COW LEVEL';
     }
 }
 
@@ -4146,12 +5182,43 @@ $('btn-transmute')?.addEventListener('click', () => {
     const resultItem = loot.transmuteCube(cube);
 
     if (resultItem) {
+        bus.emit('cube:transmute');
+        // Phase 27: Uber Portal Logic
+        if (resultItem.id === 'hellfire_key_set') {
+            addCombatLog('The sky darkens... A portal to Uber Tristram has opened!', 'log-crit');
+            const portal = new GameObject('uber_portal', player.x, player.y - 40, 'env_water');
+            portal.targetZone = 100; // Uber Tristram
+            gameObjects.push(portal);
+
+            // Clear keys
+            cube.forEach((it, idx) => { if (it && it.id === 'hellfire_key') cube[idx] = null; });
+            renderCube();
+            return;
+        }
+
+        // Secret Cow Level Portal
+        if (resultItem.id === 'item_cow_portal') {
+            if (zoneLevel > 0) {
+                addCombatLog('Moo. (Portals can only be opened in town).', 'log-dmg');
+                return;
+            }
+            addCombatLog('Moo Moo Moo... A portal to the Secret Cow Level has opened!', 'log-crit');
+            const portal = new GameObject('cow_portal', player.x + 40, player.y, 'env_water');
+            portal.targetZone = 99; // Cow Level
+            gameObjects.push(portal);
+
+            // Clear items
+            cube.forEach((it, idx) => { if (it && (it.baseId === 'wirts_leg' || it.baseId === 'tome_tp' || it.id === 'item_cow_portal')) cube[idx] = null; });
+            renderCube();
+            return;
+        }
+
         addCombatLog(`Transmutation Successful! Crafted: ${resultItem.name}`, 'log-crit');
         // Clear all non-null items that were used in the recipe
         cube.forEach((item, index) => {
             if (item) cube[index] = null;
         });
-        cube[0] = resultItem; // Place the new item in the top-left slot of the cube
+        cube[0] = resultItem;
         renderCube();
     } else {
         addCombatLog('Transmutation Failed. Invalid Horadric Recipe.', 'log-dmg');
@@ -4159,70 +5226,172 @@ $('btn-transmute')?.addEventListener('click', () => {
 });
 
 // ─── QUEST SYSTEM ───
-const QUEST_POOL = [
-    { id: 'slay_5', desc: 'Slay 5 monsters in the Blood Moor', target: 5, goldReward: 150, xpReward: 100 },
-    { id: 'slay_10', desc: 'Slay 10 monsters in the wilderness', target: 10, goldReward: 350, xpReward: 250 },
-    { id: 'slay_20', desc: 'Defeat 20 creatures of darkness', target: 20, goldReward: 800, xpReward: 500 },
-    { id: 'slay_boss', desc: 'Defeat the Act Boss', target: 1, goldReward: 1500, xpReward: 1000, bossOnly: true, statReward: 5, skillReward: 1 },
-];
+const ACT_1_QUESTS = {
+    'den_of_evil': {
+        id: 'den_of_evil',
+        name: 'Den of Evil',
+        desc: 'Clear the Den of Evil (Blood Moor). Slay 20 enemies.',
+        target: 20,
+        giver: 'akara',
+        goldReward: 500,
+        xpReward: 500,
+        skillReward: 1,
+        intro: "Akara: 'There is a place of great evil in the Blood Moor. My scouts tell me it is filled with foul creatures. Purge the coven, and I shall grant you a boon of power.'"
+    },
+    'blood_raven': {
+        id: 'blood_raven',
+        name: 'Sisters\' Burial Grounds',
+        desc: 'Defeat Blood Raven in the Burial Grounds (Zone 3).',
+        target: 1,
+        giver: 'kashya',
+        goldReward: 1000,
+        xpReward: 1500,
+        mercenaryReward: true,
+        bossOnly: true,
+        intro: "Kashya: 'My best scout, Blood Raven, has fallen to the shadow. She now desecrates our sacred burial grounds. Put her soul to rest, and my sisters shall follow you into battle.'"
+    },
+    'forgotten_tower': {
+        id: 'forgotten_tower',
+        name: 'The Forgotten Tower',
+        desc: 'Find the countess and her hoard in the Tower (Zone 4).',
+        target: 1,
+        giver: 'cain',
+        goldReward: 5000,
+        xpReward: 3000,
+        bossOnly: true,
+        intro: "Deckard Cain: 'Ancient legends speak of a Countess who was buried alive. Her castle has fallen into ruin, but her treasures... they remain. Find her, and the riches of the old world are yours.'"
+    },
+    'tools_of_the_trade': {
+        id: 'tools_of_the_trade',
+        name: 'Tools of the Trade',
+        desc: 'Retrieve the Horadric Malus from the Smith in the Monastery (Zone 5).',
+        target: 1,
+        giver: 'charsi',
+        goldReward: 2000,
+        xpReward: 5000,
+        imbueReward: true,
+        intro: "Charsi: 'When I fled the Monastery, I left my enchanted hammer, the Horadric Malus, behind. The Smith now guards it. Bring it back to me, and I can empower your gear like never before!'"
+    },
+    'andariel': {
+        id: 'andariel',
+        name: 'Sisters to the Slaughter',
+        desc: 'Defeat Andariel, the Maiden of Anguish, in the Depths (Zone 5 Boss).',
+        target: 1,
+        giver: 'akara',
+        goldReward: 10000,
+        xpReward: 10000,
+        skillReward: 1,
+        statReward: 5,
+    }
+};
 
-function offerQuest() {
+const ACT_4_QUESTS = {
+    'terrors_end': {
+        id: 'terrors_end',
+        name: 'Terror\'s End',
+        desc: 'Reach the Chaos Sanctuary (Zone 20) and defeat Diablo, the Lord of Terror.',
+        target: 1,
+        giver: 'tyrael',
+        goldReward: 50000,
+        xpReward: 100000,
+        skillReward: 2,
+        statReward: 10,
+        isActBoss: true,
+        intro: "Tyrael: 'The time has come to end this darkness. Diablo has retreated to his Chaos Sanctuary within the burning hells. You must follow him, mortal, and strike him down. The fate of Sanctuary depends on your strength!'"
+    }
+};
+
+const ACT_5_QUESTS = {
+    'lod_finale': {
+        id: 'lod_finale',
+        name: 'The Lord of Destruction',
+        desc: 'Reach the Worldstone Chamber (Zone 25) and defeat Baal, the Lord of Destruction.',
+        target: 1,
+        giver: 'tyrael',
+        goldReward: 100000,
+        xpReward: 250000,
+        skillReward: 5,
+        statReward: 20,
+        isActBoss: true,
+        intro: "Tyrael: 'Baal has reached the Heart of the Worldstone. If he corrupts it, Sanctuary will be lost forever. You must hurry to the Worldstone Chamber and destroy him!'"
+    }
+};
+
+const QUEST_POOL = [...Object.values(ACT_1_QUESTS), ...Object.values(ACT_4_QUESTS), ...Object.values(ACT_5_QUESTS)];
+
+function offerQuest(giverId = null) {
     if (!player) return;
-    // Check if any quest is completed
+
+    // Check for completions first
     for (let i = activeQuests.length - 1; i >= 0; i--) {
         const q = activeQuests[i];
         if (q.progress >= q.target) {
-            player.gold += q.goldReward;
-            player.addXp(q.xpReward);
+            // Must talk to the giver to turn in? 
+            // For now, let's allow auto-turn-in if giverId matches OR if no giverId provided (kill loop)
+            if (giverId === q.giver || !giverId) {
+                player.gold += q.goldReward;
+                player.addXp(q.xpReward);
+                if (q.skillReward) player.talents.unspent += q.skillReward;
+                if (q.statReward) player.statPoints += q.statReward;
+                if (q.mercenaryReward) addCombatLog('You can now hire mercenaries from Kashya!', 'log-level');
+                if (q.imbueReward) {
+                    player.hasImbue = true;
+                    addCombatLog('Charsi can now Imbue one item! (Interaction Menu)', 'log-level');
+                }
+                if (q.isActBoss) {
+                    if (q.id === 'lod_finale') {
+                        addCombatLog('THE LORD OF DESTRUCTION IS DEFEATED! SANCTUARY IS SAVED!', 'log-crit');
+                        bus.emit('ui:showScreen', { screen: 'victory' });
+                    } else if (q.id === 'terrors_end') {
+                        addCombatLog('THE LORD OF TERROR IS DEFEATED! SANCTUARY IS SAVED!', 'log-crit');
+                        bus.emit('ui:showScreen', { screen: 'victory' });
+                    } else {
+                        addCombatLog('ACT BOSS DEFEATED! You have proven your strength.', 'log-crit');
+                    }
+                    if (fx) fx.emitLevelUp(player.x, player.y);
+                }
 
-            // Special rewards
-            if (q.statReward) player.statPoints += q.statReward;
-            if (q.skillReward) player.talents.unspent += q.skillReward;
+                addCombatLog(`Quest Complete: "${q.name}" — Reward received!`, 'log-level');
+                completedQuests.add(q.id);
+                activeQuests.splice(i, 1);
+                if (fx) fx.emitBurst(player.x, player.y, '#4caf50', 50, 2.5);
+                updateHud();
+                return true;
+            }
+        }
+    }
 
-            let rewardMsg = `+${q.goldReward}g, +${q.xpReward} XP`;
-            if (q.statReward) rewardMsg += `, +${q.statReward} Stat Points`;
-            if (q.skillReward) rewardMsg += `, +${q.skillReward} Skill Point`;
-
-            addCombatLog(`Quest Complete: "${q.desc}" — ${rewardMsg}!`, 'log-level');
-            completedQuests.add(q.id);
-            activeQuests.splice(i, 1);
-            if (fx) fx.emitBurst(player.x, player.y, '#4caf50', 50, 2.5);
-            playZoneTransition(); // Celebratory sound
+    // Give a new quest if the giver matches and we don't have it
+    if (giverId) {
+        const quest = QUEST_POOL.find(q => q.giver === giverId && !completedQuests.has(q.id) && !activeQuests.some(aq => aq.id === q.id));
+        if (quest) {
+            activeQuests.push({ ...quest, progress: 0 });
+            addCombatLog(`New Quest: "${quest.name}"`, 'log-level');
+            dialogue = { text: quest.intro, timer: 8, npc: { name: giverId } };
             updateHud();
-            return;
+            return true;
         }
     }
-    // Offer a new quest if none active
-    if (activeQuests.length === 0) {
-        const available = QUEST_POOL.filter(q => !completedQuests.has(q.id));
-        if (available.length === 0) {
-            addCombatLog('Akara: "You have completed all my tasks. You are truly a hero."', 'log-info');
-            return;
-        }
-        const quest = { ...available[0], progress: 0 };
-        activeQuests.push(quest);
-        addCombatLog(`New Quest: "${quest.desc}"`, 'log-level');
-    } else {
-        const q = activeQuests[0];
-        addCombatLog(`Quest Progress: "${q.desc}" — ${q.progress}/${q.target}`, 'log-info');
-    }
+    return false;
 }
 
 
 // ─── MERCENARY HIRE ───
-function hireMercenary() {
+function hireMercenary(type = 'Rogue') {
     if (!player) return;
-
-    // Revive cost scales with level (min 200, max 50000)
-    const cost = Math.min(50000, Math.max(200, player.level * 100));
-
-    if (mercenary && mercenary.hp > 0) {
-        addCombatLog('Kashya: "Your rogue still fights! Return when she falls."', 'log-info');
+    if (player.gold < 500) {
+        addCombatLog('You do not have enough gold to hire a companion.', 'log-dmg');
         return;
     }
+
+    if (mercenary && mercenary.hp > 0) {
+        addCombatLog('You already have an active companion.', 'log-info');
+        return;
+    }
+
     if (mercenary && mercenary.hp <= 0) {
-        if (player.gold < cost) { addCombatLog(`Not enough gold! (${cost}g to resurrect)`, 'log-dmg'); return; }
-        player.gold -= cost;
+        if (player.gold < 200) { addCombatLog('Not enough gold to revive.', 'log-dmg'); return; }
+        player.gold -= 200;
         mercenary.hp = mercenary.maxHp;
         addCombatLog(`Kashya: "${mercenary.name} has been revived!"`, 'log-level');
         updateHud();
@@ -4231,18 +5400,61 @@ function hireMercenary() {
     const hireCost = 500;
     if (player.gold < hireCost) { addCombatLog(`Not enough gold! (${hireCost}g to hire)`, 'log-dmg'); return; }
     player.gold -= hireCost;
-    const names = ['Aliza', 'Blaise', 'Paige', 'Kyra', 'Ryann'];
-    const lvl = player.level || 1;
+    const names = {
+        'Rogue': ['Aliza', 'Kyra', 'Paige', 'Blaise'],
+        'Desert Warrior': ['Heseir', 'Raheer', 'EMez', 'Fazel'],
+        'Iron Wolf': ['Jarulf', 'Isenhart', 'Telash', 'Flux']
+    };
+    const icons = { 'Rogue': 'class_rogue', 'Desert Warrior': 'class_warrior', 'Iron Wolf': 'class_shaman' };
+
+    const nameList = names[type] || names['Rogue'];
     mercenary = new Mercenary({
-        name: names[Math.floor(Math.random() * names.length)],
-        className: 'Rogue',
+        name: nameList[Math.floor(Math.random() * nameList.length)],
+        className: type,
         level: player.level || 1,
-        icon: 'class_rogue',
+        icon: icons[type] || 'class_rogue',
         x: player.x + 20, y: player.y
     });
 
-    addCombatLog(`Hired Mercenary ${mercenary.name}! She will fight by your side.`, 'log-level');
+    addCombatLog(`Hired ${type} ${mercenary.name}! They will fight by your side.`, 'log-level');
     updateHud();
+    renderMercenaryPanel();
+}
+
+// --- Phase 28: Bounty Board System ---
+function generateDailyBounties() {
+    activeBounties = [];
+    const themes = ['Skeletons', 'Zombies', 'Spiders', 'Demons', 'Wraiths'];
+    for (let i = 0; i < 3; i++) {
+        const theme = themes[Math.floor(Math.random() * themes.length)];
+        const count = 20 + Math.floor(Math.random() * 30);
+        activeBounties.push({
+            id: `bounty_${Date.now()}_${i}`,
+            title: `Bounty: ${theme} Purge`,
+            desc: `Exterminate ${count} ${theme} across the realm.`,
+            target: theme.toLowerCase(),
+            progress: 0,
+            targetCount: count,
+            reward: { gold: count * 10, xp: count * 100 }
+        });
+    }
+}
+
+function checkBountyProgress(enemy) {
+    if (!activeBounties.length) return;
+    for (const b of activeBounties) {
+        if (b.progress >= b.targetCount) continue;
+        if (enemy.name.toLowerCase().includes(b.target) || (enemy.group && enemy.group.toLowerCase().includes(b.target))) {
+            b.progress++;
+            if (b.progress === b.targetCount) {
+                addCombatLog(`Bounty Complete: ${b.title}! +${b.reward.gold}g`, 'log-crit');
+                player.gold += b.reward.gold;
+                player.gainXp(b.reward.xp);
+                fx.emitBurst(player.x, player.y, '#ffd700', 30, 4);
+                updateHud();
+            }
+        }
+    }
 }
 
 // ─── ACHIEVEMENTS ───
@@ -4272,6 +5484,62 @@ function checkAchievements() {
 
 // ─── INIT ───
 window.addEventListener('DOMContentLoaded', () => {
+    // Phase 31: Init Supabase
+    DB.init();
+
+    // Setup Auth UI Hooks
+    $('btn-open-auth').addEventListener('click', () => {
+        $('auth-modal').classList.remove('hidden');
+    });
+
+    $('btn-auth-login').addEventListener('click', async () => {
+        const e = $('auth-email').value, p = $('auth-password').value;
+        if (!e || !p) { $('auth-error').textContent = 'Enter email and password'; return; }
+        $('auth-error').textContent = 'Logging in...';
+        const res = await DB.signIn(e, p);
+        if (res.success) {
+            $('auth-modal').classList.add('hidden');
+            renderSaveSlots(); // Reload saves
+        } else {
+            $('auth-error').textContent = res.error;
+        }
+    });
+
+    $('btn-auth-register').addEventListener('click', async () => {
+        const e = $('auth-email').value, p = $('auth-password').value;
+        if (!e || !p) { $('auth-error').textContent = 'Enter email and password'; return; }
+        $('auth-error').textContent = 'Registering...';
+        const res = await DB.signUp(e, p);
+        if (res.success) {
+            $('auth-modal').classList.add('hidden');
+            renderSaveSlots();
+        } else {
+            $('auth-error').textContent = res.error;
+        }
+    });
+
+    $('btn-logout').addEventListener('click', async () => {
+        await DB.signOut();
+        renderSaveSlots();
+    });
+
+    bus.on('auth:stateChanged', (session) => {
+        const text = $('auth-status-text');
+        const btnLogin = $('btn-open-auth');
+        const btnLogout = $('btn-logout');
+        if (session) {
+            text.textContent = `Cloud Connected: ${session.user.email}`;
+            text.style.color = 'var(--cyan)';
+            btnLogin.classList.add('hidden');
+            btnLogout.classList.remove('hidden');
+        } else {
+            text.textContent = `Playing as Guest (Local Saves)`;
+            text.style.color = '#aaa';
+            btnLogin.classList.remove('hidden');
+            btnLogout.classList.add('hidden');
+        }
+    });
+
     initParticles();
     initClassGrid();
 
@@ -4287,7 +5555,18 @@ window.addEventListener('DOMContentLoaded', () => {
         const nameInput = $('character-name');
         const charName = nameInput ? nameInput.value.trim() : null;
         initAudio();
+        // Set difficulty before starting
+        const activeDiffBtn = document.querySelector('.diff-btn.active');
+        window._difficulty = activeDiffBtn ? parseInt(activeDiffBtn.dataset.diff) : 0;
         startGame(null, null, charName);
+    });
+
+    // Difficulty selection wiring
+    document.querySelectorAll('.diff-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
     });
 
     // Death Screen
@@ -4358,9 +5637,14 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ─── SAVE SLOT UI ───
-function renderSaveSlots() {
+async function renderSaveSlots() {
     const container = $('save-slots');
-    const slots = SaveSystem.listSlots();
+    let slots = [];
+    if (DB.isLoggedIn()) {
+        slots = await DB.getSaves();
+    } else {
+        slots = SaveSystem.listSlots();
+    }
     const btnContinue = $('btn-continue');
 
     if (slots.length === 0) {
@@ -4388,46 +5672,82 @@ function renderSaveSlots() {
         `;
 
         // Click to load
-        card.addEventListener('click', (e) => {
+        card.addEventListener('click', async (e) => {
             if (e.target.classList.contains('slot-delete')) return;
-            const saveData = SaveSystem.loadSlot(slot.id);
+
+            let saveData = null;
+            if (DB.isLoggedIn()) {
+                const cloudSaves = await DB.getSaves();
+                const cloudMatch = cloudSaves.find(s => s.id === slot.id);
+                if (cloudMatch) {
+                    saveData = {
+                        player: cloudMatch.player,
+                        zoneLevel: cloudMatch.zoneLevel || 0,
+                        stash: cloudMatch.stash || [],
+                        cube: cloudMatch.cube || [],
+                        mercenary: cloudMatch.mercenary || null,
+                        slotId: cloudMatch.id,
+                        difficulty: cloudMatch.difficulty || 0,
+                        waypoints: cloudMatch.waypoints || [0],
+                    };
+                }
+            }
+            if (!saveData) saveData = SaveSystem.loadSlot(slot.id);
+
             if (saveData) {
                 let pData = null;
                 try { pData = typeof saveData.player === 'string' ? JSON.parse(saveData.player) : saveData.player; } catch (err) { }
                 const maxDiff = (pData && pData.maxDifficulty) ? pData.maxDifficulty : 0;
 
-                if (maxDiff > 0) {
-                    const picker = document.createElement('div');
-                    picker.className = 'dialogue-picker-menu';
-                    picker.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(10,8,5,0.95); border:1px solid #bf642f; padding:20px; z-index:2000; text-align:center; box-shadow:0 0 20px #000;';
-                    picker.innerHTML = `<h3 style="color:var(--gold); margin-bottom:15px; font-family:'Cinzel',serif;">Select Difficulty</h3>`;
+                // Show Difficulty Selection if unlocked
+                const picker = document.createElement('div');
+                picker.className = 'dialogue-picker-menu';
+                picker.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(10,8,5,0.95); border:1px solid #bf642f; padding:20px; z-index:2000; text-align:center; box-shadow:0 0 20px #000; min-width:250px; border-radius:10px;';
+                picker.innerHTML = `<h3 style="color:var(--gold); margin-bottom:15px; font-family:'Cinzel',serif; font-size:18px;">Select Difficulty</h3>`;
 
-                    for (let d = 0; d <= maxDiff; d++) {
-                        const btn = document.createElement('button');
-                        btn.className = 'btn-secondary';
-                        btn.style.cssText = 'display:block; width:100%; margin-bottom:8px;';
+                // Show all difficulties up to maxDifficulty
+                for (let d = 0; d <= maxDiff; d++) {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-secondary';
+                    btn.style.cssText = 'display:block; width:100%; margin-bottom:10px; padding:12px; font-weight:bold; font-size:14px;';
+                    
+                    if (d === 3) {
+                        btn.textContent = '⚡ Rift Mode ⚡';
+                        btn.style.color = '#bf642f'; // Unique orange
+                        btn.style.border = '1px solid #ff9000';
+                    } else {
                         btn.textContent = DIFFICULTY_NAMES[d];
-                        btn.onclick = (ev) => {
-                            ev.stopPropagation();
-                            saveData.difficulty = d; // override difficulty for this session
-                            picker.remove();
-                            initAudio();
-                            startGame(slot.id, saveData);
-                        };
-                        picker.appendChild(btn);
+                        if (d === 1) btn.style.color = '#ffcc00'; // Nightmare
+                        if (d === 2) btn.style.color = '#ff4400'; // Hell
                     }
 
-                    const cancelBtn = document.createElement('button');
-                    cancelBtn.className = 'btn-secondary small';
-                    cancelBtn.textContent = 'Cancel';
-                    cancelBtn.onclick = (ev) => { ev.stopPropagation(); picker.remove(); };
-                    picker.appendChild(cancelBtn);
+                    btn.onclick = (ev) => {
+                        ev.stopPropagation();
+                        saveData.difficulty = d;
+                        
+                        // If Rift Mode, override starting zone
+                        if (d === 3) {
+                            saveData.zoneLevel = 26; 
+                        } else if (saveData.zoneLevel >= 26) {
+                            // If coming back to normal game, return to Town
+                            saveData.zoneLevel = 0;
+                        }
 
-                    document.body.appendChild(picker);
-                } else {
-                    initAudio();
-                    startGame(slot.id, saveData);
+                        picker.remove();
+                        initAudio();
+                        startGame(slot.id, saveData);
+                    };
+                    picker.appendChild(btn);
                 }
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'btn-secondary small';
+                cancelBtn.style.marginTop = '10px';
+                cancelBtn.textContent = 'Cancel';
+                cancelBtn.onclick = (ev) => { ev.stopPropagation(); picker.remove(); };
+                picker.appendChild(cancelBtn);
+
+                document.body.appendChild(picker);
             }
         });
 
@@ -4443,3 +5763,421 @@ function renderSaveSlots() {
         container.appendChild(card);
     }
 }
+
+// --- Phase 29: World Overlay & Time Logic ---
+function renderWorldOverlay(ctx, w, h) {
+    const hour = worldTime / 60;
+    let alpha = 0;
+    let color = '0, 0, 0';
+
+    if (hour >= 20 || hour < 4) { // Night
+        alpha = 0.45;
+        color = '20, 10, 60';
+    } else if (hour >= 18 && hour < 20) { // Dusk
+        alpha = (hour - 18) / 2 * 0.45;
+        color = '80, 20, 40';
+    } else if (hour >= 4 && hour < 6) { // Dawn
+        alpha = (1 - (hour - 4) / 2) * 0.45;
+        color = '80, 50, 20';
+    }
+
+    if (alpha > 0) {
+        ctx.save();
+        ctx.fillStyle = `rgba(${color}, ${alpha})`;
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+    }
+}
+
+function updateWorldClockUI() {
+    const clock = $('world-clock');
+    if (!clock) return;
+    const hour = Math.floor(worldTime / 60);
+    const min = Math.floor(worldTime % 60);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const h12 = hour % 12 || 12;
+    clock.textContent = `${h12}:${min < 10 ? '0' : ''}${min} ${ampm} ${window.isNight ? '🌙' : '☀️'}`;
+}
+
+// --- Phase 29: Blacksmith Crafting UI ---
+function renderCraftingMenu() {
+    const existing = document.getElementById('crafting-panel');
+    if (existing) existing.remove();
+
+    const panel = document.createElement('div');
+    panel.id = 'crafting-panel';
+    panel.className = 'dialogue-panel'; // Use existing panel styles
+    panel.style.width = '300px';
+    panel.innerHTML = `
+        <h3 style="color:var(--gold); border-bottom:1px solid #444; margin-bottom:10px;">Charsi's Forge</h3>
+        <div style="font-size:11px; margin-bottom:10px;">Spend 5 Horadric Fragments for a high-tier Rare.</div>
+        <div id="craft-options" style="display:flex; flex-direction:column; gap:5px;"></div>
+        <button class="btn-close" style="width:100%; margin-top:10px;">Close</button>
+    `;
+
+    const bases = ['long_sword', 'war_hammer', 'plate_mail', 'bone_shield', 'great_helm'];
+    const fragments = player.inventory.filter(it => it && it.baseId === 'horadric_fragment').length;
+
+    bases.forEach(baseId => {
+        const itemBase = items[baseId];
+        if (!itemBase) return; // Skip if ID is missing from data
+
+        const btn = document.createElement('button');
+        btn.className = 'btn-menu';
+        btn.textContent = `Craft ${itemBase.name}`;
+        btn.disabled = fragments < 5;
+        btn.onclick = () => {
+            const empty = player.inventory.indexOf(null);
+            if (empty === -1) { addCombatLog('Inventory Full!', 'log-dmg'); return; }
+
+            // Consume 5 fragments
+            let removed = 0;
+            for (let i = 0; i < player.inventory.length; i++) {
+                if (player.inventory[i] && player.inventory[i].baseId === 'horadric_fragment') {
+                    player.inventory[i] = null;
+                    removed++;
+                    if (removed === 5) break;
+                }
+            }
+
+            const crafted = loot.rollCraftedItem(baseId, player.level);
+            player.inventory[empty] = crafted;
+            addCombatLog(`Crafted ${crafted.name}!`, 'log-crit');
+            renderInventory();
+            renderCraftingMenu();
+        };
+        panel.querySelector('#craft-options').appendChild(btn);
+    });
+
+    panel.querySelector('.btn-close').onclick = () => panel.remove();
+    document.body.appendChild(panel);
+
+    // Position near Charsi
+    const pos = camera.toScreen(activeDialogueNpc.x, activeDialogueNpc.y);
+    panel.style.left = `${pos.x - 150}px`;
+    panel.style.top = `${pos.y - 250}px`;
+}
+
+// --- Phase 30: Drag & Drop Implementation ---
+function startDrag(e, item, source, idx) {
+    if (!item) return;
+    draggedItem = item;
+    dragSource = source;
+    dragSourceIdx = idx;
+
+    dragGhost = document.createElement('div');
+    dragGhost.id = 'drag-ghost';
+    dragGhost.innerHTML = getItemHtml(item);
+    dragGhost.style.position = 'fixed';
+    dragGhost.style.pointerEvents = 'none';
+    dragGhost.style.zIndex = '10000';
+    dragGhost.style.opacity = '0.8';
+    document.body.appendChild(dragGhost);
+
+    e.target.closest('.inv-item')?.classList.add('dragging');
+}
+
+function handleDrop(target, idx) {
+    if (!draggedItem) return;
+    bus.emit('ui:click');
+    let success = false;
+
+    // Helper to get array reference by name
+    const getContainer = (name) => {
+        if (name === 'inventory') return player.inventory;
+        if (name === 'belt') return player.belt;
+        if (name === 'stash') return (currentStashTab === 'personal') ? stash : sharedStash;
+        if (name === 'cube') return cube;
+        return null;
+    };
+
+    const srcArr = getContainer(dragSource);
+    const tarArr = getContainer(target);
+
+    // 1. Array to Array (Inventory, Stash, Cube, Belt)
+    if (srcArr && tarArr) {
+        const itemAtSource = srcArr[dragSourceIdx];
+        const itemAtTarget = tarArr[idx];
+
+        // Swap
+        tarArr[idx] = itemAtSource;
+        srcArr[dragSourceIdx] = itemAtTarget;
+        success = true;
+    }
+    // 2. Dragging FROM Equip TO Array (Inventory, Stash, Cube, Belt)
+    else if (dragSource === 'equip' && tarArr) {
+        const itemAtTarget = tarArr[idx];
+        const unequipped = player.unequip(dragSourceIdx);
+
+        tarArr[idx] = unequipped;
+        if (itemAtTarget) {
+            // Attempt to equip the item that was in the target slot
+            const res = player.equip(itemAtTarget, dragSourceIdx);
+            if (!res.success) {
+                // If it can't be equipped (reqs), try to put it back in source (unlikely to fail if it was there)
+                // or just put it in first empty inv slot
+                const empty = player.inventory.indexOf(null);
+                if (empty !== -1) player.inventory[empty] = itemAtTarget;
+                else droppedItems.push({ ...itemAtTarget, x: player.x, y: player.y, active: true });
+            }
+        }
+        success = true;
+    }
+    // 3. Dragging FROM Array TO Equip
+    else if (srcArr && target === 'equip') {
+        const itm = srcArr[dragSourceIdx];
+        const res = player.equip(itm, idx);
+        if (res.success) {
+            srcArr[dragSourceIdx] = res.swapped;
+            success = true;
+            bus.emit('item:move');
+        } else {
+            addCombatLog(res.error, 'log-dmg');
+            bus.emit('ui:error');
+        }
+    }
+    // 4. Dragging TO Mercenary
+    else if (target === 'merc' && mercenary) {
+        const validSlots = ['head', 'chest', 'mainhand', 'offhand'];
+        if (validSlots.includes(draggedItem.slot) && (draggedItem.slot === idx || (draggedItem.slot.startsWith('ring') && idx.startsWith('ring')))) {
+            const itm = draggedItem;
+            const old = mercenary.equipment[idx];
+
+            if (srcArr) srcArr[dragSourceIdx] = old;
+            else if (dragSource === 'equip') {
+                player.equipment[dragSourceIdx] = old;
+                player._recalcStats();
+            }
+            else if (dragSource === 'merc') mercenary.equipment[dragSourceIdx] = old;
+
+            mercenary.equipment[idx] = itm;
+            mercenary._recalcStats();
+            success = true;
+            addCombatLog(`Equipped ${itm.name} to ${mercenary.name}`, 'log-info');
+            renderMercenaryPanel();
+        } else {
+            addCombatLog(`${mercenary.name} cannot equip this!`, 'log-dmg');
+            bus.emit('ui:error');
+        }
+    }
+    // 5. Dragging FROM Mercenary
+    else if (dragSource === 'merc' && mercenary) {
+        const itm = draggedItem;
+        if (tarArr) {
+            const old = tarArr[idx];
+            tarArr[idx] = itm;
+            
+            // Check if old can be equipped by merc in this slot
+            const validSlots = ['head', 'chest', 'mainhand', 'offhand'];
+            if (old && validSlots.includes(old.slot) && (old.slot === dragSourceIdx || (old.slot.startsWith('ring') && dragSourceIdx.startsWith('ring')))) {
+                mercenary.equipment[dragSourceIdx] = old;
+            } else {
+                mercenary.equipment[dragSourceIdx] = null;
+                if (old) {
+                    const empty = player.inventory.indexOf(null);
+                    if (empty !== -1) player.inventory[empty] = old;
+                    else droppedItems.push({ ...old, x: player.x, y: player.y, active: true });
+                }
+            }
+            mercenary._recalcStats();
+            success = true;
+            renderMercenaryPanel();
+        } else if (target === 'equip') {
+            const res = player.equip(itm, idx);
+            if (res.success) {
+                mercenary.equipment[dragSourceIdx] = res.swapped;
+                mercenary._recalcStats();
+                success = true;
+                renderMercenaryPanel();
+            } else {
+                addCombatLog(res.error, 'log-dmg');
+                bus.emit('ui:error');
+            }
+        }
+    }
+
+    if (success) {
+        // Persistence for shared stash
+        if (dragSource === 'stash' && currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
+        if (target === 'stash' && currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
+
+        player._recalcStats();
+        addCombatLog(`Moved ${draggedItem.name}`, 'log-info');
+    }
+
+    clearDrag();
+    renderInventory();
+    renderCharacterPanel();
+    renderStash();
+    renderCube();
+    updateHud();
+}
+
+function clearDrag() {
+    draggedItem = null;
+    dragSource = null;
+    dragSourceIdx = null;
+    if (dragGhost) { dragGhost.remove(); dragGhost = null; }
+    document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+}
+
+window.addEventListener('mousemove', (e) => {
+    if (dragGhost) {
+        dragGhost.style.left = `${e.clientX - 16}px`;
+        dragGhost.style.top = `${e.clientY - 16}px`;
+    }
+});
+
+window.addEventListener('mouseup', (e) => {
+    if (draggedItem) {
+        // If we are here, no slot handled the mouseup (slots stopPropagation or are handled first)
+        // Check if we are over a UI panel
+        const panels = ['panel-inventory', 'panel-character', 'panel-stash', 'panel-cube', 'panel-mercenary', 'panel-shop'];
+        const overPanel = panels.some(id => {
+            const el = document.getElementById(id);
+            if (!el || el.classList.contains('hidden')) return false;
+            const rect = el.getBoundingClientRect();
+            return (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom);
+        });
+
+        if (!overPanel) {
+            // Drop on ground
+            const item = { ...draggedItem };
+            item.x = player.x + (Math.random() - 0.5) * 32;
+            item.y = player.y + (Math.random() - 0.5) * 32;
+            item.active = true;
+            droppedItems.push(item);
+            addCombatLog(`Dropped ${item.name} for real.`);
+
+            // Remove from source
+            const getContainer = (name) => {
+                if (name === 'inventory') return player.inventory;
+                if (name === 'belt') return player.belt;
+                if (name === 'stash') return (currentStashTab === 'personal') ? stash : sharedStash;
+                if (name === 'cube') return cube;
+                return null;
+            };
+
+            const srcArr = getContainer(dragSource);
+            if (srcArr) srcArr[dragSourceIdx] = null;
+            else if (dragSource === 'equip') player.unequip(dragSourceIdx);
+
+            clearDrag();
+            renderInventory();
+            renderCharacterPanel();
+            renderStash();
+            renderCube();
+            updateHud();
+        }
+    }
+    setTimeout(() => { if (draggedItem) clearDrag(); }, 20);
+});
+
+// --- Phase 30: Pantheon UI ---
+function renderPantheonList() {
+    const legacies = SaveSystem.getPantheon();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'pantheon-overlay';
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center;
+        z-index: 2000; font-family: 'Cinzel', serif; backdrop-filter: blur(5px);
+    `;
+
+    const container = document.createElement('div');
+    container.style.cssText = `
+        width: 600px; max-height: 80%; background: #0a0805; border: 2px solid #bf642f;
+        padding: 30px; box-shadow: 0 0 50px rgba(191, 100, 47, 0.3); border-radius: 8px;
+        display: flex; flex-direction: column; color: #ba9158; overflow: hidden;
+    `;
+
+    const title = document.createElement('h2');
+    title.textContent = "THE PANTHEON OF HEROES";
+    title.style.cssText = "text-align: center; color: #ffd700; margin-bottom: 20px; text-shadow: 0 0 10px rgba(255,215,0,0.5);";
+    container.appendChild(title);
+
+    const list = document.createElement('div');
+    list.style.cssText = "flex: 1; overflow-y: auto; padding-right: 10px;";
+
+    if (legacies.length === 0) {
+        list.innerHTML = "<div style='text-align:center; padding: 40px; color: #666;'>No heroes have fallen... yet.</div>";
+    } else {
+        legacies.sort((a, b) => b.level - a.level).forEach(hero => {
+            const entry = document.createElement('div');
+            entry.style.cssText = `
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 12px; margin-bottom: 8px; background: rgba(186, 145, 88, 0.05);
+                border: 1px solid #333; border-radius: 4px; transition: background 0.2s;
+            `;
+            entry.onmouseover = () => entry.style.background = "rgba(186, 145, 88, 0.1)";
+            entry.onmouseout = () => entry.style.background = "rgba(186, 145, 88, 0.05)";
+
+            entry.innerHTML = `
+                <div>
+                    <span style="color: #ffd700; font-weight: bold;">[${hero.level}] ${hero.name}</span>
+                    <div style="font-size: 12px; color: #888;">${hero.className} | Slayed by ${hero.killer || 'the shadows'}</div>
+                </div>
+                <div style="text-align: right; font-size: 12px;">
+                    <div style="color: #bf642f;">${hero.gold} Gold</div>
+                    <div style="color: #666;">${new Date(hero.date).toLocaleDateString()}</div>
+                </div>
+            `;
+            list.appendChild(entry);
+        });
+    }
+    container.appendChild(list);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = "CLOSE";
+    closeBtn.className = "inventory-btn";
+    closeBtn.style.marginTop = "20px";
+    closeBtn.onclick = () => overlay.remove();
+    container.appendChild(closeBtn);
+
+    overlay.appendChild(container);
+    document.body.appendChild(overlay);
+}
+
+function returnToMainMenu() {
+    // Save current character before leaving
+    if (player && window._activeSlotId) {
+        SaveSystem.saveSlot(window._activeSlotId, player, zoneLevel, stash, {
+            difficulty: window._difficulty,
+            waypoints: Array.from(discoveredWaypoints)
+        });
+    }
+    
+    // Switch to menu state
+    state = 'MENU';
+    $('game-screen').classList.remove('active');
+    $('main-menu').classList.add('active');
+    
+    // Refresh the character slots in the menu
+    renderSaveSlots();
+}
+
+// --- Entity Death & Corpse Handling ---
+bus.on('entity:death', (data) => {
+    const { entity, killer } = data;
+    if (!entity || entity.isPlayer) return;
+
+    // Add to global corpses
+    window._corpses.push({
+        x: entity.x,
+        y: entity.y,
+        maxHp: entity.maxHp,
+        type: entity.type,
+        age: 0,
+        used: false
+    });
+
+    // Cap corpses to 100 for performance
+    if (window._corpses.length > 100) window._corpses.shift();
+
+    if (killer && killer.isPlayer) {
+        // Handle kill bonuses (mana after kill, life after kill)
+        if (killer.manaAfterKill) killer.mp = Math.min(killer.maxMp, (killer.mp || 0) + killer.manaAfterKill);
+        if (killer.lifeAfterKill) killer.hp = Math.min(killer.maxHp, (killer.hp || 0) + killer.lifeAfterKill);
+    }
+});

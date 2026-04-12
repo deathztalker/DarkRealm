@@ -57,6 +57,8 @@ export const ITEM_BASES = {
     // Wands (Necro)
     wand: { name: 'Wand', slot: SLOT.MAINHAND, type: 'wand', icon: 'item_wand_base', minDmg: 2, maxDmg: 6, atkSpd: 1.3, req: { int: 10 }, size: [1, 2], manaBonus: 15 },
     bone_wand: { name: 'Bone Wand', slot: SLOT.MAINHAND, type: 'wand', icon: 'item_wand_bone', minDmg: 4, maxDmg: 10, atkSpd: 1.2, req: { int: 22 }, size: [1, 2], manaBonus: 30 },
+    // Quest Items
+    wirts_leg: { name: "Wirt's Leg", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_base', minDmg: 2, maxDmg: 8, atkSpd: 0.9, req: {}, size: [1, 3], flavor: '"A wooden prosthetic with a tragic history."' },
 
     // === ARMOR ===
     // Helmets
@@ -78,6 +80,7 @@ export const ITEM_BASES = {
     leather_belt: { name: 'Leather Belt', slot: SLOT.BELT, type: 'belt', icon: 'item_belt', armor: 2, req: {}, size: [2, 1] },
     // Shields / Offhand
     buckler: { name: 'Buckler', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield_buckler', block: 12, armor: 8, req: { str: 5 }, size: [2, 2] },
+    bone_shield: { name: 'Bone Shield', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield_buckler', block: 20, armor: 14, req: { str: 25 }, size: [2, 2] },
     tower_shield: { name: 'Tower Shield', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield_tower', block: 28, armor: 22, req: { str: 45 }, size: [2, 3] },
     source: { name: 'Tome', slot: SLOT.OFFHAND, type: 'source', icon: 'item_shield_source', armor: 2, req: { int: 15 }, size: [1, 2], manaBonus: 40 },
     // Jewelry
@@ -142,6 +145,9 @@ export const ITEM_BASES = {
     rune_gul: { name: 'Gul Rune', slot: 'none', type: 'gem', icon: 'item_rune_gul', size: [1, 1], price: 300, socketEffect: { weapon: { stat: 'pctHitRating', value: 20 }, armor: { stat: 'maxPoisRes', value: 5 }, shield: { stat: 'maxPoisRes', value: 5 } } },
     rune_vex: { name: 'Vex Rune', slot: 'none', type: 'gem', icon: 'item_rune_vex', size: [1, 1], price: 400, socketEffect: { weapon: { stat: 'manaStealPct', value: 7 }, armor: { stat: 'maxFireRes', value: 5 }, shield: { stat: 'maxFireRes', value: 5 } } },
     rune_zod: { name: 'Zod Rune', slot: 'none', type: 'gem', icon: 'item_rune_zod', size: [1, 1], price: 1000, socketEffect: { weapon: { stat: 'indestructible', value: 1 }, armor: { stat: 'indestructible', value: 1 }, shield: { stat: 'indestructible', value: 1 } } },
+
+    // === MATERIALS ===
+    horadric_fragment: { name: "Horadric Fragment", slot: 'none', type: 'material', icon: 'item_emerald', size: [1, 1], price: 200, flavor: '"A shard of a lost artifact, hums with ancient power."' },
 };
 
 

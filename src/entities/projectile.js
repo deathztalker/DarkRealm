@@ -1,5 +1,6 @@
 import { calcDamage, applyDamage, applyStatus, applyDot } from '../systems/combat.js';
 import { fx } from '../engine/ParticleSystem.js';
+import { SkillLogic } from '../systems/skillLogic.js';
 
 /**
  * Projectile — Ranged spell/attack that travels toward a target.
@@ -113,8 +114,9 @@ export class Projectile {
                 // Visual hit impact at target position
                 this._emitImpactVFX(t.x, t.y);
 
-                // Apply elemental states
+                // Apply elemental states & skill effects
                 this._applyHitEffects(t);
+                SkillLogic.onHit(this.owner, t, this.skillId, this.owner.effectiveSkillLevel?.(this.skillId) || 1, this.damage);
 
                 if (this.bounces > 0) {
                     this.bounces--;
@@ -439,6 +441,8 @@ export class AoEZone {
                     applyDamage(this.owner, t, result, this.skillId || 'aoe');
                     // Impact VFX on hit
                     fx.emitHitImpact(t.x, t.y, this.type);
+                    // Apply skill effects
+                    SkillLogic.onHit(this.owner, t, this.skillId, this.owner.effectiveSkillLevel?.(this.skillId) || 1, this.damage);
                 }
             }
 

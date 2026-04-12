@@ -3,6 +3,7 @@
  * Damage formula, resistances, crits, DoTs, life steal — D2-inspired.
  */
 import { bus } from '../engine/EventBus.js';
+import { fx } from '../engine/ParticleSystem.js';
 
 // Damage types
 export const DMG_TYPE = {
@@ -26,6 +27,9 @@ export const DMG_TYPE = {
  * @returns {{ dealt:number, isCrit:bool, type:string }}
  */
 export function calcDamage(attacker, baseDmg, type, defender) {
+    if (isBlinded(attacker) && Math.random() < 0.5) {
+        return { dealt: 0, isCrit: false, type, missed: true };
+    }
     let dmg = Number(baseDmg) || 0;
 
     // --- Attacker bonuses ---
@@ -74,6 +78,11 @@ export function calcDamage(attacker, baseDmg, type, defender) {
         dmg -= defender.flatDmgReduce;
     }
 
+    // --- Damage Taken Multiplier (Mark for Death / Amplify Damage) ---
+    if (defender.dmgTakenMult) {
+        dmg *= defender.dmgTakenMult;
+    }
+
     dmg = Math.max(defender[`${type}Immune`] ? 0 : 1, Math.round(dmg));
     if (isNaN(dmg)) dmg = 1; // Last resort fallback
     return { dealt: dmg, isCrit, type };
@@ -110,7 +119,64 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
         }
     }
 
-    target.hp = Math.max(0, target.hp - dealt);
+    if (dmgResult.missed) {
+        bus.emit('combat:damage', { attacker, target, dealt: 'Miss!', isCrit: false, type, worldX: target.x, worldY: target.y });
+        return;
+    }
+
+    let finalDealt = dealt;
+
+    // --- Bone Armor (Necro) ---
+    if (target.boneArmor > 0 && type === DMG_TYPE.PHYSICAL) {
+        const absorb = Math.min(finalDealt, target.boneArmor);
+        target.boneArmor -= absorb;
+        finalDealt -= absorb;
+        bus.emit('combat:log', { text: `Absorbed! (${target.boneArmor} left)`, cls: 'log-info' });
+        if (target.boneArmor <= 0) {
+            target._statuses = target._statuses?.filter(s => s.type !== 'bone_armor');
+            bus.emit('combat:log', { text: "Bone Armor Shattered!", cls: 'log-dmg' });
+        }
+    }
+
+    // --- Energy Shield (Sorc) ---
+    const es = target._statuses?.find(s => s.type === 'energy_shield');
+    if (es && finalDealt > 0) {
+        const pct = es.value / 100;
+        const toMana = Math.floor(finalDealt * pct);
+        const manaCost = Math.floor(toMana * 0.75); // ES efficiency
+        if (target.mp >= manaCost) {
+            target.mp -= manaCost;
+            finalDealt -= toMana;
+            bus.emit('combat:log', { text: "Mana Transferred!", cls: 'log-mp' });
+        } else {
+            // Mana empty, shield breaks
+            target._statuses = target._statuses.filter(s => s.type !== 'energy_shield');
+            bus.emit('combat:log', { text: "Energy Shield Collapsed!", cls: 'log-dmg' });
+        }
+    }
+
+    target.hp = Math.max(0, target.hp - finalDealt);
+    if (finalDealt > 0) {
+        target.lastAttacker = attacker.name || attacker.charName || 'Unknown';
+    }
+    
+    // Phase 21: Sensory Feedback
+    if (dealt > 0) {
+        target.hitFlashTimer = 0.12; // Trigger flash
+        if (fx) {
+            if (isCrit) fx.shake(250, 5); // Intense shake for crits
+            
+            const dx = target.x - attacker.x;
+            const dy = target.y - attacker.y;
+            const angle = Math.atan2(dy, dx);
+            
+            if (type === DMG_TYPE.PHYSICAL || type === DMG_TYPE.HOLY) {
+                fx.emitBlood(target.x, target.y, angle);
+            } else {
+                fx.emitHitImpact(target.x, target.y, type);
+            }
+        }
+    }
 
     // Life steal
     if (attacker.isPlayer && attacker.lifeStealPct) {
@@ -166,11 +232,61 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
         worldX: target.x, worldY: target.y,
     });
 
+    if (isCrit && fx) {
+        fx.shake(200, 3); // Light shake for crits
+    }
+
+    // --- Phase 18: Elite Affixes: Electrified & Vampiric ---
+    if (target.isLightningEnchanted && dealt > 0 && !attacker.isPlayerImmuneToEnchant) {
+        if (fx && fx.emitLightning) {
+            // Revenge sparks towards the attacker
+            fx.emitLightning(target.x, target.y, attacker.x, attacker.y, 3);
+        }
+        // Small recoil damage to player if they are nearby
+        if (attacker.isPlayer) {
+            const recoil = Math.max(1, Math.round(dealt * 0.05));
+             attacker.hp = Math.max(0, attacker.hp - recoil);
+             bus.emit('combat:damage', { attacker: target, target: attacker, dealt: recoil, isCrit: false, type: 'lightning', worldX: attacker.x, worldY: attacker.y });
+        }
+    }
+
+    if (!target.isPlayer && target.lifeStealPct && dealt > 0 && attacker.isPlayer) {
+        // This is weirdly handled, usually life steal is for the ATTACKER.
+        // If the ENEMY has life steal and hits the player, that's in its own attack logic or here.
+    }
+
+    // Correct handle: If the ENEMY is the attacker and has lifeStealPct
+    if (!attacker.isPlayer && attacker.lifeStealPct && dealt > 0) {
+        const heal = Math.round(dealt * attacker.lifeStealPct / 100);
+        attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
+        if (fx) fx.emitHeal(attacker.x, attacker.y);
+    }
+
     if (target.hp <= 0) {
+        onKillLogic(attacker, target);
         bus.emit('entity:death', { entity: target, killer: attacker });
     }
 
     return dealt;
+}
+
+/**
+ * Handles logic that triggers when an entity is killed.
+ */
+function onKillLogic(killer, victim) {
+    if (!killer || !victim) return;
+
+    // Rogue Death Mark CD Reset
+    if (victim._statuses?.some(s => s.type === 'death_mark')) {
+        if (killer.isPlayer && killer.cooldowns) {
+            for (let i = 0; i < killer.cooldowns.length; i++) {
+                killer.cooldowns[i] = 0;
+            }
+            bus.emit('combat:log', { text: "DEATH MARK RESET!", cls: 'log-crit' });
+        }
+    }
+
+    // Universal Mana/Life after kill (handled in main.js listener, but could be here)
 }
 
 /**
@@ -203,7 +319,6 @@ export function updateStatuses(entities, dt) {
         if (ent.vx || ent.vy) {
             ent.x += (ent.vx || 0) * dt;
             ent.y += (ent.vy || 0) * dt;
-            ent.vx = (ent.vx || 0) * 0.9;
             ent.vy = (ent.vy || 0) * 0.9;
             if (Math.abs(ent.vx) < 1) ent.vx = 0;
             if (Math.abs(ent.vy) < 1) ent.vy = 0;
@@ -249,6 +364,24 @@ export function getSlowFactor(ent) {
     const chills = ent._statuses.filter(s => s.type === 'chill');
     if (chills.length === 0) return 0;
     return Math.max(...chills.map(s => s.value));
+}
+
+/** Helper to check if entity is blinded */
+export function isBlinded(ent) {
+    if (!ent._statuses) return false;
+    return ent._statuses.some(s => s.type === 'blind');
+}
+
+/** Helper to check if entity is feared */
+export function isFeared(ent) {
+    if (!ent._statuses) return false;
+    return ent._statuses.some(s => s.type === 'fear');
+}
+
+/** Helper to check if entity is rooted */
+export function isRooted(ent) {
+    if (!ent._statuses) return false;
+    return ent._statuses.some(s => s.type === 'root');
 }
 
 // ---- Skill execution helpers ----
