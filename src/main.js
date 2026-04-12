@@ -3724,9 +3724,8 @@ function renderInventory() {
 
             // Handle Item Clicks
             div.addEventListener('click', (e) => {
-                // Quick-Move Logic (Shift + Click)
+                // 1. Shift + Click (Quick Move to Stash/Cube)
                 if (e.shiftKey) {
-                    // To Stash
                     if (!$('panel-stash').classList.contains('hidden')) {
                         const targetStash = currentStashTab === 'personal' ? stash : sharedStash;
                         const emptySlot = targetStash.indexOf(null);
@@ -3744,11 +3743,6 @@ function renderInventory() {
                             return;
                         }
                     }
-
-                        }
-                    }
-
-                    // To Cube
                     if (!$('panel-cube').classList.contains('hidden')) {
                         const emptySlot = cube.indexOf(null);
                         if (emptySlot !== -1) {
@@ -3764,73 +3758,18 @@ function renderInventory() {
                             return;
                         }
                     }
-                } else {
-                    // Normal Click — Attempt to Equip
-                    const res = player.equip(item);
-                    if (res.success) {
-                        player.inventory[i] = res.swapped; // If swapped, put old item back in inventory
-                        addCombatLog(`Equipped ${item.name}.`, 'log-level');
-                        bus.emit('item:move');
-                        hideTooltip();
-                        renderInventory();
-                        renderCharacterPanel();
-                        updateHud();
-                        return;
-                    } else if (res.error) {
-                        addCombatLog(res.error, 'log-dmg');
-                        bus.emit('ui:error');
-                        return;
-                    }
                 }
 
-                    // To Vendor (Sell)
-                    if (!$('panel-shop').classList.contains('hidden')) {
-                        const price = Math.max(1, typeof calculateSellPrice === 'function' ? calculateSellPrice(item) : 5);
-                        player.gold += price;
-                        player.inventory[i] = null;
-                        addCombatLog(`Sold ${item.name} for ${price} gold.`, 'log-info');
-                        hideTooltip();
-                        renderInventory();
-                        renderCharacterPanel();
-                        if (typeof renderShop === 'function') renderShop();
-                        playLoot();
-                        return;
-                    }
-                }
-
-                if (!$('panel-shop').classList.contains('hidden')) {
-                    // Standard Sell Logic (click without shift)
-                    const price = Math.max(1, typeof calculateSellPrice === 'function' ? calculateSellPrice(item) : 5);
-                    player.gold += price;
-                    player.inventory[i] = null;
-                    addCombatLog(`Sold ${item.name} for ${price} gold.`, 'log-info');
-                    hideTooltip();
+                // 2. Special Action Modes
+                if (window.isIdentifying && item.identified === false) {
+                    item.identified = true;
+                    window.isIdentifying = false;
+                    document.body.style.cursor = 'default';
+                    addCombatLog(`Identified: ${item.name}!`, 'log-level');
+                    playLoot();
                     renderInventory();
                     renderCharacterPanel();
-                    if (typeof renderShop === 'function') renderShop();
-                    playLoot();
                     return;
-                }
-
-                if (!$('panel-mercenary').classList.contains('hidden') && mercenary) {
-                    const validSlots = ['head', 'chest', 'mainhand', 'offhand'];
-                    if (validSlots.includes(item.slot)) {
-                        const old = mercenary.equipment[item.slot];
-                        mercenary.equipment[item.slot] = item;
-                        player.inventory[i] = old;
-
-                        // Mercenaries can use Runewords too!
-                        checkRuneword(item);
-
-                        mercenary._recalcStats();
-                        addCombatLog(`Equipped ${item.name} to ${mercenary.name}`, 'log-info');
-                        renderInventory();
-                        renderMercenaryPanel();
-                        return;
-                    } else {
-                        addCombatLog(`${mercenary.name} cannot equip this!`, 'log-dmg');
-                        return;
-                    }
                 }
 
                 if (isImbuing) {
@@ -3841,6 +3780,7 @@ function renderInventory() {
                     loot.imbueItem(item, player.level);
                     player.hasImbue = false;
                     isImbuing = false;
+                    document.body.style.cursor = 'default';
                     addCombatLog(`Charsi: "There! A weapon fit for a hero!"`, 'log-level');
                     playLoot();
                     hideTooltip();
@@ -3856,6 +3796,7 @@ function renderInventory() {
                     player.gold -= 5000;
                     loot.reforgeItem(item, player.level);
                     isReforging = false;
+                    document.body.style.cursor = 'default';
                     addCombatLog(`Charsi: "The spirits have blessed your ${item.baseId} with new power!"`, 'log-level');
                     playLoot();
                     hideTooltip();
@@ -3865,11 +3806,8 @@ function renderInventory() {
                 }
 
                 if (isLarzukSocketing) {
-                    const maxSockets = {
-                        'head': 2, 'chest': 4, 'mainhand': 4, 'offhand': 4, 'shield': 4, 'weapon': 4
-                    };
+                    const maxSockets = { 'head': 2, 'chest': 4, 'mainhand': 4, 'offhand': 4, 'shield': 4, 'weapon': 4 };
                     const itemTypeMax = maxSockets[item.slot] || maxSockets[item.type] || 0;
-
                     if (itemTypeMax > 0 && (!item.sockets || item.sockets < itemTypeMax)) {
                         player.gold -= 2000;
                         item.sockets = (item.sockets || 0) + 1;
@@ -3887,7 +3825,6 @@ function renderInventory() {
 
                 if (socketingGemIndex !== -1) {
                     if (socketingGemIndex === i) {
-                        // Cancel socketing
                         socketingGemIndex = -1;
                         document.body.style.cursor = 'default';
                         renderInventory();
@@ -3909,26 +3846,55 @@ function renderInventory() {
                     renderInventory();
                     return;
                 }
-                if (window.isIdentifying && item.identified === false) {
-                    item.identified = true;
-                    window.isIdentifying = false;
-                    document.body.style.cursor = 'default';
-                    addCombatLog(`Identified: ${item.name}!`, 'log-level');
-                    playLoot();
+
+                // 3. Sell to Vendor
+                if (!$('panel-shop').classList.contains('hidden')) {
+                    const price = Math.max(1, typeof calculateSellPrice === 'function' ? calculateSellPrice(item) : 5);
+                    player.gold += price;
+                    player.inventory[i] = null;
+                    addCombatLog(`Sold ${item.name} for ${price} gold.`, 'log-info');
+                    hideTooltip();
                     renderInventory();
                     renderCharacterPanel();
+                    if (typeof renderShop === 'function') renderShop();
+                    playLoot();
                     return;
                 }
 
-                const res = player.equip(item);
-                if (res.error) {
-                    addCombatLog(res.error, 'log-dmg');
-                    return;
+                // 4. Equip to Mercenary
+                if (!$('panel-mercenary').classList.contains('hidden') && mercenary) {
+                    const validSlots = ['head', 'chest', 'mainhand', 'offhand'];
+                    if (validSlots.includes(item.slot)) {
+                        const old = mercenary.equipment[item.slot];
+                        mercenary.equipment[item.slot] = item;
+                        player.inventory[i] = old;
+                        checkRuneword(item);
+                        mercenary._recalcStats();
+                        addCombatLog(`Equipped ${item.name} to ${mercenary.name}`, 'log-info');
+                        renderInventory();
+                        renderMercenaryPanel();
+                        return;
+                    } else {
+                        addCombatLog(`${mercenary.name} cannot equip this!`, 'log-dmg');
+                        return;
+                    }
                 }
-                player.inventory[i] = res.swapped;
-                renderInventory();
-                renderCharacterPanel();
-                updateHud();
+
+                // 5. Default: Equip to Player
+                const res = player.equip(item);
+                if (res.success) {
+                    player.inventory[i] = res.swapped;
+                    addCombatLog(`Equipped ${item.name}.`, 'log-level');
+                    bus.emit('item:move');
+                    hideTooltip();
+                    renderInventory();
+                    renderCharacterPanel();
+                    updateHud();
+                } else if (res.error) {
+                    addCombatLog(res.error, 'log-dmg');
+                    bus.emit('ui:error');
+                }
+            });
             });
 
             // Right-click to Drop/Sell/Belt/Socket
