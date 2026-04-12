@@ -326,9 +326,10 @@ export function updateStatuses(entities, dt) {
         if (ent.vx || ent.vy) {
             ent.x += (ent.vx || 0) * dt;
             ent.y += (ent.vy || 0) * dt;
-            ent.vy = (ent.vy || 0) * 0.9;
-            if (Math.abs(ent.vx) < 1) ent.vx = 0;
-            if (Math.abs(ent.vy) < 1) ent.vy = 0;
+            ent.vx = (ent.vx || 0) * 0.85;
+            ent.vy = (ent.vy || 0) * 0.85;
+            if (Math.abs(ent.vx) < 0.5) ent.vx = 0;
+            if (Math.abs(ent.vy) < 0.5) ent.vy = 0;
         }
 
         if (!ent._statuses?.length && !ent._dots?.length) continue;
