@@ -21,13 +21,13 @@
   <!-- Main Menu -->
   <div id="main-menu" class="screen active">
     <div class="menu-bg-particles" id="particles"></div>
+    <!-- Auth Status (fixed in corner, outside scrollable content) -->
+    <div id="auth-status-container">
+       <span id="auth-status-text">Playing as Guest (Local Saves)</span>
+       <button id="btn-open-auth" class="btn-secondary small">Log In / Register</button>
+       <button id="btn-logout" class="btn-secondary small hidden">Logout</button>
+    </div>
     <div class="menu-content">
-      <!-- Supabase Auth Status -->
-      <div id="auth-status-container" style="position:absolute; top:20px; right:20px; text-align:right; font-family:'Cinzel',serif; font-size:12px;">
-         <span id="auth-status-text" style="color:#aaa;">Playing as Guest (Local Saves)</span><br>
-         <button id="btn-open-auth" class="btn-secondary small" style="margin-top:5px; padding:4px 8px;">Log In / Register</button>
-         <button id="btn-logout" class="btn-secondary small hidden" style="margin-top:5px; padding:4px 8px;">Logout</button>
-      </div>
 
       <div class="title-block">
         <h1 class="game-title">Dark Realm</h1>
