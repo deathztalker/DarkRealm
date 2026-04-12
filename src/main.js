@@ -3248,7 +3248,7 @@ function toggleTownPanels() {
 
 $('btn-quests')?.addEventListener('click', () => {
     togglePanel('quests');
-    if (!$('panel-quests').classList.contains('hidden')) renderQuestLog();
+    if (!$('panel-quests').classList.contains('hidden')) renderQuestJournal();
 });
 
 // ─── QUEST LOG ───
@@ -3722,45 +3722,45 @@ function renderInventory() {
                 if (e.button === 0 && !e.shiftKey) startDrag(e, item, 'inventory', i); 
             };
 
-            // Handle Item Clicks
+            // Handle Item Clicks (Left-click)
             div.addEventListener('click', (e) => {
-                // 1. Shift + Click (Quick Move to Stash/Cube)
-                if (e.shiftKey) {
-                    if (!$('panel-stash').classList.contains('hidden')) {
-                        const targetStash = currentStashTab === 'personal' ? stash : sharedStash;
-                        const emptySlot = targetStash.indexOf(null);
-                        if (emptySlot !== -1) {
-                            targetStash[emptySlot] = item;
-                            player.inventory[i] = null;
-                            if (currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
-                            addCombatLog(`Moved ${item.name} to Stash.`, 'log-info');
-                            hideTooltip();
-                            renderInventory();
-                            renderStash();
-                            return;
-                        } else {
-                            addCombatLog('Stash is full!', 'log-dmg');
-                            return;
-                        }
-                    }
-                    if (!$('panel-cube').classList.contains('hidden')) {
-                        const emptySlot = cube.indexOf(null);
-                        if (emptySlot !== -1) {
-                            cube[emptySlot] = item;
-                            player.inventory[i] = null;
-                            addCombatLog(`Moved ${item.name} to Cube.`, 'log-info');
-                            hideTooltip();
-                            renderInventory();
-                            renderCube();
-                            return;
-                        } else {
-                            addCombatLog('Cube is full!', 'log-dmg');
-                            return;
-                        }
+                // 1. Move to Stash (if open)
+                if (!$('panel-stash').classList.contains('hidden')) {
+                    const targetStash = currentStashTab === 'personal' ? stash : sharedStash;
+                    const emptySlot = targetStash.indexOf(null);
+                    if (emptySlot !== -1) {
+                        targetStash[emptySlot] = item;
+                        player.inventory[i] = null;
+                        if (currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
+                        addCombatLog(`Moved ${item.name} to Stash.`, 'log-info');
+                        hideTooltip();
+                        renderInventory();
+                        renderStash();
+                        return;
+                    } else {
+                        addCombatLog('Stash is full!', 'log-dmg');
+                        return;
                     }
                 }
 
-                // 2. Special Action Modes
+                // 2. Move to Cube (if open)
+                if (!$('panel-cube').classList.contains('hidden')) {
+                    const emptySlot = cube.indexOf(null);
+                    if (emptySlot !== -1) {
+                        cube[emptySlot] = item;
+                        player.inventory[i] = null;
+                        addCombatLog(`Moved ${item.name} to Cube.`, 'log-info');
+                        hideTooltip();
+                        renderInventory();
+                        renderCube();
+                        return;
+                    } else {
+                        addCombatLog('Cube is full!', 'log-dmg');
+                        return;
+                    }
+                }
+
+                // 3. Special Action Modes
                 if (window.isIdentifying && item.identified === false) {
                     item.identified = true;
                     window.isIdentifying = false;
@@ -3847,21 +3847,7 @@ function renderInventory() {
                     return;
                 }
 
-                // 3. Sell to Vendor
-                if (!$('panel-shop').classList.contains('hidden')) {
-                    const price = Math.max(1, typeof calculateSellPrice === 'function' ? calculateSellPrice(item) : 5);
-                    player.gold += price;
-                    player.inventory[i] = null;
-                    addCombatLog(`Sold ${item.name} for ${price} gold.`, 'log-info');
-                    hideTooltip();
-                    renderInventory();
-                    renderCharacterPanel();
-                    if (typeof renderShop === 'function') renderShop();
-                    playLoot();
-                    return;
-                }
-
-                // 4. Equip to Mercenary
+                // 4. Default: Equip to Player or Mercenary (Contextual)
                 if (!$('panel-mercenary').classList.contains('hidden') && mercenary) {
                     const validSlots = ['head', 'chest', 'mainhand', 'offhand'];
                     if (validSlots.includes(item.slot)) {
@@ -3874,13 +3860,9 @@ function renderInventory() {
                         renderInventory();
                         renderMercenaryPanel();
                         return;
-                    } else {
-                        addCombatLog(`${mercenary.name} cannot equip this!`, 'log-dmg');
-                        return;
                     }
                 }
 
-                // 5. Default: Equip to Player
                 const res = player.equip(item);
                 if (res.success) {
                     player.inventory[i] = res.swapped;
@@ -3896,24 +3878,30 @@ function renderInventory() {
                 }
             });
 
-            // Right-click to Drop/Sell/Belt/Socket
+            // Handle Right-click Actions (contextmenu)
             div.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                if (socketingGemIndex !== -1) return; // block
+                if (socketingGemIndex !== -1) return;
 
-                // Merchant sell (via dialogue OR open shop panel)
                 const shopOpen = !$('panel-shop').classList.contains('hidden');
                 const merchantDialogue = dialogue && dialogue.timer > 0 && dialogue.npc && dialogue.npc.type === 'merchant';
+                
+                // 1. Sell if matching shop or merchant dialog
                 if (shopOpen || merchantDialogue) {
-                    const price = item.rarity === 'unique' ? 250 : item.rarity === 'rare' ? 50 : item.rarity === 'magic' ? 10 : 2;
+                    const price = Math.max(1, typeof calculateSellPrice === 'function' ? calculateSellPrice(item) : 5);
                     player.gold += price;
-                    addCombatLog(`Sold ${item.name} for ${price}g`, 'log-heal');
-                    bus.emit('gold:pickup', { amount: price });
                     player.inventory[i] = null;
-                    if (shopOpen) renderShop();
+                    addCombatLog(`Sold ${item.name} for ${price} gold.`, 'log-info');
+                    hideTooltip();
+                    renderInventory();
+                    renderCharacterPanel();
+                    if (shopOpen && typeof renderShop === 'function') renderShop();
+                    playLoot();
+                    return;
                 }
-                // Move to belt if potion
-                else if (item.type === 'potion') {
+
+                // 2. Use Consumables
+                if (item.type === 'potion') {
                     const beltIdx = player.belt.indexOf(null);
                     if (beltIdx !== -1) {
                         player.belt[beltIdx] = item;
@@ -3922,67 +3910,45 @@ function renderInventory() {
                     } else {
                         addCombatLog('Belt full!', 'log-dmg');
                     }
+                    renderInventory();
+                    return;
                 }
-                // Move to stash if stash panel is open
-                else if (!$('panel-stash').classList.contains('hidden')) {
-                    const stashIdx = stash.indexOf(null);
-                    if (stashIdx !== -1) {
-                        stash[stashIdx] = item;
-                        player.inventory[i] = null;
-                        addCombatLog(`Stored ${item.name} in stash`, 'log-info');
-                        renderStash();
-                    } else {
-                        addCombatLog('Stash full!', 'log-dmg');
-                    }
-                }
-                else if (!$('panel-cube').classList.contains('hidden')) {
-                    const cubeIdx = cube.indexOf(null);
-                    if (cubeIdx !== -1) {
-                        cube[cubeIdx] = item;
-                        player.inventory[i] = null;
-                        addCombatLog(`Moved ${item.name} to cube`, 'log-info');
-                        renderCube();
-                    } else {
-                        addCombatLog('Cube full!', 'log-dmg');
-                    }
-                }
-                // Enter identify mode if it's a scroll or gem
-                else if (item.type === 'scroll' && item.baseId === 'scroll_identify') {
+
+                if (item.type === 'scroll' && item.baseId === 'scroll_identify') {
                     window.isIdentifying = true;
                     syncInteractionStates();
                     document.body.style.cursor = `crosshair`;
                     addCombatLog('Select an item to identify', 'log-info');
-                    player.inventory[i] = null; // Consume scroll
+                    player.inventory[i] = null;
                     renderInventory();
+                    return;
                 }
-                else if (item.type === 'scroll' && item.baseId === 'scroll_town_portal') {
+
+                if (item.type === 'scroll' && item.baseId === 'scroll_town_portal') {
                     if (zoneLevel === 0) {
                         addCombatLog('Cannot cast Town Portal in Town!', 'log-dmg');
                         return;
                     }
                     const tp = new GameObject('portal', player.x, player.y - 40, 'env_water');
-                    tp.targetZone = 0; // Town
+                    tp.targetZone = 0;
                     portalReturnZone = zoneLevel;
                     gameObjects.push(tp);
-
                     if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 50, 4);
                     addCombatLog('A Town Portal has opened.', 'log-level');
-                    player.inventory[i] = null; // Consume
+                    player.inventory[i] = null;
                     renderInventory();
+                    return;
                 }
-                // Tome Logic
-                else if (item.type === 'tome') {
+
+                if (item.type === 'tome') {
                     const scrollType = item.baseId === 'tome_tp' ? 'scroll_town_portal' : 'scroll_identify';
                     const scrollIdx = player.inventory.findIndex(it => it && it.baseId === scrollType);
-
                     if (scrollIdx !== -1) {
-                        // Refill Tome
                         item.charges = Math.min(item.maxCharges || 20, (item.charges || 0) + 1);
                         player.inventory[scrollIdx] = null;
                         addCombatLog(`Added scroll to ${item.name}.`, 'log-info');
                         playLoot();
                     } else if ((item.charges || 0) > 0) {
-                        // Use Tome
                         if (item.baseId === 'tome_tp') {
                             if (zoneLevel === 0) { addCombatLog('Cannot cast in Town!', 'log-dmg'); return; }
                             const tp = new GameObject('portal', player.x, player.y - 40, 'env_water');
@@ -4000,8 +3966,10 @@ function renderInventory() {
                         addCombatLog(`${item.name} is empty!`, 'log-dmg');
                     }
                     renderInventory();
+                    return;
                 }
-                else if (item.type === 'gem') {
+
+                if (item.type === 'gem') {
                     socketingGemIndex = i;
                     syncInteractionStates();
                     document.body.style.cursor = `url('assets/item_amulet.png'), crosshair`;
@@ -4010,14 +3978,13 @@ function renderInventory() {
                     return;
                 }
 
-                else {
-                    const drop = { ...item };
-                    drop.x = player.x + (Math.random() - 0.5) * 32;
-                    drop.y = player.y + (Math.random() - 0.5) * 32;
-                    droppedItems.push(drop);
-                    addCombatLog(`Dropped ${item.name}`);
-                    player.inventory[i] = null;
-                }
+                // 3. Default: Drop
+                const drop = { ...item };
+                drop.x = player.x + (Math.random() - 0.5) * 32;
+                drop.y = player.y + (Math.random() - 0.5) * 32;
+                droppedItems.push(drop);
+                addCombatLog(`Dropped ${item.name}`);
+                player.inventory[i] = null;
                 hideTooltip();
                 renderInventory();
                 renderCharacterPanel();
