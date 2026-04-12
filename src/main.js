@@ -403,15 +403,36 @@ function initClassGrid() {
     const grid = $('class-grid');
     if (!grid) return;
     grid.innerHTML = '';
+    
+    // Default info to current selected class
+    if (selectedClass) {
+        showClassInfo(selectedClass);
+    }
+
     for (const cls of getAllClasses()) {
         const card = document.createElement('div');
         card.className = 'class-card';
         card.dataset.classId = cls.id;
         card.innerHTML = `<span class="class-icon"><i class="ra ${getIconForClass(cls.id)}" style="font-size:24px;color:var(--gold);"></i></span><span class="class-card-name">${cls.name}</span>`;
-        card.addEventListener('click', () => selectClass(cls.id));
-        card.addEventListener('mouseenter', () => showClassInfo(cls.id));
+        
+        card.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectClass(cls.id);
+        });
+        
+        card.addEventListener('mouseenter', () => {
+            showClassInfo(cls.id);
+        });
+        
         grid.appendChild(card);
     }
+
+    // When mouse leaves the entire grid, reset description to selected class
+    grid.addEventListener('mouseleave', () => {
+        if (selectedClass) {
+            showClassInfo(selectedClass);
+        }
+    });
 }
 
 function selectClass(classId) {
@@ -3584,6 +3605,8 @@ function renderInventory() {
         if (!el) return;
         const item = player.equipment[s];
         el.innerHTML = item ? getItemHtml(item) : '';
+        el.onmouseup = () => handleDrop('equip', s);
+
         if (item) {
             const itemEl = el.querySelector('.inv-item');
             setupTooltip(itemEl, item);
@@ -3592,8 +3615,6 @@ function renderInventory() {
             itemEl.addEventListener('mousedown', (e) => {
                 if (e.button === 0) startDrag(e, item, 'equip', s);
             });
-
-            el.onmouseup = () => handleDrop('equip', s);
 
             itemEl.addEventListener('click', (e) => {
                 if (window.isIdentifying && item.identified === false) {
@@ -3724,6 +3745,9 @@ function renderInventory() {
                         }
                     }
 
+                        }
+                    }
+
                     // To Cube
                     if (!$('panel-cube').classList.contains('hidden')) {
                         const emptySlot = cube.indexOf(null);
@@ -3740,6 +3764,24 @@ function renderInventory() {
                             return;
                         }
                     }
+                } else {
+                    // Normal Click — Attempt to Equip
+                    const res = player.equip(item);
+                    if (res.success) {
+                        player.inventory[i] = res.swapped; // If swapped, put old item back in inventory
+                        addCombatLog(`Equipped ${item.name}.`, 'log-level');
+                        bus.emit('item:move');
+                        hideTooltip();
+                        renderInventory();
+                        renderCharacterPanel();
+                        updateHud();
+                        return;
+                    } else if (res.error) {
+                        addCombatLog(res.error, 'log-dmg');
+                        bus.emit('ui:error');
+                        return;
+                    }
+                }
 
                     // To Vendor (Sell)
                     if (!$('panel-shop').classList.contains('hidden')) {
