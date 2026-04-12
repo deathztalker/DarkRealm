@@ -44,6 +44,14 @@ export class Input {
         document.body.appendChild(this.cursorEl);
         this.cursorX = window.innerWidth / 2;
         this.cursorY = window.innerHeight / 2;
+
+        // Clear all keys when window loses focus to prevent stuck movement
+        window.addEventListener('blur', () => {
+            this.keys = {};
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) this.keys = {};
+        });
     }
 
     update() {
@@ -52,7 +60,7 @@ export class Input {
         if (!gp) return;
 
         // Deadzone helper
-        const applyDeadzone = (val, threshold = 0.2) => Math.abs(val) > threshold ? val : 0;
+        const applyDeadzone = (val, threshold = 0.25) => Math.abs(val) > threshold ? val : 0;
 
         this.gamepadState.axes = [
             applyDeadzone(gp.axes[0]), applyDeadzone(gp.axes[1]), // Left Stick (Movement)

@@ -447,13 +447,6 @@ export class Dungeon {
         while (cy !== by) { this.grid[cy][cx] = TILE.FLOOR; cy += cy < by ? 1 : -1; }
     }
 
-    isWalkable(wx, wy) {
-        const col = Math.floor(wx / this.tileSize);
-        const row = Math.floor(wy / this.tileSize);
-        if (row < 0 || row >= this.height || col < 0 || col >= this.width) return false;
-        const t = this.grid[row][col];
-        return t !== TILE.WALL && t !== TILE.WATER && t !== TILE.TREE;
-    }
 
     render(renderer, camera) {
         const ctx = renderer.ctx;
@@ -517,14 +510,14 @@ export class Dungeon {
         camera.reset(ctx);
     }
 
-    /** Check if a world-space position is on a walkable tile */
     isWalkable(wx, wy) {
         const c = Math.floor(wx / this.tileSize);
         const r = Math.floor(wy / this.tileSize);
         if (r < 0 || r >= this.height || c < 0 || c >= this.width) return false;
         const tile = this.grid[r][c];
-        // Walkable tiles: floor, door, stairs, spawn, grass, path, bridge
-        return tile !== TILE.WALL && tile !== TILE.WATER && tile !== TILE.TREE;
+        // Non-walkable: WALL, WATER, TREE, CACTUS, LAVA
+        return tile !== TILE.WALL && tile !== TILE.WATER && tile !== TILE.TREE 
+            && tile !== TILE.CACTUS && tile !== TILE.LAVA;
     }
 
     /** Raycast using Digital Differential Analyzer (DDA) to check Line of Sight */

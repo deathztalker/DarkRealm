@@ -585,25 +585,36 @@ export class Player {
         let movedThisFrame = false;
         let moveDx = 0, moveDy = 0;
 
-        // Helper for sliding collision
+        // Helper for sliding collision with radius-based checks
+        const PLAYER_RADIUS = 5; // collision radius in pixels
         const tryMove = (dx, dy) => {
             moveDx = dx; moveDy = dy;
             movedThisFrame = true;
             if (!dungeon) {
                 this.x += dx; this.y += dy; return;
             }
-            // Waller check
+            // Waller check (elite affix)
             const walls = (window.aoeZones || []).filter(z => z.active && z.isWall);
             const isBlockedByWall = (tx, ty) => {
                 return walls.some(w => Math.hypot(tx - w.x, ty - w.y) < w.radius);
             };
 
-            if (dungeon.isWalkable(this.x + dx, this.y + dy) && !isBlockedByWall(this.x + dx, this.y + dy)) {
-                this.x += dx; this.y += dy;
-            } else if (dx !== 0 && dungeon.isWalkable(this.x + dx, this.y) && !isBlockedByWall(this.x + dx, this.y)) {
-                this.x += dx;
-            } else if (dy !== 0 && dungeon.isWalkable(this.x, this.y + dy) && !isBlockedByWall(this.x, this.y + dy)) {
-                this.y += dy;
+            // Check all 4 corners of the player's hitbox
+            const canMove = (tx, ty) => {
+                return dungeon.isWalkable(tx - PLAYER_RADIUS, ty - PLAYER_RADIUS)
+                    && dungeon.isWalkable(tx + PLAYER_RADIUS, ty - PLAYER_RADIUS)
+                    && dungeon.isWalkable(tx - PLAYER_RADIUS, ty + PLAYER_RADIUS)
+                    && dungeon.isWalkable(tx + PLAYER_RADIUS, ty + PLAYER_RADIUS)
+                    && !isBlockedByWall(tx, ty);
+            };
+
+            const nx = this.x + dx, ny = this.y + dy;
+            if (canMove(nx, ny)) {
+                this.x = nx; this.y = ny;
+            } else if (dx !== 0 && canMove(this.x + dx, this.y)) {
+                this.x += dx; // slide along Y wall
+            } else if (dy !== 0 && canMove(this.x, this.y + dy)) {
+                this.y += dy; // slide along X wall
             }
         };
 
