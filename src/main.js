@@ -3895,7 +3895,6 @@ function renderInventory() {
                     bus.emit('ui:error');
                 }
             });
-            });
 
             // Right-click to Drop/Sell/Belt/Socket
             div.addEventListener('contextmenu', (e) => {
