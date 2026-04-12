@@ -3717,9 +3717,32 @@ function renderInventory() {
             const innerDiv = div.firstChild; // The .inv-item div
             setupTooltip(innerDiv, item);
 
-            // Drag support
-            innerDiv.onmousedown = (e) => { 
-                if (e.button === 0 && !e.shiftKey) startDrag(e, item, 'inventory', i); 
+            // Drag vs Click support (Threshold-based)
+            innerDiv.onmousedown = (e) => {
+                if (e.button !== 0) return;
+                const startX = e.clientX;
+                const startY = e.clientY;
+                let draggingStarted = false;
+
+                const onMove = (mv) => {
+                    if (draggingStarted) return;
+                    const dist = Math.hypot(mv.clientX - startX, mv.clientY - startY);
+                    if (dist > 5) {
+                        draggingStarted = true;
+                        startDrag(mv, item, 'inventory', i);
+                        // Clean up listeners once drag starts
+                        window.removeEventListener('mousemove', onMove);
+                        window.removeEventListener('mouseup', onUp);
+                    }
+                };
+
+                const onUp = () => {
+                    window.removeEventListener('mousemove', onMove);
+                    window.removeEventListener('mouseup', onUp);
+                };
+
+                window.addEventListener('mousemove', onMove, { passive: true });
+                window.addEventListener('mouseup', onUp);
             };
 
             // Handle Item Clicks (Left-click)
