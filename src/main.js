@@ -3,8 +3,8 @@
  * Wires all systems together: menu → game loop → rendering → UI
  */
 import { bus } from './engine/EventBus.js';
-import { Renderer, Assets } from './engine/Renderer.js';
-import { Camera } from './engine/camera.js';
+import { Renderer, Assets } from './engine/renderer.js';
+import { Camera } from './engine/Camera.js';
 import { Input } from './engine/Input.js';
 import { Dungeon } from './world/dungeon.js';
 import { Player } from './entities/player.js';
