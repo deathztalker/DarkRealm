@@ -2061,15 +2061,15 @@ function updateHud() {
     if (mh) {
         if (typeof mercenary !== 'undefined' && mercenary) {
             mh.classList.remove('hidden');
-            $('merc-name').textContent = mercenary.name;
+            $('merc-hud-name').textContent = mercenary.name;
             const mPct = Math.max(0, Math.min(100, (mercenary.hp / mercenary.maxHp) * 100));
-            $('merc-hp-fill').style.width = mPct + '%';
+            $('merc-hud-hp-fill').style.width = mPct + '%';
 
             if (mercenary.hp <= 0) {
                 mh.classList.add('merc-dead-portrait');
-                $('merc-hp-fill').style.backgroundColor = '#600';
-                $('merc-name').style.color = '#f00';
-                $('merc-name').textContent = `${mercenary.name} (DEAD)`;
+                $('merc-hud-hp-fill').style.backgroundColor = '#600';
+                $('merc-hud-name').style.color = '#f00';
+                $('merc-hud-name').textContent = `${mercenary.name} (DEAD)`;
 
                 if (!$('btn-revive-merc')) {
                     const btn = document.createElement('button');
@@ -4590,8 +4590,8 @@ function renderDialoguePicker(npc) {
         });
     }
 
-    // Special: Hire / Revive (Kashya, Greiz, Asheara)
-    const mercCaptains = { 'kashya': 'Rogue', 'greiz': 'Desert Warrior', 'asheara': 'Iron Wolf' };
+    // Special: Hire / Revive (Kashya, Greiz, Asheara, Tyrael)
+    const mercCaptains = { 'kashya': 'Rogue', 'greiz': 'Desert Warrior', 'asheara': 'Iron Wolf', 'tyrael': 'Desert Warrior' };
     if (mercCaptains[npc.id]) {
         const type = mercCaptains[npc.id];
         const isDead = mercenary && mercenary.hp <= 0;
@@ -4682,9 +4682,10 @@ function renderDialoguePicker(npc) {
         });
     }
 
-    // Special: Identify All
-    options.push({
-        label: 'Identify All (100g)', action: () => {
+    // Special: Identify All (Deckard Cain Speciality)
+    if (npc.id === 'deckard_cain') {
+        options.push({
+            label: 'Identify All (100g)', action: () => {
             const cost = 100;
             if (player.gold >= cost) {
                 let count = 0;
@@ -5714,7 +5715,7 @@ function hireMercenary(type = 'Rogue') {
         if (player.gold < 200) { addCombatLog('Not enough gold to revive.', 'log-dmg'); return; }
         player.gold -= 200;
         mercenary.hp = mercenary.maxHp;
-        addCombatLog(`Kashya: "${mercenary.name} has been revived!"`, 'log-level');
+        addCombatLog(`${mercenary.name} has been revived!`, 'log-level');
         updateHud();
         return;
     }

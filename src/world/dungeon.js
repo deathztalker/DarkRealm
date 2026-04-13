@@ -163,7 +163,7 @@ export class Dungeon {
                     if (zoneLevel === 23) { spawn.name = "Frozenstein"; spawn.icon = "enemy_demon"; spawn.isFrozenstein = true; spawn.hpMult = 3.5; }
                     
                     // Act I Unique: The Butcher in Zone 5 (Second to last room)
-                    if (zoneLevel === 5 && i === this.rooms.length - 2) {
+                    if (zoneLevel === 5 && i === this.rooms.length - 2 && Math.random() < 0.3) {
                         spawn.name = "The Butcher";
                         spawn.icon = "enemy_demon";
                         spawn.isButcher = true;

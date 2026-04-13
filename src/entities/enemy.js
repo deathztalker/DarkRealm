@@ -194,14 +194,7 @@ export class Enemy {
                 this.isNightFury = true; // Visual indicator flag
             }
 
-            this.isButcher = this.type !== 'boss' && this.level === 5 && Math.random() < 0.3;
-            if (this.isButcher) {
-                this.name = "The Butcher";
-                this.icon = 'enemy_demon';
-                this.maxHp = Math.round(this.maxHp * 1.5);
-                this.dmg = Math.round(this.dmg * 1.2);
-                this.chargeCd = 5;
-            }
+
 
             this.isAndariel = spawn.isAndariel || spawn.id === 'andariel';
             if (this.isAndariel) {
