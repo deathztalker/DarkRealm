@@ -1364,6 +1364,20 @@ function checkDeaths() {
             }
 
             // --- Phase 29: Horadric Fragment Drops ---
+            const fragChance = 0.10 + (player.magicFind || 0) / 1000;
+            const fragRoll = Math.random();
+            if (fragRoll < fragChance) {
+                const fragment = {
+                    id: 'horadric_fragment',
+                    name: 'Horadric Fragment',
+                    rarity: 'magic',
+                    icon: 'item_scroll_blue',
+                    x: e.x + (Math.random() - 0.5) * 30,
+                    y: e.y + (Math.random() - 0.5) * 30
+                };
+                droppedItems.push(fragment);
+                if (fx) fx.emitBurst(fragment.x, fragment.y, '#00ffff', 10, 1);
+            }
 
             const goldAmt = loot.rollGold(e, player.goldFind || 0);
             addCombatLog(`${e.name} slain! +${e.xpReward} XP`, (item || fragRoll < fragChance) ? 'log-item' : 'log-level');
