@@ -2081,8 +2081,8 @@ function updateHud() {
                 }
             } else {
                 mh.classList.remove('merc-dead-portrait');
-                $('merc-hp-fill').style.backgroundColor = '#4caf50';
-                $('merc-name').style.color = '#fff';
+                $('merc-hud-hp-fill').style.backgroundColor = '#4caf50';
+                $('merc-hud-name').style.color = '#fff';
                 const existingBtn = $('btn-revive-merc');
                 if (existingBtn) existingBtn.remove();
             }
@@ -4705,6 +4705,7 @@ function renderDialoguePicker(npc) {
             activeDialogueNpc = null;
         }
     });
+}
 
     // --- Phase 30: Pantheon Monument ---
     if (npc.id === 'pantheon_monument') {
