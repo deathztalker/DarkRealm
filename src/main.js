@@ -3038,9 +3038,21 @@ function renderMercenaryPanel() {
         const item = mercenary.equipment[s];
         el.innerHTML = item ? getItemHtml(item) : '';
 
-        // Drag & Drop for Mercenary Slots
+        // Drag & Drop for Mercenary Slots (Threshold-based)
         el.onmousedown = (e) => {
-            if (item) startDrag(e, item, 'merc', s);
+            if (e.button !== 0) return;
+            const sx = e.clientX, sy = e.clientY;
+            let d = false;
+            const mv = (m) => {
+                if (!d && Math.hypot(m.clientX - sx, m.clientY - sy) > 5) {
+                    d = true;
+                    startDrag(m, item, 'merc', s);
+                    window.removeEventListener('mousemove', mv);
+                }
+            };
+            const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+            window.addEventListener('mousemove', mv);
+            window.addEventListener('mouseup', up);
         };
         el.onmouseup = (e) => {
             e.stopPropagation();
@@ -3573,7 +3585,21 @@ function renderInventory() {
             if (item) {
                 const itemEl = slot.querySelector('.inv-item');
                 setupTooltip(itemEl, item);
-                itemEl.onmousedown = (e) => { if (e.button === 0) startDrag(e, item, 'belt', i); };
+                itemEl.onmousedown = (e) => {
+                    if (e.button !== 0) return;
+                    const sx = e.clientX, sy = e.clientY;
+                    let d = false;
+                    const mv = (m) => {
+                        if (!d && Math.hypot(m.clientX - sx, m.clientY - sy) > 5) {
+                            d = true;
+                            startDrag(m, item, 'belt', i);
+                            window.removeEventListener('mousemove', mv);
+                        }
+                    };
+                    const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+                    window.addEventListener('mousemove', mv);
+                    window.addEventListener('mouseup', up);
+                };
                 itemEl.oncontextmenu = (e) => {
                     e.preventDefault();
                     player.useItem(i, true);
@@ -3611,10 +3637,22 @@ function renderInventory() {
             const itemEl = el.querySelector('.inv-item');
             setupTooltip(itemEl, item);
 
-            // Left-click to socket / identify / start drag
-            itemEl.addEventListener('mousedown', (e) => {
-                if (e.button === 0) startDrag(e, item, 'equip', s);
-            });
+            // Left-click to socket / identify / start drag (Threshold-based)
+            itemEl.onmousedown = (e) => {
+                if (e.button !== 0) return;
+                const sx = e.clientX, sy = e.clientY;
+                let d = false;
+                const mv = (m) => {
+                    if (!d && Math.hypot(m.clientX - sx, m.clientY - sy) > 5) {
+                        d = true;
+                        startDrag(m, item, 'equip', s);
+                        window.removeEventListener('mousemove', mv);
+                    }
+                };
+                const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+                window.addEventListener('mousemove', mv);
+                window.addEventListener('mouseup', up);
+            };
 
             itemEl.addEventListener('click', (e) => {
                 if (window.isIdentifying && item.identified === false) {
@@ -4111,7 +4149,7 @@ function itemTooltipText(item, isComparison = false) {
     if (item.identified === false && !skipID) {
         t += `<div class="tooltip-rarity" style="color:#666;">— Unknown Potential —</div>`;
         t += `<div class="tooltip-stats" style="color:#666; font-style:italic;">Use a Scroll of Identification to reveal this item's powers.</div>`;
-        t += `<div class="tooltip-footer">[Left-Click to Equip] | [Right-Click to Deposit]</div>`;
+        t += `<div class="tooltip-footer">[Left-Click: Equip / Move to Stash] | [Right-Click: Drop / Sell]</div>`;
         t += `</div>`;
         return t;
     }
@@ -4314,7 +4352,7 @@ function itemTooltipText(item, isComparison = false) {
         }
     }
 
-    t += `<div class="tooltip-footer">[Left-Click to Equip] | [Right-Click to Drop/Sell]</div>`;
+    t += `<div class="tooltip-footer">[Left-Click: Equip / Move to open panel] | [Right-Click: Sell / Drop / Use]</div>`;
     t += `</div>`;
     return t;
 }
@@ -4942,9 +4980,21 @@ function renderStash() {
             const innerDiv = div.firstChild;
             setupTooltip(innerDiv, item);
 
-            // Drag support
+            // Drag support (Threshold-based)
             innerDiv.onmousedown = (e) => {
-                if (e.button === 0) startDrag(e, item, 'stash', i);
+                if (e.button !== 0) return;
+                const sx = e.clientX, sy = e.clientY;
+                let d = false;
+                const mv = (m) => {
+                    if (!d && Math.hypot(m.clientX - sx, m.clientY - sy) > 5) {
+                        d = true;
+                        startDrag(m, item, 'stash', i);
+                        window.removeEventListener('mousemove', mv);
+                    }
+                };
+                const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+                window.addEventListener('mousemove', mv);
+                window.addEventListener('mouseup', up);
             };
 
             const moveToInv = (e) => {
@@ -5120,9 +5170,21 @@ function renderCube() {
             const innerDiv = div.firstChild;
             setupTooltip(innerDiv, item);
 
-            // Drag support
+            // Drag support (Threshold-based)
             innerDiv.onmousedown = (e) => {
-                if (e.button === 0) startDrag(e, item, 'cube', i);
+                if (e.button !== 0) return;
+                const sx = e.clientX, sy = e.clientY;
+                let d = false;
+                const mv = (m) => {
+                    if (!d && Math.hypot(m.clientX - sx, m.clientY - sy) > 5) {
+                        d = true;
+                        startDrag(m, item, 'cube', i);
+                        window.removeEventListener('mousemove', mv);
+                    }
+                };
+                const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+                window.addEventListener('mousemove', mv);
+                window.addEventListener('mouseup', up);
             };
 
             const moveToInv = (e) => {
