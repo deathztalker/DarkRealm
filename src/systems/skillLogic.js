@@ -41,14 +41,26 @@ export const SkillLogic = {
         // ══════════════ SORCERESS ══════════════
         if (['fire_bolt', 'fireball', 'meteor', 'immolate', 'fire_storm'].includes(skillId)) {
             applyDot(target, baseDmg * 0.2, 'fire', 4, 'sorc_burn');
+            if (['meteor', 'immolate'].includes(skillId)) {
+                fx.emitBurst(target.x, target.y, '#ff4000', 15, 3);
+                fx.shake(200, 4);
+            }
         }
         if (['ice_bolt', 'blizzard', 'frozen_orb', 'frost_nova', 'absolute_zero'].includes(skillId)) {
             applyStatus(target, 'chill', 2.5 + slvl * 0.1, 40);
             if (skillId === 'ice_blast') applyStatus(target, 'frozen', 1.0 + slvl * 0.05);
-            if (skillId === 'absolute_zero') applyStatus(target, 'frozen', 2.0 + slvl * 0.1);
+            if (skillId === 'absolute_zero') {
+                applyStatus(target, 'frozen', 2.0 + slvl * 0.1);
+                fx.emitBurst(target.x, target.y, '#ffffff', 20, 2);
+                fx.shake(250, 5);
+            }
         }
         if (['charged_bolt', 'chain_lightning', 'nova', 'thunder_storm'].includes(skillId)) {
             if (Math.random() < 0.1) applyStatus(target, 'stun', 0.3);
+            if (['nova', 'thunder_storm'].includes(skillId)) {
+                fx.emitLightning(attacker.x, attacker.y, target.x, target.y, 4);
+                fx.shake(150, 3);
+            }
         }
 
         // ══════════════ NECROMANCER ══════════════
@@ -79,10 +91,29 @@ export const SkillLogic = {
 
         // ══════════════ ROGUE ══════════════
         if (skillId === 'shadow_strike') {
+            attacker.comboPoints = Math.min(attacker.maxComboPoints || 5, (attacker.comboPoints || 0) + 1);
             applyDot(target, baseDmg * 0.3, 'shadow', 3, 'rogue_shadow');
+            bus.emit('combat:log', { text: `Combo Points: ${attacker.comboPoints}`, cls: 'log-info' });
         }
         if (skillId === 'backstab') {
+            attacker.comboPoints = Math.min(attacker.maxComboPoints || 5, (attacker.comboPoints || 0) + 2);
             if (Math.random() < 0.3) applyStatus(target, 'stun', 1.0);
+            bus.emit('combat:log', { text: `Combo Points: ${attacker.comboPoints}`, cls: 'log-info' });
+        }
+        if (skillId === 'ambush') {
+            attacker.comboPoints = Math.min(attacker.maxComboPoints || 5, (attacker.comboPoints || 0) + 3);
+            bus.emit('combat:log', { text: `Combo Points: ${attacker.comboPoints}`, cls: 'log-info' });
+        }
+        if (skillId === 'eviscerate') {
+            const cp = attacker.comboPoints || 0;
+            const finisherDmg = baseDmg * (1 + cp * 0.5); // +50% per CP
+            applyDamage(attacker, target, { dealt: finisherDmg, isCrit: cp >= 3, type: 'physical' }, 'eviscerate_finisher');
+            attacker.comboPoints = 0;
+            if (fx) {
+                fx.emitSlash(target.x, target.y, Math.random() * Math.PI, '#ff0000', 30);
+                fx.emitBlood(target.x, target.y, 0, 20);
+            }
+            bus.emit('combat:log', { text: `EVISCERATE! (${cp} CP)`, cls: 'log-crit' });
         }
         if (skillId === 'death_mark') {
             target.dmgTakenMult = Math.max(target.dmgTakenMult || 1, 1.4 + slvl * 0.03);

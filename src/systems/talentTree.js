@@ -64,10 +64,31 @@ export class TalentTree {
         return bonus;
     }
 
-    /** Check if a skill's prerequisite is met */
+    /** Points spent in a specific tree */
+    pointsInTree(treeId) {
+        let total = 0;
+        for (const [id, count] of Object.entries(this.points)) {
+            if (this.skillMap[id]?.treeId === treeId) {
+                total += count;
+            }
+        }
+        return total;
+    }
+
+    /** Check if a skill's prerequisite is met (Reqs + Tier) */
     reqMet(skillId) {
         const skill = this.skillMap[skillId];
-        if (!skill?.req) return true;
+        if (!skill) return true;
+
+        // 1. Tier Requirement (5 points per row)
+        const row = skill.row || 0;
+        if (row > 0) {
+            const treeId = skill.treeId;
+            if (this.pointsInTree(treeId) < (row * 5)) return false;
+        }
+
+        // 2. Prerequisite Requirement
+        if (!skill.req) return true;
         const [reqId, reqPts] = skill.req.split(':');
         return this.baseLevel(reqId) >= parseInt(reqPts, 10);
     }

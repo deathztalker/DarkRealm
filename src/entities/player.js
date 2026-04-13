@@ -73,6 +73,8 @@ export class Player {
         this.cooldowns = [0, 0, 0, 0, 0];
         this.minions = []; // Active summons
         this.maxMinions = 5;
+        this.comboPoints = 0; // Phase 31: Rogue Combo System
+        this.maxComboPoints = 5;
 
         // Movement
         this.path = [];
@@ -90,6 +92,11 @@ export class Player {
 
         // Aura (paladin)
         this.activeAura = null;
+
+        // Permanent Rewards (Quests)
+        this.permanentResists = 0;
+        this.hasLarzukReward = false;
+        this.hasAnyaReward = false;
 
         // Skill map ref
         this.skillMap = getSkillMap(classId);
@@ -109,6 +116,8 @@ export class Player {
         this._recalcStats();
         this.hp = this.maxHp;
         this.mp = this.maxMp;
+
+        bus.on('player:gainXp', d => this.gainXp(d.amount));
     }
 
     // ─── Stats ───
@@ -133,22 +142,35 @@ export class Player {
             // shrine_exp is handled locally in the kill loop where XP is awarded
         }
 
+        // --- Charms Logic (Wave 6) ---
+        // Scan inventory for items that provide stats while carried.
+        // Requires identification to work.
+        if (this.inventory) {
+            for (const item of this.inventory) {
+                if (item && item.type === 'charm' && item.identified !== false) {
+                    if (item.mods) {
+                        for (const m of item.mods) {
+                            s[m.stat] = (s[m.stat] || 0) + m.value;
+                            if (m.stat === 'allRes') s.allRes = (s.allRes || 0) + m.value;
+                        }
+                    }
+                }
+            }
+        }
+
         // --- Phase 23: Paragon Stats ---
-        const p = this._paragonStats();
-        for (const k in p) s[k] = (s[k] || 0) + p[k];
-
-        this.str = this.baseStr + (s.flatSTR || 0);
-        this.dex = this.baseDex + (s.flatDEX || 0);
-        this.vit = this.baseVit + (s.flatVIT || 0);
-        this.int = this.baseInt + (s.flatINT || 0);
-
-        // Phase 23: Paragon stats integration
         const ps = this._paragonStats();
-        if (ps. flatSTR) this.str += ps.flatSTR;
-        if (ps.flatDEX) this.dex += ps.flatDEX;
-        if (ps.flatVIT) this.vit += ps.flatVIT;
-        if (ps.flatINT) this.int += ps.flatINT;
-        for (const k in ps) { if (!k.startsWith('flat')) s[k] = (s[k]||0) + ps[k]; }
+        
+        // Consolidate core attributes (Handle both 'str' and 'flatSTR' naming)
+        this.str = this.baseStr + (s.str || 0) + (s.flatSTR || 0) + (ps.flatSTR || 0);
+        this.dex = this.baseDex + (s.dex || 0) + (s.flatDEX || 0) + (ps.flatDEX || 0);
+        this.vit = this.baseVit + (s.vit || 0) + (s.flatVIT || 0) + (ps.flatVIT || 0);
+        this.int = this.baseInt + (s.int || 0) + (s.flatINT || 0) + (ps.flatINT || 0);
+
+        // Multipliers and Modifiers integration (IAS, Crit, etc)
+        for (const k in ps) { 
+            if (!k.startsWith('flat')) s[k] = (s[k] || 0) + ps[k]; 
+        }
 
         this.maxHp = Math.round((50 + this.vit * 8 + this.level * 5 + (s.flatHP || 0)) * (1 + (s.pctHP || 0) / 100));
         this.maxMp = Math.round((30 + this.int * 5 + this.level * 3 + (s.flatMP || 0)) * (1 + (s.pctMP || 0) / 100));
@@ -160,13 +182,11 @@ export class Player {
         this.manaStealPct = s.manaStealPct || 0;
         this.moveSpeed = MOVE_SPEED_BASE * (1 + (s.pctMoveSpeed || 0) / 100);
 
-        // --- Phase 23: Apply Aura Slow ---
+        // --- Phase 23: Aura Slow Logic ---
+        this._auraSlowFactor = 1.0;
         if (this._auraSlowTimer > 0) {
-            const factor = this._auraSlow || 0;
-            this.moveSpeed *= (1 - factor);
-            // atkSpd is defined later in some files or earlier? 
-            // In player.js recalcStats, atkSpd seems to be missing from the viewed snippet but exists in the class.
-            if (this.atkSpd) this.atkSpd *= (1 - factor * 0.5);
+            this._auraSlowFactor = (1 - (this._auraSlow || 0));
+            this.moveSpeed *= this._auraSlowFactor;
         }
 
         // Damage reduction (from uniques like Shaft of Anguish, Doombringer, set bonuses)
@@ -205,8 +225,9 @@ export class Player {
         // Resistances
         const diff = typeof window !== 'undefined' && window._difficulty ? window._difficulty : 0;
         const resPenalty = diff === 2 ? 100 : (diff === 1 ? 40 : 0);
+        const permRes = this.permanentResists || 0;
         for (const r of ['fireRes', 'coldRes', 'lightRes', 'poisRes', 'shadowRes']) {
-            this[r] = Math.max(-100, Math.min(75, (s[r] || 0) + (s.allRes || 0) - resPenalty));
+            this[r] = Math.max(-100, Math.min(75, (s[r] || 0) + (s.allRes || 0) + permRes - resPenalty));
         }
 
         // Damage bonuses
@@ -232,7 +253,10 @@ export class Player {
         const wep = (this.equipment && this.equipment.mainhand);
         this.wepMin = wep ? (wep.minDmg || 1) + (s.flatMinDmg || 0) : 1 + (s.flatMinDmg || 0);
         this.wepMax = wep ? (wep.maxDmg || 3) + (s.flatMaxDmg || 0) : 3 + (s.flatMaxDmg || 0);
-        this.atkSpd = (wep?.atkSpd || 1.0) * (1 + (this.pctIAS || 0) / 100);
+        
+        let baseAtkSpd = (wep?.atkSpd || 1.0) * (1 + (this.pctIAS || 0) / 100);
+        // Correctly apply aura slow to attack speed here so it isn't overwritten
+        this.atkSpd = baseAtkSpd * (this._auraSlowFactor < 1 ? (1 - (1 - this._auraSlowFactor) * 0.5) : 1);
         
         // Attack Range
         this.attackRange = wep && wep.range ? Math.max(30, wep.range) : 30;
@@ -501,8 +525,9 @@ export class Player {
             }
         }
 
-        // Mana regen
-        this.mp = Math.min(this.maxMp, this.mp + (2 + this.int * 0.05) * dt);
+        // Recovery Logic: Regen and Potions
+        this.hp = Math.min(this.maxHp, this.hp + (this.lifeRegenPerSec || 0) * dt);
+        this.mp = Math.min(this.maxMp, this.mp + ((2 + this.int * 0.05) + (this.manaRegenPerSec || 0)) * dt);
 
         // --- Potion HoT Logic ---
         if (this.hpBuffer > 0 && this.hp < this.maxHp) {
@@ -537,6 +562,7 @@ export class Player {
                     const dmg = 3 + slvl * 2;
                     if (enemies) {
                         enemies.forEach(e => {
+                            if (e.hp <= 0) return; // FIX: Don't hit dead enemies
                             const dx = e.x - this.x, dy = e.y - this.y;
                             if (dx*dx+dy*dy < 150*150) { // 150px range
                                 applyDamage(this, e, { dealt: dmg, isCrit: false, type: 'fire' }, 'holy_fire_aura');
@@ -550,11 +576,15 @@ export class Player {
                     const debuff = 30 + slvl * 2;
                     if (enemies) {
                         enemies.forEach(e => {
+                            if (e.hp <= 0) {
+                                e.armorDebuff = 0;
+                                e.resDebuff = 0;
+                                return;
+                            }
                             const dx = e.x - this.x, dy = e.y - this.y;
                             if (dx*dx+dy*dy < 180*180) { // 180px range
                                 e.armorDebuff = debuff;
                                 e.resDebuff = debuff;
-                                // Visual indicator for debuff
                                 if (Math.random() < 0.3) fx.emitBurst(e.x, e.y, '#a040ff', 3);
                             } else {
                                 e.armorDebuff = 0;
@@ -565,7 +595,6 @@ export class Player {
                 }
             }
         } else {
-            // Clear debuffs if aura is off
             if (enemies) {
                 enemies.forEach(e => { e.armorDebuff = 0; e.resDebuff = 0; });
             }
@@ -576,6 +605,7 @@ export class Player {
             if (this.cooldowns[i] > 0) this.cooldowns[i] = Math.max(0, this.cooldowns[i] - dt);
         }
         this.attackCd = Math.max(0, this.attackCd - dt);
+
         this.stateTimer += dt;
 
         let buffsChanged = false;
@@ -1150,6 +1180,8 @@ export class Player {
 
     // ─── XP & Leveling ───
     addXp(amount) {
+        if (this.hp <= 0) return;
+        
         // Apply XP buffs
         let mult = 1.0;
         if (this._buffs) {
@@ -1160,28 +1192,35 @@ export class Player {
         
         // --- Standard Leveling (1-99) ---
         if (this.level < 99) {
+            let leveled = false;
             while (this.xp >= this.xpToNext) {
                 this.xp -= this.xpToNext;
                 this.level++;
                 this.statPoints += 5;
                 this.talents.unspent++;
+                leveled = true;
+                bus.emit('player:levelup', { level: this.level });
+                bus.emit('combat:log', { text: `LEVEL UP! REACHED LEVEL ${this.level}`, cls: 'log-heal' });
+                if (fx && fx.emitLevelUp) fx.emitLevelUp(this.x, this.y);
+            }
+            if (leveled) {
                 this._recalcStats();
                 this.hp = this.maxHp;
                 this.mp = this.maxMp;
-                bus.emit('player:levelup', { level: this.level });
             }
         } 
         // --- Paragon Leveling (99+) ---
         else {
-            const paragonXpNeeded = 100000 + (this.paragonLevel * 50000); // Scaling Paragon curve
+            const paragonXpNeeded = 100000 + (this.paragonLevel * 50000);
             while (this.xp >= paragonXpNeeded) {
                 this.xp -= paragonXpNeeded;
                 this.paragonLevel++;
                 this.paragonPoints++;
                 bus.emit('player:paragonup', { level: this.paragonLevel });
-                addCombatLog(`Paragon Level UP! (${this.paragonLevel})`, 'log-crit');
+                bus.emit('combat:log', { text: `Paragon Level UP! (${this.paragonLevel})`, cls: 'log-crit' });
             }
         }
+        bus.emit('player:xp_change');
     }
 
     get xpToNext() { return XP_TABLE[Math.min(this.level - 1, XP_TABLE.length - 1)]; }
@@ -1482,6 +1521,9 @@ export class Player {
         }
     }
 
+    // ─── Leveling ───
+    gainXp(amt) { this.addXp(amt); }
+
     // ─── Render ───
     render(ctx) {
         // Shadow
@@ -1511,6 +1553,10 @@ export class Player {
             activeWeaponSet: this.activeWeaponSet,
             inventory: this.inventory, belt: this.belt,
             hotbar: this.hotbar,
+            permanentResists: this.permanentResists,
+            hasLarzukReward: this.hasLarzukReward,
+            hasAnyaReward: this.hasAnyaReward,
+            hasImbue: this.hasImbue
         };
     }
 
@@ -1533,6 +1579,12 @@ export class Player {
         p.inventory = data.inventory || Array(40).fill(null);
         p.belt = data.belt || [null, null, null, null];
         p.hotbar = data.hotbar || [null, null, null, null, null];
+        
+        p.permanentResists = data.permanentResists || 0;
+        p.hasLarzukReward = !!data.hasLarzukReward;
+        p.hasAnyaReward = !!data.hasAnyaReward;
+        p.hasImbue = !!data.hasImbue;
+
         p._recalcStats();
         return p;
     }

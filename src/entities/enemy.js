@@ -31,6 +31,7 @@ const ENEMY_TYPES = {
     death_maul: { icon: 'enemy_golem', name: 'Death Maul', hp: 220, dmg: 40, spd: 30, xp: 120, armor: 50, group: 'beast', attackType: 'melee' },
     hell_lord: { icon: 'enemy_demon', name: 'Hell Lord', hp: 140, dmg: 35, spd: 75, xp: 110, armor: 15, group: 'demon', attackType: 'melee', extraDmgType: 'fire' },
     overseer: { icon: 'enemy_cultist', name: 'Overseer', hp: 100, dmg: 25, spd: 45, xp: 130, armor: 20, group: 'demon', attackType: 'ranged', element: 'physical', projColor: '#884400', projRadius: 10 },
+    cow: { icon: 'enemy_zombie', name: 'Hell Bovine', hp: 140, dmg: 30, spd: 45, xp: 80, armor: 40, group: 'beast', attackType: 'melee', flavor: '"Moo. Moo moo moo."' },
 };
 
 const BOSS_POOL = [
@@ -45,6 +46,7 @@ const BOSS_POOL = [
     { id: 'uber_mephisto', name: 'Uber Mephisto', hpMult: 60, dmgMult: 12, xpMult: 100, isUber: true },
     { id: 'uber_diablo', name: 'Uber Diablo', hpMult: 80, dmgMult: 15, xpMult: 150, isUber: true },
     { id: 'uber_baal', name: 'Uber Baal', hpMult: 100, dmgMult: 14, xpMult: 200, isUber: true },
+    { id: 'cow_king', name: 'The Cow King', hpMult: 25, dmgMult: 6, xpMult: 50, special: 'lightning_enchanted', icon: 'enemy_zombie' },
 ];
 
 const ELITE_AFFIXES = [
@@ -105,6 +107,9 @@ export class Enemy {
             const act5Enemies = ['death_maul', 'hell_lord', 'overseer', 'venom_lord', 'doom_knight', 'wraith'];
             types = types.filter(t => act5Enemies.includes(t));
             if (types.length === 0) types = Object.keys(ENEMY_TYPES);
+        } else if (zone === 99) {
+            // Secret Cow Level: Only cows
+            types = ['cow'];
         }
 
         const typeKey = types[Math.floor(Math.random() * types.length)];
@@ -149,11 +154,15 @@ export class Enemy {
                 bossSource = availableBosses[Math.floor(Math.random() * availableBosses.length)];
             }
 
-            this.icon = bossSource.icon || base.icon;
-            this.name = bossSource.name;
-            this.maxHp = Math.round(base.hp * scale * (bossSource.hpMult || 10) * diffMult);
-            this.dmg = Math.round(base.dmg * scale * (bossSource.dmgMult || 3) * diffMult);
-            this.xpReward = Math.round(base.xp * scale * (bossSource.xpMult || 20) * (1 + (window._difficulty || 0) * 0.5));
+            this.icon = spawn.icon || bossSource.icon || base.icon;
+            this.name = spawn.name || bossSource.name;
+            const hpm = spawn.hpMult || bossSource.hpMult || 10;
+            const dmgm = spawn.dmgMult || bossSource.dmgMult || 3;
+            const xpm = spawn.xpMult || bossSource.xpMult || 20;
+
+            this.maxHp = Math.round(base.hp * scale * hpm * diffMult);
+            this.dmg = Math.round(base.dmg * scale * dmgm * diffMult);
+            this.xpReward = Math.round(base.xp * scale * xpm * (1 + (window._difficulty || 0) * 0.5));
 
             // Set specific boss flags for special AI behaviors
             this.isAndariel = spawn.isAndariel || bossSource.id === 'andariel';
@@ -163,6 +172,16 @@ export class Enemy {
             this.isBaal = spawn.isBaal || bossSource.id === 'baal';
             this.isUber = spawn.isUber || bossSource.isUber;
             this.isButcher = spawn.isButcher || bossSource.id === 'butcher';
+            this.isRadament = spawn.isRadament || bossSource.id === 'radament';
+            this.isBeetleburst = spawn.isBeetleburst || bossSource.id === 'beetleburst';
+            this.isColdworm = spawn.isColdworm || bossSource.id === 'coldworm';
+            this.isSarina = spawn.isSarina || bossSource.id === 'sarina';
+            this.isCouncil = spawn.isCouncil || bossSource.id === 'council';
+            this.isIzual = spawn.isIzual || spawn.name === 'Izual';
+            this.isHephaisto = spawn.isHephaisto || spawn.name === 'Hephaisto';
+            this.isAncient = spawn.isAncient || spawn.name?.includes('Ancient');
+            this.isShenk = spawn.isShenk || bossSource.id === 'shenk';
+            this.isFrozenstein = spawn.isFrozenstein || bossSource.id === 'frozenstein';
 
             if (this.isAndariel) this.poisonRadius = 120;
             if (this.isDuriel) { this.holyFreezeRadius = 100; this.holyFreezeSlow = 0.4; }
@@ -175,7 +194,7 @@ export class Enemy {
                 this.isNightFury = true; // Visual indicator flag
             }
 
-            this.isButcher = this.level === 5 && Math.random() < 1.0;
+            this.isButcher = this.type !== 'boss' && this.level === 5 && Math.random() < 0.3;
             if (this.isButcher) {
                 this.name = "The Butcher";
                 this.icon = 'enemy_demon';
@@ -241,8 +260,8 @@ export class Enemy {
         if (this.isDiablo) {
             this.name = "Diablo, Lord of Terror";
             this.icon = 'enemy_demon';
-            this.maxHp = Math.round(this.maxHp * 3.5); // 7x base
-            this.dmg = Math.round(this.dmg * 2.5);
+            this.maxHp = Math.round(base.hp * scale * 5.5 * diffMult); // Increased from 3.5
+            this.dmg = Math.round(base.dmg * scale * 3.0 * diffMult); // Increased from 2.5
             this.hp = this.maxHp;
             this.element = 'fire';
         }
@@ -252,16 +271,8 @@ export class Enemy {
         if (this.isBaal) {
             this.name = "Baal, Lord of Destruction";
             this.icon = 'enemy_cultist';
-            this.maxHp = Math.round(this.maxHp * 4.0); // 8x base
-            this.dmg = Math.round(this.dmg * 3.2);
-            this.hp = this.maxHp;
-            this.element = 'cold';
-        }
-        if (this.isBaal) {
-            this.name = "Baal, Lord of Destruction";
-            this.icon = 'enemy_cultist';
-            this.maxHp = Math.round(this.maxHp * 4.0); // 8x base
-            this.dmg = Math.round(this.dmg * 3.2);
+            this.maxHp = Math.round(base.hp * scale * 7.5 * diffMult); // Increased from 4.0
+            this.dmg = Math.round(base.dmg * scale * 4.2 * diffMult); // Increased from 3.2
             this.hp = this.maxHp;
             this.element = 'cold';
         }
@@ -598,6 +609,21 @@ export class Enemy {
                     bus.emit('combat:applyDamage', { attacker: this, target: player, dealt: this.dmg, type: 'cold' });
                     player.pushX = (player.x - this.x) * 5;
                     player.pushY = (player.y - this.y) * 5;
+                }
+            }
+
+            if (this.isShenk && Math.random() < 0.05) {
+                // Shenk leaves fire trails
+                if (fx) fx.emitFireTrail(this.x, this.y);
+            }
+
+            if (this.isFrozenstein && Math.random() < 0.03) {
+                // Frozenstein emits cold novas
+                bus.emit('combat:log', { text: "Frozenstein emits Cold Nova!", type: 'log-info' });
+                if (fx) fx.emitShockwave(this.x, this.y, 80, '#00ccff');
+                const dist = Math.hypot(player.x - this.x, player.y - this.y);
+                if (dist < 80) {
+                    bus.emit('combat:applyDamage', { attacker: this, target: player, dealt: this.dmg * 0.8, type: 'cold' });
                 }
             }
 

@@ -58,7 +58,7 @@ export const ITEM_BASES = {
     wand: { name: 'Wand', slot: SLOT.MAINHAND, type: 'wand', icon: 'item_wand_base', minDmg: 2, maxDmg: 6, atkSpd: 1.3, req: { int: 10 }, size: [1, 2], manaBonus: 15 },
     bone_wand: { name: 'Bone Wand', slot: SLOT.MAINHAND, type: 'wand', icon: 'item_wand_bone', minDmg: 4, maxDmg: 10, atkSpd: 1.2, req: { int: 22 }, size: [1, 2], manaBonus: 30 },
     // Quest Items
-    wirts_leg: { name: "Wirt's Leg", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_base', minDmg: 2, maxDmg: 8, atkSpd: 0.9, req: {}, size: [1, 3], flavor: '"A wooden prosthetic with a tragic history."' },
+    wirts_leg: { name: "Niruko's Leg", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_base', minDmg: 2, maxDmg: 8, atkSpd: 0.9, req: {}, size: [1, 3], flavor: '"A wooden prosthetic with a tragic history."' },
 
     // === ARMOR ===
     // Helmets
@@ -96,7 +96,7 @@ export const ITEM_BASES = {
     health_potion: { name: 'Health Potion', slot: 'none', type: 'potion', icon: 'item_potion_hp', size: [1, 1] },
     mana_potion: { name: 'Mana Potion', slot: 'none', type: 'potion', icon: 'item_potion_mp', size: [1, 1] },
     rejuv_potion: { name: 'Rejuv Potion', slot: 'none', type: 'potion', icon: 'item_potion_rejuv', size: [1, 1], price: 75 },
-    
+
     // === SCROLLS ===
     scroll_identify: { name: 'Scroll of Identification', slot: 'none', type: 'scroll', icon: 'item_scroll', size: [1, 1], price: 100 },
     scroll_town_portal: { name: 'Scroll of Town Portal', slot: 'none', type: 'scroll', icon: 'item_scroll_tp', size: [1, 1], price: 10 },
@@ -116,7 +116,7 @@ export const ITEM_BASES = {
     perfect_topaz: { name: 'Perfect Topaz', slot: 'none', type: 'gem', icon: 'item_topaz', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'flatLightDmg', value: 20 }, armor: { stat: 'magicFind', value: 24 }, shield: { stat: 'lightRes', value: 40 } } },
     perfect_emerald: { name: 'Perfect Emerald', slot: 'none', type: 'gem', icon: 'item_emerald', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'flatPoisonDmg', value: 100 }, armor: { stat: 'flatDEX', value: 10 }, shield: { stat: 'poisonRes', value: 40 } } },
     perfect_skull: { name: 'Perfect Skull', slot: 'none', type: 'gem', icon: 'item_skull', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'lifeStealPct', value: 4 }, armor: { stat: 'hpRegenPerSec', value: 5 }, shield: { stat: 'manaRegenPerSec', value: 5 } } },
-    
+
     // === RUNES ===
     rune_el: { name: 'El Rune', slot: 'none', type: 'gem', icon: 'item_rune_el', size: [1, 1], price: 50, socketEffect: { weapon: { stat: 'flatMinDmg', value: 15 }, armor: { stat: 'flatArmor', value: 15 }, shield: { stat: 'flatArmor', value: 15 } } },
     rune_eld: { name: 'Eld Rune', slot: 'none', type: 'gem', icon: 'item_rune_eld', size: [1, 1], price: 50, socketEffect: { weapon: { stat: 'pctDmg', value: 10 }, armor: { stat: 'pctArmor', value: 10 }, shield: { stat: 'blockChance', value: 5 } } },
@@ -144,10 +144,23 @@ export const ITEM_BASES = {
     rune_ist: { name: 'Ist Rune', slot: 'none', type: 'gem', icon: 'item_rune_ist', size: [1, 1], price: 250, socketEffect: { weapon: { stat: 'magicFind', value: 30 }, armor: { stat: 'magicFind', value: 25 }, shield: { stat: 'magicFind', value: 25 } } },
     rune_gul: { name: 'Gul Rune', slot: 'none', type: 'gem', icon: 'item_rune_gul', size: [1, 1], price: 300, socketEffect: { weapon: { stat: 'pctHitRating', value: 20 }, armor: { stat: 'maxPoisRes', value: 5 }, shield: { stat: 'maxPoisRes', value: 5 } } },
     rune_vex: { name: 'Vex Rune', slot: 'none', type: 'gem', icon: 'item_rune_vex', size: [1, 1], price: 400, socketEffect: { weapon: { stat: 'manaStealPct', value: 7 }, armor: { stat: 'maxFireRes', value: 5 }, shield: { stat: 'maxFireRes', value: 5 } } },
+    rune_ohm: { name: 'Ohm Rune', slot: 'none', type: 'gem', icon: 'item_rune_ohm', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'pctDmg', value: 50 }, armor: { stat: 'maxColdRes', value: 5 }, shield: { stat: 'maxColdRes', value: 5 } } },
+    rune_lo: { name: 'Lo Rune', slot: 'none', type: 'gem', icon: 'item_rune_lo', size: [1, 1], price: 600, socketEffect: { weapon: { stat: 'critChance', value: 20 }, armor: { stat: 'maxLightRes', value: 5 }, shield: { stat: 'maxLightRes', value: 5 } } },
+    rune_sur: { name: 'Sur Rune', slot: 'none', type: 'gem', icon: 'item_rune_sur', size: [1, 1], price: 700, socketEffect: { weapon: { stat: 'monsterBlind', value: 20 }, armor: { stat: 'pctMP', value: 5 }, shield: { stat: 'flatMP', value: 50 } } },
+    rune_ber: { name: 'Ber Rune', slot: 'none', type: 'gem', icon: 'item_rune_ber', size: [1, 1], price: 800, socketEffect: { weapon: { stat: 'crushingBlow', value: 20 }, armor: { stat: 'pctDmgReduce', value: 8 }, shield: { stat: 'pctDmgReduce', value: 8 } } },
+    rune_jah: { name: 'Jah Rune', slot: 'none', type: 'gem', icon: 'item_rune_jah', size: [1, 1], price: 900, socketEffect: { weapon: { stat: 'ignoreDefense', value: 1 }, armor: { stat: 'pctHP', value: 5 }, shield: { stat: 'flatHP', value: 50 } } },
+    rune_cham: { name: 'Cham Rune', slot: 'none', type: 'gem', icon: 'item_rune_cham', size: [1, 1], price: 1000, socketEffect: { weapon: { stat: 'monsterFreeze', value: 3 }, armor: { stat: 'cannotBeFrozen', value: 1 }, shield: { stat: 'cannotBeFrozen', value: 1 } } },
     rune_zod: { name: 'Zod Rune', slot: 'none', type: 'gem', icon: 'item_rune_zod', size: [1, 1], price: 1000, socketEffect: { weapon: { stat: 'indestructible', value: 1 }, armor: { stat: 'indestructible', value: 1 }, shield: { stat: 'indestructible', value: 1 } } },
+
+    // === QUEST ITEMS ===
+    wirts_leg: { name: "Niruko's Leg", slot: 'weapon', type: 'club', icon: 'item_mace_club', size: [1, 3], price: 1, minDmg: 1, maxDmg: 8, atkSpd: 1.2, flavor: '"Cain says there was something about a portal..."', unidentified: false },
+    tome_tp: { name: 'Tome of Town Portal', slot: 'none', type: 'book', icon: 'item_book_blue', size: [2, 2], price: 500, flavor: '"Blue magic that whisks you home."', identified: true },
+    cow_portal: { name: 'Cow Portal Key', slot: 'none', type: 'material', icon: 'item_scroll_tp', size: [1, 1], price: 0, flavor: '"The seal of the Cow King."', identified: true },
 
     // === MATERIALS ===
     horadric_fragment: { name: "Horadric Fragment", slot: 'none', type: 'material', icon: 'item_emerald', size: [1, 1], price: 200, flavor: '"A shard of a lost artifact, hums with ancient power."' },
+    mephisto_soulstone: { name: "Mephisto's Soulstone", slot: 'none', type: 'material', icon: 'item_gem_skull', size: [1, 1], price: 0, flavor: '"The essence of the Lord of Hatred, waiting to be shattered."', identified: true },
+    hellforge_hammer: { name: "Hellforge Hammer", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_hammer_war', minDmg: 8, maxDmg: 20, atkSpd: 0.8, req: { str: 20 }, size: [1, 3], flavor: '"Only this hammer can shatter a Prime Evil\'s soulstone."', identified: true },
 };
 
 

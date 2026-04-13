@@ -22,6 +22,7 @@ import { ASSET_NAMES } from './data/assets_list.js';
 import { initAudio, playLoot, playCastFire, playCastCold, playCastLightning, playCastPoison, playCastShadow, playDeathSfx, playZoneTransition, startAmbientDungeon, startAmbientBoss, stopAmbient } from './engine/audio.js';
 import { ITEM_BASES as items } from './data/items.js';
 import { fx } from './engine/ParticleSystem.js';
+import { RUNEWORDS } from './data/runes.js';
 
 // ─── GLOBALS ───
 let renderer, camera, input, dungeon, player;
@@ -183,122 +184,6 @@ function spawnRiftGuardian() {
     }
 }
 
-// ─── RUNEWORDS ───
-const RUNEWORDS = [
-    {
-        name: 'Stealth',
-        types: ['armor'],
-        sockets: 2,
-        gems: ['rune_tal', 'rune_eth'],
-        mods: [{ stat: 'pctFHR', value: 25 }, { stat: 'manaRegenPerSec', value: 15 }, { stat: 'flatDEX', value: 6 }]
-    },
-    {
-        name: 'Lore',
-        types: ['helm'],
-        sockets: 2,
-        gems: ['rune_ort', 'rune_sol'],
-        mods: [{ stat: 'lightRes', value: 30 }, { stat: 'flatMP', value: 20 }, { stat: 'flatDmgReduce', value: 7 }]
-    },
-    {
-        name: 'Leaf',
-        types: ['weapon'],
-        sockets: 2,
-        gems: ['rune_tir', 'rune_ral'],
-        mods: [{ stat: 'flatFireDmg', value: 45 }, { stat: 'manaAfterKill', value: 2 }, { stat: 'coldRes', value: 33 }]
-    },
-    {
-        name: 'Zephyr',
-        types: ['weapon'],
-        sockets: 2,
-        gems: ['rune_ort', 'rune_eth'],
-        mods: [{ stat: 'pctIAS', value: 25 }, { stat: 'flatLightDmg', value: 35 }, { stat: 'targetDefenseReduce', value: 25 }]
-    },
-    {
-        name: 'Spirit',
-        types: ['weapon', 'shield'],
-        sockets: 4,
-        gems: ['rune_tal', 'rune_thul', 'rune_ort', 'rune_amn'],
-        mods: [{ stat: 'pctFHR', value: 55 }, { stat: 'flatMP', value: 90 }, { stat: 'flatVIT', value: 22 }]
-    },
-    {
-        name: 'Insight',
-        types: ['weapon'],
-        sockets: 4,
-        gems: ['rune_ral', 'rune_tir', 'rune_tal', 'rune_sol'],
-        mods: [{ stat: 'manaRegenPerSec', value: 40 }, { stat: 'pctDmg', value: 200 }, { stat: 'magicFind', value: 23 }]
-    },
-    {
-        name: 'Ancient\'s Pledge',
-        types: ['shield'],
-        sockets: 3,
-        gems: ['rune_ral', 'rune_ort', 'rune_tal'],
-        mods: [{ stat: 'allRes', value: 35 }, { stat: 'pctArmor', value: 50 }]
-    },
-    {
-        name: 'White',
-        types: ['wand'],
-        sockets: 2,
-        gems: ['rune_dol', 'rune_io'],
-        mods: [{ stat: '+skillGroup:bone', value: 3 }, { stat: 'pctIAS', value: 20 }, { stat: 'flatMP', value: 13 }]
-    },
-    {
-        name: 'Rhyme',
-        types: ['shield'],
-        sockets: 2,
-        gems: ['rune_shael', 'rune_eth'],
-        mods: [{ stat: 'allRes', value: 25 }, { stat: 'magicFind', value: 25 }, { stat: 'cannotBeFrozen', value: 1 }]
-    },
-    {
-        name: 'Honor',
-        types: ['weapon'],
-        sockets: 5,
-        gems: ['rune_amn', 'rune_el', 'rune_ith', 'rune_tir', 'rune_sol'],
-        mods: [{ stat: 'pctDmg', value: 160 }, { stat: 'lifeStealPct', value: 7 }, { stat: 'flatSTR', value: 10 }]
-    },
-    {
-        name: 'Steel',
-        types: ['weapon', 'sword', 'axe', 'mace'],
-        sockets: 2,
-        gems: ['rune_tir', 'rune_el'],
-        mods: [{ stat: 'pctIAS', value: 25 }, { stat: 'pctDmg', value: 20 }, { stat: 'flatMinDmg', value: 3 }]
-    },
-    {
-        name: 'Malice',
-        types: ['weapon'],
-        sockets: 3,
-        gems: ['rune_ith', 'rune_el', 'rune_eth'],
-        mods: [{ stat: 'pctDmg', value: 33 }, { stat: 'targetDefenseReduce', value: 25 }, { stat: 'preventHeal', value: 1 }]
-    },
-    {
-        name: 'Stealth',
-        types: ['armor'],
-        sockets: 2,
-        gems: ['rune_tal', 'rune_eth'],
-        mods: [{ stat: 'pctMoveSpeed', value: 25 }, { stat: 'pctFCR', value: 25 }, { stat: 'pctFHR', value: 25 }, { stat: 'manaRegenPerSec', value: 15 }]
-    },
-    {
-        name: 'Spirit',
-        types: ['sword', 'shield'],
-        sockets: 4,
-        gems: ['rune_tal', 'rune_thul', 'rune_ort', 'rune_amn'],
-        mods: [{ stat: '+allSkills', value: 2 }, { stat: 'pctFCR', value: 35 }, { stat: 'flatMP', value: 100 }, { stat: 'allRes', value: 35 }]
-    },
-    {
-        name: 'Lore',
-        types: ['helm'],
-        sockets: 2,
-        gems: ['rune_ort', 'rune_sol'],
-        mods: [{ stat: '+allSkills', value: 1 }, { stat: 'lightRes', value: 30 }, { stat: 'flatDmgReduce', value: 7 }, { stat: 'lightRadius', value: 2 }]
-    },
-    {
-        name: 'White',
-        types: ['wand'],
-        sockets: 2,
-        gems: ['rune_dol', 'rune_io'],
-        mods: [{ stat: '+allSkills', value: 3 }, { stat: 'pctFCR', value: 20 }, { stat: 'flatVIT', value: 10 }]
-    }
-];
-
 function checkRuneword(item) {
     if (!item.socketed || item.socketed.length === 0) return;
     if (item.socketed.length !== item.sockets) return;
@@ -308,23 +193,29 @@ function checkRuneword(item) {
     const isWeapon = weaponTypes.includes(item.type);
 
     for (const rw of RUNEWORDS) {
-        const validMatch = rw.types.includes(item.type) || (rw.types.includes('weapon') && isWeapon);
+        // Match structure: rw.runes (Array of ids), rw.allowedTypes (Array of string)
+        const validMatch = rw.allowedTypes.includes(item.type) || (rw.allowedTypes.includes('weapon') && isWeapon);
         if (!validMatch) continue;
-        if (rw.sockets !== item.sockets) continue;
+        if (rw.runes.length !== item.sockets) continue;
 
         let match = true;
-        for (let i = 0; i < rw.gems.length; i++) {
-            if (item.socketed[i].baseId !== rw.gems[i]) {
+        for (let i = 0; i < rw.runes.length; i++) {
+            if (item.socketed[i].baseId !== `rune_${rw.runes[i]}`) {
                 match = false;
                 break;
             }
         }
 
         if (match) {
-            item.name = `${rw.name} [${item.name}]`;
-            item.rarity = 'runeword'; // Custom rarity for gold color
+            item.name = `${rw.name} (${item.name})`; // Classic parenthesis
+            item.rarity = 'runeword'; 
             if (!item.mods) item.mods = [];
-            item.mods.push(...rw.mods.map(m => ({ stat: m.stat, value: m.value })));
+            
+            // Map bonuses to mods
+            for (const [stat, value] of Object.entries(rw.bonuses)) {
+                item.mods.push({ stat, value });
+            }
+            
             addCombatLog(`Runeword Manifested: ${rw.name}!`, 'log-crit');
             break;
         }
@@ -374,6 +265,7 @@ const ZONE_NAMES = {
     24: 'Worldstone Keep',
     25: 'Worldstone Chamber',
     26: 'Infinite Rift',
+    99: 'Moo Moo Farm',
 };
 
 window.DIFFICULTY_NAMES = ['Normal', 'Nightmare', 'Hell', 'Rift Mode'];
@@ -685,6 +577,21 @@ function gameLoop(timestamp) {
     window.isNight = (hour >= 20 || hour < 6);
 
     if (input) input.update();
+
+    // --- Phase 3 Wave 6: Atmospheric Weather Emitters ---
+    if (window.fx) {
+        const theme = window.currentTheme;
+        if (theme === 'snow') {
+            window.fx.emitSnow(renderer.width, renderer.height);
+        } else if (theme === 'desert') {
+            window.fx.emitSand(renderer.width, renderer.height);
+        } else if (theme === 'hell') {
+            window.fx.emitEmbers(renderer.width, renderer.height);
+        } else if (theme === 'wilderness' && Math.random() < 0.3) {
+            window.fx.emitRain(renderer.width, renderer.height);
+        }
+    }
+
     if (player) {
         player.update(dt, input, enemies, dungeon, (aoe) => aoeZones.push(aoe));
         fx.update(dt * 1000); // Particle update expects ms
@@ -1226,8 +1133,6 @@ function checkInteractions(pos) {
             } else if (res && res.type === 'SHRINE') {
                 const sType = res.shrineType;
                 let buffName = '';
-                let duration = 60; // default 60s
-
                 const buffData = { type: '', id: '', value: 0, duration: 60 };
 
                 if (sType === 'experience') {
@@ -1254,7 +1159,6 @@ function checkInteractions(pos) {
 
                 player._buffs.push({ ...buffData });
                 player._recalcStats();
-
                 if (mercenary && mercenary.hp > 0) {
                     mercenary._buffs.push({ ...buffData });
                     mercenary._recalcStats();
@@ -1262,6 +1166,42 @@ function checkInteractions(pos) {
 
                 addCombatLog(`Touched ${buffName}`, 'log-heal');
                 fx.emitBurst(o.x, o.y, '#4080ff', 30, 2);
+            } else if (res && res.type === 'HELLFORGE') {
+                const hasStone = player.inventory.some(it => it && it.baseId === 'mephisto_soulstone');
+                const hasHammer = player.inventory.some(it => it && it.baseId === 'hellforge_hammer');
+
+                if (hasStone && hasHammer) {
+                    o.isOpen = true;
+                    o.icon = 'obj_altar_on';
+                    const idx1 = player.inventory.findIndex(it => it && it.baseId === 'mephisto_soulstone');
+                    player.inventory[idx1] = null;
+                    const idx2 = player.inventory.findIndex(it => it && it.baseId === 'hellforge_hammer');
+                    player.inventory[idx2] = null;
+
+                    const count = 1 + Math.floor(Math.random() * 3);
+                    for (let i = 0; i < count; i++) {
+                        const shard = loot.generate(zoneLevel, 'rare');
+                        shard.name = "Horadric Shard";
+                        shard.icon = 'item_shard';
+                        shard.isShard = true;
+                        droppedItems.push({ ...shard, x: o.x + (Math.random()-0.5)*20, y: o.y + (Math.random()-0.5)*20 });
+                    }
+                    addCombatLog("The Soulstone is destroyed! The Forge erupts with power!", 'log-unique');
+                    updateHud();
+                } else {
+                    addCombatLog("The Hellforge requires Mephisto's Soulstone and the Hellforge Hammer.", 'log-info');
+                }
+            } else if (res && res.type === 'ALTIAR_OF_HEAVENS') {
+                if (window._ancientsKilled >= 3) {
+                    o.isOpen = true;
+                    o.icon = 'obj_altar_on';
+                    player.grantExp(player.xpToNext - player.xp); // Instant level up
+                    player.statPoints += 5;
+                    addCombatLog("You have passed the Rite of Passage! (+1 Level, +5 Stats)", 'log-unique');
+                    updateHud();
+                } else {
+                    addCombatLog("The Ancients must be defeated first.", 'log-info');
+                }
             }
             return;
         }
@@ -1274,6 +1214,22 @@ function checkInteractions(pos) {
         if (dist < 22) { // Increased pickup radius for comfort
             const distToPlayer = Math.sqrt((di.x - player.x) ** 2 + (di.y - player.y) ** 2);
             if (distToPlayer < 45) {
+                // Quest Item logic
+                if (di.isQuestItem) {
+                    const qId = di.qId;
+                    const quest = activeQuests.find(q => q.id === qId);
+                    if (quest) {
+                        quest.progress = Math.min(quest.target, quest.progress + 1);
+                        addCombatLog(`Recovered ${di.name}!`, 'log-crit');
+                        if (quest.progress === quest.target) {
+                            addCombatLog(`Quest Objective Complete: ${quest.name}`, 'log-unique');
+                        }
+                        droppedItems.splice(i, 1);
+                        updateHud();
+                        return;
+                    }
+                }
+
                 if (player.addToInventory(di)) {
                     addCombatLog(`Picked up ${di.name}`, 'log-item');
                     bus.emit('item:pickup', { item: di });
@@ -1372,14 +1328,42 @@ function checkDeaths() {
                 if (beamC) fx.emitBurst(item.x, item.y - 20, beamC, 12, 1);
             }
 
-            // --- Phase 29: Horadric Fragment Drops ---
-            const fragRoll = Math.random();
-            const fragChance = e.type === 'boss' ? 0.15 : (e.type === 'elite' ? 0.05 : 0);
-            if (fragRoll < fragChance) {
-                const fragment = { id: 'horadric_fragment', name: "Horadric Fragment", rarity: 'unique', icon: 'item_emerald', x: e.x + 10, y: e.y + 10, identified: true };
-                droppedItems.push(fragment);
-                fx.emitLootBeam(e.x + 10, e.y + 10, '#ffffff');
+            // --- Phase 29: Quest Item Drops ---
+            if (e.isRadament) {
+                droppedItems.push({ id: 'book_of_skill', name: "Book of Skill", rarity: 'unique', icon: 'item_scroll_blue', x: e.x, y: e.y, isQuestItem: true, qId: 'radament' });
+            } else if (e.isBeetleburst) {
+                droppedItems.push({ id: 'horadric_staff_shaft', name: "Staff of Kings", rarity: 'unique', icon: 'item_staff', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' });
+            } else if (e.isColdworm) {
+                droppedItems.push({ id: 'horadric_staff_head', name: "Viper Amulet", rarity: 'unique', icon: 'item_amulet', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' });
+            } else if (e.isSarina) {
+                droppedItems.push({ id: 'khalim_heart', name: "Khalim's Heart", rarity: 'unique', icon: 'item_heart', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' });
+            } else if (e.isCouncil) {
+                droppedItems.push({ id: 'khalim_brain', name: "Khalim's Brain", rarity: 'unique', icon: 'item_brain', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' });
+            } else if (e.isShenk) {
+                addCombatLog("Shenk the Overseer: 'BAAL SHALL... REWARD... ME...'", 'log-dmg');
+            } else if (e.isHephaisto) {
+                // Drop Hellforge Hammer
+                const hammer = loot.generate(zoneLevel, 'unique');
+                hammer.baseId = 'hellforge_hammer';
+                hammer.name = "Hellforge Hammer";
+                hammer.icon = 'item_hammer_war';
+                hammer.identified = true;
+                hammer.x = e.x; hammer.y = e.y;
+                droppedItems.push(hammer);
+                addCombatLog("Hephaisto slayed! The Hellforge Hammer is ours.", 'log-crit');
+            } else if (e.name === 'Mephisto' || e.isMephisto) {
+                // Drop Mephisto's Soulstone
+                const stone = loot.generate(zoneLevel, 'unique');
+                stone.baseId = 'mephisto_soulstone';
+                stone.name = "Mephisto's Soulstone";
+                stone.icon = 'item_gem_skull';
+                stone.identified = true;
+                stone.x = e.x + 10; stone.y = e.y + 10;
+                droppedItems.push(stone);
+                addCombatLog("Mephisto's Soulstone has been recovered!", 'log-crit');
             }
+
+            // --- Phase 29: Horadric Fragment Drops ---
 
             const goldAmt = loot.rollGold(e, player.goldFind || 0);
             addCombatLog(`${e.name} slain! +${e.xpReward} XP`, (item || fragRoll < fragChance) ? 'log-item' : 'log-level');
@@ -1402,16 +1386,45 @@ function checkDeaths() {
                 }
             }
 
+            // Ancients Tracking
+            if (e.isAncient) {
+                window._ancientsKilled = (window._ancientsKilled || 0) + 1;
+                addCombatLog(`${e.name} has been defeated! (${window._ancientsKilled}/3)`, 'log-info');
+                if (window._ancientsKilled >= 3) {
+                    const q = activeQuests.find(aq => aq.id === 'rite_of_passage');
+                    if (q) {
+                        q.progress = q.target;
+                        addCombatLog("The Ancients have acknowledged your strength!", 'log-unique');
+                        updateHud();
+                    }
+                }
+            }
+
             // Quest tracking
             for (const q of activeQuests) {
                 if (q.progress < q.target) {
                     if ((q.bossOnly && e.type === 'boss') || !q.bossOnly) {
                         q.progress++;
                         if (q.progress === q.target) {
-                            addCombatLog(`Quest Objective Complete! Return to Akara.`, 'log-crit');
+                            const giverName = q.giver ? q.giver.charAt(0).toUpperCase() + q.giver.slice(1).replace('_', ' ') : 'the town';
+                            addCombatLog(`Quest Objective Complete! Return to ${giverName}.`, 'log-crit');
                             updateHud();
                         }
                     }
+                }
+            }
+
+            // Soul Liberation & Iconic Death Quotes
+            if (e.type === 'boss') {
+                if (e.name === 'Izual') {
+                    addCombatLog("Izual: 'Thank you... the light... it's so bright at last.'", 'log-level');
+                    dialogue = { text: "Izual's tormented soul is finally released from the shadows. Return to Tyrael.", timer: 5, npc: { name: 'Soul' } };
+                } else if (e.name === 'Diablo') {
+                    addCombatLog("Diablo: 'NOT... POSSIBLE...'", 'log-dmg');
+                } else if (e.name === 'Baal') {
+                    addCombatLog("Baal: 'MY BROTHERS... SHALL... AVENGE... ME...'", 'log-dmg');
+                } else if (e.name === 'Frozenstein') {
+                    addCombatLog("Frozenstein shattered! The way to Anya is clear.", 'log-level');
                 }
             }
 
@@ -1627,6 +1640,25 @@ function finishZoneLoad() {
             gameObjects.push(portal);
         }
 
+        // --- Phase 3 Wave 6: Wirt's Leg Drop (Zone 3 - Dark Wood) ---
+        if (zoneLevel === 3) {
+            const corpse = new GameObject('wirts_corpse', player.x - 100, player.y + 100, 'env_grave');
+            corpse.interactable = true;
+            corpse.onInteract = () => {
+                if (!player.inventory.some(it => it && it.baseId === 'wirts_leg')) {
+                    const leg = loot.generateFixedUnique('wirts_leg'); // Assuming fixed unique logic or similar
+                    if (loot.addItemToInventory(player, leg)) {
+                        addCombatLog("You found Wirt's Leg!", 'log-unique');
+                        corpse.interactable = false;
+                        corpse.icon = 'env_grave_open'; // Visual change
+                    }
+                } else {
+                    addCombatLog("You already have Wirt's Leg.", 'log-info');
+                }
+            };
+            gameObjects.push(corpse);
+        }
+
         // --- Phase 30: Pantheon Monument ---
         const monument = new GameObject('pantheon_monument', 550, 350, 'ra-pillar');
         monument.name = "Monument of Valor";
@@ -1640,7 +1672,7 @@ function finishZoneLoad() {
     } else {
         npcs = [];
         gameObjects = dungeon.objectSpawns ? dungeon.objectSpawns.map(s => {
-            const obj = new GameObject(s.type, s.x, s.y, s.icon);
+            const obj = new GameObject(s.type, s.x, s.y, s.icon, s.id);
             if (s.type === 'shrine') obj.shrineType = s.shrineType;
             if (s.type === 'waypoint') obj.zone = s.zone;
             return obj;
@@ -1840,6 +1872,28 @@ function updateHud() {
     if (xpBar) {
         xpBar.style.width = xpPct + '%';
         $('xp-bar-container').title = `Level ${player.level} — ${Math.floor(xpPct)}%`;
+    }
+
+    // --- Phase 3 Wave 6: Mercenary HUD Update ---
+    const mercHud = $('mercenary-hud');
+    if (mercHud) {
+        if (mercenary) {
+            mercHud.classList.remove('hidden');
+            const hpFill = $('merc-hud-hp-fill');
+            const hpPct = (mercenary.hp / mercenary.maxHp) * 100;
+            if (hpFill) hpFill.style.width = Math.max(0, hpPct) + '%';
+            
+            const lvlText = $('merc-hud-lvl');
+            if (lvlText) lvlText.textContent = `Level ${mercenary.level}`;
+            
+            const portrait = $('merc-hud-portrait');
+            if (portrait) {
+                if (mercenary.hp <= 0) portrait.classList.add('merc-dead-portrait');
+                else portrait.classList.remove('merc-dead-portrait');
+            }
+        } else {
+            mercHud.classList.add('hidden');
+        }
     }
 
     // PROXIMITY BOSS HUD
@@ -2044,7 +2098,8 @@ function updateHud() {
             qh.classList.remove('hidden');
             $('quest-desc').textContent = activeQuests[0].desc;
             if (activeQuests[0].progress >= activeQuests[0].target) {
-                $('quest-progress').textContent = 'Return to Akara';
+                const giverName = activeQuests[0].giver.charAt(0).toUpperCase() + activeQuests[0].giver.slice(1).replace('_', ' ');
+                $('quest-progress').textContent = `Return to ${giverName}`;
                 $('quest-progress').style.color = '#4caf50';
             } else {
                 $('quest-progress').textContent = `${activeQuests[0].progress} / ${activeQuests[0].target}`;
@@ -2423,10 +2478,14 @@ function getIconForClass(id) {
 function updateSkillBar() {
     if (!player) return;
     for (let i = 0; i < 5; i++) {
+        const slotEl = $(`skill-${i + 1}`);
         const si = $(`si-${i}`);
         const skillId = player.hotbar[i];
 
-        // Remove old listeners by cloning
+        // Ensure slot handles drops
+        slotEl.onmouseup = () => handleDrop('hotbar', i);
+
+        // Remove old listeners by cloning the icon container
         const newSi = si.cloneNode(true);
         si.parentNode.replaceChild(newSi, si);
 
@@ -2436,9 +2495,41 @@ function updateSkillBar() {
             newSi.addEventListener('mouseenter', (e) => showSkillTooltip(skillId, e.clientX, e.clientY));
             newSi.addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
             newSi.addEventListener('mouseleave', hideTooltip);
+
+            // Drag support for skills
+            newSi.onmousedown = (e) => {
+                if (e.button !== 0) return;
+                const sx = e.clientX, sy = e.clientY;
+                let d = false;
+                const mv = (m) => {
+                    if (!d && Math.hypot(m.clientX - sx, m.clientY - sy) > 5) {
+                        d = true;
+                        startSkillDrag(m, skillId, i);
+                        window.removeEventListener('mousemove', mv);
+                    }
+                };
+                const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+                window.addEventListener('mousemove', mv);
+                window.addEventListener('mouseup', up);
+            };
         } else {
             newSi.innerHTML = '';
         }
+
+        // Open Picker on Click
+        newSi.addEventListener('click', (e) => {
+            if (draggedSkill) return;
+            e.stopPropagation();
+            openSkillPicker(i, e.clientX, e.clientY);
+        });
+
+        // Right-click to clear
+        newSi.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            player.hotbar[i] = null;
+            updateSkillBar();
+            addCombatLog(`Cleared slot ${i + 1}`, 'log-info');
+        });
     }
 }
 
@@ -3271,7 +3362,7 @@ function renderQuestJournal() {
     list.innerHTML = '';
 
     if (activeQuests.length === 0 && completedQuests.size === 0) {
-        list.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">No quests yet.<br>Visit Akara the Elder in town.</div>';
+        list.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">No quests yet.<br>Visit the town elders to begin your journey.</div>';
     }
 
     // Active quests
@@ -3465,10 +3556,11 @@ function renderCharacterPanel() {
         ['HP', `${Math.round(player.hp)} / ${player.maxHp}`, `Life: Keep this above zero!`],
         ['MP', `${Math.round(player.mp)} / ${player.maxMp}`, `Mana: Used to cast powerful spells.`],
         ['Armor', Math.round(player.armor), `Reduces physical damage taken by approximately ${Math.round(100 * player.armor / (player.armor + 400))}%`],
-        ['Fire Res', player.fireRes + '%', `Reduces Fire damage taken. Max 75%.`],
-        ['Cold Res', player.coldRes + '%', `Reduces Cold damage taken. Max 75%.`],
-        ['Lightning Res', player.lightRes + '%', `Reduces Lightning damage taken. Max 75%.`],
-        ['Poison Res', player.poisRes + '%', `Reduces Poison damage taken. Max 75%.`],
+        ['Fire Res', `${player.fireRes}%`, `Reduces Fire damage taken. Max 75%.`],
+        ['Cold Res', `${player.coldRes}%`, `Reduces Cold damage taken. Max 75%.`],
+        ['Lightning Res', `${player.lightRes}%`, `Reduces Lightning damage taken. Max 75%.`],
+        ['Poison Res', `${player.poisRes}%`, `Reduces Poison damage taken. Max 75%.`],
+        ['Permanent Res', `+${player.permanentResists || 0}%`, `Permanent resistance bonuses from quests.`],
         ['Life Steal', (player.lifeStealPct || 0) + '%', `Percentage of physical damage returned as life.`],
         ['Mana Steal', (player.manaStealPct || 0) + '%', `Percentage of physical damage returned as mana.`],
         ['Move Speed', Math.round(player.moveSpeed), `Current movement velocity.`],
@@ -4498,17 +4590,38 @@ function renderDialoguePicker(npc) {
         });
     }
 
-    // Special: Hire / Revive (Kashya)
-    if (npc.id === 'kashya') {
+    // Special: Hire / Revive (Kashya, Greiz, Asheara)
+    const mercCaptains = { 'kashya': 'Rogue', 'greiz': 'Desert Warrior', 'asheara': 'Iron Wolf' };
+    if (mercCaptains[npc.id]) {
+        const type = mercCaptains[npc.id];
         const isDead = mercenary && mercenary.hp <= 0;
         const mercName = mercenary ? mercenary.name : 'Mercenary';
         options.push({
-            label: isDead ? `Revive ${mercName} (200g)` : 'Hire Mercenary (500g)', action: () => {
-                hireMercenary();
+            label: isDead ? `Revive ${mercName} (200g)` : `Hire ${type} (500g)`, action: () => {
+                hireMercenary(type);
                 menu.remove();
                 activeDialogueNpc = null;
             }
         });
+    }
+
+    // Special: Anya Quest
+    if (npc.id === 'anya') {
+        const q = activeQuests.find(aq => aq.id === 'prison_of_ice');
+        if (q && !player.hasAnyaReward) {
+            options.push({
+                label: 'Rescue Anya', action: () => {
+                    q.progress = q.target;
+                    player.hasAnyaReward = true;
+                    player.permanentResists = (player.permanentResists || 0) + 10;
+                    player._recalcStats();
+                    addCombatLog('You have rescued Anya! Permanent +10 Resistances gained.', 'log-unique');
+                    menu.remove();
+                    activeDialogueNpc = null;
+                    updateHud();
+                }
+            });
+        }
     }
 
     // Special: Socket (Larzuk)
@@ -4533,21 +4646,26 @@ function renderDialoguePicker(npc) {
         });
     }
 
-    // Special: Akara Services
-    if (npc.id === 'akara') {
+    // Special: Healer Services (Akara, Jamella, Malah)
+    if (['akara', 'jamella', 'malah'].includes(npc.id)) {
         options.push({
             label: 'Heal & Refill', action: () => {
                 player.hp = player.maxHp;
                 player.mp = player.maxMp;
-                addCombatLog('Akara has restored your health and mana.', 'log-heal');
+                if (mercenary) mercenary.hp = mercenary.maxHp;
+                addCombatLog(`${npc.name} has restored your health and mana.`, 'log-heal');
                 fx.emitBurst(player.x, player.y, '#4caf50', 20, 2);
                 updateHud();
                 menu.remove();
                 activeDialogueNpc = null;
             }
         });
+    }
+
+    // Akara Reset (Stay as Akara only)
+    if (npc.id === 'akara') {
         options.push({
-            label: 'Reset (500g)', action: () => {
+            label: 'Reset Stats/Skills (500g)', action: () => {
                 if (player.gold >= 500) {
                     player.gold -= 500;
                     player.talents.reset();
@@ -5255,20 +5373,23 @@ $('btn-transmute')?.addEventListener('click', () => {
             return;
         }
 
-        // Secret Cow Level Portal
         if (resultItem.id === 'item_cow_portal') {
             if (zoneLevel > 0) {
-                addCombatLog('Moo. (Portals can only be opened in town).', 'log-dmg');
-                return;
+                addCombatLog("Moo Moo Moo... A portal to the Secret Cow Level has opened!", 'log-unique');
+                const portal = new GameObject('cow_portal', player.x, player.y - 40, 'env_water');
+                portal.targetZone = 99; // Moo Moo Farm
+                gameObjects.push(portal);
+                
+                // Consume specific ingredients
+                cube.forEach((it, idx) => {
+                    if (it && (it.baseId === 'wirts_leg' || it.baseId === 'tome_tp')) {
+                        cube[idx] = null;
+                    }
+                });
+                renderCube();
+            } else {
+                addCombatLog("Cannot open the portal in town!", 'log-dmg');
             }
-            addCombatLog('Moo Moo Moo... A portal to the Secret Cow Level has opened!', 'log-crit');
-            const portal = new GameObject('cow_portal', player.x + 40, player.y, 'env_water');
-            portal.targetZone = 99; // Cow Level
-            gameObjects.push(portal);
-
-            // Clear items
-            cube.forEach((it, idx) => { if (it && (it.baseId === 'wirts_leg' || it.baseId === 'tome_tp' || it.id === 'item_cow_portal')) cube[idx] = null; });
-            renderCube();
             return;
         }
 
@@ -5314,7 +5435,7 @@ const ACT_1_QUESTS = {
         name: 'The Forgotten Tower',
         desc: 'Find the countess and her hoard in the Tower (Zone 4).',
         target: 1,
-        giver: 'cain',
+        giver: 'deckard_cain',
         goldReward: 5000,
         xpReward: 3000,
         bossOnly: true,
@@ -5344,7 +5465,107 @@ const ACT_1_QUESTS = {
     }
 };
 
+const ACT_2_QUESTS = {
+    'radament': {
+        id: 'radament',
+        name: 'Radament\'s Lair',
+        desc: 'Slay Radament in the Sewers (Zone 7).',
+        target: 1,
+        giver: 'drognan',
+        goldReward: 5000,
+        xpReward: 8000,
+        skillReward: 1,
+        bossOnly: true,
+        intro: "Drognan: 'A creature of the ancient sands has awakened in the sewers beneath our feet. Radament, they call him. He steals the bodies of the dead to nourish his own. Destroy him, and I will grant you ancient knowledge.'"
+    },
+    'horadric_staff': {
+        id: 'horadric_staff',
+        name: 'The Horadric Staff',
+        desc: 'Retrieve the Horadric Staff components (Zone 8/9).',
+        target: 2,
+        giver: 'deckard_cain',
+        goldReward: 8000,
+        xpReward: 12000,
+        bossOnly: true,
+        intro: "Deckard Cain: 'The Horadric Staff is the only key to Tal Rasha's Tomb. It was divided into two pieces: the shaft and the headpiece. Find the guardians in the desert to recover them.'"
+    },
+    'duriel': {
+        id: 'duriel',
+        name: 'The Seven Tombs',
+        desc: 'Defeat Duriel, the Lord of Pain, in Tal Rasha\'s Chamber (Zone 10).',
+        target: 1,
+        giver: 'deckard_cain',
+        goldReward: 15000,
+        xpReward: 20000,
+        statReward: 5,
+        isActBoss: true,
+        intro: "Deckard Cain: 'The true tomb of Tal Rasha has been found. But be warned, Duriel, the Lord of Pain, guards the entrance. You must defeat him to continue your pursuit of the Dark Wanderer!'"
+    }
+};
+
+const ACT_3_QUESTS = {
+    'khalims_will': {
+        id: 'khalims_will',
+        name: 'Khalim\'s Will',
+        desc: 'Recover the relics of Khalim from the Jungle (Zone 12/13).',
+        target: 2,
+        giver: 'ormus',
+        goldReward: 10000,
+        xpReward: 25000,
+        bossOnly: true,
+        intro: "Ormus: 'Khalim was the only one who could resist the corruption of Mephisto. To break the Orb in Travincal, you must gather his relics: his heart, his brain, and his eye. Go into the jungle, mortal.'"
+    },
+    'travincal': {
+        id: 'travincal',
+        name: 'The Blackened Temple',
+        desc: 'Defeat the High Council in Travincal (Zone 14).',
+        target: 1,
+        giver: 'deckard_cain',
+        goldReward: 12000,
+        xpReward: 30000,
+        skillReward: 1,
+        bossOnly: true,
+        intro: "Deckard Cain: 'The Council of Zakarum has fallen under the sway of Mephisto. They reside in the ancient temple of Travincal. You must purge them before you can enter the Durance of Hate.'"
+    },
+    'mephisto': {
+        id: 'mephisto',
+        name: 'The Guardian',
+        desc: 'Defeat Mephisto, the Lord of Hatred, in the Durance of Hate (Zone 15 Boss).',
+        target: 1,
+        giver: 'deckard_cain',
+        goldReward: 25000,
+        xpReward: 50000,
+        statReward: 5,
+        isActBoss: true,
+        intro: "Deckard Cain: 'Mephisto, the oldest of the Prime Evils, is near. He guards the gate to Hell itself. Defeat him, and take his Soulstone!'"
+    }
+};
+
 const ACT_4_QUESTS = {
+    'hellgate': {
+        id: 'hellgate',
+        name: 'The Fallen Angel',
+        desc: 'Find and defeat Izual in the Plains of Despair (Zone 18).',
+        target: 1,
+        giver: 'tyrael',
+        goldReward: 20000,
+        xpReward: 40000,
+        skillReward: 2,
+        bossOnly: true,
+        intro: "Tyrael: 'Izual was once my most trusted lieutenant. Now he is a tortured soul guarding the plains of Hell. Release him from his agony.'"
+    },
+    'hellforge': {
+        id: 'hellforge',
+        name: 'The Hellforge',
+        desc: 'Slay Hephaisto the Armorer (Zone 19) and use the Hellforge to destroy Mephisto\'s Soulstone.',
+        target: 1,
+        giver: 'tyrael',
+        goldReward: 25000,
+        xpReward: 60000,
+        runeReward: true, // Special logic in checkDeaths/interact
+        bossOnly: true,
+        intro: "Tyrael: 'The Soulstone of Mephisto must be destroyed at the Hellforge. Hephaisto guards the hammer. Defeat him and fulfill your destiny!'"
+    },
     'terrors_end': {
         id: 'terrors_end',
         name: 'Terror\'s End',
@@ -5356,11 +5577,47 @@ const ACT_4_QUESTS = {
         skillReward: 2,
         statReward: 10,
         isActBoss: true,
-        intro: "Tyrael: 'The time has come to end this darkness. Diablo has retreated to his Chaos Sanctuary within the burning hells. You must follow him, mortal, and strike him down. The fate of Sanctuary depends on your strength!'"
+        intro: "Tyrael: 'The time has come to end this darkness. Diablo has retreated to his Chaos Sanctuary. You must follow him and strike him down!'"
     }
 };
 
 const ACT_5_QUESTS = {
+    'siege_on_harrogath': {
+        id: 'siege_on_harrogath',
+        name: 'Siege on Harrogath',
+        desc: 'Slay Shenk the Overseer at the Bloody Foothills (Zone 22).',
+        target: 1,
+        giver: 'larzuk',
+        goldReward: 20000,
+        xpReward: 60000,
+        imbueReward: true,
+        bossOnly: true,
+        intro: "Larzuk: 'Shenk the Overseer is driving the demon hordes into our walls. Stop him, and I will socket your equipment!'"
+    },
+    'prison_of_ice': {
+        id: 'prison_of_ice',
+        name: 'Prison of Ice',
+        desc: 'Rescue Anya by defeating Frozenstein in the Ice Caves (Zone 23/24 subarea).',
+        target: 1,
+        giver: 'malah',
+        goldReward: 30000,
+        xpReward: 80000,
+        resReward: 10,
+        bossOnly: true,
+        intro: "Malah: 'Anya, the daughter of our elder, is missing in the ice caves. Find her and bring her back safely!'"
+    },
+    'rite_of_passage': {
+        id: 'rite_of_passage',
+        name: 'Rite of Passage',
+        desc: 'Defeat the three Ancients upon Arreat Summit (Zone 23) without leaving the area.',
+        target: 3, // Must kill all 3
+        giver: 'nihlathak',
+        goldReward: 40000,
+        xpReward: 150000,
+        statReward: 5,
+        skillReward: 1,
+        intro: "Nihlathak: 'You seek the Worldstone? Only those who pass the test of the Ancients may enter. Be warned: they do not hold back!'"
+    },
     'lod_finale': {
         id: 'lod_finale',
         name: 'The Lord of Destruction',
@@ -5372,11 +5629,11 @@ const ACT_5_QUESTS = {
         skillReward: 5,
         statReward: 20,
         isActBoss: true,
-        intro: "Tyrael: 'Baal has reached the Heart of the Worldstone. If he corrupts it, Sanctuary will be lost forever. You must hurry to the Worldstone Chamber and destroy him!'"
+        intro: "Tyrael: 'Baal has reached the Heart of the Worldstone. If he corrupts it, Sanctuary will be lost forever. Hurry!'"
     }
 };
 
-const QUEST_POOL = [...Object.values(ACT_1_QUESTS), ...Object.values(ACT_4_QUESTS), ...Object.values(ACT_5_QUESTS)];
+const QUEST_POOL = [...Object.values(ACT_1_QUESTS), ...Object.values(ACT_2_QUESTS), ...Object.values(ACT_3_QUESTS), ...Object.values(ACT_4_QUESTS), ...Object.values(ACT_5_QUESTS)];
 
 function offerQuest(giverId = null) {
     if (!player) return;
@@ -5395,7 +5652,12 @@ function offerQuest(giverId = null) {
                 if (q.mercenaryReward) addCombatLog('You can now hire mercenaries from Kashya!', 'log-level');
                 if (q.imbueReward) {
                     player.hasImbue = true;
-                    addCombatLog('Charsi can now Imbue one item! (Interaction Menu)', 'log-level');
+                    addCombatLog('Larzuk/Charsi can now Imbue/Socket one item! (Interaction Menu)', 'log-level');
+                }
+                if (q.resReward) {
+                    player.permanentResists = (player.permanentResists || 0) + q.resReward;
+                    player.recalcStats();
+                    addCombatLog(`Malah grants you permanent +${q.resReward} to All Resistances!`, 'log-level');
                 }
                 if (q.isActBoss) {
                     if (q.id === 'lod_finale') {
@@ -5954,7 +6216,14 @@ function handleDrop(target, idx) {
     const tarArr = getContainer(target);
 
     // 1. Array to Array (Inventory, Stash, Cube, Belt)
-    if (srcArr && tarArr) {
+    if (target === 'hotbar' && draggedSkill) {
+        const skillAtSource = player.hotbar[dragSourceIdx];
+        const skillAtTarget = player.hotbar[idx];
+        
+        player.hotbar[idx] = skillAtSource;
+        player.hotbar[dragSourceIdx] = skillAtTarget;
+        success = true;
+    } else if (srcArr && tarArr) {
         const itemAtSource = srcArr[dragSourceIdx];
         const itemAtTarget = tarArr[idx];
 
@@ -6088,6 +6357,19 @@ window.addEventListener('mousemove', (e) => {
 });
 
 window.addEventListener('mouseup', (e) => {
+    if (draggedSkill) {
+        // Drop skill outside to clear it
+        const barRect = $('skill-bar').getBoundingClientRect();
+        const overBar = (e.clientX >= barRect.left && e.clientX <= barRect.right && e.clientY >= barRect.top && e.clientY <= barRect.bottom);
+        
+        if (!overBar) {
+            player.hotbar[dragSourceIdx] = null;
+            addCombatLog("Skill unassigned.", "log-info");
+            updateSkillBar();
+        }
+        clearSkillDrag();
+    }
+
     if (draggedItem) {
         // If we are here, no slot handled the mouseup (slots stopPropagation or are handled first)
         // Check if we are over a UI panel
@@ -6216,27 +6498,113 @@ function returnToMainMenu() {
     renderSaveSlots();
 }
 
-// --- Entity Death & Corpse Handling ---
-bus.on('entity:death', (data) => {
-    const { entity, killer } = data;
-    if (!entity || entity.isPlayer) return;
+// --- Phase 31: Skill Reordering & Picker Logic ---
+let draggedSkill = null;
+let dragSkillGhost = null;
 
-    // Add to global corpses
-    window._corpses.push({
-        x: entity.x,
-        y: entity.y,
-        maxHp: entity.maxHp,
-        type: entity.type,
-        age: 0,
-        used: false
+function startSkillDrag(e, skillId, idx) {
+    draggedSkill = skillId;
+    dragSourceIdx = idx;
+    dragSource = 'hotbar';
+
+    dragSkillGhost = document.createElement('div');
+    dragSkillGhost.id = 'drag-ghost-skill';
+    dragSkillGhost.innerHTML = `<i class="ra ${getIconForSkill(skillId)}" style="font-size: 28px; color: var(--gold);"></i>`;
+    document.body.appendChild(dragSkillGhost);
+
+    $(`skill-${idx + 1}`).classList.add('dragging');
+}
+
+function openSkillPicker(slotIdx, x, y) {
+    const existing = document.getElementById('skill-picker');
+    if (existing) existing.remove();
+
+    const menu = document.createElement('div');
+    menu.id = 'skill-picker';
+    menu.className = 'skill-picker-modal';
+    
+    // Position the menu above the hotbar
+    menu.style.left = `${Math.min(window.innerWidth - 300, Math.max(20, x - 140))}px`;
+    menu.style.top = `${y - 320}px`;
+
+    const header = document.createElement('div');
+    header.className = 'skill-picker-header';
+    header.textContent = `ASSIGN SKILL TO SLOT ${slotIdx + 1}`;
+    menu.appendChild(header);
+
+    const grid = document.createElement('div');
+    grid.className = 'skill-picker-grid';
+
+    // Get all learned active skills
+    const skills = Object.values(player.skillMap).filter(s => s.type === 'active' && player.talents.baseLevel(s.id) > 0);
+
+    if (skills.length === 0) {
+        grid.innerHTML = `<div style="grid-column: span 4; text-align: center; color: #666; font-size: 11px; padding: 20px;">No active skills learned yet.<br>Spend Talent Points first!</div>`;
+    }
+
+    skills.forEach(skill => {
+        const node = document.createElement('div');
+        node.className = 'skill-picker-node';
+        if (player.hotbar.includes(skill.id)) node.classList.add('active-on-bar');
+        
+        node.innerHTML = `<i class="ra ${getIconForSkill(skill.id)}" style="font-size: 24px; color: var(--gold);"></i>`;
+        
+        node.addEventListener('mouseenter', (e) => showSkillTooltip(skill.id, e.clientX, e.clientY));
+        node.addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
+        node.addEventListener('mouseleave', hideTooltip);
+
+        node.onclick = () => {
+            // Remove from other slot if already assigned? (Diablo 2 style: allow multiples or swap)
+            // Let's allow unique assignments for simplicity
+            const oldIdx = player.hotbar.indexOf(skill.id);
+            if (oldIdx !== -1) player.hotbar[oldIdx] = null;
+
+            player.hotbar[slotIdx] = skill.id;
+            updateSkillBar();
+            menu.remove();
+            hideTooltip();
+            addCombatLog(`Assigned ${skill.name} to hotbar.`, 'log-info');
+        };
+
+        grid.appendChild(node);
     });
 
-    // Cap corpses to 100 for performance
-    if (window._corpses.length > 100) window._corpses.shift();
+    menu.appendChild(grid);
 
-    if (killer && killer.isPlayer) {
-        // Handle kill bonuses (mana after kill, life after kill)
-        if (killer.manaAfterKill) killer.mp = Math.min(killer.maxMp, (killer.mp || 0) + killer.manaAfterKill);
-        if (killer.lifeAfterKill) killer.hp = Math.min(killer.maxHp, (killer.hp || 0) + killer.lifeAfterKill);
+    const footer = document.createElement('div');
+    footer.className = 'skill-picker-footer';
+    footer.textContent = "Right-click slot to clear";
+    menu.appendChild(footer);
+
+    // Close when clicking outside
+    const closeHandler = (e) => {
+        if (!menu.contains(e.target)) {
+            menu.remove();
+            window.removeEventListener('mousedown', closeHandler);
+        }
+    };
+    setTimeout(() => window.addEventListener('mousedown', closeHandler), 10);
+
+    document.body.appendChild(menu);
+}
+
+window.addEventListener('mousemove', (e) => {
+    if (dragGhost) {
+        dragGhost.style.left = `${e.clientX - 16}px`;
+        dragGhost.style.top = `${e.clientY - 16}px`;
+    }
+    if (dragSkillGhost) {
+        dragSkillGhost.style.left = `${e.clientX - 24}px`;
+        dragSkillGhost.style.top = `${e.clientY - 24}px`;
     }
 });
+
+function clearSkillDrag() {
+    draggedSkill = null;
+    if (dragSkillGhost) { dragSkillGhost.remove(); dragSkillGhost = null; }
+    document.querySelectorAll('.skill-slot').forEach(el => el.classList.remove('dragging'));
+}
+
+// Add Right-click to clear hotbar slot in updateSkillBar
+// I'll add this inside updateSkillBar in the next turn if I missed it.
+// Actually I'll update the loop now.

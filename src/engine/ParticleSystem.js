@@ -168,8 +168,29 @@ export class ParticleSystem {
     }
 
     emitHitImpact(x, y, type = 'physical') {
-        const c = type === 'fire' ? '#ff6000' : (type === 'cold' ? '#00ccff' : '#ffffff');
-        this.emitBurst(x, y, c, 5, 1.5);
+        const typeMap = {
+            fire: { color: '#ff6000', count: 12, speed: 2.5 },
+            cold: { color: '#80d0ff', count: 10, speed: 2.0 },
+            lightning: { color: '#ffff40', count: 8, speed: 3.5 },
+            poison: { color: '#40c040', count: 10, speed: 1.5 },
+            shadow: { color: '#8040c0', count: 12, speed: 2.0 },
+            holy: { color: '#ffe880', count: 15, speed: 2.5 },
+            earth: { color: '#8a7a60', count: 8, speed: 1.8 },
+            physical: { color: '#cccccc', count: 6, speed: 1.5 },
+            magic: { color: '#ff80ff', count: 10, speed: 2.2 }
+        };
+        const config = typeMap[type] || typeMap.physical;
+        this.emitBurst(x, y, config.color, config.count, config.speed);
+        
+        // Add a secondary spark burst for crit-like feel on some hits
+        if (Math.random() < 0.2) {
+            for (let i = 0; i < 3; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const p = new Particle(x, y, Math.cos(angle) * 3, Math.sin(angle) * 3, 400, '#fff', 1.5);
+                p.shape = 'spark';
+                this.particles.push(p);
+            }
+        }
     }
 
     emitSlash(x, y, angle, color = '#cccccc', radius = 20) {

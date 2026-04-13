@@ -30,7 +30,9 @@ export class Dungeon {
     }
 
     generate(zoneLevel = 1, theme = 'cathedral') {
-        if (zoneLevel === 0) return this.generateTown(theme);
+        if (zoneLevel === 0 || zoneLevel === 6 || zoneLevel === 11 || zoneLevel === 16 || zoneLevel === 21) {
+            return this.generateTown(theme, zoneLevel);
+        }
         if (zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0)) return this.generateBossRoom(theme, zoneLevel);
 
         this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
@@ -142,12 +144,55 @@ export class Dungeon {
                 const sy = room.y + 1 + Math.floor(Math.random() * (room.h - 2));
                 const isBoss = (i === this.rooms.length - 1 && n === 0);
                 const isElite = !isBoss && Math.random() < 0.15;
-                this.enemySpawns.push({
+                
+                const spawn = {
                     x: sx * this.tileSize + this.tileSize / 2,
                     y: sy * this.tileSize + this.tileSize / 2,
                     type: isBoss ? 'boss' : isElite ? 'elite' : 'normal',
                     level: zoneLevel,
-                });
+                };
+
+                // Inject Unique Mini-Bosses into normal zones
+                if (isBoss) {
+                    if (zoneLevel === 7) { spawn.name = "Radament"; spawn.icon = "enemy_skeleton"; spawn.isRadament = true; spawn.hpMult = 3.0; }
+                    if (zoneLevel === 8) { spawn.name = "Beetleburst"; spawn.icon = "enemy_spider"; spawn.isBeetleburst = true; spawn.hpMult = 2.5; }
+                    if (zoneLevel === 9) { spawn.name = "Coldworm the Burrower"; spawn.icon = "enemy_spider"; spawn.isColdworm = true; spawn.hpMult = 3.0; }
+                    if (zoneLevel === 13) { spawn.name = "Battlemaid Sarina"; spawn.icon = "enemy_ghost"; spawn.isSarina = true; spawn.hpMult = 2.5; }
+                    if (zoneLevel === 14) { spawn.name = "Toorc Icefist"; spawn.icon = "enemy_skeleton"; spawn.isCouncil = true; spawn.hpMult = 4.0; }
+                    if (zoneLevel === 22) { spawn.name = "Shenk the Overseer"; spawn.icon = "enemy_demon"; spawn.isShenk = true; spawn.hpMult = 3.5; }
+                    if (zoneLevel === 23) { spawn.name = "Frozenstein"; spawn.icon = "enemy_demon"; spawn.isFrozenstein = true; spawn.hpMult = 3.5; }
+                    
+                    // Act I Unique: The Butcher in Zone 5 (Second to last room)
+                    if (zoneLevel === 5 && i === this.rooms.length - 2) {
+                        spawn.name = "The Butcher";
+                        spawn.icon = "enemy_demon";
+                        spawn.isButcher = true;
+                        spawn.hpMult = 5.0;
+                    }
+
+                    // Act IV Unique Bosses
+                    if (zoneLevel === 18 && i === this.rooms.length - 1) {
+                        spawn.name = "Izual"; spawn.icon = "enemy_ghost"; spawn.isIzual = true; spawn.hpMult = 6.0;
+                    }
+                    if (zoneLevel === 19 && i === this.rooms.length - 1) {
+                        spawn.name = "Hephaisto"; spawn.icon = "enemy_demon"; spawn.isHephaisto = true; spawn.hpMult = 6.0;
+                        // Inject Hellforge Object nearby
+                        this.objectSpawns.push({ id: 'hellforge', type: 'hellforge', name: 'The Hellforge', x: spawn.x + 60, y: spawn.y, icon: 'obj_altar' });
+                    }
+
+                    // Act V: The Ancients (Trio)
+                    if (zoneLevel === 24 && i === this.rooms.length - 1) {
+                        // We replace the last room spawn with 3 Ancients
+                        spawn.name = "Talic the Defender"; spawn.icon = "enemy_demon"; spawn.isAncient = true; spawn.hpMult = 5.0;
+                        const s2 = { ...spawn, name: "Madawc the Guardian", x: spawn.x + 40, isAncient: true };
+                        const s3 = { ...spawn, name: "Korlic the Protector", x: spawn.x - 40, isAncient: true };
+                        this.enemySpawns.push(s2, s3);
+                        // Inject Altar nearby
+                        this.objectSpawns.push({ id: 'ancients_altar', type: 'ancients_altar', name: 'Altar of the Heavens', x: spawn.x, y: spawn.y - 60, icon: 'obj_altar' });
+                    }
+                }
+
+                this.enemySpawns.push(spawn);
             }
             // Maybe place loot chest
             if (Math.random() < 0.3) {
@@ -177,7 +222,7 @@ export class Dungeon {
         return this;
     }
 
-    generateTown(theme) {
+    generateTown(theme, zoneLevel = 0) {
         const bgTile = theme === 'desert' ? TILE.SAND : theme === 'snow' ? TILE.SNOW : TILE.GRASS;
         this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(bgTile));
         this.rooms = [];
@@ -227,14 +272,41 @@ export class Dungeon {
         carveBuilding(cx - 12, cy - 3, 6, 5); // Blacksmith
         carveBuilding(cx + 6, cy - 3, 7, 6);  // Tavern
 
+        // Act-Specific Town Customization
+        if (theme === 'desert') {
+            // Act 2: Lut Gholein — Add water wells and palm-like trees
+            for(let i=0; i<10; i++) {
+                const rx = 5 + Math.floor(Math.random() * (this.width-10));
+                const ry = 5 + Math.floor(Math.random() * (this.height-10));
+                if (this.grid[ry][rx] === TILE.SAND) this.grid[ry][rx] = TILE.WATER;
+            }
+        } else if (theme === 'snow') {
+            // Act 5: Harrogath — Add "Ice" patches
+            for(let i=0; i<30; i++) {
+                const rx = 5 + Math.floor(Math.random() * (this.width-10));
+                const ry = 5 + Math.floor(Math.random() * (this.height-10));
+                if (this.grid[ry][rx] === TILE.SNOW) this.grid[ry][rx] = TILE.ICE;
+            }
+        } else if (theme === 'hell') {
+            // Act 4: Pandemonium Fortress — Add Lava
+            for(let i=0; i<15; i++) {
+                const rx = 5 + Math.floor(Math.random() * (this.width-10));
+                const ry = 5 + Math.floor(Math.random() * (this.height-10));
+                if (this.grid[ry][rx] === TILE.PATH) continue;
+                this.grid[ry][rx] = TILE.LAVA;
+            }
+        }
+
         // Trees border
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
                 if (x < 3 || x > this.width - 4 || y < 3 || y > this.height - 4) {
-                    if (Math.random() < 0.6) this.grid[y][x] = TILE.TREE;
+                    if (Math.random() < 0.6) {
+                        this.grid[y][x] = (theme === 'desert') ? TILE.CACTUS : TILE.TREE;
+                    }
                 }
-                else if (this.grid[y][x] === TILE.GRASS && Math.random() < 0.05) {
-                    this.grid[y][x] = TILE.TREE;
+                else if ((this.grid[y][x] === TILE.GRASS || this.grid[y][x] === TILE.SAND || this.grid[y][x] === TILE.SNOW) && Math.random() < 0.05) {
+                    this.grid[y][x] = (theme === 'desert') ? TILE.CACTUS : TILE.TREE;
                 }
             }
         }
@@ -252,66 +324,261 @@ export class Dungeon {
             zone: 0
         });
 
-        // Spawn NPCs
+        // Spawn NPCs based on Act
+        // Global NPCs (Cain follows the party)
         this.npcSpawns.push({
-            id: "akara",
-            name: "Akara the Elder",
+            id: "deckard_cain",
+            name: "Deckard Cain",
             type: "elder",
-            x: (cx - 3) * this.tileSize,
-            y: (cy - 4) * this.tileSize,
-            icon: "npc_elder",
-            dialogue: "Greetings, traveler. I sense a great darkness rising."
-        });
-
-        this.npcSpawns.push({
-            id: "gheed",
-            name: "Gheed the Merchant",
-            type: "merchant",
-            x: (cx + 3) * this.tileSize,
-            y: (cy - 4) * this.tileSize,
-            icon: "npc_merchant",
-            dialogue: "Looking for a deal? My prices are mostly fair."
-        });
-
-        this.npcSpawns.push({
-            id: "kashya",
-            name: "Kashya",
-            type: "mercenary_hire",
-            x: (cx - 4) * this.tileSize,
-            y: (cy + 2) * this.tileSize,
-            icon: "npc_elder",
-            dialogue: "Need a fighter? I can send one of my rogues to aid you... for a price."
-        });
-
-        this.npcSpawns.push({
-            id: "warriv",
-            name: "Warriv",
-            type: "waypoint",
-            x: (cx + 4) * this.tileSize,
-            y: (cy + 2) * this.tileSize,
-            icon: "npc_merchant",
-            dialogue: "You are the one who will lead us to the East. But first, the pass must be cleared."
-        });
-
-        this.npcSpawns.push({
-            id: "charsi",
-            name: "Charsi",
-            type: "merchant",
-            x: (cx + 5) * this.tileSize,
+            x: (cx + 2) * this.tileSize,
             y: (cy - 3) * this.tileSize,
-            icon: "npc_merchant",
-            dialogue: "Need a new blade? I can keep your gear in fighting shape."
+            icon: "npc_elder",
+            dialogue: "Stay awhile and listen!"
         });
 
-        this.npcSpawns.push({
-            id: "larzuk",
-            name: "Larzuk the Blacksmith",
-            type: "blacksmith",
-            x: (cx - 9) * this.tileSize,
-            y: (cy - 1) * this.tileSize,
-            icon: "npc_villager",
-            dialogue: "I can punch a hole in that for you... for the right price."
-        });
+        if (zoneLevel === 0) {
+            // Act I: Rogue Encampment
+            this.npcSpawns.push({
+                id: "akara",
+                name: "Akara the Elder",
+                type: "elder",
+                x: (cx - 3) * this.tileSize,
+                y: (cy - 4) * this.tileSize,
+                icon: "npc_elder",
+                dialogue: "Greetings, traveler. I sense a great darkness rising."
+            });
+
+            this.npcSpawns.push({
+                id: "gheed",
+                name: "Gheed the Merchant",
+                type: "merchant",
+                x: (cx + 3) * this.tileSize,
+                y: (cy - 4) * this.tileSize,
+                icon: "npc_merchant",
+                dialogue: "Looking for a deal? My prices are mostly fair."
+            });
+
+            this.npcSpawns.push({
+                id: "kashya",
+                name: "Kashya",
+                type: "mercenary_hire",
+                x: (cx - 4) * this.tileSize,
+                y: (cy + 2) * this.tileSize,
+                icon: "npc_elder",
+                dialogue: "Need a fighter? I can send one of my rogues to aid you... for a price."
+            });
+
+            this.npcSpawns.push({
+                id: "warriv",
+                name: "Warriv",
+                type: "waypoint",
+                x: (cx + 4) * this.tileSize,
+                y: (cy + 2) * this.tileSize,
+                icon: "npc_merchant",
+                dialogue: "You are the one who will lead us to the East. But first, the pass must be cleared."
+            });
+
+            this.npcSpawns.push({
+                id: "charsi",
+                name: "Charsi",
+                type: "merchant",
+                x: (cx + 5) * this.tileSize,
+                y: (cy - 3) * this.tileSize,
+                icon: "npc_merchant",
+                dialogue: "Need a new blade? I can keep your gear in fighting shape."
+            });
+        }
+
+        if (zoneLevel === 6) {
+            // Act II: Lut Gholein
+            this.npcSpawns.push({
+                id: "drognan",
+                name: "Drognan",
+                type: "merchant",
+                x: (cx - 5) * this.tileSize,
+                y: (cy - 5) * this.tileSize,
+                icon: "npc_elder",
+                dialogue: "Greetings. I have been studying the ancient texts. The desert hides many secrets."
+            });
+
+            this.npcSpawns.push({
+                id: "greiz",
+                name: "Greiz",
+                type: "mercenary_hire",
+                x: (cx + 5) * this.tileSize,
+                y: (cy + 2) * this.tileSize,
+                icon: "npc_villager",
+                dialogue: "My mercenaries are the finest in the desert. They will serve you well."
+            });
+
+            this.npcSpawns.push({
+                id: "lysander",
+                name: "Lysander",
+                type: "merchant",
+                x: (cx + 6) * this.tileSize,
+                y: (cy - 3) * this.tileSize,
+                icon: "npc_merchant",
+                dialogue: "Careful with the potions! They have a bit of a kick."
+            });
+
+            this.npcSpawns.push({
+                id: "atma",
+                name: "Atma",
+                type: "elder",
+                x: (cx - 4) * this.tileSize,
+                y: (cy + 4) * this.tileSize,
+                icon: "npc_villager",
+                dialogue: "Lut Gholein was a paradise once. Now, shadows crawl in the sewers."
+            });
+
+            this.npcSpawns.push({
+                id: "jerhyn",
+                name: "Jerhyn",
+                type: "elder",
+                x: cx * this.tileSize,
+                y: (cy - 6) * this.tileSize,
+                icon: "npc_elder",
+                dialogue: "I am Jerhyn, Lord of Lut Gholein. My palace is sealed for your own protection."
+            });
+
+            this.npcSpawns.push({
+                id: "meshif",
+                name: "Meshif",
+                type: "waypoint",
+                x: (cx + 8) * this.tileSize,
+                y: (cy + 4) * this.tileSize,
+                icon: "npc_villager",
+                dialogue: "The sea is rough, but I can take you to the East when you are ready."
+            });
+        }
+
+        if (zoneLevel === 11) {
+            // Act III: Kurast Docks
+            this.npcSpawns.push({
+                id: "ormus",
+                name: "Ormus",
+                type: "merchant",
+                x: (cx + 5) * this.tileSize,
+                y: (cy - 4) * this.tileSize,
+                icon: "npc_elder",
+                dialogue: "Ormus speaks to you, though you may not understand. The jungle is a living thing."
+            });
+
+            this.npcSpawns.push({
+                id: "asheara",
+                name: "Asheara",
+                type: "mercenary_hire",
+                x: (cx - 5) * this.tileSize,
+                y: (cy + 2) * this.tileSize,
+                icon: "npc_villager",
+                dialogue: "The Iron Wolves are ready for any battle. They fear no jungle beast."
+            });
+
+            this.npcSpawns.push({
+                id: "hratli",
+                name: "Hratli",
+                type: "merchant",
+                x: (cx - 6) * this.tileSize,
+                y: (cy - 2) * this.tileSize,
+                icon: "npc_villager",
+                dialogue: "Kurast is falling, but my anvil stays hot. Bring me your broken steel."
+            });
+
+            this.npcSpawns.push({
+                id: "alkor",
+                name: "Alkor",
+                type: "merchant",
+                x: (cx - 8) * this.tileSize,
+                y: (cy - 5) * this.tileSize,
+                icon: "npc_elder",
+                dialogue: "You want a potion? Just don't ask what's in it."
+            });
+        }
+
+        if (zoneLevel === 16) {
+            // Act IV: Pandemonium Fortress
+            this.npcSpawns.push({
+                id: "jamella",
+                name: "Jamella",
+                type: "merchant",
+                x: (cx + 5) * this.tileSize,
+                y: (cy - 4) * this.tileSize,
+                icon: "npc_elder",
+                dialogue: "I can heal your wounds and trade for your discoveries."
+            });
+
+            this.npcSpawns.push({
+                id: "halbu",
+                name: "Halbu",
+                type: "merchant",
+                x: (cx - 5) * this.tileSize,
+                y: (cy - 4) * this.tileSize,
+                icon: "npc_villager",
+                dialogue: "Need your armor patched? Hellfire is hard on steel."
+            });
+        }
+
+        if (zoneLevel === 21) {
+            // Act V: Harrogath
+            this.npcSpawns.push({
+                id: "malah",
+                name: "Malah",
+                type: "merchant",
+                x: (cx + 5) * this.tileSize,
+                y: (cy - 4) * this.tileSize,
+                icon: "npc_elder",
+                dialogue: "Harrogath endures. Let me ease your spirit."
+            });
+
+            this.npcSpawns.push({
+                id: "nihlathak",
+                name: "Nihlathak",
+                type: "elder",
+                x: (cx - 6) * this.tileSize,
+                y: (cy + 2) * this.tileSize,
+                icon: "npc_elder",
+                dialogue: "The elders are gone, but I remain. Do not expect much from me."
+            });
+        }
+        
+        if (zoneLevel === 23) {
+            // Act V: Prison of Ice (Quest Room)
+            this.npcSpawns.push({
+                id: "anya",
+                name: "Anya",
+                type: "quest_target",
+                x: cx * this.tileSize,
+                y: cy * this.tileSize - 40,
+                icon: "npc_villager",
+                dialogue: "Oh, thank you for finding me! Malah must have sent you. Please, take this scroll to her—I must regain my strength before returning to Harrogath."
+            });
+        }
+
+        if (zoneLevel === 16 || zoneLevel === 21) {
+            // Act IV & V: Tyrael appears
+            this.npcSpawns.push({
+                id: "tyrael",
+                name: "Tyrael",
+                type: "elder",
+                x: (cx - 4) * this.tileSize,
+                y: (cy - 2) * this.tileSize,
+                icon: "npc_elder",
+                dialogue: "I am the Archangel Tyrael. Your journey leads to the gates of Hell itself."
+            });
+        }
+
+        // Add Larzuk only in Act V
+        if (zoneLevel === 21) {
+            this.npcSpawns.push({
+                id: "larzuk",
+                name: "Larzuk the Blacksmith",
+                type: "blacksmith",
+                x: (cx - 9) * this.tileSize,
+                y: (cy - 1) * this.tileSize,
+                icon: "npc_villager",
+                dialogue: "I can punch a hole in that for you... for the right price."
+            });
+        }
 
         // Town Objects: Stash & Cube
         this.objectSpawns.push({ 
@@ -393,7 +660,9 @@ export class Dungeon {
             icon: bossIcon,
             hpMult: hpMult,
             dmgMult: 2.0 + (zoneLevel / 20),
-            isAndariel, isDuriel, isMephisto, isDiablo, isBaal, isUber
+            isAndariel, isDuriel, isMephisto, isDiablo, isBaal, isUber,
+            isShenk: zoneLevel === 22,
+            isFrozenstein: zoneLevel === 23
         });
 
         // The exit is unreachable until the boss dies (handled in main.js)

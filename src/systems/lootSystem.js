@@ -250,6 +250,13 @@ const UNIQUES = [
             { stat: 'pctIAS', value: 10 },
         ],
         flavor: '"Walk through the blood of your enemies without losing your footing."'
+    },
+    {
+        id: 'wirts_leg', name: "Niruko's Leg", base: 'wirts_leg', rarity: RARITY.UNIQUE,
+        icon: 'item_mace_club', dropLvl: 1,
+        mods: [{ stat: 'flatLightDmg', value: 50 }, { stat: 'pctIAS', value: 20 }, { stat: 'flatINT', value: 10 }],
+        flavor: '"There was something about a portal in the Dark Wood..."',
+        identified: true
     }
 ];
 
@@ -378,7 +385,7 @@ export class LootSystem {
             rarity = RARITY.NORMAL;
             item.identified = true;
         }
-        
+
         if (rarity === RARITY.UNIQUE || rarity === RARITY.SET) {
             item.identified = true;
         }
@@ -508,7 +515,7 @@ export class LootSystem {
 
         // Recipe: 3 Hellfire Keys -> Key Set (Phase 27/30)
         if (items.length === 3 && items.every(it => it.id === 'hellfire_key')) {
-             return { id: 'hellfire_key_set', name: "Hellfire Key Set", rarity: RARITY.UNIQUE, icon: 'item_key', type: 'key', flavor: '"The portal to the Abyss awaits."' };
+            return { id: 'hellfire_key_set', name: "Hellfire Key Set", rarity: RARITY.UNIQUE, icon: 'item_key', type: 'key', flavor: '"The portal to the Abyss awaits."' };
         }
 
         // Recipe: Wirt's Leg + Tome of Town Portal -> Secret Cow Level
@@ -525,15 +532,15 @@ export class LootSystem {
             const helIdx = items.findIndex(i => i.baseId === 'rune_hel');
             const tpIdx = items.findIndex(i => i.baseId === 'scroll_town_portal');
             const socketedIdx = items.findIndex(i => i.socketed && i.socketed.length > 0);
-            
+
             if (helIdx !== -1 && tpIdx !== -1 && socketedIdx !== -1) {
                 const clearedItem = JSON.parse(JSON.stringify(items[socketedIdx]));
                 clearedItem.socketed = [];
                 // Remove runeword unique status if it was a runeword
                 if (clearedItem.name.includes('(')) {
                     clearedItem.name = clearedItem.name.substring(clearedItem.name.indexOf('(') + 1, clearedItem.name.lastIndexOf(')'));
-                    clearedItem.rarity = RARITY.NORMAL; 
-                    clearedItem.mods = []; 
+                    clearedItem.rarity = RARITY.NORMAL;
+                    clearedItem.mods = [];
                 }
                 return clearedItem;
             }
@@ -550,7 +557,7 @@ export class LootSystem {
                     const base = ITEM_BASES[upgradeBaseId];
                     return this._buildItem(upgradeBaseId, base, RARITY.NORMAL, 1);
                 }
-                
+
                 // Gem Upgrade
                 if (baseIds[0].includes('chipped_')) {
                     const upgradeBaseId = baseIds[0].replace('chipped_', 'perfect_');
@@ -563,7 +570,7 @@ export class LootSystem {
 
         // Recipe: 3 Magic Rings -> 1 Random Amulet
         if (items.length === 3 && items.every(i => i.type === 'ring' && i.rarity === RARITY.MAGIC)) {
-            return this.generate(Math.floor(items.reduce((s,i)=>s+i.ilvl,0)/3), RARITY.MAGIC); 
+            return this.generate(Math.floor(items.reduce((s, i) => s + i.ilvl, 0) / 3), RARITY.MAGIC);
         }
 
         // --- Phase 30: Socketing Recipe (Rare Item + 3 Perfect Gems = Add 1 Socket) ---
@@ -597,7 +604,7 @@ export class LootSystem {
         if (roll < 0.0005) rarity = RARITY.UNIQUE;       // 1/2000
         else if (roll < 0.001) rarity = RARITY.SET;    // 1/1000
         else if (roll < 0.1) rarity = RARITY.RARE;      // 10%
-        
+
         let itm;
         if (rarity === RARITY.UNIQUE) {
             const matches = UNIQUES.filter(u => u.base === baseId);
@@ -628,7 +635,7 @@ export class LootSystem {
         const template = UNIQUES.find(u => u.id === uniqueId);
         if (!template) return this.generate(1);
         const item = this._buildUnique(template);
-        item.identified = (template.base === 'ring' || template.base === 'amulet' || template.base === 'charm') ? true : false; 
+        item.identified = (template.base === 'ring' || template.base === 'amulet' || template.base === 'charm') ? true : false;
         return item;
     }
 
@@ -646,17 +653,17 @@ export class LootSystem {
      */
     imbueItem(item, playerLevel) {
         if (!item || item.rarity !== RARITY.NORMAL) return null;
-        
+
         // Upgrade to Rare
         const ilvl = Math.max(1, playerLevel + 4);
         item.rarity = RARITY.RARE;
         item.ilvl = ilvl;
-        
+
         // Add 3-5 affixes
         this._addAffixes(item, ilvl, 2, 3);
         item.name = this._buildName(item, true);
         item.identified = true;
-        
+
         return item;
     }
 
@@ -666,14 +673,14 @@ export class LootSystem {
      */
     reforgeItem(item, playerLevel) {
         if (!item || item.rarity !== RARITY.RARE) return null;
-        
+
         item.mods = []; // Clear old affixes
         const ilvl = Math.max(item.ilvl, playerLevel);
-        
+
         // Reroll 3-6 affixes
         this._addAffixes(item, ilvl, 3, 3);
         item.name = this._buildName(item, true);
-        
+
         return item;
     }
 
@@ -682,16 +689,16 @@ export class LootSystem {
         if (!ITEM_BASES[baseId]) return null;
         const base = ITEM_BASES[baseId];
         const ilvl = Math.max(1, playerLevel + 5);
-        
+
         // Guarantee Rare with 4-6 high tier affixes
         const itm = this._buildItem(baseId, base, RARITY.RARE, ilvl);
         itm.name = "Crafted " + itm.name;
         itm.identified = true;
-        
+
         // Clear and reroll high quality
         itm.mods = [];
         this._addAffixes(itm, ilvl, 4, 3);
-        
+
         return itm;
     }
 }

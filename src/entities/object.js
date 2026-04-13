@@ -2,13 +2,13 @@
  * GameObject Class — Interactive world objects like chests, shrines, portals
  */
 export class GameObject {
-    constructor(type, x, y, icon) {
-        this.type = type; // chest, door, portal, shrine
+    constructor(type, x, y, icon, id = null) {
+        this.type = type; // chest, door, portal, shrine, hellforge, ancients_altar
         this.x = x;
         this.y = y;
         this.icon = icon;
         this.isOpen = false;
-        this.id = Math.random().toString(36).substr(2, 9);
+        this.id = id || Math.random().toString(36).substr(2, 9);
         this.shrineType = null; // For shrine objects
     }
 
@@ -29,6 +29,10 @@ export class GameObject {
             this.isOpen = true;
             this.icon = 'obj_shrine_used';
             return { type: 'SHRINE', shrineType: this.shrineType };
+        } else if (this.type === 'hellforge' && !this.isOpen) {
+            return { type: 'HELLFORGE' };
+        } else if (this.type === 'ancients_altar' && !this.isOpen) {
+            return { type: 'ALTIAR_OF_HEAVENS' };
         }
         return null;
     }

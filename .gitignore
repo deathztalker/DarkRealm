@@ -19,6 +19,9 @@ node_modules/
 *.rar
 *.7z
 *.md
+*.ps1
+*.sh
+*.yaml
 rpg_beings_extracted/
 kemono_extracted/
 
