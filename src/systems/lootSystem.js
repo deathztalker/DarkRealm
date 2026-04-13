@@ -49,7 +49,7 @@ export const SET_ITEMS = [
     { id: 'deaths_guard', name: "Death's Guard", base: 'leather_belt', rarity: RARITY.SET, icon: 'item_belt', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'magicDmgReduce', value: 3 }] },
     // Milabrega's
     { id: 'milabrega_orb', name: "Milabrega's Orb", base: 'buckler', rarity: RARITY.SET, icon: 'item_buckler', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'magicFind', value: 20 }] },
-    { id: 'milabrega_diadem', name: "Milabrega's Diadem", base: 'crown', rarity: RARITY.SET, icon: 'item_helm', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'flatMP', value: 15 }, { stat: 'flatHP', value: 15 }] },
+    { id: 'milabrega_diadem', name: "Milabrega's Diadem", base: 'crown', rarity: RARITY.SET, icon: 'item_crown', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'flatMP', value: 15 }, { stat: 'flatHP', value: 15 }] },
     { id: 'milabrega_robe', name: "Milabrega's Robe", base: 'chain_mail', rarity: RARITY.SET, icon: 'item_chain_mail', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'flatDmgReduce', value: 2 }] },
     { id: 'milabrega_rod', name: "Milabrega's Rod", base: 'war_hammer', rarity: RARITY.SET, icon: 'item_war_hammer', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'pctDmg', value: 50 }] }
 ];
@@ -253,7 +253,7 @@ const UNIQUES = [
     },
     {
         id: 'wirts_leg', name: "Niruko's Leg", base: 'wirts_leg', rarity: RARITY.UNIQUE,
-        icon: 'item_mace', dropLvl: 1,
+        icon: 'item_wirts_leg', dropLvl: 1,
         mods: [{ stat: 'flatLightDmg', value: 50 }, { stat: 'pctIAS', value: 20 }, { stat: 'flatINT', value: 10 }],
         flavor: '"There was something about a portal in the Dark Wood..."',
         identified: true
@@ -515,7 +515,7 @@ export class LootSystem {
 
         // Recipe: 3 Hellfire Keys -> Key Set (Phase 27/30)
         if (items.length === 3 && items.every(it => it.id === 'hellfire_key')) {
-            return { id: 'hellfire_key_set', name: "Hellfire Key Set", rarity: RARITY.UNIQUE, icon: 'item_ring', type: 'key', flavor: '"The portal to the Abyss awaits."' };
+            return { id: 'hellfire_key_set', name: "Hellfire Key Set", rarity: RARITY.UNIQUE, icon: 'item_key_hellfire', type: 'key', flavor: '"The portal to the Abyss awaits."' };
         }
 
         // Recipe: Wirt's Leg + Tome of Town Portal -> Secret Cow Level

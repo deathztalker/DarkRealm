@@ -95,15 +95,15 @@ export const ITEM_BASES = {
     // === CONSUMABLES ===
     health_potion: { name: 'Health Potion', slot: 'none', type: 'potion', icon: 'item_potion_hp', size: [1, 1] },
     mana_potion: { name: 'Mana Potion', slot: 'none', type: 'potion', icon: 'item_potion_mp', size: [1, 1] },
-    rejuv_potion: { name: 'Rejuv Potion', slot: 'none', type: 'potion', icon: 'item_potion_hp', size: [1, 1], price: 75 },
+    rejuv_potion: { name: 'Rejuv Potion', slot: 'none', type: 'potion', icon: 'item_potion_rejuv', size: [1, 1], price: 75 },
 
     // === SCROLLS ===
     scroll_identify: { name: 'Scroll of Identification', slot: 'none', type: 'scroll', icon: 'item_scroll', size: [1, 1], price: 100 },
     scroll_town_portal: { name: 'Scroll of Town Portal', slot: 'none', type: 'scroll', icon: 'item_scroll_tp', size: [1, 1], price: 10 },
 
     // === TOMES ===
-    tome_tp: { name: 'Tome of Town Portal', slot: 'none', type: 'tome', icon: 'item_scroll_tp', size: [1, 2], price: 150, maxCharges: 20 },
-    tome_identify: { name: 'Tome of Identification', slot: 'none', type: 'tome', icon: 'item_scroll', size: [1, 2], price: 150, maxCharges: 20 },
+    tome_tp: { name: 'Tome of Town Portal', slot: 'none', type: 'tome', icon: 'item_tome_tp', size: [1, 2], price: 150, maxCharges: 20 },
+    tome_identify: { name: 'Tome of Identification', slot: 'none', type: 'tome', icon: 'item_tome_id', size: [1, 2], price: 150, maxCharges: 20 },
 
     // === GEMS ===
     chipped_ruby: { name: 'Chipped Ruby', slot: 'none', type: 'gem', icon: 'item_ruby', size: [1, 1], price: 25, socketEffect: { weapon: { stat: 'flatFireDmg', value: 4 }, armor: { stat: 'flatHP', value: 10 }, shield: { stat: 'fireRes', value: 10 } } },
@@ -111,11 +111,11 @@ export const ITEM_BASES = {
     chipped_topaz: { name: 'Chipped Topaz', slot: 'none', type: 'gem', icon: 'item_topaz', size: [1, 1], price: 25, socketEffect: { weapon: { stat: 'flatLightDmg', value: 4 }, armor: { stat: 'magicFind', value: 5 }, shield: { stat: 'lightRes', value: 10 } } },
     chipped_emerald: { name: 'Chipped Emerald', slot: 'none', type: 'gem', icon: 'item_emerald', size: [1, 1], price: 25, socketEffect: { weapon: { stat: 'flatPoisonDmg', value: 6 }, armor: { stat: 'flatDEX', value: 3 }, shield: { stat: 'poisonRes', value: 10 } } },
     chipped_skull: { name: 'Chipped Skull', slot: 'none', type: 'gem', icon: 'item_skull', size: [1, 1], price: 25, socketEffect: { weapon: { stat: 'lifeStealPct', value: 2 }, armor: { stat: 'hpRegenPerSec', value: 2 }, shield: { stat: 'manaRegenPerSec', value: 2 } } },
-    perfect_ruby: { name: 'Perfect Ruby', slot: 'none', type: 'gem', icon: 'item_ruby', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'flatFireDmg', value: 20 }, armor: { stat: 'flatHP', value: 38 }, shield: { stat: 'fireRes', value: 40 } } },
-    perfect_sapphire: { name: 'Perfect Sapphire', slot: 'none', type: 'gem', icon: 'item_sapphire', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'flatColdDmg', value: 20 }, armor: { stat: 'flatMP', value: 38 }, shield: { stat: 'coldRes', value: 40 } } },
-    perfect_topaz: { name: 'Perfect Topaz', slot: 'none', type: 'gem', icon: 'item_topaz', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'flatLightDmg', value: 20 }, armor: { stat: 'magicFind', value: 24 }, shield: { stat: 'lightRes', value: 40 } } },
-    perfect_emerald: { name: 'Perfect Emerald', slot: 'none', type: 'gem', icon: 'item_emerald', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'flatPoisonDmg', value: 100 }, armor: { stat: 'flatDEX', value: 10 }, shield: { stat: 'poisonRes', value: 40 } } },
-    perfect_skull: { name: 'Perfect Skull', slot: 'none', type: 'gem', icon: 'item_skull', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'lifeStealPct', value: 4 }, armor: { stat: 'hpRegenPerSec', value: 5 }, shield: { stat: 'manaRegenPerSec', value: 5 } } },
+    perfect_ruby: { name: 'Perfect Ruby', slot: 'none', type: 'gem', icon: 'item_ruby_perfect', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'flatFireDmg', value: 20 }, armor: { stat: 'flatHP', value: 38 }, shield: { stat: 'fireRes', value: 40 } } },
+    perfect_sapphire: { name: 'Perfect Sapphire', slot: 'none', type: 'gem', icon: 'item_sapphire_perfect', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'flatColdDmg', value: 20 }, armor: { stat: 'flatMP', value: 38 }, shield: { stat: 'coldRes', value: 40 } } },
+    perfect_topaz: { name: 'Perfect Topaz', slot: 'none', type: 'gem', icon: 'item_topaz_perfect', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'flatLightDmg', value: 20 }, armor: { stat: 'magicFind', value: 24 }, shield: { stat: 'lightRes', value: 40 } } },
+    perfect_emerald: { name: 'Perfect Emerald', slot: 'none', type: 'gem', icon: 'item_emerald_perfect', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'flatPoisonDmg', value: 100 }, armor: { stat: 'flatDEX', value: 10 }, shield: { stat: 'poisonRes', value: 40 } } },
+    perfect_skull: { name: 'Perfect Skull', slot: 'none', type: 'gem', icon: 'item_skull_perfect', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'lifeStealPct', value: 4 }, armor: { stat: 'hpRegenPerSec', value: 5 }, shield: { stat: 'manaRegenPerSec', value: 5 } } },
 
     // === RUNES ===
     rune_el: { name: 'El Rune', slot: 'none', type: 'gem', icon: 'item_rune_el', size: [1, 1], price: 50, socketEffect: { weapon: { stat: 'flatMinDmg', value: 15 }, armor: { stat: 'flatArmor', value: 15 }, shield: { stat: 'flatArmor', value: 15 } } },
@@ -158,8 +158,8 @@ export const ITEM_BASES = {
     cow_portal: { name: 'Cow Portal Key', slot: 'none', type: 'material', icon: 'item_scroll_tp', size: [1, 1], price: 0, flavor: '"The seal of the Cow King."', identified: true },
 
     // === MATERIALS ===
-    horadric_fragment: { name: "Horadric Fragment", slot: 'none', type: 'material', icon: 'item_emerald', size: [1, 1], price: 200, flavor: '"A shard of a lost artifact, hums with ancient power."' },
-    mephisto_soulstone: { name: "Mephisto's Soulstone", slot: 'none', type: 'material', icon: 'item_gem_skull', size: [1, 1], price: 0, flavor: '"The essence of the Lord of Hatred, waiting to be shattered."', identified: true },
+    horadric_fragment: { name: "Horadric Fragment", slot: 'none', type: 'material', icon: 'item_horadric_fragment', size: [1, 1], price: 200, flavor: '"A shard of a lost artifact, hums with ancient power."' },
+    mephisto_soulstone: { name: "Mephisto's Soulstone", slot: 'none', type: 'material', icon: 'item_mephisto_soulstone', size: [1, 1], price: 0, flavor: '"The essence of the Lord of Hatred, waiting to be shattered."', identified: true },
     hellforge_hammer: { name: "Hellforge Hammer", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_war_hammer', minDmg: 8, maxDmg: 20, atkSpd: 0.8, req: { str: 20 }, size: [1, 3], flavor: '"Only this hammer can shatter a Prime Evil\'s soulstone."', identified: true },
 };
 
