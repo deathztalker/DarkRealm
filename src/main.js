@@ -2401,8 +2401,39 @@ function getItemHtml(item, cantEquip = false, isGamble = false) {
     const rarityClass = isGamble ? 'rarity-normal' : `rarity-${item.rarity || 'normal'}`;
     let iconName = isGamble ? 'item_orb' : item.icon;
 
-    // Fallback for misnamed or legacy purple potion assets
-    if (iconName === 'item_potion_purple') iconName = 'item_potion_rejuv';
+    // Icon Aliasing System to prevent 404s and handle legacy names
+    const iconAliases = {
+        'item_gem_perfect': 'item_ruby',    // Legacy item name fallback
+        'item_mace_club': 'item_mace',      // Fixed in data-bases but kept here for safety
+        'item_potion_rejuv': 'item_potion_hp',
+        'item_potion_purple': 'item_potion_hp',
+        'item_sword_short': 'item_short_sword',
+        'item_sword_long': 'item_long_sword',
+        'item_sword_zweihander': 'item_zweihander',
+        'item_axe_hand': 'item_hand_axe',
+        'item_axe_war': 'item_war_axe',
+        'item_hammer_war': 'item_war_hammer',
+        'item_staff_short': 'item_short_staff',
+        'item_staff_war': 'item_war_staff',
+        'item_bow_short': 'item_short_bow',
+        'item_bow_long': 'item_long_bow',
+        'item_helm_leather': 'item_leather_cap',
+        'item_helm_great': 'item_great_helm',
+        'item_helm_circlet': 'item_circlet',
+        'item_armor_leather': 'item_leather_armor',
+        'item_armor_chain': 'item_chain_mail',
+        'item_armor_plate': 'item_plate_mail',
+        'item_armor_robe': 'item_robe',
+        'item_gloves_leather': 'item_leather_gloves',
+        'item_gloves_gauntlets': 'item_gauntlets',
+        'item_boots_leather': 'item_leather_boots',
+        'item_boots_war': 'item_war_boots',
+        'item_shield_buckler': 'item_buckler',
+        'item_shield_tower': 'item_tower_shield',
+        'item_shield_source': 'item_source',
+        'item_key': 'item_ring'
+    };
+    if (iconAliases[iconName]) iconName = iconAliases[iconName];
 
     const ceClass = cantEquip ? 'cant-equip' : '';
     const quantityBadge = (!isGamble && item.quantity > 1) ? `<div class="item-quantity-badge">${item.quantity}</div>` : '';

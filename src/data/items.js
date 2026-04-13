@@ -32,57 +32,57 @@ export const SLOT_DISPLAY = {
 export const ITEM_BASES = {
     // === WEAPONS ===
     // Swords
-    short_sword: { name: 'Short Sword', slot: SLOT.MAINHAND, type: 'sword', icon: 'item_sword_short', minDmg: 3, maxDmg: 9, atkSpd: 1.0, req: { str: 5 }, size: [1, 3] },
-    long_sword: { name: 'Long Sword', slot: SLOT.MAINHAND, type: 'sword', icon: 'item_sword_long', minDmg: 6, maxDmg: 16, atkSpd: 0.9, req: { str: 18 }, size: [1, 3] },
-    zweihander: { name: 'Zweihänder', slot: SLOT.MAINHAND, type: 'sword', icon: 'item_sword_zweihander', minDmg: 14, maxDmg: 32, atkSpd: 0.7, req: { str: 45 }, size: [1, 3], twoHanded: true },
+    short_sword: { name: 'Short Sword', slot: SLOT.MAINHAND, type: 'sword', icon: 'item_short_sword', minDmg: 3, maxDmg: 9, atkSpd: 1.0, req: { str: 5 }, size: [1, 3] },
+    long_sword: { name: 'Long Sword', slot: SLOT.MAINHAND, type: 'sword', icon: 'item_long_sword', minDmg: 6, maxDmg: 16, atkSpd: 0.9, req: { str: 18 }, size: [1, 3] },
+    zweihander: { name: 'Zweihänder', slot: SLOT.MAINHAND, type: 'sword', icon: 'item_zweihander', minDmg: 14, maxDmg: 32, atkSpd: 0.7, req: { str: 45 }, size: [1, 3], twoHanded: true },
     // Axes
-    hand_axe: { name: 'Hand Axe', slot: SLOT.MAINHAND, type: 'axe', icon: 'item_axe_hand', minDmg: 4, maxDmg: 11, atkSpd: 1.0, req: { str: 5 }, size: [1, 2] },
-    war_axe: { name: 'War Axe', slot: SLOT.MAINHAND, type: 'axe', icon: 'item_axe_war', minDmg: 10, maxDmg: 22, atkSpd: 0.85, req: { str: 32 }, size: [1, 3] },
+    hand_axe: { name: 'Hand Axe', slot: SLOT.MAINHAND, type: 'axe', icon: 'item_hand_axe', minDmg: 4, maxDmg: 11, atkSpd: 1.0, req: { str: 5 }, size: [1, 2] },
+    war_axe: { name: 'War Axe', slot: SLOT.MAINHAND, type: 'axe', icon: 'item_war_axe', minDmg: 10, maxDmg: 22, atkSpd: 0.85, req: { str: 32 }, size: [1, 3] },
     // Maces
-    mace: { name: 'Mace', slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_base', minDmg: 5, maxDmg: 13, atkSpd: 0.95, req: { str: 8 }, size: [1, 2] },
-    war_hammer: { name: 'War Hammer', slot: SLOT.MAINHAND, type: 'mace', icon: 'item_hammer_war', minDmg: 12, maxDmg: 28, atkSpd: 0.75, req: { str: 50 }, size: [1, 3], twoHanded: true },
+    mace: { name: 'Mace', slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace', minDmg: 5, maxDmg: 13, atkSpd: 0.95, req: { str: 8 }, size: [1, 2] },
+    war_hammer: { name: 'War Hammer', slot: SLOT.MAINHAND, type: 'mace', icon: 'item_war_hammer', minDmg: 12, maxDmg: 28, atkSpd: 0.75, req: { str: 50 }, size: [1, 3], twoHanded: true },
     // Staves
-    short_staff: { name: 'Short Staff', slot: SLOT.MAINHAND, type: 'staff', icon: 'item_staff_short', minDmg: 2, maxDmg: 8, atkSpd: 1.1, req: { int: 5 }, size: [1, 3], twoHanded: true, manaBonus: 20 },
-    war_staff: { name: 'War Staff', slot: SLOT.MAINHAND, type: 'staff', icon: 'item_staff_war', minDmg: 5, maxDmg: 14, atkSpd: 0.95, req: { int: 25 }, size: [1, 3], twoHanded: true, manaBonus: 40 },
-    orb: { name: 'Arcane Orb', slot: SLOT.MAINHAND, type: 'orb', icon: 'item_orb_arcane', minDmg: 3, maxDmg: 10, atkSpd: 1.2, req: { int: 10 }, size: [1, 1] },
+    short_staff: { name: 'Short Staff', slot: SLOT.MAINHAND, type: 'staff', icon: 'item_short_staff', minDmg: 2, maxDmg: 8, atkSpd: 1.1, req: { int: 5 }, size: [1, 3], twoHanded: true, manaBonus: 20 },
+    war_staff: { name: 'War Staff', slot: SLOT.MAINHAND, type: 'staff', icon: 'item_war_staff', minDmg: 5, maxDmg: 14, atkSpd: 0.95, req: { int: 25 }, size: [1, 3], twoHanded: true, manaBonus: 40 },
+    orb: { name: 'Arcane Orb', slot: SLOT.MAINHAND, type: 'orb', icon: 'item_orb', minDmg: 3, maxDmg: 10, atkSpd: 1.2, req: { int: 10 }, size: [1, 1] },
     // Bows
-    short_bow: { name: 'Short Bow', slot: SLOT.MAINHAND, type: 'bow', icon: 'item_bow_short', minDmg: 4, maxDmg: 12, atkSpd: 1.15, req: { dex: 10 }, size: [2, 3], twoHanded: true, range: 350 },
-    long_bow: { name: 'Long Bow', slot: SLOT.MAINHAND, type: 'bow', icon: 'item_bow_long', minDmg: 8, maxDmg: 20, atkSpd: 0.95, req: { dex: 30 }, size: [2, 3], twoHanded: true, range: 400 },
+    short_bow: { name: 'Short Bow', slot: SLOT.MAINHAND, type: 'bow', icon: 'item_short_bow', minDmg: 4, maxDmg: 12, atkSpd: 1.15, req: { dex: 10 }, size: [2, 3], twoHanded: true, range: 350 },
+    long_bow: { name: 'Long Bow', slot: SLOT.MAINHAND, type: 'bow', icon: 'item_long_bow', minDmg: 8, maxDmg: 20, atkSpd: 0.95, req: { dex: 30 }, size: [2, 3], twoHanded: true, range: 400 },
     // Daggers
     dagger: { name: 'Dagger', slot: SLOT.MAINHAND, type: 'dagger', icon: 'item_dagger', minDmg: 2, maxDmg: 7, atkSpd: 1.4, req: { dex: 5 }, size: [1, 2] },
     rune_blade: { name: 'Rune Blade', slot: SLOT.MAINHAND, type: 'dagger', icon: 'item_rune_blade', minDmg: 6, maxDmg: 14, atkSpd: 1.3, req: { dex: 22, int: 10 }, size: [1, 2] },
     // Totems (Shaman)
-    totem: { name: 'Totem', slot: SLOT.MAINHAND, type: 'totem', icon: 'item_totem_base', minDmg: 3, maxDmg: 9, atkSpd: 1.0, req: { int: 10 }, size: [1, 2] },
-    grand_totem: { name: 'Grand Totem', slot: SLOT.MAINHAND, type: 'totem', icon: 'item_totem_base', minDmg: 6, maxDmg: 15, atkSpd: 0.9, req: { int: 25 }, size: [1, 3] },
+    totem: { name: 'Totem', slot: SLOT.MAINHAND, type: 'totem', icon: 'item_totem', minDmg: 3, maxDmg: 9, atkSpd: 1.0, req: { int: 10 }, size: [1, 2] },
+    grand_totem: { name: 'Grand Totem', slot: SLOT.MAINHAND, type: 'totem', icon: 'item_grand_totem', minDmg: 6, maxDmg: 15, atkSpd: 0.9, req: { int: 25 }, size: [1, 3] },
     // Wands (Necro)
-    wand: { name: 'Wand', slot: SLOT.MAINHAND, type: 'wand', icon: 'item_wand_base', minDmg: 2, maxDmg: 6, atkSpd: 1.3, req: { int: 10 }, size: [1, 2], manaBonus: 15 },
-    bone_wand: { name: 'Bone Wand', slot: SLOT.MAINHAND, type: 'wand', icon: 'item_wand_bone', minDmg: 4, maxDmg: 10, atkSpd: 1.2, req: { int: 22 }, size: [1, 2], manaBonus: 30 },
+    wand: { name: 'Wand', slot: SLOT.MAINHAND, type: 'wand', icon: 'item_wand', minDmg: 2, maxDmg: 6, atkSpd: 1.3, req: { int: 10 }, size: [1, 2], manaBonus: 15 },
+    bone_wand: { name: 'Bone Wand', slot: SLOT.MAINHAND, type: 'wand', icon: 'item_bone_wand', minDmg: 4, maxDmg: 10, atkSpd: 1.2, req: { int: 22 }, size: [1, 2], manaBonus: 30 },
     // Quest Items
-    wirts_leg: { name: "Niruko's Leg", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_base', minDmg: 2, maxDmg: 8, atkSpd: 0.9, req: {}, size: [1, 3], flavor: '"A wooden prosthetic with a tragic history."' },
+    wirts_leg: { name: "Niruko's Leg", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace', minDmg: 2, maxDmg: 8, atkSpd: 0.9, req: {}, size: [1, 3], flavor: '"A wooden prosthetic with a tragic history."' },
 
     // === ARMOR ===
     // Helmets
-    leather_cap: { name: 'Leather Cap', slot: SLOT.HEAD, type: 'helm', icon: 'item_helm_leather', armor: 4, req: {}, size: [2, 2], sockets: 0 },
-    great_helm: { name: 'Great Helm', slot: SLOT.HEAD, type: 'helm', icon: 'item_helm_great', armor: 18, req: { str: 35 }, size: [2, 2], sockets: 2 },
-    circlet: { name: 'Circlet', slot: SLOT.HEAD, type: 'helm', icon: 'item_helm_circlet', armor: 8, req: { int: 15 }, size: [2, 2], sockets: 1, manaBonus: 15 },
+    leather_cap: { name: 'Leather Cap', slot: SLOT.HEAD, type: 'helm', icon: 'item_leather_cap', armor: 4, req: {}, size: [2, 2], sockets: 0 },
+    great_helm: { name: 'Great Helm', slot: SLOT.HEAD, type: 'helm', icon: 'item_great_helm', armor: 18, req: { str: 35 }, size: [2, 2], sockets: 2 },
+    circlet: { name: 'Circlet', slot: SLOT.HEAD, type: 'helm', icon: 'item_circlet', armor: 8, req: { int: 15 }, size: [2, 2], sockets: 1, manaBonus: 15 },
     // Chestpieces
-    leather_armor: { name: 'Leather Armor', slot: SLOT.CHEST, type: 'armor', icon: 'item_armor_leather', armor: 12, req: { str: 5 }, size: [2, 3], sockets: 1 },
-    chain_mail: { name: 'Chain Mail', slot: SLOT.CHEST, type: 'armor', icon: 'item_armor_chain', armor: 28, req: { str: 30 }, size: [2, 3], sockets: 2 },
-    plate_mail: { name: 'Plate Mail', slot: SLOT.CHEST, type: 'armor', icon: 'item_armor_plate', armor: 52, req: { str: 55 }, size: [2, 3], sockets: 3 },
-    robe: { name: 'Robe', slot: SLOT.CHEST, type: 'armor', icon: 'item_armor_robe', armor: 6, req: { int: 5 }, size: [2, 3], sockets: 2, manaBonus: 25 },
+    leather_armor: { name: 'Leather Armor', slot: SLOT.CHEST, type: 'armor', icon: 'item_leather_armor', armor: 12, req: { str: 5 }, size: [2, 3], sockets: 1 },
+    chain_mail: { name: 'Chain Mail', slot: SLOT.CHEST, type: 'armor', icon: 'item_chain_mail', armor: 28, req: { str: 30 }, size: [2, 3], sockets: 2 },
+    plate_mail: { name: 'Plate Mail', slot: SLOT.CHEST, type: 'armor', icon: 'item_plate_mail', armor: 52, req: { str: 55 }, size: [2, 3], sockets: 3 },
+    robe: { name: 'Robe', slot: SLOT.CHEST, type: 'armor', icon: 'item_robe', armor: 6, req: { int: 5 }, size: [2, 3], sockets: 2, manaBonus: 25 },
     // Gloves
-    leather_gloves: { name: 'Leather Gloves', slot: SLOT.GLOVES, type: 'gloves', icon: 'item_gloves_leather', armor: 3, req: {}, size: [2, 2] },
-    gauntlets: { name: 'Gauntlets', slot: SLOT.GLOVES, type: 'gloves', icon: 'item_gloves_gauntlets', armor: 12, req: { str: 25 }, size: [2, 2] },
+    leather_gloves: { name: 'Leather Gloves', slot: SLOT.GLOVES, type: 'gloves', icon: 'item_leather_gloves', armor: 3, req: {}, size: [2, 2] },
+    gauntlets: { name: 'Gauntlets', slot: SLOT.GLOVES, type: 'gloves', icon: 'item_gauntlets', armor: 12, req: { str: 25 }, size: [2, 2] },
     // Boots
-    leather_boots: { name: 'Leather Boots', slot: SLOT.BOOTS, type: 'boots', icon: 'item_boots_leather', armor: 5, req: {}, size: [2, 2] },
-    war_boots: { name: 'War Boots', slot: SLOT.BOOTS, type: 'boots', icon: 'item_boots_war', armor: 16, req: { str: 35 }, size: [2, 2] },
+    leather_boots: { name: 'Leather Boots', slot: SLOT.BOOTS, type: 'boots', icon: 'item_leather_boots', armor: 5, req: {}, size: [2, 2] },
+    war_boots: { name: 'War Boots', slot: SLOT.BOOTS, type: 'boots', icon: 'item_war_boots', armor: 16, req: { str: 35 }, size: [2, 2] },
     // Belt
     leather_belt: { name: 'Leather Belt', slot: SLOT.BELT, type: 'belt', icon: 'item_belt', armor: 2, req: {}, size: [2, 1] },
     // Shields / Offhand
-    buckler: { name: 'Buckler', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield_buckler', block: 12, armor: 8, req: { str: 5 }, size: [2, 2] },
-    bone_shield: { name: 'Bone Shield', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield_buckler', block: 20, armor: 14, req: { str: 25 }, size: [2, 2] },
-    tower_shield: { name: 'Tower Shield', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield_tower', block: 28, armor: 22, req: { str: 45 }, size: [2, 3] },
-    source: { name: 'Tome', slot: SLOT.OFFHAND, type: 'source', icon: 'item_shield_source', armor: 2, req: { int: 15 }, size: [1, 2], manaBonus: 40 },
+    buckler: { name: 'Buckler', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_buckler', block: 12, armor: 8, req: { str: 5 }, size: [2, 2] },
+    bone_shield: { name: 'Bone Shield', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield', block: 20, armor: 14, req: { str: 25 }, size: [2, 2] },
+    tower_shield: { name: 'Tower Shield', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_tower_shield', block: 28, armor: 22, req: { str: 45 }, size: [2, 3] },
+    source: { name: 'Tome', slot: SLOT.OFFHAND, type: 'source', icon: 'item_source', armor: 2, req: { int: 15 }, size: [1, 2], manaBonus: 40 },
     // Jewelry
     ring: { name: 'Ring', slot: SLOT.RING1, type: 'ring', icon: 'item_ring', size: [1, 1] },
     amulet: { name: 'Amulet', slot: SLOT.AMULET, type: 'amulet', icon: 'item_amulet', size: [1, 1] },
@@ -95,7 +95,7 @@ export const ITEM_BASES = {
     // === CONSUMABLES ===
     health_potion: { name: 'Health Potion', slot: 'none', type: 'potion', icon: 'item_potion_hp', size: [1, 1] },
     mana_potion: { name: 'Mana Potion', slot: 'none', type: 'potion', icon: 'item_potion_mp', size: [1, 1] },
-    rejuv_potion: { name: 'Rejuv Potion', slot: 'none', type: 'potion', icon: 'item_potion_rejuv', size: [1, 1], price: 75 },
+    rejuv_potion: { name: 'Rejuv Potion', slot: 'none', type: 'potion', icon: 'item_potion_hp', size: [1, 1], price: 75 },
 
     // === SCROLLS ===
     scroll_identify: { name: 'Scroll of Identification', slot: 'none', type: 'scroll', icon: 'item_scroll', size: [1, 1], price: 100 },
@@ -153,14 +153,14 @@ export const ITEM_BASES = {
     rune_zod: { name: 'Zod Rune', slot: 'none', type: 'gem', icon: 'item_rune_zod', size: [1, 1], price: 1000, socketEffect: { weapon: { stat: 'indestructible', value: 1 }, armor: { stat: 'indestructible', value: 1 }, shield: { stat: 'indestructible', value: 1 } } },
 
     // === QUEST ITEMS ===
-    wirts_leg: { name: "Niruko's Leg", slot: 'weapon', type: 'club', icon: 'item_mace_club', size: [1, 3], price: 1, minDmg: 1, maxDmg: 8, atkSpd: 1.2, flavor: '"Cain says there was something about a portal..."', unidentified: false },
-    tome_tp: { name: 'Tome of Town Portal', slot: 'none', type: 'book', icon: 'item_book_blue', size: [2, 2], price: 500, flavor: '"Blue magic that whisks you home."', identified: true },
+    wirts_leg: { name: "Niruko's Leg", slot: 'weapon', type: 'club', icon: 'item_mace', size: [1, 3], price: 1, minDmg: 1, maxDmg: 8, atkSpd: 1.2, flavor: '"Cain says there was something about a portal..."', unidentified: false },
+    // tome_tp: { name: 'Tome of Town Portal', slot: 'none', type: 'book', icon: 'item_scroll_tp', size: [2, 2], price: 500, flavor: '"Blue magic that whisks you home."', identified: true }, // Redundant with line 105 but fixing icon anyway
     cow_portal: { name: 'Cow Portal Key', slot: 'none', type: 'material', icon: 'item_scroll_tp', size: [1, 1], price: 0, flavor: '"The seal of the Cow King."', identified: true },
 
     // === MATERIALS ===
     horadric_fragment: { name: "Horadric Fragment", slot: 'none', type: 'material', icon: 'item_emerald', size: [1, 1], price: 200, flavor: '"A shard of a lost artifact, hums with ancient power."' },
     mephisto_soulstone: { name: "Mephisto's Soulstone", slot: 'none', type: 'material', icon: 'item_gem_skull', size: [1, 1], price: 0, flavor: '"The essence of the Lord of Hatred, waiting to be shattered."', identified: true },
-    hellforge_hammer: { name: "Hellforge Hammer", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_hammer_war', minDmg: 8, maxDmg: 20, atkSpd: 0.8, req: { str: 20 }, size: [1, 3], flavor: '"Only this hammer can shatter a Prime Evil\'s soulstone."', identified: true },
+    hellforge_hammer: { name: "Hellforge Hammer", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_war_hammer', minDmg: 8, maxDmg: 20, atkSpd: 0.8, req: { str: 20 }, size: [1, 3], flavor: '"Only this hammer can shatter a Prime Evil\'s soulstone."', identified: true },
 };
 
 
