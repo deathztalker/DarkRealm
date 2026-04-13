@@ -13,7 +13,8 @@
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/rpg-awesome@0.2.0/css/rpg-awesome.min.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚔️</text></svg>">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚔️</text></svg>">
   <link rel="stylesheet" href="style.css">
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
@@ -24,9 +25,9 @@
     <div class="menu-bg-particles" id="particles"></div>
     <!-- Auth Status (fixed in corner, outside scrollable content) -->
     <div id="auth-status-container">
-       <span id="auth-status-text">Playing as Guest (Local Saves)</span>
-       <button id="btn-open-auth" class="btn-secondary small">Log In / Register</button>
-       <button id="btn-logout" class="btn-secondary small hidden">Logout</button>
+      <span id="auth-status-text">Playing as Guest (Local Saves)</span>
+      <button id="btn-open-auth" class="btn-secondary small">Log In / Register</button>
+      <button id="btn-logout" class="btn-secondary small hidden">Logout</button>
     </div>
     <div class="menu-content">
 
@@ -45,41 +46,50 @@
           <div id="class-stats"></div>
         </div>
         <div id="character-creation" style="margin-top: 15px; text-align: center;">
-            <input type="text" id="character-name" placeholder="Enter Character Name" maxlength="12" style="padding: 8px; background: #111; border: 1px solid #4a3520; color: #fff; font-family: 'Cinzel', serif; width: 200px; text-align: center; border-radius: 4px;">
+          <input type="text" id="character-name" placeholder="Enter Character Name" maxlength="12"
+            style="padding: 8px; background: #111; border: 1px solid #4a3520; color: #fff; font-family: 'Cinzel', serif; width: 200px; text-align: center; border-radius: 4px;">
         </div>
       </div>
       <div class="menu-buttons">
         <div id="difficulty-selection" style="margin-bottom: 20px; text-align: center;">
-          <p style="font-family: 'Cinzel', serif; font-size: 11px; color: var(--gold); margin-bottom: 6px; letter-spacing: 1px;">WORLD TIER</p>
+          <p
+            style="font-family: 'Cinzel', serif; font-size: 11px; color: var(--gold); margin-bottom: 6px; letter-spacing: 1px;">
+            WORLD TIER</p>
           <div class="difficulty-group">
-            <button class="diff-btn active" data-diff="0" title="The classic experience. Standard challenge and rewards.">NORMAL</button>
-            <button class="diff-btn" data-diff="1" title="Nightmare: 2.5x Enemy Stats. +50% XP, +30% Magic Find.">NIGHTMARE</button>
-            <button class="diff-btn" data-diff="2" title="Hell: 5.0x Enemy Stats. +150% XP, +100% Magic Find.">HELL</button>
+            <button class="diff-btn active" data-diff="0"
+              title="The classic experience. Standard challenge and rewards.">NORMAL</button>
+            <button class="diff-btn" data-diff="1"
+              title="Nightmare: 2.5x Enemy Stats. +50% XP, +30% Magic Find.">NIGHTMARE</button>
+            <button class="diff-btn" data-diff="2"
+              title="Hell: 5.0x Enemy Stats. +150% XP, +100% Magic Find.">HELL</button>
           </div>
         </div>
         <button id="btn-new-game" class="btn-primary" disabled>Enter the Realm</button>
         <button id="btn-continue" class="btn-secondary">Continue</button>
         <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
-            <button id="btn-export-save" class="btn-secondary small" title="Export save data to a file">Export Save</button>
-            <button id="btn-import-save" class="btn-secondary small" title="Import save data from a file">Import Save</button>
-            <input type="file" id="import-file" style="display:none;" accept=".json">
+          <button id="btn-export-save" class="btn-secondary small" title="Export save data to a file">Export
+            Save</button>
+          <button id="btn-import-save" class="btn-secondary small" title="Import save data from a file">Import
+            Save</button>
+          <input type="file" id="import-file" style="display:none;" accept=".json">
         </div>
       </div>
-      
-      <div id="keybinds-legend" style="margin-top: 30px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 11px; color: #888; font-family: 'Cinzel', serif; border-top: 1px solid #333; padding-top: 15px;">
-          <div>[WASD] Movement</div>
-          <div>[1-4] Potions</div>
-          <div>[Q-G] Skills</div>
-          <div>[I] Inventory</div>
-          <div>[C] Stats</div>
-          <div>[T] Talents</div>
-          <div>[J] Journal</div>
-          <div>[H] Achievements</div>
-          <div>[L] Loot Filter</div>
-          <div>[P] Town Portal</div>
-          <div>[X] Weapon Swap</div>
-          <div>[TAB] Full Map</div>
-          <div>[U] Cube | [N] Stash</div>
+
+      <div id="keybinds-legend"
+        style="margin-top: 30px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 11px; color: #888; font-family: 'Cinzel', serif; border-top: 1px solid #333; padding-top: 15px;">
+        <div>[WASD] Movement</div>
+        <div>[1-4] Potions</div>
+        <div>[Q-G] Skills</div>
+        <div>[I] Inventory</div>
+        <div>[C] Stats</div>
+        <div>[T] Talents</div>
+        <div>[J] Journal</div>
+        <div>[H] Achievements</div>
+        <div>[L] Loot Filter</div>
+        <div>[P] Town Portal</div>
+        <div>[X] Weapon Swap</div>
+        <div>[TAB] Full Map</div>
+        <div>[U] Cube | [N] Stash</div>
       </div>
 
       <div class="save-slots" id="save-slots" style="display:none;">
@@ -93,10 +103,16 @@
     <canvas id="game-canvas"></canvas>
 
     <!-- Rift Progress HUD (End-Game) -->
-    <div id="rift-hud" class="hidden" style="position:absolute; top:80px; left:50%; transform:translateX(-50%); width:500px; text-align:center; z-index:100; pointer-events:none;">
-      <div id="rift-depth-label" style="font-family:'Cinzel Decorative', serif; color:#c080ff; font-size:16px; margin-bottom:5px; text-shadow:0 0 10px #8000ff;">RIFT DEPTH 1</div>
-      <div id="rift-gauge" style="width:100%; height:12px; border:1px solid #c080ff; background:rgba(0,0,0,0.8); border-radius:10px; overflow:hidden; box-shadow:0 0 10px rgba(128,0,255,0.3);">
-        <div id="rift-gauge-fill" style="width:0%; height:100%; background:linear-gradient(to right, #400080, #8000ff, #c080ff); transition:width 0.3s ease-out; box-shadow:0 0 15px #c080ff;"></div>
+    <div id="rift-hud" class="hidden"
+      style="position:absolute; top:80px; left:50%; transform:translateX(-50%); width:500px; text-align:center; z-index:100; pointer-events:none;">
+      <div id="rift-depth-label"
+        style="font-family:'Cinzel Decorative', serif; color:#c080ff; font-size:16px; margin-bottom:5px; text-shadow:0 0 10px #8000ff;">
+        RIFT DEPTH 1</div>
+      <div id="rift-gauge"
+        style="width:100%; height:12px; border:1px solid #c080ff; background:rgba(0,0,0,0.8); border-radius:10px; overflow:hidden; box-shadow:0 0 10px rgba(128,0,255,0.3);">
+        <div id="rift-gauge-fill"
+          style="width:0%; height:100%; background:linear-gradient(to right, #400080, #8000ff, #c080ff); transition:width 0.3s ease-out; box-shadow:0 0 15px #c080ff;">
+        </div>
       </div>
       <div id="rift-mods-list" style="display:flex; justify-content:center; gap:10px; margin-top:8px;">
         <!-- Chaos Mods pop here -->
@@ -109,7 +125,9 @@
       <div class="boss-elite-label">BOSS</div>
       <div id="boss-hp-fill"
         style="width:100%; height:100%; background:linear-gradient(to right, #600, #c00); transition:width 0.1s linear; position:relative;">
-        <div id="boss-hp-text" style="position:absolute; width:100%; text-align:center; color:#fff; font-size:10px; line-height:24px; font-family:'Cinzel',serif; text-shadow:1px 1px 2px #000;">100%</div>
+        <div id="boss-hp-text"
+          style="position:absolute; width:100%; text-align:center; color:#fff; font-size:10px; line-height:24px; font-family:'Cinzel',serif; text-shadow:1px 1px 2px #000;">
+          100%</div>
       </div>
       <div id="boss-name"
         style="position:absolute; top:-28px; left:0; width:100%; text-align:center; color:#ff4040; font-family:'Cinzel', serif; font-size:22px; text-shadow:2px 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;">
@@ -118,16 +136,23 @@
 
     <!-- Phase 3 Wave 6: Mercenary HUD -->
     <div id="mercenary-hud" class="hidden" style="position:absolute; top:8px; left:8px; z-index:100; cursor:pointer;">
-        <div style="display:flex; gap:10px; align-items:center; background:rgba(0,0,0,0.6); padding:4px 8px; border:1px solid #4a3520; border-radius:4px; box-shadow:0 0 10px #000;">
-            <div id="merc-hud-portrait" style="width:40px; height:40px; background:#111; border:1px solid var(--gold); border-radius:4px; display:flex; justify-content:center; align-items:center; font-size:20px; text-shadow:0 0 5px var(--gold);">👤</div>
-            <div style="display:flex; flex-direction:column; gap:2px;">
-                <div id="merc-hud-name" style="font-family:'Cinzel', serif; font-size:11px; color:var(--gold); white-space:nowrap;">Mercenary</div>
-                <div style="width:100px; height:6px; background:#111; border:1px solid #311; border-radius:2px; overflow:hidden;">
-                    <div id="merc-hud-hp-fill" style="width:100%; height:100%; background:linear-gradient(to right, #600, #c00); transition:width 0.3s;"></div>
-                </div>
-                <div id="merc-hud-lvl" style="font-size:9px; color:#aaa;">Level 1</div>
+      <div
+        style="display:flex; gap:10px; align-items:center; background:rgba(0,0,0,0.6); padding:4px 8px; border:1px solid #4a3520; border-radius:4px; box-shadow:0 0 10px #000;">
+        <div id="merc-hud-portrait"
+          style="width:40px; height:40px; background:#111; border:1px solid var(--gold); border-radius:4px; display:flex; justify-content:center; align-items:center; font-size:20px; text-shadow:0 0 5px var(--gold);">
+          👤</div>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <div id="merc-hud-name"
+            style="font-family:'Cinzel', serif; font-size:11px; color:var(--gold); white-space:nowrap;">Mercenary</div>
+          <div
+            style="width:100px; height:6px; background:#111; border:1px solid #311; border-radius:2px; overflow:hidden;">
+            <div id="merc-hud-hp-fill"
+              style="width:100%; height:100%; background:linear-gradient(to right, #600, #c00); transition:width 0.3s;">
             </div>
+          </div>
+          <div id="merc-hud-lvl" style="font-size:9px; color:#aaa;">Level 1</div>
         </div>
+      </div>
     </div>
 
     <!-- Minimap -->
@@ -135,7 +160,7 @@
       style="position:absolute; top:54px; right:8px; border:2px solid #444; background:#000; z-index:50; opacity:0.85; border-radius:4px; cursor:crosshair;"></canvas>
 
     <div id="quest-hud" class="hidden"
-      style="position:absolute; right:10px; top:140px; width:150px; background:rgba(0,0,0,0.8); border:1px solid #bf642f; padding:8px; border-radius:4px; font-family:'Cinzel',serif; box-sizing:border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.5); z-index:50;">
+      style="position:absolute; right:10px; top:195px; width:150px; background:rgba(0,0,0,0.8); border:1px solid #bf642f; padding:8px; border-radius:4px; font-family:'Cinzel',serif; box-sizing:border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.5); z-index:50;">
       <div
         style="color:#bf642f; font-size:12px; border-bottom:1px solid #4a3520; padding-bottom:4px; margin-bottom:4px; text-transform:uppercase;">
         Active Quest</div>
@@ -223,7 +248,9 @@
     </div>
     <!-- HUD Buttons -->
     <div id="hud-buttons">
-      <div id="broken-gear-warning" class="hidden" title="You have broken equipment! Stats are disabled." style="width: 32px; height: 32px; background: rgba(255,0,0,0.2); border: 1px solid #f00; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-bottom: 5px; color: #f00; font-size: 18px; cursor: help;">⚠</div>
+      <div id="broken-gear-warning" class="hidden" title="You have broken equipment! Stats are disabled."
+        style="width: 32px; height: 32px; background: rgba(255,0,0,0.2); border: 1px solid #f00; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-bottom: 5px; color: #f00; font-size: 18px; cursor: help;">
+        ⚠</div>
       <button class="hud-btn" id="btn-inventory" title="Inventory (I)">🎒</button>
       <button class="hud-btn" id="btn-talents" title="Talents (T)">✨</button>
       <button class="hud-btn" id="btn-character" title="Character (C)">📊</button>
@@ -250,18 +277,20 @@
 
   <!-- Achievements Panel -->
   <div id="panel-achievements" class="panel hidden" style="width: 400px;">
-    <div class="panel-header"><span>🏆 Achievements</span><button class="panel-close" data-panel="achievements">✕</button></div>
-    <div id="achievements-list" style="padding:15px; max-height: 450px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
+    <div class="panel-header"><span>🏆 Achievements</span><button class="panel-close"
+        data-panel="achievements">✕</button></div>
+    <div id="achievements-list"
+      style="padding:15px; max-height: 450px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
   </div>
 
   <!-- Panels (toggled) -->
   <div id="panel-inventory" class="panel hidden">
     <div class="panel-header">
-        <span>Inventory</span>
-        <div style="display:flex; gap:5px;">
-            <button id="btn-sort-inv" class="btn-secondary small" style="padding: 2px 8px; font-size:10px;">SORT</button>
-            <button class="panel-close" data-panel="inventory">✕</button>
-        </div>
+      <span>Inventory</span>
+      <div style="display:flex; gap:5px;">
+        <button id="btn-sort-inv" class="btn-secondary small" style="padding: 2px 8px; font-size:10px;">SORT</button>
+        <button class="panel-close" data-panel="inventory">✕</button>
+      </div>
     </div>
     <div id="equip-slots">
       <div class="equip-slot" data-slot="head" data-label="Helm"></div>
@@ -291,7 +320,8 @@
     <div class="panel-header">
       <span>Merchant</span>
       <div style="display:flex; gap:5px;">
-        <button id="btn-sell-junk" class="btn-secondary small" style="padding: 2px 8px; font-size:10px; color:#ff4444; border-color:#880000;">SELL JUNK</button>
+        <button id="btn-sell-junk" class="btn-secondary small"
+          style="padding: 2px 8px; font-size:10px; color:#ff4444; border-color:#880000;">SELL JUNK</button>
         <button class="panel-close" data-panel="shop">✕</button>
       </div>
     </div>
@@ -304,10 +334,13 @@
 
   <div id="panel-stash" class="panel hidden">
     <div class="panel-header"><span>Alijo (Stash)</span><button class="panel-close" data-panel="stash">✕</button></div>
-    <div style="display:flex; background:#111; border-bottom:1px solid #333; align-items:center; justify-content:space-between; padding-right:8px;">
+    <div
+      style="display:flex; background:#111; border-bottom:1px solid #333; align-items:center; justify-content:space-between; padding-right:8px;">
       <div style="display:flex; flex:1;">
-        <button id="btn-stash-personal" class="stash-tab active" style="padding:8px; border:none; background:transparent; color:#888; cursor:pointer; font-family:Cinzel,serif; font-size:11px;">PERSONAL</button>
-        <button id="btn-stash-shared" class="stash-tab" style="padding:8px; border:none; background:transparent; color:#888; cursor:pointer; font-family:Cinzel,serif; font-size:11px;">SHARED</button>
+        <button id="btn-stash-personal" class="stash-tab active"
+          style="padding:8px; border:none; background:transparent; color:#888; cursor:pointer; font-family:Cinzel,serif; font-size:11px;">PERSONAL</button>
+        <button id="btn-stash-shared" class="stash-tab"
+          style="padding:8px; border:none; background:transparent; color:#888; cursor:pointer; font-family:Cinzel,serif; font-size:11px;">SHARED</button>
       </div>
       <button id="btn-sort-stash" class="btn-secondary small" style="padding: 2px 8px; font-size:10px;">SORT</button>
     </div>
@@ -329,7 +362,8 @@
   <div id="panel-cube" class="panel hidden" style="width:200px;">
     <div class="panel-header"><span style="color:#bf642f;">Horadric Cube</span><button class="panel-close"
         data-panel="cube">✕</button></div>
-    <div style="padding:10px;text-align:center;font-size:11px;color:#888;">Combine powerful artifacts using arcane recipes.
+    <div style="padding:10px;text-align:center;font-size:11px;color:#888;">Combine powerful artifacts using arcane
+      recipes.
     </div>
     <div id="cube-grid"
       style="display:grid; grid-template-columns:repeat(3,40px); gap:4px; padding:10px; justify-content:center;">
@@ -355,17 +389,24 @@
   </div>
 
   <div id="panel-mercenary" class="panel hidden" style="width:240px;">
-    <div class="panel-header"><span>Companion (O)</span><button class="panel-close" data-panel="mercenary">✕</button></div>
+    <div class="panel-header"><span>Companion (O)</span><button class="panel-close" data-panel="mercenary">✕</button>
+    </div>
     <div style="padding:10px; text-align:center;">
-      <div id="merc-paperdoll" style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:15px;">
-        <div class="equip-slot merc-slot" data-slot="head" data-label="Helm" style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
-        <div class="equip-slot merc-slot" data-slot="chest" data-label="Armor" style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+      <div id="merc-paperdoll"
+        style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:15px;">
+        <div class="equip-slot merc-slot" data-slot="head" data-label="Helm"
+          style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+        <div class="equip-slot merc-slot" data-slot="chest" data-label="Armor"
+          style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
         <div style="display:flex; gap:8px;">
-          <div class="equip-slot merc-slot" data-slot="mainhand" data-label="Weapon" style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
-          <div class="equip-slot merc-slot" data-slot="offhand" data-label="Shield" style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+          <div class="equip-slot merc-slot" data-slot="mainhand" data-label="Weapon"
+            style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+          <div class="equip-slot merc-slot" data-slot="offhand" data-label="Shield"
+            style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
         </div>
       </div>
-      <div id="merc-stats-display" style="font-size:11px; text-align:left; color:#aaa; background:rgba(0,0,0,0.3); padding:8px; border-radius:4px;">
+      <div id="merc-stats-display"
+        style="font-size:11px; text-align:left; color:#aaa; background:rgba(0,0,0,0.3); padding:8px; border-radius:4px;">
         <!-- Stats here -->
       </div>
     </div>
@@ -414,7 +455,9 @@
   <!-- Dialogue Box -->
   <div id="dialog-box" class="hidden">
     <div class="npc-header">
-      <div class="npc-portrait-sub" style="width:48px;height:48px;background:rgba(212,175,55,0.1);border:1px solid #d4af37;border-radius:4px;display:flex;justify-content:center;align-items:center;font-size:24px;">👤</div>
+      <div class="npc-portrait-sub"
+        style="width:48px;height:48px;background:rgba(212,175,55,0.1);border:1px solid #d4af37;border-radius:4px;display:flex;justify-content:center;align-items:center;font-size:24px;">
+        👤</div>
       <div class="npc-name" id="npc-active-name">Merchant</div>
     </div>
     <div id="dialog-text">Greetings, traveler. How can I help you?</div>
@@ -425,17 +468,22 @@
 
   <!-- Auth Modal -->
   <div id="auth-modal" class="screen overlay hidden" style="z-index: 10000; background: rgba(0,0,0,0.85);">
-    <div style="background: #111; border: 2px solid #4a3520; padding: 30px; width: 300px; text-align: center; border-radius: 8px; box-shadow: 0 0 20px #000;">
+    <div
+      style="background: #111; border: 2px solid #4a3520; padding: 30px; width: 300px; text-align: center; border-radius: 8px; box-shadow: 0 0 20px #000;">
       <h2 style="font-family: 'Cinzel', serif; color: var(--gold); margin-bottom: 20px;">Realm Account</h2>
-      <input type="email" id="auth-email" placeholder="Email Address" style="width:100%; padding: 10px; margin-bottom: 10px; background: #222; border: 1px solid #333; color: #fff; font-family: 'Cinzel', serif;">
-      <input type="password" id="auth-password" placeholder="Password" style="width:100%; padding: 10px; margin-bottom: 20px; background: #222; border: 1px solid #333; color: #fff; font-family: 'Cinzel', serif;">
+      <input type="email" id="auth-email" placeholder="Email Address"
+        style="width:100%; padding: 10px; margin-bottom: 10px; background: #222; border: 1px solid #333; color: #fff; font-family: 'Cinzel', serif;">
+      <input type="password" id="auth-password" placeholder="Password"
+        style="width:100%; padding: 10px; margin-bottom: 20px; background: #222; border: 1px solid #333; color: #fff; font-family: 'Cinzel', serif;">
       <div id="auth-error" style="color: #ff4444; font-size: 11px; margin-bottom: 15px; min-height: 15px;"></div>
       <div style="display: flex; gap: 10px; justify-content: space-between;">
         <button id="btn-auth-login" class="btn-primary" style="flex:1;">Log In</button>
         <button id="btn-auth-register" class="btn-secondary" style="flex:1;">Register</button>
       </div>
-      <button onclick="document.getElementById('auth-modal').classList.add('hidden')" style="margin-top: 15px; background: transparent; border: none; color: #888; cursor: pointer;">Cancel</button>
-      <div style="margin-top: 15px; font-size: 10px; color: #555;">Cloud saves will automatically sync to your account.</div>
+      <button onclick="document.getElementById('auth-modal').classList.add('hidden')"
+        style="margin-top: 15px; background: transparent; border: none; color: #888; cursor: pointer;">Cancel</button>
+      <div style="margin-top: 15px; font-size: 10px; color: #555;">Cloud saves will automatically sync to your account.
+      </div>
     </div>
   </div>
 
