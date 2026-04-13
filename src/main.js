@@ -1224,9 +1224,8 @@ function checkInteractions(pos) {
                         if (quest.progress === quest.target) {
                             addCombatLog(`Quest Objective Complete: ${quest.name}`, 'log-unique');
                         }
-                        droppedItems.splice(i, 1);
                         updateHud();
-                        return;
+                        // Proceed to inventory check (don't return yet)
                     }
                 }
 
@@ -1330,11 +1329,11 @@ function checkDeaths() {
 
             // --- Phase 29: Quest Item Drops ---
             if (e.isRadament) {
-                droppedItems.push({ id: 'book_of_skill', name: "Book of Skill", rarity: 'unique', icon: 'item_scroll_blue', x: e.x, y: e.y, isQuestItem: true, qId: 'radament' });
+                droppedItems.push({ ...ITEM_BASES.book_of_skill, id: 'book_of_skill', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'radament' });
             } else if (e.isBeetleburst) {
-                droppedItems.push({ id: 'horadric_staff_shaft', name: "Staff of Kings", rarity: 'unique', icon: 'item_staff', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' });
+                droppedItems.push({ ...ITEM_BASES.staff_of_kings, id: 'staff_of_kings', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' });
             } else if (e.isColdworm) {
-                droppedItems.push({ id: 'horadric_staff_head', name: "Viper Amulet", rarity: 'unique', icon: 'item_amulet', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' });
+                droppedItems.push({ ...ITEM_BASES.viper_amulet, id: 'viper_amulet', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' });
             } else if (e.isSarina) {
                 droppedItems.push({ id: 'khalim_heart', name: "Khalim's Heart", rarity: 'unique', icon: 'item_heart', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' });
             } else if (e.isCouncil) {
@@ -4167,6 +4166,16 @@ function renderInventory() {
                     return;
                 }
 
+                if (item.id === 'book_of_skill') {
+                    player.talents.unspent++;
+                    player.inventory[i] = null;
+                    addCombatLog('Used Book of Skill: +1 Skill Point gained!', 'log-level');
+                    if (window.fx) window.fx.emitLevelUp(player.x, player.y);
+                    renderInventory();
+                    updateHud();
+                    return;
+                }
+
                 if (item.type === 'gem') {
                     socketingGemIndex = i;
                     syncInteractionStates();
@@ -4691,8 +4700,8 @@ function renderDialoguePicker(npc) {
         });
     }
 
-    // Special: Healer Services (Akara, Jamella, Malah)
-    if (['akara', 'jamella', 'malah'].includes(npc.id)) {
+    // Special: Healer Services (Akara, Jamella, Malah, Fara)
+    if (['akara', 'jamella', 'malah', 'fara'].includes(npc.id)) {
         options.push({
             label: 'Heal & Refill', action: () => {
                 player.hp = player.maxHp;
@@ -5518,7 +5527,7 @@ const ACT_2_QUESTS = {
         name: 'Radament\'s Lair',
         desc: 'Slay Radament in the Sewers (Zone 7).',
         target: 1,
-        giver: 'drognan',
+        giver: 'atma',
         goldReward: 5000,
         xpReward: 8000,
         skillReward: 1,

@@ -432,6 +432,16 @@ export class Dungeon {
             });
 
             this.npcSpawns.push({
+                id: "fara",
+                name: "Fara",
+                type: "merchant",
+                x: (cx - 7) * this.tileSize,
+                y: (cy - 3) * this.tileSize,
+                icon: "npc_villager",
+                dialogue: "Peace be with you. I can repair your equipment and heal your spirit."
+            });
+
+            this.npcSpawns.push({
                 id: "jerhyn",
                 name: "Jerhyn",
                 type: "elder",

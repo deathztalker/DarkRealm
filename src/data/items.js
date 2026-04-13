@@ -160,6 +160,10 @@ export const ITEM_BASES = {
     // === MATERIALS ===
     horadric_fragment: { name: "Horadric Fragment", slot: 'none', type: 'material', icon: 'item_horadric_fragment', size: [1, 1], price: 200, flavor: '"A shard of a lost artifact, hums with ancient power."' },
     mephisto_soulstone: { name: "Mephisto's Soulstone", slot: 'none', type: 'material', icon: 'item_mephisto_soulstone', size: [1, 1], price: 0, flavor: '"The essence of the Lord of Hatred, waiting to be shattered."', identified: true },
+    book_of_skill: { name: "Book of Skill", slot: 'none', type: 'potion', icon: 'item_tome_id', size: [1, 1], price: 0, flavor: '"Read this to gain a permanent skill point."', identified: true },
+    staff_of_kings: { name: "Staff of Kings", slot: 'none', type: 'material', icon: 'item_staff_war', size: [1, 3], price: 0, flavor: '"An ancient mahogany staff, part of the Horadric legend."', identified: true },
+    viper_amulet: { name: "Viper Amulet", slot: 'none', type: 'material', icon: 'item_amulet', size: [1, 1], price: 0, flavor: '"The Amulet of the Viper, glowing with forbidden magic."', identified: true },
+    horadric_staff: { name: "Horadric Staff", slot: SLOT.MAINHAND, type: 'staff', icon: 'item_staff', minDmg: 12, maxDmg: 30, atkSpd: 0.7, req: { str: 25 }, size: [1, 4], mods: [{ stat: 'allRes', value: 10 }, { stat: 'flatMP', value: 50 }], flavor: '"The powerful Horadric Staff, restored at last."', identified: true },
     hellforge_hammer: { name: "Hellforge Hammer", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_war_hammer', minDmg: 8, maxDmg: 20, atkSpd: 0.8, req: { str: 20 }, size: [1, 3], flavor: '"Only this hammer can shatter a Prime Evil\'s soulstone."', identified: true },
 };
 

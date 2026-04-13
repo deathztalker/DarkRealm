@@ -518,6 +518,11 @@ export class LootSystem {
             return { id: 'hellfire_key_set', name: "Hellfire Key Set", rarity: RARITY.UNIQUE, icon: 'item_key_hellfire', type: 'key', flavor: '"The portal to the Abyss awaits."' };
         }
 
+        // Recipe: Staff of Kings + Viper Amulet -> Horadric Staff
+        if (items.length === 2 && items.some(it => it.id === 'staff_of_kings') && items.some(it => it.id === 'viper_amulet')) {
+            return { ...ITEM_BASES.horadric_staff, id: 'horadric_staff', rarity: RARITY.UNIQUE };
+        }
+
         // Recipe: Wirt's Leg + Tome of Town Portal -> Secret Cow Level
         if (items.length === 2) {
             const hasLeg = items.some(i => i.baseId === 'wirts_leg');
