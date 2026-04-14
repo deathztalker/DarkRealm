@@ -885,32 +885,7 @@ function gameLoop(timestamp) {
     // --- Phase 29: World Time Overlay (Post-Objects) ---
     renderWorldOverlay(renderer.ctx, renderer.width, renderer.height);
 
-    // --- Phase 3.1: Dynamic Lighting & Vignette ---
-    function renderVignette(ctx, w, h, playerPos) {
-        ctx.save();
-        const screen = camera.toScreen(playerPos.x, playerPos.y);
-        const radius = 250;
-        
-        // Create the dark overlay
-        const gradient = ctx.createRadialGradient(screen.x, screen.y, 50, screen.x, screen.y, radius);
-        gradient.addColorStop(0, 'rgba(0,0,0,0)');
-        gradient.addColorStop(0.6, 'rgba(0,0,0,0.1)');
-        gradient.addColorStop(1, 'rgba(0,0,0,0.7)');
-        
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, w, h);
-        
-        // Outer vignette corners (constant)
-        const cornerGrad = ctx.createRadialGradient(w/2, h/2, w/4, w/2, h/2, w);
-        cornerGrad.addColorStop(0, 'transparent');
-        cornerGrad.addColorStop(1, 'rgba(0,0,0,0.4)');
-        ctx.fillStyle = cornerGrad;
-        ctx.fillRect(0, 0, w, h);
-        
-        ctx.restore();
-    }
-    renderVignette(renderer.ctx, renderer.width, renderer.height, player);
+    // Old vignette system (Removed to prevent over-darkening in favor of primary Narrative Vision pass)
 
     for (const g of droppedGold) {
         renderer.fillCircle(g.x, g.y, 4, '#ffd700');

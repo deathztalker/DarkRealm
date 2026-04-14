@@ -142,7 +142,7 @@ export const ITEM_BASES = {
     rune_um: { name: 'Um Rune', slot: 'none', type: 'gem', icon: 'item_rune_um', size: [1, 1], price: 200, socketEffect: { weapon: { stat: 'openWounds', value: 25 }, armor: { stat: 'allRes', value: 15 }, shield: { stat: 'allRes', value: 22 } } },
     rune_mal: { name: 'Mal Rune', slot: 'none', type: 'gem', icon: 'item_rune_mal', size: [1, 1], price: 200, socketEffect: { weapon: { stat: 'preventMonsterHeal', value: 1 }, armor: { stat: 'magicDmgReduce', value: 7 }, shield: { stat: 'magicDmgReduce', value: 7 } } },
     rune_ist: { name: 'Ist Rune', slot: 'none', type: 'gem', icon: 'item_rune_ist', size: [1, 1], price: 250, socketEffect: { weapon: { stat: 'magicFind', value: 30 }, armor: { stat: 'magicFind', value: 25 }, shield: { stat: 'magicFind', value: 25 } } },
-    rune_gul: { name: 'Gul Rune', slot: 'none', type: 'gem', icon: 'item_rune_gul', size: [1, 1], price: 300, socketEffect: { weapon: { stat: 'pctHitRating', value: 20 }, armor: { stat: 'maxPoisRes', value: 5 }, shield: { stat: 'maxPoisRes', value: 5 } } },
+    rune_gul: { name: 'Gul Rune', slot: 'none', type: 'gem', icon: 'item_rune_el', size: [1, 1], price: 300, socketEffect: { weapon: { stat: 'pctHitRating', value: 20 }, armor: { stat: 'maxPoisRes', value: 5 }, shield: { stat: 'maxPoisRes', value: 5 } } },
     rune_vex: { name: 'Vex Rune', slot: 'none', type: 'gem', icon: 'item_rune_vex', size: [1, 1], price: 400, socketEffect: { weapon: { stat: 'manaStealPct', value: 7 }, armor: { stat: 'maxFireRes', value: 5 }, shield: { stat: 'maxFireRes', value: 5 } } },
     rune_ohm: { name: 'Ohm Rune', slot: 'none', type: 'gem', icon: 'item_rune_ohm', size: [1, 1], price: 500, socketEffect: { weapon: { stat: 'pctDmg', value: 50 }, armor: { stat: 'maxColdRes', value: 5 }, shield: { stat: 'maxColdRes', value: 5 } } },
     rune_lo: { name: 'Lo Rune', slot: 'none', type: 'gem', icon: 'item_rune_lo', size: [1, 1], price: 600, socketEffect: { weapon: { stat: 'critChance', value: 20 }, armor: { stat: 'maxLightRes', value: 5 }, shield: { stat: 'maxLightRes', value: 5 } } },
@@ -158,7 +158,7 @@ export const ITEM_BASES = {
     cow_portal: { name: 'Cow Portal Key', slot: 'none', type: 'material', icon: 'item_scroll_tp', size: [1, 1], price: 0, flavor: '"The seal of the Cow King."', identified: true },
 
     // === MATERIALS ===
-    horadric_fragment: { name: "Horadric Fragment", slot: 'none', type: 'material', icon: 'item_horadric_fragment', size: [1, 1], price: 200, flavor: '"A shard of a lost artifact, hums with ancient power."' },
+    horadric_fragment: { name: "Horadric Fragment", slot: 'none', type: 'material', icon: 'item_scroll', size: [1, 1], price: 200, flavor: '"A shard of a lost artifact, hums with ancient power."' },
     mephisto_soulstone: { name: "Mephisto's Soulstone", slot: 'none', type: 'material', icon: 'item_mephisto_soulstone', size: [1, 1], price: 0, flavor: '"The essence of the Lord of Hatred, waiting to be shattered."', identified: true },
     book_of_skill: { name: "Book of Skill", slot: 'none', type: 'potion', icon: 'item_book_skill_hd', size: [1, 1], price: 0, flavor: '"Read this to gain a permanent skill point."', identified: true },
     staff_of_kings: { name: "Staff of Kings", slot: 'none', type: 'material', icon: 'item_staff_kings_hd', size: [1, 3], price: 0, flavor: '"An ancient mahogany staff, part of the Horadric legend."', identified: true },
