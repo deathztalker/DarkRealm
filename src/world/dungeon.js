@@ -822,12 +822,12 @@ export class Dungeon {
 
         // Name to sprite mapping
         const TILE_SPRITES = {
-            [TILE.FLOOR]: 'env_floor', [TILE.WALL]: 'env_wall', [TILE.DOOR]: 'env_door',
+            [TILE.FLOOR]: 'env_stone_hd', [TILE.WALL]: 'env_wall', [TILE.DOOR]: 'env_door',
             [TILE.STAIRS_DOWN]: 'env_stairs_down', [TILE.STAIRS_UP]: 'env_stairs_up',
-            [TILE.GRASS]: 'env_grass', [TILE.PATH]: 'env_path', [TILE.WATER]: 'env_water',
+            [TILE.GRASS]: 'env_grass_hd', [TILE.PATH]: 'env_path', [TILE.WATER]: 'env_water',
             [TILE.TREE]: 'env_tree', [TILE.BRIDGE]: 'env_bridge',
             [TILE.SAND]: 'env_sand_hd', [TILE.CACTUS]: 'env_cactus',
-            [TILE.SNOW]: 'env_floor', [TILE.ICE]: 'env_floor',
+            [TILE.SNOW]: 'env_snow_hd', [TILE.ICE]: 'env_floor',
             [TILE.LAVA]: 'env_floor'
         };
 
