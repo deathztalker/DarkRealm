@@ -20,7 +20,7 @@ export class GameObject {
             return { type: 'LOOT', count: 2 + Math.floor(Math.random() * 3) };
         } else if (this.type === 'breakable' && !this.isOpen) {
             this.isOpen = true;
-            this.icon = 'obj_debris'; // New transparent or debris icon
+            this.icon = 'obj_chest_open'; // New transparent or debris icon
             if (window.fx) {
                 window.fx.emitDebris(this.x, this.y, '#8a7a60', 12);
                 window.fx.shake(200, 2);
