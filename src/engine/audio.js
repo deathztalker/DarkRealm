@@ -60,9 +60,13 @@ export function initAudio() {
         });
 
         bus.on('boss:death', d => {
-            console.log(`Boss death event received for: ${d.name}`);
-            if (d.name === 'Angry Jano') {
-                playCustomSound('assets/death_jano.mp3', 0.8);
+            console.log("Boss death event received:", d);
+            // Case-insensitive check and ID check for robustness
+            const isAngryJano = (d.name && d.name.toLowerCase().includes('jano')) || (d.id === 'angry_jano');
+            
+            if (isAngryJano) {
+                console.log("Triggering Angry Jano custom death sound...");
+                playCustomSound('assets/death_jano.mp3', 0.82);
             }
         });
 

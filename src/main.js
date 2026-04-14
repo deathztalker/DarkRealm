@@ -1029,20 +1029,30 @@ function gameLoop(timestamp) {
     fx.render(renderer.ctx);
 
     // --- Phase 20: Narrative Vision: Atmospheric Lighting Pass ---
-    if (zoneLevel > 0 && player && renderer) {
-        // Use the camera's source of truth for screen positioning to avoid lag/shuffling
+    if (player && renderer && camera) {
+        // Use the camera's source of truth for screen positioning
         const screen = camera.toScreen(player.x, player.y - 15);
         const sx = screen.x;
         const sy = screen.y;
-        // Base radius is now larger for better readability, plus player stats
-        const baseRadius = 320 + (player.lightRadius || 0);
-        const flicker = Math.sin(Date.now() / 150) * 8; // Softer, more atmospheric flicker
+        
+        // Base radius and flicker
+        const baseRadius = (320 + (player.lightRadius || 0));
+        const flicker = Math.sin(Date.now() / 150) * 8; 
 
-        let ambient = 'rgba(0, 0, 0, 0.85)'; // Default (Darker but playable)
-        if (zoneLevel <= 3) ambient = 'rgba(8, 12, 18, 0.70)'; // blood moor (Better visibility)
-        else if (zoneLevel === 4) ambient = 'rgba(10, 20, 10, 0.85)'; // catacombs
-        else if (zoneLevel >= 5 && zoneLevel <= 25) ambient = 'rgba(20, 4, 4, 0.90)'; // hell
-        else if (zoneLevel === 100) ambient = 'rgba(60, 0, 0, 0.95)'; // Uber Tristram
+        let ambient = 'rgba(0, 0, 0, 0.85)'; // Default
+        
+        if (zoneLevel === 0) {
+            // Very subtle ambient in town to let the "player light" still show a bit
+            ambient = 'rgba(0, 0, 4, 0.15)'; 
+        } else if (zoneLevel <= 3) {
+            ambient = 'rgba(8, 12, 18, 0.70)'; // Blood Moor
+        } else if (zoneLevel === 4) {
+            ambient = 'rgba(10, 20, 10, 0.85)'; // Catacombs
+        } else if (zoneLevel >= 5 && zoneLevel <= 25) {
+            ambient = 'rgba(20, 4, 4, 0.90)'; // Hell
+        } else if (zoneLevel === 100) {
+            ambient = 'rgba(60, 0, 0, 0.95)'; // Uber
+        }
 
         renderer.applyLighting(sx, sy, (baseRadius + flicker) * camera.zoom, ambient);
     }
