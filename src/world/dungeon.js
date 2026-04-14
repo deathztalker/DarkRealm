@@ -826,7 +826,7 @@ export class Dungeon {
             [TILE.STAIRS_DOWN]: 'env_stairs_down', [TILE.STAIRS_UP]: 'env_stairs_up',
             [TILE.GRASS]: 'env_grass', [TILE.PATH]: 'env_path', [TILE.WATER]: 'env_water',
             [TILE.TREE]: 'env_tree', [TILE.BRIDGE]: 'env_bridge',
-            [TILE.SAND]: 'env_sand', [TILE.CACTUS]: 'env_cactus',
+            [TILE.SAND]: 'env_sand_hd', [TILE.CACTUS]: 'env_cactus',
             [TILE.SNOW]: 'env_floor', [TILE.ICE]: 'env_floor',
             [TILE.LAVA]: 'env_floor'
         };
@@ -987,19 +987,15 @@ export class Dungeon {
             regions.sort((a, b) => b.length - a.length);
             const mainRegion = regions[0];
             
-            // Wall off everything
             this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
-            // Carve main region
             for (const pt of mainRegion) {
                 this.grid[pt.y][pt.x] = TILE.FLOOR;
             }
 
-            // Faux rooms for spawning compatibility
             this.rooms = [];
             const roomCount = Math.max(4, Math.floor(mainRegion.length / 150));
             for (let i = 0; i < roomCount; i++) {
                 const pt = mainRegion[Math.floor(Math.random() * mainRegion.length)];
-                // carve a 3x3 to ensure space for things (e.g. portals/waypoints)
                 for(let yy=-1; yy<=1; yy++) {
                    for(let xx=-1; xx<=1; xx++) {
                        if (pt.y+yy > 0 && pt.y+yy < this.height-1 && pt.x+xx > 0 && pt.x+xx < this.width-1) {
@@ -1010,9 +1006,51 @@ export class Dungeon {
                 this.rooms.push({ x: pt.x - 1, y: pt.y - 1, w: 3, h: 3 });
             }
         } else {
-            // Failsafe
             this.rooms = [{ x: 4, y: 4, w: 2, h: 2 }];
             this.grid[4][4] = TILE.FLOOR;
+        }
+    }
+
+    /** Scatter interactive clutter (barrels, crates, etc.) */
+    _populate(zoneLevel, theme) {
+        // Populate rooms with randomized breakables
+        if (!this.rooms || this.rooms.length === 0) return;
+
+        const breakableTypes = {
+            cathedral: 'obj_barrel',
+            catacombs: 'obj_barrel',
+            desert: 'obj_urn',
+            tomb: 'obj_urn',
+            jungle: 'obj_basket',
+            temple: 'obj_basket',
+            snow: 'obj_crate',
+            hell: 'obj_shard'
+        };
+
+        const icon = breakableTypes[theme] || 'obj_barrel';
+
+        for (const room of this.rooms) {
+            const count = 1 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < count; i++) {
+                const bx = (room.x + Math.floor(Math.random() * room.w)) * this.tileSize;
+                const by = (room.y + Math.floor(Math.random() * room.h)) * this.tileSize;
+                
+                // Only place if on floor and no object already there
+                const gridX = Math.floor(bx / this.tileSize);
+                const gridY = Math.floor(by / this.tileSize);
+                
+                if (gridX >= 0 && gridX < this.width && gridY >=0 && gridY < this.height) {
+                    const tile = this.grid[gridY][gridX];
+                    if (tile === TILE.FLOOR || tile === TILE.GRASS || tile === TILE.SAND || tile === TILE.SNOW) {
+                        this.objectSpawns.push({
+                            type: 'breakable',
+                            x: bx + this.tileSize/2,
+                            y: by + this.tileSize/2,
+                            icon: icon
+                        });
+                    }
+                }
+            }
         }
     }
 }

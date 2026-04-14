@@ -1,6 +1,34 @@
 import { bus } from './EventBus.js';
 
 let ctx = null;
+const soundCache = new Map();
+
+async function loadSound(url) {
+    if (soundCache.has(url)) return soundCache.get(url);
+    try {
+        const response = await fetch(url);
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+        soundCache.set(url, audioBuffer);
+        return audioBuffer;
+    } catch (e) {
+        console.error(`Failed to load sound: ${url}`, e);
+        return null;
+    }
+}
+
+export async function playCustomSound(url, volume = 0.4) {
+    if (!ctx) return;
+    const buffer = await loadSound(url);
+    if (!buffer) return;
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = volume;
+    source.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    source.start(0);
+}
 
 export function initAudio() {
     if (ctx) return;
@@ -12,6 +40,12 @@ export function initAudio() {
                 if (d.dealt > 0) playHit(d.isCrit);
             } else {
                 playPlayerHit();
+            }
+        });
+
+        bus.on('boss:death', d => {
+            if (d.name === 'Angry Jano') {
+                playCustomSound('src/audio/1281081413847744672.ogg', 0.8);
             }
         });
 

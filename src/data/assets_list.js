@@ -38,4 +38,4 @@ export const ASSET_NAMES = [
     'item_book_skill_hd', 'item_staff_kings_hd', 'item_amulet_viper_hd', 
     'item_sword_hd', 'item_axe_hd', 'item_mace_hd', 'item_shield_hd', 
     'item_plate_mail_hd', 'item_great_helm_hd', 'item_war_hammer_hd'
-];
+, 'env_sand_hd', 'obj_chest_hd_v2'];

@@ -47,6 +47,7 @@ const BOSS_POOL = [
     { id: 'uber_diablo', name: 'Uber Diablo', hpMult: 80, dmgMult: 15, xpMult: 150, isUber: true },
     { id: 'uber_baal', name: 'Uber Baal', hpMult: 100, dmgMult: 14, xpMult: 200, isUber: true },
     { id: 'cow_king', name: 'The Cow King', hpMult: 25, dmgMult: 6, xpMult: 50, special: 'lightning_enchanted', icon: 'enemy_zombie' },
+    { id: 'angry_jano', name: 'Angry Jano', hpMult: 35, dmgMult: 8, xpMult: 100, icon: 'enemy_demon', special: 'berserker' },
 ];
 
 const ELITE_AFFIXES = [
@@ -961,6 +962,9 @@ export class Enemy {
                 bus.emit('loot:special', { itemId: 'hellfire_torch', x: this.x, y: this.y });
             });
         }
+
+        // --- Custom Boss Death Logic ---
+        bus.emit('boss:death', { name: this.name, id: this.id });
     }
 
     _castRiftNova(element) {
