@@ -46,7 +46,7 @@ export function initAudio() {
         bus.on('boss:death', d => {
             console.log(`Boss death event received for: ${d.name}`);
             if (d.name === 'Angry Jano') {
-                playCustomSound('assets/death_jano.ogg', 0.8);
+                playCustomSound('assets/death_jano.mp3', 0.8);
             }
         });
 
