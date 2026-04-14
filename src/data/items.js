@@ -71,8 +71,8 @@ export const ITEM_BASES = {
     plate_mail: { name: 'Plate Mail', slot: SLOT.CHEST, type: 'armor', icon: 'item_plate_mail_hd', armor: 52, req: { str: 55 }, size: [2, 3], sockets: 3 },
     robe: { name: 'Robe', slot: SLOT.CHEST, type: 'armor', icon: 'item_robe', armor: 6, req: { int: 5 }, size: [2, 3], sockets: 2, manaBonus: 25 },
     // Gloves
-    leather_gloves: { name: 'Leather Gloves', slot: SLOT.GLOVES, type: 'gloves', icon: 'item_gloves', armor: 3, req: {}, size: [2, 2] },
-    gauntlets: { name: 'Gauntlets', slot: SLOT.GLOVES, type: 'gloves', icon: 'item_gloves', armor: 12, req: { str: 25 }, size: [2, 2] },
+    leather_gloves: { name: 'Leather Gloves', slot: SLOT.GLOVES, type: 'gloves', icon: 'item_leather_gloves', armor: 3, req: {}, size: [2, 2] },
+    gauntlets: { name: 'Gauntlets', slot: SLOT.GLOVES, type: 'gloves', icon: 'item_gauntlets', armor: 12, req: { str: 25 }, size: [2, 2] },
     // Boots
     leather_boots: { name: 'Leather Boots', slot: SLOT.BOOTS, type: 'boots', icon: 'item_leather_boots', armor: 5, req: {}, size: [2, 2] },
     war_boots: { name: 'War Boots', slot: SLOT.BOOTS, type: 'boots', icon: 'item_war_boots', armor: 16, req: { str: 35 }, size: [2, 2] },
