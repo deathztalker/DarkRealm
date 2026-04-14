@@ -32,7 +32,7 @@ export class GameObject {
             return { type: 'WAYPOINT', zone: this.zone };
         } else if (this.type === 'shrine' && !this.isOpen) {
             this.isOpen = true;
-            this.icon = 'obj_shrine_used';
+            this.icon = 'obj_chest_open';
             return { type: 'SHRINE', shrineType: this.shrineType };
         } else if (this.type === 'hellforge' && !this.isOpen) {
             return { type: 'HELLFORGE' };
