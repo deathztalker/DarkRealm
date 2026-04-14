@@ -208,14 +208,14 @@ function checkRuneword(item) {
 
         if (match) {
             item.name = `${rw.name} (${item.name})`; // Classic parenthesis
-            item.rarity = 'runeword'; 
+            item.rarity = 'runeword';
             if (!item.mods) item.mods = [];
-            
+
             // Map bonuses to mods
             for (const [stat, value] of Object.entries(rw.bonuses)) {
                 item.mods.push({ stat, value });
             }
-            
+
             addCombatLog(`Runeword Manifested: ${rw.name}!`, 'log-crit');
             break;
         }
@@ -295,7 +295,7 @@ function initClassGrid() {
     const grid = $('class-grid');
     if (!grid) return;
     grid.innerHTML = '';
-    
+
     // Default info to current selected class
     if (selectedClass) {
         showClassInfo(selectedClass);
@@ -306,16 +306,16 @@ function initClassGrid() {
         card.className = 'class-card';
         card.dataset.classId = cls.id;
         card.innerHTML = `<span class="class-icon"><i class="ra ${getIconForClass(cls.id)}" style="font-size:24px;color:var(--gold);"></i></span><span class="class-card-name">${cls.name}</span>`;
-        
+
         card.addEventListener('click', (e) => {
             e.stopPropagation();
             selectClass(cls.id);
         });
-        
+
         card.addEventListener('mouseenter', () => {
             showClassInfo(cls.id);
         });
-        
+
         grid.appendChild(card);
     }
 
@@ -1009,16 +1009,16 @@ function gameLoop(timestamp) {
         const screen = camera.toScreen(player.x, player.y - 15);
         const sx = screen.x;
         const sy = screen.y;
-        
+
         // Base radius and flicker (Tightened for a distinct circle effect)
         const baseRadius = (150 + (player.lightRadius || 0));
-        const flicker = Math.sin(Date.now() / 150) * 8; 
+        const flicker = Math.sin(Date.now() / 150) * 8;
 
         let ambient = 'rgba(0, 0, 0, 0.85)'; // Default
-        
+
         if (zoneLevel === 0) {
             // Very subtle ambient in town to let the "player light" still show a bit
-            ambient = 'rgba(0, 0, 4, 0.15)'; 
+            ambient = 'rgba(0, 0, 4, 0.15)';
         } else if (zoneLevel <= 3) {
             ambient = 'rgba(8, 12, 18, 0.70)'; // Blood Moor
         } else if (zoneLevel === 4) {
@@ -1235,7 +1235,7 @@ function checkInteractions(pos) {
                         shard.name = "Horadric Shard";
                         shard.icon = 'item_shard';
                         shard.isShard = true;
-                        droppedItems.push({ ...shard, x: o.x + (Math.random()-0.5)*20, y: o.y + (Math.random()-0.5)*20 });
+                        droppedItems.push({ ...shard, x: o.x + (Math.random() - 0.5) * 20, y: o.y + (Math.random() - 0.5) * 20 });
                     }
                     addCombatLog("The Soulstone is destroyed! The Forge erupts with power!", 'log-unique');
                     updateHud();
@@ -1498,7 +1498,7 @@ function checkDeaths() {
                 fx.shake(800, 15);
                 player.highestZone = Math.max(player.highestZone || 0, zoneLevel);
                 if (!player.maxDifficulty) player.maxDifficulty = 0;
-                
+
                 let unlockedDiff = false;
                 // Transition difficulty after Baal (Zone 25)
                 if (difficulty === player.maxDifficulty && player.maxDifficulty < 3 && zoneLevel === 25) {
@@ -1540,17 +1540,17 @@ function checkDeaths() {
                     if (player.maxDifficulty === 1) diffName = 'Nightmare';
                     else if (player.maxDifficulty === 2) diffName = 'Hell';
                     else if (player.maxDifficulty === 3) diffName = 'Rift Mode';
-                    
+
                     if (diffName) {
                         addCombatLog(`⭐ ${diffName} Unlocked! ⭐`, 'log-crit');
                     }
                 }
-                
+
                 // Phase 33: Always save after boss kill
-                SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { 
-                    difficulty, 
-                    waypoints: Array.from(discoveredWaypoints), 
-                    mercenary: mercenary ? mercenary.serialize() : null 
+                SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
+                    difficulty,
+                    waypoints: Array.from(discoveredWaypoints),
+                    mercenary: mercenary ? mercenary.serialize() : null
                 });
             }
         }
@@ -1947,10 +1947,10 @@ function updateHud() {
             const hpFill = $('merc-hud-hp-fill');
             const hpPct = (mercenary.hp / mercenary.maxHp) * 100;
             if (hpFill) hpFill.style.width = Math.max(0, hpPct) + '%';
-            
+
             const lvlText = $('merc-hud-lvl');
             if (lvlText) lvlText.textContent = `Level ${mercenary.level}`;
-            
+
             const portrait = $('merc-hud-portrait');
             if (portrait) {
                 if (mercenary.hp <= 0) portrait.classList.add('merc-dead-portrait');
@@ -2475,8 +2475,8 @@ function getItemHtml(item, cantEquip = false, isGamble = false) {
         'item_armor_chain': 'item_chain_mail',
         'item_armor_plate': 'item_plate_mail',
         'item_armor_robe': 'item_robe',
-        'item_gloves_leather': 'item_leather_gloves',
-        'item_gloves_gauntlets': 'item_gauntlets',
+        'item_gloves_leather': 'item_gloves',
+        'item_gloves_gauntlets': 'item_gloves',
         'item_boots_leather': 'item_leather_boots',
         'item_boots_war': 'item_war_boots',
         'item_shield_buckler': 'item_buckler',
@@ -2513,7 +2513,7 @@ function getItemHtml(item, cantEquip = false, isGamble = false) {
 function getIconForItem(iconStr) {
     if (!iconStr) return 'ra-circle';
     const s = iconStr.toLowerCase();
-    
+
     // Weapons
     if (s.includes('sword') || s.includes('blade')) return 'ra-broadsword';
     if (s.includes('axe')) return 'ra-battered-axe';
@@ -2524,7 +2524,7 @@ function getIconForItem(iconStr) {
     if (s.includes('totem') || s.includes('idol')) return 'ra-totem';
     if (s.includes('wand')) return 'ra-crystal-wand';
     if (s.includes('orb') || s.includes('source')) return 'ra-gem-pendant';
-    
+
     // Armor
     if (s.includes('cap') || s.includes('helm') || s.includes('circlet')) return 'ra-helmet';
     if (s.includes('armor') || s.includes('mail') || s.includes('robe')) return 'ra-chain-mail'; // or ra-vest
@@ -2532,7 +2532,7 @@ function getIconForItem(iconStr) {
     if (s.includes('boot')) return 'ra-boot-stomp'; // boot
     if (s.includes('shield') || s.includes('buckler')) return 'ra-shield';
     if (s.includes('belt') || s.includes('sash')) return 'ra-belt-buckle';
-    
+
     // Accessories & Consumables
     if (s.includes('ring')) return 'ra-diamond-ring';
     if (s.includes('amulet')) return 'ra-necklace';
@@ -2543,7 +2543,7 @@ function getIconForItem(iconStr) {
     if (s.includes('gem_')) return 'ra-gem';
     if (s.includes('charm')) return 'ra-scroll-unfurled';
     if (s.includes('chest_open')) return 'ra-chest';
-    
+
     // Gems specifics
     if (s.includes('ruby')) return 'ra-drop'; // red
     if (s.includes('sapphire')) return 'ra-crystal-cluster'; // blue
@@ -2552,7 +2552,7 @@ function getIconForItem(iconStr) {
     if (s.includes('diamond')) return 'ra-diamond'; // white
     if (s.includes('amethyst')) return 'ra-eye-shield'; // purple
     if (s.includes('skull')) return 'ra-skull';
-    
+
     return 'ra-help';
 }
 
@@ -3347,30 +3347,30 @@ bus.on('action:town_portal', () => {
 // Interaction
 bus.on('action:interact', () => {
     if (state !== 'GAME' || (player && player.hp <= 0)) return;
-    
+
     // Interaction range
     const range = 53;
-    
+
     // 1. Closest NPC / Object
     const interactables = [...npcs, ...gameObjects];
     let closest = null;
     let minDist = range;
     for (const t of interactables) {
-        const d = Math.sqrt((t.x - player.x)**2 + (t.y - player.y)**2);
+        const d = Math.sqrt((t.x - player.x) ** 2 + (t.y - player.y) ** 2);
         if (d < minDist) { minDist = d; closest = t; }
     }
-    
+
     if (closest) {
         if (closest instanceof NPC) renderDialoguePicker(closest);
         else if (closest.interact) closest.interact(player);
         return;
     }
-    
+
     // 2. Closest Item
     let closestItem = null;
     let minItemDist = 45;
     for (const di of droppedItems) {
-        const d = Math.sqrt((di.x - player.x)**2 + (di.y - player.y)**2);
+        const d = Math.sqrt((di.x - player.x) ** 2 + (di.y - player.y) ** 2);
         if (d < minItemDist) { minItemDist = d; closestItem = di; }
     }
     if (closestItem) {
@@ -3389,7 +3389,7 @@ bus.on('action:interact', () => {
     let closestGold = null;
     let minGoldDist = 45;
     for (const dg of droppedGold) {
-        const d = Math.sqrt((dg.x - player.x)**2 + (dg.y - player.y)**2);
+        const d = Math.sqrt((dg.x - player.x) ** 2 + (dg.y - player.y) ** 2);
         if (d < minGoldDist) { minGoldDist = d; closestGold = dg; }
     }
     if (closestGold) {
@@ -4134,7 +4134,7 @@ function renderInventory() {
 
                 const shopOpen = !$('panel-shop').classList.contains('hidden');
                 const merchantDialogue = dialogue && dialogue.timer > 0 && dialogue.npc && dialogue.npc.type === 'merchant';
-                
+
                 // 1. Sell if matching shop or merchant dialog
                 if (shopOpen || merchantDialogue) {
                     const price = Math.max(1, typeof calculateSellPrice === 'function' ? calculateSellPrice(item) : 5);
@@ -4803,26 +4803,26 @@ function renderDialoguePicker(npc) {
     if (npc.id === 'deckard_cain') {
         options.push({
             label: 'Identify All (100g)', action: () => {
-            const cost = 100;
-            if (player.gold >= cost) {
-                let count = 0;
-                player.inventory.forEach(it => { if (it && it.identified === false) { it.identified = true; count++; } });
-                if (count > 0) {
-                    player.gold -= cost;
-                    addCombatLog(`Identified ${count} items.`, 'log-info');
-                    playLoot();
-                    renderInventory();
+                const cost = 100;
+                if (player.gold >= cost) {
+                    let count = 0;
+                    player.inventory.forEach(it => { if (it && it.identified === false) { it.identified = true; count++; } });
+                    if (count > 0) {
+                        player.gold -= cost;
+                        addCombatLog(`Identified ${count} items.`, 'log-info');
+                        playLoot();
+                        renderInventory();
+                    } else {
+                        addCombatLog("No unidentified items found.", "log-info");
+                    }
                 } else {
-                    addCombatLog("No unidentified items found.", "log-info");
+                    addCombatLog("Not enough gold!", "log-dmg");
                 }
-            } else {
-                addCombatLog("Not enough gold!", "log-dmg");
+                menu.remove();
+                activeDialogueNpc = null;
             }
-            menu.remove();
-            activeDialogueNpc = null;
-        }
-    });
-}
+        });
+    }
 
     // --- Phase 30: Pantheon Monument ---
     if (npc.id === 'pantheon_monument') {
@@ -5498,7 +5498,7 @@ $('btn-transmute')?.addEventListener('click', () => {
                 const portal = new GameObject('cow_portal', player.x, player.y - 40, 'env_water');
                 portal.targetZone = 99; // Moo Moo Farm
                 gameObjects.push(portal);
-                
+
                 // Consume specific ingredients
                 cube.forEach((it, idx) => {
                     if (it && (it.baseId === 'wirts_leg' || it.baseId === 'tome_tp')) {
@@ -6150,7 +6150,7 @@ async function renderSaveSlots() {
                     const btn = document.createElement('button');
                     btn.className = 'btn-secondary';
                     btn.style.cssText = 'display:block; width:100%; margin-bottom:10px; padding:12px; font-weight:bold; font-size:14px;';
-                    
+
                     if (d === 3) {
                         btn.textContent = '⚡ Rift Mode ⚡';
                         btn.style.color = '#bf642f'; // Unique orange
@@ -6164,10 +6164,10 @@ async function renderSaveSlots() {
                     btn.onclick = (ev) => {
                         ev.stopPropagation();
                         saveData.difficulty = d;
-                        
+
                         // If Rift Mode, override starting zone
                         if (d === 3) {
-                            saveData.zoneLevel = 26; 
+                            saveData.zoneLevel = 26;
                         } else if (saveData.zoneLevel >= 26) {
                             // If coming back to normal game, return to Town
                             saveData.zoneLevel = 0;
@@ -6353,7 +6353,7 @@ function handleDrop(target, idx) {
     if (target === 'hotbar' && draggedSkill) {
         const skillAtSource = player.hotbar[dragSourceIdx];
         const skillAtTarget = player.hotbar[idx];
-        
+
         player.hotbar[idx] = skillAtSource;
         player.hotbar[dragSourceIdx] = skillAtTarget;
         success = true;
@@ -6428,7 +6428,7 @@ function handleDrop(target, idx) {
         if (tarArr) {
             const old = tarArr[idx];
             tarArr[idx] = itm;
-            
+
             // Check if old can be equipped by merc in this slot
             const validSlots = ['head', 'chest', 'mainhand', 'offhand'];
             if (old && validSlots.includes(old.slot) && (old.slot === dragSourceIdx || (old.slot.startsWith('ring') && dragSourceIdx.startsWith('ring')))) {
@@ -6495,7 +6495,7 @@ window.addEventListener('mouseup', (e) => {
         // Drop skill outside to clear it
         const barRect = $('skill-bar').getBoundingClientRect();
         const overBar = (e.clientX >= barRect.left && e.clientX <= barRect.right && e.clientY >= barRect.top && e.clientY <= barRect.bottom);
-        
+
         if (!overBar) {
             player.hotbar[dragSourceIdx] = null;
             addCombatLog("Skill unassigned.", "log-info");
@@ -6622,12 +6622,12 @@ function returnToMainMenu() {
             waypoints: Array.from(discoveredWaypoints)
         });
     }
-    
+
     // Switch to menu state
     state = 'MENU';
     $('game-screen').classList.remove('active');
     $('main-menu').classList.add('active');
-    
+
     // Refresh the character slots in the menu
     renderSaveSlots();
 }
@@ -6656,7 +6656,7 @@ function openSkillPicker(slotIdx, x, y) {
     const menu = document.createElement('div');
     menu.id = 'skill-picker';
     menu.className = 'skill-picker-modal';
-    
+
     // Position the menu above the hotbar
     menu.style.left = `${Math.min(window.innerWidth - 300, Math.max(20, x - 140))}px`;
     menu.style.top = `${y - 320}px`;
@@ -6680,9 +6680,9 @@ function openSkillPicker(slotIdx, x, y) {
         const node = document.createElement('div');
         node.className = 'skill-picker-node';
         if (player.hotbar.includes(skill.id)) node.classList.add('active-on-bar');
-        
+
         node.innerHTML = `<i class="ra ${getIconForSkill(skill.id)}" style="font-size: 24px; color: var(--gold);"></i>`;
-        
+
         node.addEventListener('mouseenter', (e) => showSkillTooltip(skill.id, e.clientX, e.clientY));
         node.addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
         node.addEventListener('mouseleave', hideTooltip);
