@@ -2512,7 +2512,7 @@ function getItemHtml(item, cantEquip = false, isGamble = false) {
 function getIconForItem(iconStr) {
     if (!iconStr) return 'ra-circle';
     const s = iconStr.toLowerCase();
-
+    
     // Weapons
     if (s.includes('sword') || s.includes('blade')) return 'ra-broadsword';
     if (s.includes('axe')) return 'ra-battered-axe';
@@ -2523,7 +2523,7 @@ function getIconForItem(iconStr) {
     if (s.includes('totem') || s.includes('idol')) return 'ra-totem';
     if (s.includes('wand')) return 'ra-crystal-wand';
     if (s.includes('orb') || s.includes('source')) return 'ra-gem-pendant';
-
+    
     // Armor
     if (s.includes('cap') || s.includes('helm') || s.includes('circlet')) return 'ra-helmet';
     if (s.includes('armor') || s.includes('mail') || s.includes('robe')) return 'ra-chain-mail'; // or ra-vest
@@ -2531,7 +2531,7 @@ function getIconForItem(iconStr) {
     if (s.includes('boot')) return 'ra-boot-stomp'; // boot
     if (s.includes('shield') || s.includes('buckler')) return 'ra-shield';
     if (s.includes('belt') || s.includes('sash')) return 'ra-belt-buckle';
-
+    
     // Accessories & Consumables
     if (s.includes('ring')) return 'ra-diamond-ring';
     if (s.includes('amulet')) return 'ra-necklace';
@@ -2542,7 +2542,7 @@ function getIconForItem(iconStr) {
     if (s.includes('gem_')) return 'ra-gem';
     if (s.includes('charm')) return 'ra-scroll-unfurled';
     if (s.includes('chest_open')) return 'ra-chest';
-
+    
     // Gems specifics
     if (s.includes('ruby')) return 'ra-drop'; // red
     if (s.includes('sapphire')) return 'ra-crystal-cluster'; // blue
@@ -2551,7 +2551,7 @@ function getIconForItem(iconStr) {
     if (s.includes('diamond')) return 'ra-diamond'; // white
     if (s.includes('amethyst')) return 'ra-eye-shield'; // purple
     if (s.includes('skull')) return 'ra-skull';
-
+    
     return 'ra-help';
 }
 

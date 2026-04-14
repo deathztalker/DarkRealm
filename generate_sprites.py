@@ -347,8 +347,8 @@ def generate_object(name, size=32):
     
     img.save(f"assets/{name}.png")
 
-generate_object('obj_chest')
-generate_object('obj_chest_open')
+if not os.path.exists("assets/obj_chest.png"): generate_object('obj_chest')
+if not os.path.exists("assets/obj_chest_open.png"): generate_object('obj_chest_open')
 
 # ══════════════════════════════════════════════════════════
 #  CLASS HUMANOIDS — Full body with class-specific colors

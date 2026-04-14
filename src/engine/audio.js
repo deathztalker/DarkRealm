@@ -23,27 +23,35 @@ async function loadSound(url) {
 
 export async function playCustomSound(url, volume = 0.4) {
     if (!ctx) {
-        console.warn("AudioContext not initialized. Cannot play custom sound.");
+        console.warn("AudioContext not initialized. Cannot play custom sound:", url);
         return;
     }
     
-    // Resume context if suspended (Browser autoplay policy)
+    // Resume context if suspended
     if (ctx.state === 'suspended') {
-        console.log("Resuming AudioContext...");
-        await ctx.resume();
+        console.log("Resuming AudioContext before playing custom sound...");
+        await ctx.resume().catch(err => console.error("Failed to resume AudioContext:", err));
     }
 
-    const buffer = await loadSound(url);
-    if (!buffer) return;
-    
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    const gainNode = ctx.createGain();
-    gainNode.gain.value = volume;
-    source.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    source.start(0);
-    console.log(`Playing custom sound: ${url}`);
+    console.log(`Preparing to play custom sound: ${url}`);
+    try {
+        const buffer = await loadSound(url);
+        if (!buffer) {
+            console.error(`Failed to load buffer for sound: ${url}`);
+            return;
+        }
+        
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = volume;
+        source.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        source.start(0);
+        console.log(`Successfully playing sound: ${url} at volume ${volume}`);
+    } catch (e) {
+        console.error(`Error in playCustomSound for ${url}:`, e);
+    }
 }
 
 export function initAudio() {
@@ -62,11 +70,15 @@ export function initAudio() {
         bus.on('boss:death', d => {
             console.log("Boss death event received:", d);
             // Case-insensitive check and ID check for robustness
-            const isAngryJano = (d.name && d.name.toLowerCase().includes('jano')) || (d.id === 'angry_jano');
+            const name = (d.name || "").toLowerCase().trim();
+            const id = (d.id || "").toLowerCase().trim();
+            const isAngryJano = name.includes('jano') || id === 'angry_jano';
             
             if (isAngryJano) {
                 console.log("Triggering Angry Jano custom death sound...");
                 playCustomSound('assets/death_jano.mp3', 0.82);
+            } else {
+                console.log(`Boss death mismatch for Jano: Name='${name}', ID='${id}'`);
             }
         });
 
