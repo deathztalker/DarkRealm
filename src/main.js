@@ -1145,6 +1145,14 @@ function checkInteractions(pos) {
             }
             const res = o.interact(player);
             if (res && res.type === 'LOOT') {
+                // Persist the state in the dungeon spawn data so it doesn't reset
+                if (o.id && dungeon.objectSpawns) {
+                    const spawn = dungeon.objectSpawns.find(s => s.id === o.id);
+                    if (spawn) {
+                        spawn.isOpen = true;
+                        spawn.icon = 'obj_chest_open';
+                    }
+                }
                 for (let i = 0; i < res.count; i++) {
                     const itm = loot.generate(zoneLevel);
                     droppedItems.push({ ...itm, x: o.x + (Math.random() - 0.5) * 20, y: o.y + (Math.random() - 0.5) * 20 });
@@ -1728,6 +1736,7 @@ function finishZoneLoad() {
         npcs = [];
         gameObjects = dungeon.objectSpawns ? dungeon.objectSpawns.map(s => {
             const obj = new GameObject(s.type, s.x, s.y, s.icon, s.id);
+            obj.isOpen = s.isOpen || false;
             if (s.type === 'shrine') obj.shrineType = s.shrineType;
             if (s.type === 'waypoint') obj.zone = s.zone;
             return obj;

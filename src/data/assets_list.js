@@ -37,7 +37,7 @@ export const ASSET_NAMES = [
     'npc_elder', 'npc_merchant', 'npc_villager', 'obj_chest', 'obj_chest_open',
     'npc_portrait_generic', 'npc_portrait_deckard_cain', 'npc_portrait_charsi', 
     'npc_portrait_akara', 'npc_portrait_kashya',
-    'obj_barrel', 'obj_urn', 'obj_shrine',
+    'obj_barrel', 'obj_urn', 'obj_shrine', 'obj_shrine_used', 'obj_debris',
     'item_book_skill_hd', 'item_staff_kings_hd', 'item_amulet_viper_hd', 
     'item_sword_hd', 'item_axe_hd', 'item_mace_hd', 'item_shield_hd', 
     'item_plate_mail_hd', 'item_great_helm_hd', 'item_war_hammer_hd'

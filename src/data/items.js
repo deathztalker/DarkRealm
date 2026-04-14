@@ -158,7 +158,7 @@ export const ITEM_BASES = {
     cow_portal: { name: 'Cow Portal Key', slot: 'none', type: 'material', icon: 'item_scroll_tp', size: [1, 1], price: 0, flavor: '"The seal of the Cow King."', identified: true },
 
     // === MATERIALS ===
-    horadric_fragment: { name: "Horadric Fragment", slot: 'none', type: 'material', icon: 'item_scroll', size: [1, 1], price: 200, flavor: '"A shard of a lost artifact, hums with ancient power."' },
+    horadric_fragment: { name: "Horadric Fragment", slot: 'none', type: 'material', icon: 'item_horadric_fragment', size: [1, 1], price: 200, flavor: '"A shard of a lost artifact, hums with ancient power."' },
     mephisto_soulstone: { name: "Mephisto's Soulstone", slot: 'none', type: 'material', icon: 'item_mephisto_soulstone', size: [1, 1], price: 0, flavor: '"The essence of the Lord of Hatred, waiting to be shattered."', identified: true },
     book_of_skill: { name: "Book of Skill", slot: 'none', type: 'potion', icon: 'item_book_skill_hd', size: [1, 1], price: 0, flavor: '"Read this to gain a permanent skill point."', identified: true },
     staff_of_kings: { name: "Staff of Kings", slot: 'none', type: 'material', icon: 'item_staff_kings_hd', size: [1, 3], price: 0, flavor: '"An ancient mahogany staff, part of the Horadric legend."', identified: true },

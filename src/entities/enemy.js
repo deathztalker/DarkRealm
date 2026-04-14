@@ -157,6 +157,7 @@ export class Enemy {
 
             this.icon = spawn.icon || bossSource.icon || base.icon;
             this.name = spawn.name || bossSource.name;
+            this.id = bossSource.id || this.id; // Preserve specific boss ID for event triggers
             const hpm = spawn.hpMult || bossSource.hpMult || 10;
             const dmgm = spawn.dmgMult || bossSource.dmgMult || 3;
             const xpm = spawn.xpMult || bossSource.xpMult || 20;
