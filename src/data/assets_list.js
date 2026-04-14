@@ -35,7 +35,10 @@ export const ASSET_NAMES = [
     'item_wand', 'item_wand_base', 'item_wand_bone', 'item_war_axe', 'item_war_boots', 
     'item_war_hammer', 'item_war_staff', 'item_wirts_leg', 'item_zweihander',
     'npc_elder', 'npc_merchant', 'npc_villager', 'obj_chest', 'obj_chest_open',
+    'npc_portrait_generic', 'npc_portrait_deckard_cain', 'npc_portrait_charsi', 
+    'npc_portrait_akara', 'npc_portrait_kashya',
+    'obj_barrel', 'obj_urn', 'obj_shrine',
     'item_book_skill_hd', 'item_staff_kings_hd', 'item_amulet_viper_hd', 
     'item_sword_hd', 'item_axe_hd', 'item_mace_hd', 'item_shield_hd', 
     'item_plate_mail_hd', 'item_great_helm_hd', 'item_war_hammer_hd'
-, 'env_sand_hd', 'obj_chest_hd_v2', 'env_stone_hd', 'env_grass_hd', 'env_snow_hd'];
+];

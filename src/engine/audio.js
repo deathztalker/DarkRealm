@@ -4,23 +4,38 @@ let ctx = null;
 const soundCache = new Map();
 
 async function loadSound(url) {
+    if (!ctx) return null;
     if (soundCache.has(url)) return soundCache.get(url);
     try {
+        console.log(`Fetching sound: ${url}`);
         const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
         const arrayBuffer = await response.arrayBuffer();
         const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
         soundCache.set(url, audioBuffer);
         return audioBuffer;
     } catch (e) {
         console.error(`Failed to load sound: ${url}`, e);
+        bus.emit('ui:error', { message: `Audio Load Fail: ${url}` });
         return null;
     }
 }
 
 export async function playCustomSound(url, volume = 0.4) {
-    if (!ctx) return;
+    if (!ctx) {
+        console.warn("AudioContext not initialized. Cannot play custom sound.");
+        return;
+    }
+    
+    // Resume context if suspended (Browser autoplay policy)
+    if (ctx.state === 'suspended') {
+        console.log("Resuming AudioContext...");
+        await ctx.resume();
+    }
+
     const buffer = await loadSound(url);
     if (!buffer) return;
+    
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     const gainNode = ctx.createGain();
@@ -28,6 +43,7 @@ export async function playCustomSound(url, volume = 0.4) {
     source.connect(gainNode);
     gainNode.connect(ctx.destination);
     source.start(0);
+    console.log(`Playing custom sound: ${url}`);
 }
 
 export function initAudio() {

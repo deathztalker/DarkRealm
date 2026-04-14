@@ -220,7 +220,7 @@ export class Dungeon {
             for (let b = 0; b < numBreakables; b++) {
                 const bx = (room.x + 1 + Math.floor(Math.random() * (room.w - 2))) * this.tileSize;
                 const by = (room.y + 1 + Math.floor(Math.random() * (room.h - 2))) * this.tileSize;
-                this.objectSpawns.push({ type: 'breakable', x: bx, y: by, icon: 'obj_chest_hd_v2' });
+                this.objectSpawns.push({ type: 'breakable', x: bx, y: by, icon: 'obj_chest' });
             }
         }
 
@@ -1021,10 +1021,10 @@ export class Dungeon {
             catacombs: 'obj_barrel',
             desert: 'obj_urn',
             tomb: 'obj_urn',
-            jungle: 'obj_basket',
-            temple: 'obj_basket',
-            snow: 'obj_crate',
-            hell: 'obj_shard'
+            jungle: 'obj_barrel',
+            temple: 'obj_barrel',
+            snow: 'obj_barrel',
+            hell: 'obj_urn'
         };
 
         const icon = breakableTypes[theme] || 'obj_barrel';

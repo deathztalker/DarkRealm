@@ -1030,8 +1030,10 @@ function gameLoop(timestamp) {
 
     // --- Phase 20: Narrative Vision: Atmospheric Lighting Pass ---
     if (zoneLevel > 0 && player && renderer) {
-        const sx = (player.x - camera.x) * camera.zoom;
-        const sy = (player.y - camera.y) * camera.zoom;
+        // Use the camera's source of truth for screen positioning to avoid lag/shuffling
+        const screen = camera.toScreen(player.x, player.y - 15);
+        const sx = screen.x;
+        const sy = screen.y;
         // Base radius is now larger for better readability, plus player stats
         const baseRadius = 320 + (player.lightRadius || 0);
         const flicker = Math.sin(Date.now() / 150) * 8; // Softer, more atmospheric flicker
