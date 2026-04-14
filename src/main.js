@@ -1151,6 +1151,7 @@ function checkInteractions(pos) {
                     if (spawn) {
                         spawn.isOpen = true;
                         spawn.icon = 'obj_chest_open';
+                        o.icon = 'obj_chest_open'; // Update live instance icon
                     }
                 }
                 for (let i = 0; i < res.count; i++) {
