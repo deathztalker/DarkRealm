@@ -358,6 +358,13 @@ body {
 .btn-primary:hover:not(:disabled) {
   box-shadow: 0 0 30px rgba(200, 150, 42, 0.6);
   transform: translateY(-2px);
+  animation: enchantedGlow 1.5s infinite;
+}
+
+@keyframes enchantedGlow {
+  0% { box-shadow: 0 0 15px rgba(200, 150, 42, 0.4); }
+  50% { box-shadow: 0 0 35px rgba(200, 150, 42, 0.8), inset 0 0 10px rgba(255, 230, 0, 0.2); }
+  100% { box-shadow: 0 0 15px rgba(200, 150, 42, 0.4); }
 }
 
 .btn-primary:disabled {

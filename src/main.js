@@ -20,7 +20,7 @@ import { Pet } from './entities/pet.js';
 import { GameObject } from './entities/object.js';
 import { ASSET_NAMES } from './data/assets_list.js';
 import { initAudio, playLoot, playCastFire, playCastCold, playCastLightning, playCastPoison, playCastShadow, playDeathSfx, playZoneTransition, startAmbientDungeon, startAmbientBoss, stopAmbient } from './engine/audio.js';
-import { ITEM_BASES } from './data/items.js';
+import { ITEM_BASES, items } from './data/items.js';
 import { fx } from './engine/ParticleSystem.js';
 import { RUNEWORDS } from './data/runes.js';
 
@@ -578,17 +578,19 @@ function gameLoop(timestamp) {
 
     if (input) input.update();
 
-    // --- Phase 3 Wave 6: Atmospheric Weather Emitters ---
-    if (window.fx) {
+    // --- Phase 3.1: Atmospheric Weather System ---
+    if (window.fx && player) {
         const theme = window.currentTheme;
         if (theme === 'snow') {
-            window.fx.emitSnow(renderer.width, renderer.height);
+            window.fx.emitBlizzard(renderer.width, renderer.height);
         } else if (theme === 'desert') {
             window.fx.emitSand(renderer.width, renderer.height);
         } else if (theme === 'hell') {
             window.fx.emitEmbers(renderer.width, renderer.height);
-        } else if (theme === 'wilderness' && Math.random() < 0.3) {
+        } else if (theme === 'jungle' || theme === 'temple') {
             window.fx.emitRain(renderer.width, renderer.height);
+        } else if (theme === 'wilderness') {
+            window.fx.emitMist(renderer.width, renderer.height);
         }
     }
 
@@ -617,12 +619,7 @@ function gameLoop(timestamp) {
             player.mp = Math.min(player.maxMp, player.mp + mpRegen);
         }
 
-        // --- Phase 27: Atmospheric Biome Effects ---
-        if (window.currentTheme === 'snow') fx.emitSnow(renderer.width, renderer.height);
-        else if (window.currentTheme === 'jungle' || window.currentTheme === 'temple') fx.emitRain(renderer.width, renderer.height);
-        else if (window.currentTheme === 'desert') fx.emitSand(renderer.width, renderer.height);
-        else if (window.currentTheme === 'hell') fx.emitEmbers(renderer.width, renderer.height);
-        else if (window.currentTheme === 'wilderness') fx.emitMist(renderer.width, renderer.height);
+        // Moved to centralized Atmospheric Weather System block above
     }
     if (camera) {
         camera.w = renderer.width;
@@ -719,6 +716,7 @@ function gameLoop(timestamp) {
     }
 
     // Boss check
+    // Boss check
     const boss = enemies.find(e => e.type === 'boss');
     const hpBar = $('boss-hp-bar');
     if (boss && boss.hp > 0 && state === 'GAME') {
@@ -727,6 +725,18 @@ function gameLoop(timestamp) {
         $('boss-hp-fill').style.width = `${pct}%`;
         $('boss-hp-text').textContent = `${Math.ceil(pct)}%`;
         $('boss-name').textContent = boss.name || 'Act Boss';
+
+        // --- Phase 3.1: Boss Phase Triggers ---
+        if (pct < 50 && !boss._phase2Triggered) {
+            boss._phase2Triggered = true;
+            boss.moveSpeed *= 1.4;
+            boss.atkSpeed *= 1.3;
+            fx.shake(1000, 10);
+            fx.emitBurst(boss.x, boss.y, '#ff0000', 40, 4);
+            addCombatLog(`${boss.name} enters a FURY!`, 'log-crit');
+            // Subtle visual change (flag for renderer)
+            boss.isEnraged = true;
+        }
     } else {
         if (hpBar) hpBar.classList.add('hidden');
     }
@@ -875,6 +885,33 @@ function gameLoop(timestamp) {
     // --- Phase 29: World Time Overlay (Post-Objects) ---
     renderWorldOverlay(renderer.ctx, renderer.width, renderer.height);
 
+    // --- Phase 3.1: Dynamic Lighting & Vignette ---
+    function renderVignette(ctx, w, h, playerPos) {
+        ctx.save();
+        const screen = camera.toScreen(playerPos.x, playerPos.y);
+        const radius = 250;
+        
+        // Create the dark overlay
+        const gradient = ctx.createRadialGradient(screen.x, screen.y, 50, screen.x, screen.y, radius);
+        gradient.addColorStop(0, 'rgba(0,0,0,0)');
+        gradient.addColorStop(0.6, 'rgba(0,0,0,0.1)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0.7)');
+        
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, w, h);
+        
+        // Outer vignette corners (constant)
+        const cornerGrad = ctx.createRadialGradient(w/2, h/2, w/4, w/2, h/2, w);
+        cornerGrad.addColorStop(0, 'transparent');
+        cornerGrad.addColorStop(1, 'rgba(0,0,0,0.4)');
+        ctx.fillStyle = cornerGrad;
+        ctx.fillRect(0, 0, w, h);
+        
+        ctx.restore();
+    }
+    renderVignette(renderer.ctx, renderer.width, renderer.height, player);
+
     for (const g of droppedGold) {
         renderer.fillCircle(g.x, g.y, 4, '#ffd700');
         renderer.strokeCircle(g.x, g.y, 4, '#c8972a', 1);
@@ -947,6 +984,24 @@ function gameLoop(timestamp) {
             renderer.ctx.fill();
         }
         n.render(renderer, lastTime);
+    }
+
+    // --- Phase 3.1: Pulsing Interactive Objects ---
+    for (const obj of gameObjects) {
+        if (obj.type === 'shrine' || obj.type === 'waypoint' || obj.type === 'altar') {
+            const pulse = 0.4 + Math.sin(lastTime * 0.004) * 0.2;
+            const color = obj.type === 'shrine' ? 'rgba(0, 255, 255,' : 'rgba(255, 215, 0,';
+            renderer.ctx.save();
+            renderer.ctx.globalCompositeOperation = 'screen';
+            const radial = renderer.ctx.createRadialGradient(obj.x, obj.y, 4, obj.x, obj.y, 25);
+            radial.addColorStop(0, `${color} ${pulse})`);
+            radial.addColorStop(1, 'transparent');
+            renderer.ctx.fillStyle = radial;
+            renderer.ctx.beginPath();
+            renderer.ctx.arc(obj.x, obj.y, 25, 0, Math.PI * 2);
+            renderer.ctx.fill();
+            renderer.ctx.restore();
+        }
     }
     for (const obj of gameObjects) obj.render(renderer, lastTime);
 
@@ -4580,6 +4635,17 @@ function renderDialoguePicker(npc) {
     title.textContent = npc.name.toUpperCase();
     menu.appendChild(title);
 
+    // --- Phase 3.1: NPC Portrait Support ---
+    const portrait = document.createElement('div');
+    portrait.style.cssText = `
+        width: 100%; height: 120px; margin-bottom: 15px; 
+        background: url('assets/npc_portrait_${npc.id}.png'), url('assets/npc_portrait_generic.png');
+        background-size: cover; background-position: center;
+        border: 1px solid #4a3520; box-shadow: inset 0 0 10px #000;
+        mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+    `;
+    menu.appendChild(portrait);
+
     const options = [
         { label: 'Trade', action: () => { openShop(); menu.remove(); activeDialogueNpc = null; } },
         {
@@ -6157,6 +6223,21 @@ function renderWorldOverlay(ctx, w, h) {
         alpha = (1 - (hour - 4) / 2) * 0.45;
         color = '80, 50, 20';
     }
+
+    // --- Phase 3.1: Act-Based Tinting ---
+    ctx.save();
+    const theme = window.currentTheme;
+    if (theme === 'desert') {
+        ctx.fillStyle = 'rgba(180, 120, 40, 0.08)'; // Sepia heat
+        ctx.fillRect(0, 0, w, h);
+    } else if (theme === 'hell') {
+        ctx.fillStyle = 'rgba(255, 40, 0, 0.05)'; // Hellfire glow
+        ctx.fillRect(0, 0, w, h);
+    } else if (theme === 'snow') {
+        ctx.fillStyle = 'rgba(100, 200, 255, 0.06)'; // Frozen chill
+        ctx.fillRect(0, 0, w, h);
+    }
+    ctx.restore();
 
     if (alpha > 0) {
         ctx.save();

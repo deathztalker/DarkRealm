@@ -25,6 +25,7 @@ export class Dungeon {
         this.lootSpawns = [];
         this.npcSpawns = [];
         this.objectSpawns = [];
+        this.debris = []; // Decorative non-interactive objects
         this.playerStart = { x: 0, y: 0 };
         this.exitPos = { x: 0, y: 0 };
     }
@@ -46,7 +47,11 @@ export class Dungeon {
         if (!isOrganicTheme) {
             // BSP split
             const root = { x: 1, y: 1, w: this.width - 2, h: this.height - 2 };
-            const leaves = this._bsp(root, 0, 6);
+            let iterations = 6;
+            if (theme === 'desert') iterations = 4; // Fewer, larger rooms
+            if (theme === 'hell') iterations = 7; // More, smaller fractured rooms
+            
+            const leaves = this._bsp(root, 0, iterations);
 
             // Carve rooms in leaves
             for (const leaf of leaves) {
@@ -218,6 +223,9 @@ export class Dungeon {
                 this.objectSpawns.push({ type: 'breakable', x: bx, y: by, icon: 'obj_chest' });
             }
         }
+
+        this._populate(zoneLevel, theme);
+        this._scatterDebris(theme);
 
         return this;
     }
@@ -600,86 +608,160 @@ export class Dungeon {
             icon: 'obj_chest' 
         });
 
-        this.objectSpawns.push({ 
-            id: 'cube',
-            type: 'cube', 
-            name: 'Cubo Horádrico',
-            x: (cx - 6) * this.tileSize, 
-            y: (cy + 2) * this.tileSize, 
-            icon: 'obj_chest' 
-        });
+        // Cube (Only in Act II Hall of the Dead / Oasis area - represented here by specific level)
+        if (zoneLevel === 8) {
+            this.objectSpawns.push({ 
+                id: 'cube',
+                type: 'cube', 
+                name: 'Horadric Cube',
+                x: (cx - 8) * this.tileSize, 
+                y: (cy + 2) * this.tileSize, 
+                icon: 'obj_chest' 
+            });
+        }
+
+        this._populate(zoneLevel, theme);
+        this._scatterDebris(theme);
 
         return this;
     }
 
-    generateBossRoom(theme, zoneLevel = 5) {
-        this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
-        this.rooms = [];
-        this.enemySpawns = [];
-        this.lootSpawns = [];
-        this.npcSpawns = [];
-        this.objectSpawns = [];
+    _scatterDebris(theme) {
+        this.debris = [];
+        const debrisCount = (this.width * this.height) / 25;
+        // Map debris to existing item placeholders for maximum stability
+        const types = ['item_skull', 'item_rune_el', 'item_scroll', 'item_wand_bone'];
+        if (theme === 'desert') types.push('item_cactus', 'item_wand_bone');
+        else if (theme === 'hell') types.push('item_skull', 'item_rune_ral');
+        else if (theme === 'snow') types.push('item_sapphire', 'item_potion_rejuv');
 
-        const cx = Math.floor(this.width / 2);
-        const cy = Math.floor(this.height / 2);
-        const radius = 15;
+        for (let i = 0; i < debrisCount; i++) {
+            const x = Math.floor(Math.random() * this.width);
+            const y = Math.floor(Math.random() * this.height);
+            if (this.grid[y][x] === TILE.FLOOR || this.grid[y][x] === TILE.PATH || this.grid[y][x] === TILE.GRASS || this.grid[y][x] === TILE.SAND || this.grid[y][x] === TILE.SNOW) {
+                this.debris.push({
+                    x: x * this.tileSize + (Math.random() - 0.5) * 8,
+                    y: y * this.tileSize + (Math.random() - 0.5) * 8,
+                    icon: types[Math.floor(Math.random() * types.length)],
+                    rot: Math.random() * Math.PI * 2,
+                    scale: 0.4 + Math.random() * 0.4
+                });
+            }
+        }
+    }
 
-        // Circular-ish Arena
-        for (let y = cy - radius; y <= cy + radius; y++) {
-            for (let x = cx - radius; x <= cx + radius; x++) {
-                if ((x - cx)**2 + (y - cy)**2 <= radius**2) {
-                    this.grid[y][x] = theme === 'catacombs' ? TILE.PATH : TILE.FLOOR;
+        generateBossRoom(theme, zoneLevel = 5) {
+            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
+            this.rooms = [];
+            this.enemySpawns = [];
+            this.lootSpawns = [];
+            this.npcSpawns = [];
+            this.objectSpawns = [];
+            this.debris = [];
+
+            const cx = Math.floor(this.width / 2);
+            const cy = Math.floor(this.height / 2);
+            const radius = 15;
+
+            // Circular-ish Arena
+            for (let y = cy - radius; y <= cy + radius; y++) {
+                for (let x = cx - radius; x <= cx + radius; x++) {
+                    if ((x - cx)**2 + (y - cy)**2 <= radius**2) {
+                        this.grid[y][x] = theme === 'catacombs' ? TILE.PATH : TILE.FLOOR;
+                    }
                 }
             }
-        }
 
-        // Entrance hallway
-        for (let y = cy + radius; y <= cy + radius + 10; y++) {
-            for (let x = cx - 2; x <= cx + 2; x++) {
-                this.grid[y][x] = TILE.PATH;
+            // Entrance hallway
+            for (let y = cy + radius; y <= cy + radius + 10; y++) {
+                for (let x = cx - 2; x <= cx + 2; x++) {
+                    this.grid[y][x] = TILE.PATH;
+                }
             }
+
+            this.playerStart = { x: cx * this.tileSize, y: (cy + radius + 8) * this.tileSize };
+
+            // --- Premium Redesign: Pillars & Hazards ---
+            if (theme === 'catacombs' || theme === 'cathedral') {
+                // Add concentric stone pillars for cover
+                for (let i = 0; i < 4; i++) {
+                    const ang = (i / 4) * Math.PI * 2;
+                    const px = Math.round(cx + Math.cos(ang) * 8);
+                    const py = Math.round(cy + Math.sin(ang) * 8);
+                    this.grid[py][px] = TILE.WALL;
+                    this.grid[py+1][px] = TILE.WALL;
+                }
+            } else if (theme === 'hell') {
+                // Add LAVA pools and obsidian pillars
+                for (let i = 0; i < 6; i++) {
+                    const ang = (i / 6) * Math.PI * 2;
+                    const px = Math.round(cx + Math.cos(ang) * 10);
+                    const py = Math.round(cy + Math.sin(ang) * 10);
+                    this.grid[py][px] = TILE.LAVA;
+                    // Periodic obsidian spikes (WALL)
+                    if (i % 2 === 0) this.grid[py-1][px-1] = TILE.WALL;
+                }
+            } else if (theme === 'jungle' || theme === 'temple') {
+                // Water pools and ancient trees
+                for (let i = 0; i < 4; i++) {
+                    const ang = (i / 4) * Math.PI * 2 + 0.5;
+                    const px = Math.round(cx + Math.cos(ang) * 7);
+                    const py = Math.round(cy + Math.sin(ang) * 7);
+                    this.grid[py][px] = TILE.WATER;
+                    this.grid[py][px+1] = TILE.WATER;
+                    if (Math.random() < 0.5) this.grid[py-2][px] = TILE.TREE;
+                }
+            } else if (theme === 'desert') {
+                // Sand dunes and bone pillars
+                for (let i = 0; i < 5; i++) {
+                    const ang = (i / 5) * Math.PI * 2;
+                    const px = Math.round(cx + Math.cos(ang) * 9);
+                    const py = Math.round(cy + Math.sin(ang) * 9);
+                    this.grid[py][px] = TILE.CACTUS;
+                    if (i % 2 === 1) this.grid[py][px-1] = TILE.WALL;
+                }
+            }
+
+            // Boss Selection based on level
+            let bossName = "Blood Raven";
+            let bossIcon = "enemy_ghost";
+            let hpMult = 2.0;
+            let isAndariel = false;
+            let isDuriel = false;
+            let isMephisto = false;
+            let isDiablo = false;
+            let isBaal = false;
+            let isUber = false;
+
+            if (zoneLevel === 5) { bossName = "Andariel"; bossIcon = "enemy_demon"; hpMult = 4.0; isAndariel = true; }
+            else if (zoneLevel === 10) { bossName = "Duriel"; bossIcon = "enemy_demon"; hpMult = 6.0; isDuriel = true; }
+            else if (zoneLevel === 15) { bossName = "Mephisto"; bossIcon = "enemy_skeleton"; hpMult = 8.0; isMephisto = true; }
+            else if (zoneLevel === 20) { bossName = "Diablo"; bossIcon = "enemy_demon"; hpMult = 12.0; isDiablo = true; }
+            else if (zoneLevel === 25) { bossName = "Baal"; bossIcon = "enemy_demon"; hpMult = 15.0; isBaal = true; }
+            else if (zoneLevel === 100) { bossName = "Uber Diablo"; bossIcon = "enemy_demon"; hpMult = 50.0; isUber = true; }
+
+            // Boss Spawn in center
+            this.enemySpawns.push({
+                x: cx * this.tileSize,
+                y: cy * this.tileSize,
+                type: 'boss',
+                level: zoneLevel,
+                name: bossName,
+                icon: bossIcon,
+                hpMult: hpMult,
+                dmgMult: 2.0 + (zoneLevel / 20),
+                isAndariel, isDuriel, isMephisto, isDiablo, isBaal, isUber,
+                isShenk: zoneLevel === 22,
+                isFrozenstein: zoneLevel === 23
+            });
+
+            // The exit is unreachable until the boss dies (handled in main.js)
+            this.exitPos = { x: -1000, y: -1000 };
+            
+            this._scatterDebris(theme);
+
+            return this;
         }
-
-        this.playerStart = { x: cx * this.tileSize, y: (cy + radius + 8) * this.tileSize };
-
-        // Boss Selection based on level
-        let bossName = "Blood Raven";
-        let bossIcon = "enemy_ghost";
-        let hpMult = 2.0;
-        let isAndariel = false;
-        let isDuriel = false;
-        let isMephisto = false;
-        let isDiablo = false;
-        let isBaal = false;
-        let isUber = false;
-
-        if (zoneLevel === 5) { bossName = "Andariel"; bossIcon = "enemy_demon"; hpMult = 4.0; isAndariel = true; }
-        else if (zoneLevel === 10) { bossName = "Duriel"; bossIcon = "enemy_demon"; hpMult = 6.0; isDuriel = true; }
-        else if (zoneLevel === 15) { bossName = "Mephisto"; bossIcon = "enemy_skeleton"; hpMult = 8.0; isMephisto = true; }
-        else if (zoneLevel === 20) { bossName = "Diablo"; bossIcon = "enemy_demon"; hpMult = 12.0; isDiablo = true; }
-        else if (zoneLevel === 25) { bossName = "Baal"; bossIcon = "enemy_demon"; hpMult = 15.0; isBaal = true; }
-        else if (zoneLevel === 100) { bossName = "Uber Diablo"; bossIcon = "enemy_demon"; hpMult = 50.0; isUber = true; }
-
-        // Boss Spawn in center
-        this.enemySpawns.push({
-            x: cx * this.tileSize,
-            y: cy * this.tileSize,
-            type: 'boss',
-            level: zoneLevel,
-            name: bossName,
-            icon: bossIcon,
-            hpMult: hpMult,
-            dmgMult: 2.0 + (zoneLevel / 20),
-            isAndariel, isDuriel, isMephisto, isDiablo, isBaal, isUber,
-            isShenk: zoneLevel === 22,
-            isFrozenstein: zoneLevel === 23
-        });
-
-        // The exit is unreachable until the boss dies (handled in main.js)
-        this.exitPos = { x: -1000, y: -1000 };
-
-        return this;
-    }
     _bsp(node, depth, maxDepth) {
         if (depth >= maxDepth || node.w < 12 || node.h < 12) return [node];
         const horizontal = node.h > node.w ? true : node.w > node.h ? false : Math.random() < 0.5;

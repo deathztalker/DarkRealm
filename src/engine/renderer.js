@@ -137,11 +137,17 @@ export class Renderer {
     }
 
     /** Draw a tile (exactly at tile size, for backgrounds) */
-    drawTile(spriteName, x, y, size) {
-        const img = Assets.get(spriteName);
-        if (img && img.complete && img.naturalWidth > 0) {
-            this.ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
-        }
+    drawTile(name, x, y, size) {
+        const img = Assets.get(name);
+        if (!img || !img.complete || img.naturalWidth === 0) return;
+        
+        // --- Phase 3.1: Grid Breakup (Subtle Jitter) ---
+        // Reduced to 1px for subtle organic feel
+        const seed = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+        const jitterX = (seed % 1) * 1.0;
+        const jitterY = ((seed * 10) % 1) * 1.0;
+        
+        this.ctx.drawImage(img, x + jitterX - size / 2, y + jitterY - size / 2, size, size);
     }
 
     // Draw frame from Spritesheet

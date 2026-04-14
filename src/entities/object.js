@@ -1,6 +1,7 @@
 /**
  * GameObject Class — Interactive world objects like chests, shrines, portals
  */
+import { fx } from '../engine/ParticleSystem.js';
 export class GameObject {
     constructor(type, x, y, icon, id = null) {
         this.type = type; // chest, door, portal, shrine, hellforge, ancients_altar
@@ -19,7 +20,11 @@ export class GameObject {
             return { type: 'LOOT', count: 2 + Math.floor(Math.random() * 3) };
         } else if (this.type === 'breakable' && !this.isOpen) {
             this.isOpen = true;
-            this.icon = 'obj_chest_open'; // Placeholder for destroyed state
+            this.icon = 'obj_debris'; // New transparent or debris icon
+            if (window.fx) {
+                window.fx.emitDebris(this.x, this.y, '#8a7a60', 12);
+                window.fx.shake(200, 2);
+            }
             return { type: 'BREAKABLE' };
         } else if (this.type === 'portal') {
             return { type: 'PORTAL', targetZone: this.targetZone };

@@ -306,6 +306,25 @@ export class ParticleSystem {
         }
     }
 
+    emitBlizzard(width, height) {
+        // High density snow with horizontal wind
+        for (let i = 0; i < 4; i++) {
+            const px = Math.random() * (width + 200) - 100;
+            const py = -20;
+            const p = new Particle(px, py, 3 + Math.random() * 5, 2 + Math.random() * 3, 6000, '#fff', 1 + Math.random() * 2);
+            p.shape = 'snowflake';
+            p.rotationSpeed = (Math.random() - 0.5) * 0.1;
+            this.particles.push(p);
+        }
+        // Swirling frost mist
+        if (Math.random() < 0.2) {
+            const mx = Math.random() * width;
+            const my = Math.random() * height;
+            const mist = new Particle(mx, my, 2 + Math.random() * 2, (Math.random() - 0.5) * 0.5, 4000, 'rgba(230, 245, 255, 0.1)', 30 + Math.random() * 40);
+            this.particles.push(mist);
+        }
+    }
+
     emitSand(width, height) {
         for (let i = 0; i < 2; i++) {
             const px = -20;
@@ -321,6 +340,18 @@ export class ParticleSystem {
             const py = height + 20;
             const p = new Particle(px, py, (Math.random() - 0.5) * 1, -(1 + Math.random() * 1.5), 3000, '#ff4500', 1.5);
             p.gravity = -0.01;
+            this.particles.push(p);
+        }
+    }
+
+    emitDebris(x, y, color = '#8a7a60', count = 8) {
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const s = 1 + Math.random() * 3;
+            const p = new Particle(x, y, Math.cos(angle) * s, Math.sin(angle) * s, 600, color, 1 + Math.random() * 2);
+            p.gravity = 0.15;
+            p.rotationSpeed = (Math.random() - 0.5) * 0.2;
+            p.shape = 'spark'; // Use spark as splinter
             this.particles.push(p);
         }
     }
