@@ -1035,8 +1035,8 @@ function gameLoop(timestamp) {
         const sx = screen.x;
         const sy = screen.y;
         
-        // Base radius and flicker
-        const baseRadius = (320 + (player.lightRadius || 0));
+        // Base radius and flicker (Tightened for a distinct circle effect)
+        const baseRadius = (150 + (player.lightRadius || 0));
         const flicker = Math.sin(Date.now() / 150) * 8; 
 
         let ambient = 'rgba(0, 0, 0, 0.85)'; // Default
@@ -2775,7 +2775,7 @@ function renderMinimap() {
                 ctx.fillStyle = '#30ccff';
                 ctx.beginPath(); ctx.arc(obx, oby, 3, 0, Math.PI * 2); ctx.fill();
             } else if (obj.type === 'stairs_down') {
-                ctx.fillStyle = '#ff00ff'; // Bright purple for exit
+                ctx.fillStyle = '#ffd700'; // Gold for exit
                 ctx.beginPath();
                 ctx.moveTo(obx, oby - 4); ctx.lineTo(obx + 4, oby + 2); ctx.lineTo(obx - 4, oby + 2);
                 ctx.fill();
