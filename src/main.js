@@ -20,7 +20,7 @@ import { Pet } from './entities/pet.js';
 import { GameObject } from './entities/object.js';
 import { ASSET_NAMES } from './data/assets_list.js';
 import { initAudio, playLoot, playCastFire, playCastCold, playCastLightning, playCastPoison, playCastShadow, playDeathSfx, playZoneTransition, startAmbientDungeon, startAmbientBoss, stopAmbient } from './engine/audio.js';
-import { ITEM_BASES as items } from './data/items.js';
+import { ITEM_BASES } from './data/items.js';
 import { fx } from './engine/ParticleSystem.js';
 import { RUNEWORDS } from './data/runes.js';
 
@@ -1335,9 +1335,9 @@ function checkDeaths() {
             } else if (e.isColdworm) {
                 droppedItems.push({ ...ITEM_BASES.viper_amulet, id: 'viper_amulet', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' });
             } else if (e.isSarina) {
-                droppedItems.push({ id: 'khalim_heart', name: "Khalim's Heart", rarity: 'unique', icon: 'item_heart', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' });
+                droppedItems.push({ id: 'khalim_heart', name: "Khalim's Heart", rarity: 'unique', icon: 'item_charm_small', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' });
             } else if (e.isCouncil) {
-                droppedItems.push({ id: 'khalim_brain', name: "Khalim's Brain", rarity: 'unique', icon: 'item_brain', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' });
+                droppedItems.push({ id: 'khalim_brain', name: "Khalim's Brain", rarity: 'unique', icon: 'item_charm_large', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' });
             } else if (e.isShenk) {
                 addCombatLog("Shenk the Overseer: 'BAAL SHALL... REWARD... ME...'", 'log-dmg');
             } else if (e.isHephaisto) {
@@ -1345,7 +1345,7 @@ function checkDeaths() {
                 const hammer = loot.generate(zoneLevel, 'unique');
                 hammer.baseId = 'hellforge_hammer';
                 hammer.name = "Hellforge Hammer";
-                hammer.icon = 'item_hammer_war';
+                hammer.icon = 'item_war_hammer_hd';
                 hammer.identified = true;
                 hammer.x = e.x; hammer.y = e.y;
                 droppedItems.push(hammer);
@@ -1355,7 +1355,7 @@ function checkDeaths() {
                 const stone = loot.generate(zoneLevel, 'unique');
                 stone.baseId = 'mephisto_soulstone';
                 stone.name = "Mephisto's Soulstone";
-                stone.icon = 'item_gem_skull';
+                stone.icon = 'item_mephisto_soulstone';
                 stone.identified = true;
                 stone.x = e.x + 10; stone.y = e.y + 10;
                 droppedItems.push(stone);
@@ -1370,7 +1370,7 @@ function checkDeaths() {
                     id: 'horadric_fragment',
                     name: 'Horadric Fragment',
                     rarity: 'magic',
-                    icon: 'item_scroll_blue',
+                    icon: 'item_horadric_fragment',
                     x: e.x + (Math.random() - 0.5) * 30,
                     y: e.y + (Math.random() - 0.5) * 30
                 };

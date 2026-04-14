@@ -32,15 +32,15 @@ export const SLOT_DISPLAY = {
 export const ITEM_BASES = {
     // === WEAPONS ===
     // Swords
-    short_sword: { name: 'Short Sword', slot: SLOT.MAINHAND, type: 'sword', icon: 'item_short_sword', minDmg: 3, maxDmg: 9, atkSpd: 1.0, req: { str: 5 }, size: [1, 3] },
-    long_sword: { name: 'Long Sword', slot: SLOT.MAINHAND, type: 'sword', icon: 'item_long_sword', minDmg: 6, maxDmg: 16, atkSpd: 0.9, req: { str: 18 }, size: [1, 3] },
-    zweihander: { name: 'Zweihänder', slot: SLOT.MAINHAND, type: 'sword', icon: 'item_zweihander', minDmg: 14, maxDmg: 32, atkSpd: 0.7, req: { str: 45 }, size: [1, 3], twoHanded: true },
+    short_sword: { name: 'Short Sword', slot: SLOT.MAINHAND, type: 'sword', icon: 'item_sword_hd', minDmg: 3, maxDmg: 9, atkSpd: 1.0, req: { str: 5 }, size: [1, 3] },
+    long_sword: { name: 'Long Sword', slot: SLOT.MAINHAND, type: 'sword', icon: 'item_sword_hd', minDmg: 6, maxDmg: 16, atkSpd: 0.9, req: { str: 18 }, size: [1, 3] },
+    zweihander: { name: 'Zweihänder', slot: SLOT.MAINHAND, type: 'sword', icon: 'item_sword_hd', minDmg: 14, maxDmg: 32, atkSpd: 0.7, req: { str: 45 }, size: [1, 3], twoHanded: true },
     // Axes
-    hand_axe: { name: 'Hand Axe', slot: SLOT.MAINHAND, type: 'axe', icon: 'item_hand_axe', minDmg: 4, maxDmg: 11, atkSpd: 1.0, req: { str: 5 }, size: [1, 2] },
-    war_axe: { name: 'War Axe', slot: SLOT.MAINHAND, type: 'axe', icon: 'item_war_axe', minDmg: 10, maxDmg: 22, atkSpd: 0.85, req: { str: 32 }, size: [1, 3] },
+    hand_axe: { name: 'Hand Axe', slot: SLOT.MAINHAND, type: 'axe', icon: 'item_axe_hd', minDmg: 4, maxDmg: 11, atkSpd: 1.0, req: { str: 5 }, size: [1, 2] },
+    war_axe: { name: 'War Axe', slot: SLOT.MAINHAND, type: 'axe', icon: 'item_axe_hd', minDmg: 10, maxDmg: 22, atkSpd: 0.85, req: { str: 32 }, size: [1, 3] },
     // Maces
-    mace: { name: 'Mace', slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace', minDmg: 5, maxDmg: 13, atkSpd: 0.95, req: { str: 8 }, size: [1, 2] },
-    war_hammer: { name: 'War Hammer', slot: SLOT.MAINHAND, type: 'mace', icon: 'item_war_hammer', minDmg: 12, maxDmg: 28, atkSpd: 0.75, req: { str: 50 }, size: [1, 3], twoHanded: true },
+    mace: { name: 'Mace', slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_hd', minDmg: 5, maxDmg: 13, atkSpd: 0.95, req: { str: 8 }, size: [1, 2] },
+    war_hammer: { name: 'War Hammer', slot: SLOT.MAINHAND, type: 'mace', icon: 'item_war_hammer_hd', minDmg: 12, maxDmg: 28, atkSpd: 0.75, req: { str: 50 }, size: [1, 3], twoHanded: true },
     // Staves
     short_staff: { name: 'Short Staff', slot: SLOT.MAINHAND, type: 'staff', icon: 'item_short_staff', minDmg: 2, maxDmg: 8, atkSpd: 1.1, req: { int: 5 }, size: [1, 3], twoHanded: true, manaBonus: 20 },
     war_staff: { name: 'War Staff', slot: SLOT.MAINHAND, type: 'staff', icon: 'item_war_staff', minDmg: 5, maxDmg: 14, atkSpd: 0.95, req: { int: 25 }, size: [1, 3], twoHanded: true, manaBonus: 40 },
@@ -63,12 +63,12 @@ export const ITEM_BASES = {
     // === ARMOR ===
     // Helmets
     leather_cap: { name: 'Leather Cap', slot: SLOT.HEAD, type: 'helm', icon: 'item_leather_cap', armor: 4, req: {}, size: [2, 2], sockets: 0 },
-    great_helm: { name: 'Great Helm', slot: SLOT.HEAD, type: 'helm', icon: 'item_great_helm', armor: 18, req: { str: 35 }, size: [2, 2], sockets: 2 },
+    great_helm: { name: 'Great Helm', slot: SLOT.HEAD, type: 'helm', icon: 'item_great_helm_hd', armor: 18, req: { str: 35 }, size: [2, 2], sockets: 2 },
     circlet: { name: 'Circlet', slot: SLOT.HEAD, type: 'helm', icon: 'item_circlet', armor: 8, req: { int: 15 }, size: [2, 2], sockets: 1, manaBonus: 15 },
     // Chestpieces
     leather_armor: { name: 'Leather Armor', slot: SLOT.CHEST, type: 'armor', icon: 'item_leather_armor', armor: 12, req: { str: 5 }, size: [2, 3], sockets: 1 },
     chain_mail: { name: 'Chain Mail', slot: SLOT.CHEST, type: 'armor', icon: 'item_chain_mail', armor: 28, req: { str: 30 }, size: [2, 3], sockets: 2 },
-    plate_mail: { name: 'Plate Mail', slot: SLOT.CHEST, type: 'armor', icon: 'item_plate_mail', armor: 52, req: { str: 55 }, size: [2, 3], sockets: 3 },
+    plate_mail: { name: 'Plate Mail', slot: SLOT.CHEST, type: 'armor', icon: 'item_plate_mail_hd', armor: 52, req: { str: 55 }, size: [2, 3], sockets: 3 },
     robe: { name: 'Robe', slot: SLOT.CHEST, type: 'armor', icon: 'item_robe', armor: 6, req: { int: 5 }, size: [2, 3], sockets: 2, manaBonus: 25 },
     // Gloves
     leather_gloves: { name: 'Leather Gloves', slot: SLOT.GLOVES, type: 'gloves', icon: 'item_leather_gloves', armor: 3, req: {}, size: [2, 2] },
@@ -79,9 +79,9 @@ export const ITEM_BASES = {
     // Belt
     leather_belt: { name: 'Leather Belt', slot: SLOT.BELT, type: 'belt', icon: 'item_belt', armor: 2, req: {}, size: [2, 1] },
     // Shields / Offhand
-    buckler: { name: 'Buckler', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_buckler', block: 12, armor: 8, req: { str: 5 }, size: [2, 2] },
-    bone_shield: { name: 'Bone Shield', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield', block: 20, armor: 14, req: { str: 25 }, size: [2, 2] },
-    tower_shield: { name: 'Tower Shield', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_tower_shield', block: 28, armor: 22, req: { str: 45 }, size: [2, 3] },
+    buckler: { name: 'Buckler', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield_hd', block: 12, armor: 8, req: { str: 5 }, size: [2, 2] },
+    bone_shield: { name: 'Bone Shield', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield_hd', block: 20, armor: 14, req: { str: 25 }, size: [2, 2] },
+    tower_shield: { name: 'Tower Shield', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield_hd', block: 28, armor: 22, req: { str: 45 }, size: [2, 3] },
     source: { name: 'Tome', slot: SLOT.OFFHAND, type: 'source', icon: 'item_source', armor: 2, req: { int: 15 }, size: [1, 2], manaBonus: 40 },
     // Jewelry
     ring: { name: 'Ring', slot: SLOT.RING1, type: 'ring', icon: 'item_ring', size: [1, 1] },
@@ -148,8 +148,8 @@ export const ITEM_BASES = {
     rune_lo: { name: 'Lo Rune', slot: 'none', type: 'gem', icon: 'item_rune_lo', size: [1, 1], price: 600, socketEffect: { weapon: { stat: 'critChance', value: 20 }, armor: { stat: 'maxLightRes', value: 5 }, shield: { stat: 'maxLightRes', value: 5 } } },
     rune_sur: { name: 'Sur Rune', slot: 'none', type: 'gem', icon: 'item_rune_sur', size: [1, 1], price: 700, socketEffect: { weapon: { stat: 'monsterBlind', value: 20 }, armor: { stat: 'pctMP', value: 5 }, shield: { stat: 'flatMP', value: 50 } } },
     rune_ber: { name: 'Ber Rune', slot: 'none', type: 'gem', icon: 'item_rune_ber', size: [1, 1], price: 800, socketEffect: { weapon: { stat: 'crushingBlow', value: 20 }, armor: { stat: 'pctDmgReduce', value: 8 }, shield: { stat: 'pctDmgReduce', value: 8 } } },
-    rune_jah: { name: 'Jah Rune', slot: 'none', type: 'gem', icon: 'item_rune_jah', size: [1, 1], price: 900, socketEffect: { weapon: { stat: 'ignoreDefense', value: 1 }, armor: { stat: 'pctHP', value: 5 }, shield: { stat: 'flatHP', value: 50 } } },
-    rune_cham: { name: 'Cham Rune', slot: 'none', type: 'gem', icon: 'item_rune_cham', size: [1, 1], price: 1000, socketEffect: { weapon: { stat: 'monsterFreeze', value: 3 }, armor: { stat: 'cannotBeFrozen', value: 1 }, shield: { stat: 'cannotBeFrozen', value: 1 } } },
+    rune_jah: { name: 'Jah Rune', slot: 'none', type: 'gem', icon: 'item_rune_zod', size: [1, 1], price: 900, socketEffect: { weapon: { stat: 'ignoreDefense', value: 1 }, armor: { stat: 'pctHP', value: 5 }, shield: { stat: 'flatHP', value: 50 } } },
+    rune_cham: { name: 'Cham Rune', slot: 'none', type: 'gem', icon: 'item_rune_zod', size: [1, 1], price: 1000, socketEffect: { weapon: { stat: 'monsterFreeze', value: 3 }, armor: { stat: 'cannotBeFrozen', value: 1 }, shield: { stat: 'cannotBeFrozen', value: 1 } } },
     rune_zod: { name: 'Zod Rune', slot: 'none', type: 'gem', icon: 'item_rune_zod', size: [1, 1], price: 1000, socketEffect: { weapon: { stat: 'indestructible', value: 1 }, armor: { stat: 'indestructible', value: 1 }, shield: { stat: 'indestructible', value: 1 } } },
 
     // === QUEST ITEMS ===
@@ -160,11 +160,11 @@ export const ITEM_BASES = {
     // === MATERIALS ===
     horadric_fragment: { name: "Horadric Fragment", slot: 'none', type: 'material', icon: 'item_horadric_fragment', size: [1, 1], price: 200, flavor: '"A shard of a lost artifact, hums with ancient power."' },
     mephisto_soulstone: { name: "Mephisto's Soulstone", slot: 'none', type: 'material', icon: 'item_mephisto_soulstone', size: [1, 1], price: 0, flavor: '"The essence of the Lord of Hatred, waiting to be shattered."', identified: true },
-    book_of_skill: { name: "Book of Skill", slot: 'none', type: 'potion', icon: 'item_tome_id', size: [1, 1], price: 0, flavor: '"Read this to gain a permanent skill point."', identified: true },
-    staff_of_kings: { name: "Staff of Kings", slot: 'none', type: 'material', icon: 'item_staff_war', size: [1, 3], price: 0, flavor: '"An ancient mahogany staff, part of the Horadric legend."', identified: true },
-    viper_amulet: { name: "Viper Amulet", slot: 'none', type: 'material', icon: 'item_amulet', size: [1, 1], price: 0, flavor: '"The Amulet of the Viper, glowing with forbidden magic."', identified: true },
-    horadric_staff: { name: "Horadric Staff", slot: SLOT.MAINHAND, type: 'staff', icon: 'item_staff', minDmg: 12, maxDmg: 30, atkSpd: 0.7, req: { str: 25 }, size: [1, 4], mods: [{ stat: 'allRes', value: 10 }, { stat: 'flatMP', value: 50 }], flavor: '"The powerful Horadric Staff, restored at last."', identified: true },
-    hellforge_hammer: { name: "Hellforge Hammer", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_war_hammer', minDmg: 8, maxDmg: 20, atkSpd: 0.8, req: { str: 20 }, size: [1, 3], flavor: '"Only this hammer can shatter a Prime Evil\'s soulstone."', identified: true },
+    book_of_skill: { name: "Book of Skill", slot: 'none', type: 'potion', icon: 'item_book_skill_hd', size: [1, 1], price: 0, flavor: '"Read this to gain a permanent skill point."', identified: true },
+    staff_of_kings: { name: "Staff of Kings", slot: 'none', type: 'material', icon: 'item_staff_kings_hd', size: [1, 3], price: 0, flavor: '"An ancient mahogany staff, part of the Horadric legend."', identified: true },
+    viper_amulet: { name: "Viper Amulet", slot: 'none', type: 'material', icon: 'item_amulet_viper_hd', size: [1, 1], price: 0, flavor: '"The Amulet of the Viper, glowing with forbidden magic."', identified: true },
+    horadric_staff: { name: "Horadric Staff", slot: SLOT.MAINHAND, type: 'staff', icon: 'item_staff_kings_hd', minDmg: 12, maxDmg: 30, atkSpd: 0.7, req: { str: 25 }, size: [1, 4], mods: [{ stat: 'allRes', value: 10 }, { stat: 'flatMP', value: 50 }], flavor: '"The powerful Horadric Staff, restored at last."', identified: true },
+    hellforge_hammer: { name: "Hellforge Hammer", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_war_hammer_hd', minDmg: 8, maxDmg: 20, atkSpd: 0.8, req: { str: 20 }, size: [1, 3], flavor: '"Only this hammer can shatter a Prime Evil\'s soulstone."', identified: true },
 };
 
 

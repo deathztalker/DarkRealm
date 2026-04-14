@@ -37,21 +37,22 @@ export const SETS = {
 
 export const SET_ITEMS = [
     // Sigon's
-    { id: 'sigon_visor', name: "Sigon's Visor", base: 'great_helm', rarity: RARITY.SET, icon: 'item_great_helm', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'flatMP', value: 30 }, { stat: 'flatArmor', value: 25 }] },
-    { id: 'sigon_shelter', name: "Sigon's Shelter", base: 'plate_mail', rarity: RARITY.SET, icon: 'item_plate_mail', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'lightRes', value: 30 }, { stat: 'flatArmor', value: 50 }] },
+    { id: 'sigon_visor', name: "Sigon's Visor", base: 'great_helm', rarity: RARITY.SET, icon: 'item_great_helm_hd', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'flatMP', value: 30 }, { stat: 'flatArmor', value: 25 }] },
+    { id: 'sigon_shelter', name: "Sigon's Shelter", base: 'plate_mail', rarity: RARITY.SET, icon: 'item_plate_mail_hd', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'lightRes', value: 30 }, { stat: 'flatArmor', value: 50 }] },
     { id: 'sigon_gage', name: "Sigon's Gage", base: 'gauntlets', rarity: RARITY.SET, icon: 'item_gauntlets', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'flatSTR', value: 10 }, { stat: 'pctIAS', value: 30 }] },
     { id: 'sigon_sabot', name: "Sigon's Sabot", base: 'war_boots', rarity: RARITY.SET, icon: 'item_war_boots', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'pctMoveSpeed', value: 20 }, { stat: 'coldRes', value: 40 }] },
     { id: 'sigon_wrap', name: "Sigon's Wrap", base: 'leather_belt', rarity: RARITY.SET, icon: 'item_belt', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'flatHP', value: 20 }, { stat: 'fireRes', value: 20 }] },
-    { id: 'sigon_guard', name: "Sigon's Guard", base: 'tower_shield', rarity: RARITY.SET, icon: 'item_tower_shield', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: '+allSkills', value: 1 }, { stat: 'blockChance', value: 20 }] },
+    { id: 'sigon_guard', name: "Sigon's Guard", base: 'tower_shield', rarity: RARITY.SET, icon: 'item_shield_hd', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: '+allSkills', value: 1 }, { stat: 'blockChance', value: 20 }] },
     // Death's
-    { id: 'deaths_touch', name: "Death's Touch", base: 'long_sword', rarity: RARITY.SET, icon: 'item_long_sword', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'lifeStealPct', value: 4 }, { stat: 'flatMaxDmg', value: 25 }] },
+    { id: 'deaths_touch', name: "Death's Touch", base: 'long_sword', rarity: RARITY.SET, icon: 'item_sword_hd', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'lifeStealPct', value: 4 }, { stat: 'flatMaxDmg', value: 25 }] },
+    // ... rest of Death's
     { id: 'deaths_hand', name: "Death's Hand", base: 'leather_gloves', rarity: RARITY.SET, icon: 'item_leather_gloves', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'poisRes', value: 50 }] },
     { id: 'deaths_guard', name: "Death's Guard", base: 'leather_belt', rarity: RARITY.SET, icon: 'item_belt', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'magicDmgReduce', value: 3 }] },
     // Milabrega's
-    { id: 'milabrega_orb', name: "Milabrega's Orb", base: 'buckler', rarity: RARITY.SET, icon: 'item_buckler', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'magicFind', value: 20 }] },
+    { id: 'milabrega_orb', name: "Milabrega's Orb", base: 'buckler', rarity: RARITY.SET, icon: 'item_shield_hd', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'magicFind', value: 20 }] },
     { id: 'milabrega_diadem', name: "Milabrega's Diadem", base: 'crown', rarity: RARITY.SET, icon: 'item_crown', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'flatMP', value: 15 }, { stat: 'flatHP', value: 15 }] },
     { id: 'milabrega_robe', name: "Milabrega's Robe", base: 'chain_mail', rarity: RARITY.SET, icon: 'item_chain_mail', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'flatDmgReduce', value: 2 }] },
-    { id: 'milabrega_rod', name: "Milabrega's Rod", base: 'war_hammer', rarity: RARITY.SET, icon: 'item_war_hammer', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'pctDmg', value: 50 }] }
+    { id: 'milabrega_rod', name: "Milabrega's Rod", base: 'war_hammer', rarity: RARITY.SET, icon: 'item_war_hammer_hd', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'pctDmg', value: 50 }] }
 ];
 
 // Unique item definitions (hand-crafted, fixed mods)
@@ -100,7 +101,7 @@ const UNIQUES = [
     },
     {
         id: 'enigma_robe', name: 'Enigma Robe', base: 'plate_mail', rarity: RARITY.UNIQUE,
-        icon: 'item_plate_mail', dropLvl: 65,
+        icon: 'item_plate_mail_hd', dropLvl: 65,
         mods: [
             { stat: '+allSkills', value: 2 },
             { stat: 'flatSTR', value: 45 },
@@ -123,7 +124,7 @@ const UNIQUES = [
     },
     {
         id: 'doombringer', name: 'Doombringer', base: 'long_sword', rarity: RARITY.UNIQUE,
-        icon: 'item_long_sword', dropLvl: 50,
+        icon: 'item_sword_hd', dropLvl: 50,
         mods: [
             { stat: 'pctDmg', value: 180 },
             { stat: 'lifeStealPct', value: 8 },
@@ -182,7 +183,7 @@ const UNIQUES = [
     // --- Unique Weapons ---
     {
         id: 'windforce', name: 'Windforce', base: 'war_bow', rarity: RARITY.UNIQUE,
-        icon: 'item_war_bow', dropLvl: 73,
+        icon: 'item_bow', dropLvl: 73,
         mods: [
             { stat: 'pctDmg', value: 250 },
             { stat: 'flatMaxDmg', value: 20 },
@@ -195,7 +196,7 @@ const UNIQUES = [
     // --- Unique Shields ---
     {
         id: 'herald_of_zakarum', name: 'Herald of Zakarum', base: 'tower_shield', rarity: RARITY.UNIQUE,
-        icon: 'item_shield_tower', dropLvl: 42,
+        icon: 'item_shield_hd', dropLvl: 42,
         mods: [
             { stat: '+classSkills:paladin', value: 2 },
             { stat: 'blockChance', value: 30 },
@@ -207,7 +208,7 @@ const UNIQUES = [
     },
     {
         id: 'stormshield', name: 'Stormshield', base: 'tower_shield', rarity: RARITY.UNIQUE,
-        icon: 'item_shield_tower', dropLvl: 73,
+        icon: 'item_shield_hd', dropLvl: 73,
         mods: [
             { stat: 'pctDmgReduce', value: 35 },
             { stat: 'blockChance', value: 35 },
@@ -220,7 +221,7 @@ const UNIQUES = [
     },
     {
         id: 'butchers_cleaver', name: 'Butcher\'s Cleaver', base: 'war_axe', rarity: RARITY.UNIQUE,
-        icon: 'item_axe_war', dropLvl: 10,
+        icon: 'item_axe_hd', dropLvl: 10,
         mods: [
             { stat: 'pctDmg', value: 80 },
             { stat: 'lifeStealPct', value: 10 },
@@ -231,7 +232,7 @@ const UNIQUES = [
     },
     {
         id: 'vampire_gaze', name: 'Vampire Gaze', base: 'great_helm', rarity: RARITY.UNIQUE,
-        icon: 'item_helm_great', dropLvl: 41,
+        icon: 'item_great_helm_hd', dropLvl: 41,
         mods: [
             { stat: 'lifeStealPct', value: 8 },
             { stat: 'manaStealPct', value: 8 },
@@ -242,7 +243,7 @@ const UNIQUES = [
     },
     {
         id: 'gore_rider', name: 'Gore Rider', base: 'war_boots', rarity: RARITY.UNIQUE,
-        icon: 'item_boots_war', dropLvl: 47,
+        icon: 'item_war_boots', dropLvl: 47,
         mods: [
             { stat: 'pctMoveSpeed', value: 30 },
             { stat: 'critChance', value: 15 },

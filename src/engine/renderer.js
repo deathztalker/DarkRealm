@@ -125,7 +125,7 @@ export class Renderer {
             drawY += Math.sin(time * 0.005) * 2;
         }
 
-        if (img && img.complete) {
+        if (img && img.complete && img.naturalWidth > 0) {
             if (filter) this.ctx.filter = filter;
             const drawSize = size * 2;
             this.ctx.drawImage(img, x - drawSize / 2, (drawY - 4) - drawSize / 2, drawSize, drawSize);
@@ -139,7 +139,7 @@ export class Renderer {
     /** Draw a tile (exactly at tile size, for backgrounds) */
     drawTile(spriteName, x, y, size) {
         const img = Assets.get(spriteName);
-        if (img && img.complete) {
+        if (img && img.complete && img.naturalWidth > 0) {
             this.ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
         }
     }
@@ -147,7 +147,7 @@ export class Renderer {
     // Draw frame from Spritesheet
     drawAnim(spriteName, x, y, size, state, dir, time, filter = null, equipment = null, hitFlash = 0) {
         const img = Assets.get(spriteName);
-        if (!img || !img.complete || img.width <= 64 || img.width === img.height) {
+        if (!img || !img.complete || img.naturalWidth === 0 || img.width <= 64 || img.width === img.height) {
             this.drawSprite(spriteName, x, y, size, state === 'idle', time, filter);
             
             // Dynamic Equipment Layering — Canvas-drawn overlays
@@ -325,7 +325,9 @@ export class Renderer {
         const sy = row * sh;
 
         if (filter) this.ctx.filter = filter;
-        this.ctx.drawImage(img, sx, sy, sw, sh, x - size, y - size * 1.5, size * 2, size * 2);
+        if (img && img.complete && img.naturalWidth > 0) {
+            this.ctx.drawImage(img, sx, sy, sw, sh, x - size, y - size * 1.5, size * 2, size * 2);
+        }
         if (filter) this.ctx.filter = 'none';
     }
 }

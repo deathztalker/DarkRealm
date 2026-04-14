@@ -744,7 +744,9 @@ export class Dungeon {
             [TILE.STAIRS_DOWN]: 'env_stairs_down', [TILE.STAIRS_UP]: 'env_stairs_up',
             [TILE.GRASS]: 'env_grass', [TILE.PATH]: 'env_path', [TILE.WATER]: 'env_water',
             [TILE.TREE]: 'env_tree', [TILE.BRIDGE]: 'env_bridge',
-            [TILE.SAND]: 'env_sand', [TILE.CACTUS]: 'env_cactus'
+            [TILE.SAND]: 'env_sand', [TILE.CACTUS]: 'env_cactus',
+            [TILE.SNOW]: 'env_floor', [TILE.ICE]: 'env_floor',
+            [TILE.LAVA]: 'env_floor'
         };
 
         for (let r = camTop; r < camBottom; r++) {
