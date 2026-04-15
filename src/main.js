@@ -23,6 +23,20 @@ import { ASSET_NAMES } from './data/assets_list.js';
 import { initAudio, playLoot, playCastFire, playCastCold, playCastLightning, playCastPoison, playCastShadow, playDeathSfx, playZoneTransition, startAmbientDungeon, startAmbientBoss, stopAmbient } from './engine/audio.js';
 import { ITEM_BASES, items } from './data/items.js';
 import { fx } from './engine/ParticleSystem.js';
+import { Vendor } from './vendorSystem.js';
+import { VendorUI } from './ui/vendorUI.js';
+
+// Expose globals for external modules
+window.Vendor = Vendor;
+window.VendorUI = VendorUI;
+window.calculateSellPrice = calculateSellPrice;
+window.getItemHtml = getItemHtml;
+window.showTooltip = showTooltip;
+window.hideTooltip = hideTooltip;
+window.renderInventory = renderInventory;
+window.updateHud = updateHud;
+window.addCombatLog = addCombatLog;
+
 import { RUNEWORDS } from './data/runes.js';
 
 // ─── GLOBALS ───
@@ -1423,7 +1437,7 @@ function checkDeaths() {
                     id: 'horadric_fragment',
                     name: 'Horadric Fragment',
                     rarity: 'magic',
-                    icon: 'item_horadric_fragment',
+                    icon: 'item_ruby',
                     x: e.x + (Math.random() - 0.5) * 30,
                     y: e.y + (Math.random() - 0.5) * 30
                 };
