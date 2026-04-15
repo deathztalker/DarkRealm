@@ -6,6 +6,7 @@ import { bus } from './engine/EventBus.js';
 import { Renderer, Assets } from './engine/renderer.js';
 import { Camera } from './engine/Camera.js';
 import { Input } from './engine/Input.js';
+import { MobileControls } from './ui/MobileControls.js';
 import { Dungeon } from './world/dungeon.js';
 import { Player } from './entities/player.js';
 import { Enemy } from './entities/enemy.js';
@@ -385,6 +386,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     renderer = new Renderer(canvas);
     camera = new Camera(renderer.width, renderer.height);
     input = new Input(canvas);
+    new MobileControls(input);
 
     // Extract early fields for generation theming
     let curHighestZone = 0;
@@ -6738,7 +6740,3 @@ function clearSkillDrag() {
     if (dragSkillGhost) { dragSkillGhost.remove(); dragSkillGhost = null; }
     document.querySelectorAll('.skill-slot').forEach(el => el.classList.remove('dragging'));
 }
-
-// Add Right-click to clear hotbar slot in updateSkillBar
-// I'll add this inside updateSkillBar in the next turn if I missed it.
-// Actually I'll update the loop now.

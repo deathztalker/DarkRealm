@@ -2655,3 +2655,54 @@ body.socketing-mode .inv-item:not(.unidentified) {
   z-index: 10001;
   position: fixed;
 }
+
+/* =============================================
+   MOBILE CONTROLS
+   ============================================= */
+#mobile-controls {
+  pointer-events: none;
+}
+
+#joystick-base {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 2px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(2px);
+}
+
+#joystick-stick {
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.mobile-btn {
+  background: rgba(0, 0, 0, 0.6) !important;
+  border: 2px solid rgba(216, 176, 104, 0.4) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(216, 176, 104, 0.1);
+  color: var(--gold) !important;
+  font-family: 'Cinzel', serif;
+  transition: transform 0.1s, background 0.1s, border-color 0.1s;
+  backdrop-filter: blur(2px);
+}
+
+.mobile-btn:active {
+  transform: scale(0.9);
+  background: rgba(216, 176, 104, 0.3) !important;
+  border-color: var(--gold) !important;
+}
+
+.mobile-btn span {
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+#mobile-buttons .mobile-btn[style*="large"] {
+  border-width: 3px !important;
+}
+
+@media (min-width: 1024px) {
+  #mobile-controls {
+    display: none !important;
+  }
+}
