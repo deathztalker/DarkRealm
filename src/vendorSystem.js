@@ -21,20 +21,38 @@ export const Vendor = {
     },
 
     generateVendorStock(vendorId) {
-        if (!this.loot) return;
+        if (!this.loot) {
+            console.error("Vendor system not initialized with loot system!");
+            return;
+        }
         const profile = this.profiles[vendorId] || this.profiles['default'];
         const newItems = [];
-        const lvl = window.player ? window.player.level : 1;
+        const lvl = (window.player && window.player.level) ? window.player.level : 5;
+
+        console.log(`Generating stock for ${vendorId} (Lvl ${lvl})...`);
 
         for (let i = 0; i < profile.numItems; i++) {
             const rarity = profile.rarities[Math.floor(Math.random() * profile.rarities.length)];
+            // Pass null as the third param if your loot.generate expects (lvl, rarity, type)
             const item = this.loot.generate(lvl, rarity);
-            if (item) newItems.push(item);
+            if (item) {
+                newItems.push(item);
+            }
         }
+
+        // Emergency fallback: if no items generated, generate at least some basic potions
+        if (newItems.length === 0) {
+            for(let i=0; i<3; i++) {
+                const potion = this.loot.generate(lvl, 'normal');
+                if(potion) newItems.push(potion);
+            }
+        }
+
         this.vendorInventories[vendorId] = {
             items: newItems,
             lastStocked: Date.now()
         };
+        console.log(`Generated ${newItems.length} items for ${vendorId}`);
     },
 
     openShopForNpc(npc) {
