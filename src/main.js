@@ -23,7 +23,6 @@ import { ASSET_NAMES } from './data/assets_list.js';
 import { initAudio, playLoot, playCastFire, playCastCold, playCastLightning, playCastPoison, playCastShadow, playDeathSfx, playZoneTransition, startAmbientDungeon, startAmbientBoss, stopAmbient } from './engine/audio.js';
 import { ITEM_BASES, items } from './data/items.js';
 import { fx } from './engine/ParticleSystem.js';
-import { loot, SETS } from './systems/lootSystem.js';
 import { Vendor } from './vendorSystem.js';
 import { VendorUI } from './ui/vendorUI.js';
 
@@ -4664,7 +4663,7 @@ function renderDialoguePicker(npc) {
     menu.appendChild(portrait);
 
     const options = [
-        { label: 'Trade', action: () => { Vendor.openShopForNpc(npc); menu.remove(); activeDialogueNpc = null; } },        {
+        { label: 'Trade', action: () => { Vendor.openShopForNpc(npc); menu.remove(); activeDialogueNpc = null; } }, {
             label: 'Talk', action: () => {
                 const questOffered = offerQuest(npc.id);
                 if (!questOffered) {
