@@ -39,7 +39,7 @@ export const ITEM_BASES = {
     hand_axe: { name: 'Hand Axe', slot: SLOT.MAINHAND, type: 'axe', icon: 'item_axe_hd', minDmg: 4, maxDmg: 11, atkSpd: 1.0, req: { str: 5 }, size: [1, 2] },
     war_axe: { name: 'War Axe', slot: SLOT.MAINHAND, type: 'axe', icon: 'item_axe_hd', minDmg: 10, maxDmg: 22, atkSpd: 0.85, req: { str: 32 }, size: [1, 3] },
     // Maces
-    mace: { name: 'Mace', slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_hd', minDmg: 5, maxDmg: 13, atkSpd: 0.95, req: { str: 8 }, size: [1, 2] },
+    mace: { name: 'Mace', slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_hd_hd', minDmg: 5, maxDmg: 13, atkSpd: 0.95, req: { str: 8 }, size: [1, 2] },
     war_hammer: { name: 'War Hammer', slot: SLOT.MAINHAND, type: 'mace', icon: 'item_war_hammer_hd', minDmg: 12, maxDmg: 28, atkSpd: 0.75, req: { str: 50 }, size: [1, 3], twoHanded: true },
     // Staves
     short_staff: { name: 'Short Staff', slot: SLOT.MAINHAND, type: 'staff', icon: 'item_short_staff', minDmg: 2, maxDmg: 8, atkSpd: 1.1, req: { int: 5 }, size: [1, 3], twoHanded: true, manaBonus: 20 },
@@ -58,11 +58,13 @@ export const ITEM_BASES = {
     wand: { name: 'Wand', slot: SLOT.MAINHAND, type: 'wand', icon: 'item_wand', minDmg: 2, maxDmg: 6, atkSpd: 1.3, req: { int: 10 }, size: [1, 2], manaBonus: 15 },
     bone_wand: { name: 'Bone Wand', slot: SLOT.MAINHAND, type: 'wand', icon: 'item_bone_wand', minDmg: 4, maxDmg: 10, atkSpd: 1.2, req: { int: 22 }, size: [1, 2], manaBonus: 30 },
     // Quest Items
-    wirts_leg: { name: "Niruko's Leg", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace', minDmg: 2, maxDmg: 8, atkSpd: 0.9, req: {}, size: [1, 3], flavor: '"A wooden prosthetic with a tragic history."' },
+    wirts_leg: { name: "Niruko's Leg", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_hd', minDmg: 2, maxDmg: 8, atkSpd: 0.9, req: {}, size: [1, 3], flavor: '"A wooden prosthetic with a tragic history."' },
+    // VALANYR
+    joacos_valanyr: { name: "joacos_valanyr", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_hd', minDmg: 2, maxDmg: 8, atkSpd: 0.9, req: {}, size: [1, 3], flavor: '"Forged to retain guild members."' },
 
     // === ARMOR ===
     // Helmets
-    leather_cap: { name: 'Leather Cap', slot: SLOT.HEAD, type: 'helm', icon: 'item_leather_cap', armor: 4, req: {}, size: [2, 2], sockets: 0 },
+    leather_cap: { name: 'Leather Cap', slot: SLOT.HEAD, type: 'helm', icon: 'item_helm_leather', armor: 4, req: {}, size: [2, 2], sockets: 0 },
     great_helm: { name: 'Great Helm', slot: SLOT.HEAD, type: 'helm', icon: 'item_great_helm_hd', armor: 18, req: { str: 35 }, size: [2, 2], sockets: 2 },
     circlet: { name: 'Circlet', slot: SLOT.HEAD, type: 'helm', icon: 'item_circlet', armor: 8, req: { int: 15 }, size: [2, 2], sockets: 1, manaBonus: 15 },
     // Chestpieces
@@ -71,7 +73,7 @@ export const ITEM_BASES = {
     plate_mail: { name: 'Plate Mail', slot: SLOT.CHEST, type: 'armor', icon: 'item_plate_mail_hd', armor: 52, req: { str: 55 }, size: [2, 3], sockets: 3 },
     robe: { name: 'Robe', slot: SLOT.CHEST, type: 'armor', icon: 'item_robe', armor: 6, req: { int: 5 }, size: [2, 3], sockets: 2, manaBonus: 25 },
     // Gloves
-    leather_gloves: { name: 'Leather Gloves', slot: SLOT.GLOVES, type: 'gloves', icon: 'item_leather_gloves', armor: 3, req: {}, size: [2, 2] },
+    leather_gloves: { name: 'Leather Gloves', slot: SLOT.GLOVES, type: 'gloves', icon: 'item_gloves', armor: 3, req: {}, size: [2, 2] },
     gauntlets: { name: 'Gauntlets', slot: SLOT.GLOVES, type: 'gloves', icon: 'item_gauntlets', armor: 12, req: { str: 25 }, size: [2, 2] },
     // Boots
     leather_boots: { name: 'Leather Boots', slot: SLOT.BOOTS, type: 'boots', icon: 'item_leather_boots', armor: 5, req: {}, size: [2, 2] },
@@ -153,7 +155,7 @@ export const ITEM_BASES = {
     rune_zod: { name: 'Zod Rune', slot: 'none', type: 'gem', icon: 'item_rune_zod', size: [1, 1], price: 1000, socketEffect: { weapon: { stat: 'indestructible', value: 1 }, armor: { stat: 'indestructible', value: 1 }, shield: { stat: 'indestructible', value: 1 } } },
 
     // === QUEST ITEMS ===
-    wirts_leg: { name: "Niruko's Leg", slot: 'weapon', type: 'club', icon: 'item_mace', size: [1, 3], price: 1, minDmg: 1, maxDmg: 8, atkSpd: 1.2, flavor: '"Cain says there was something about a portal..."', unidentified: false },
+    wirts_leg: { name: "Niruko's Leg", slot: 'weapon', type: 'club', icon: 'item_mace_hd', size: [1, 3], price: 1, minDmg: 1, maxDmg: 8, atkSpd: 1.2, flavor: '"Cain says there was something about a portal..."', unidentified: false },
     // tome_tp: { name: 'Tome of Town Portal', slot: 'none', type: 'book', icon: 'item_scroll_tp', size: [2, 2], price: 500, flavor: '"Blue magic that whisks you home."', identified: true }, // Redundant with line 105 but fixing icon anyway
     cow_portal: { name: 'Cow Portal Key', slot: 'none', type: 'material', icon: 'item_scroll_tp', size: [1, 1], price: 0, flavor: '"The seal of the Cow King."', identified: true },
 

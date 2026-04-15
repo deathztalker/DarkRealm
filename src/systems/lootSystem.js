@@ -46,7 +46,7 @@ export const SET_ITEMS = [
     // Death's
     { id: 'deaths_touch', name: "Death's Touch", base: 'long_sword', rarity: RARITY.SET, icon: 'item_sword_hd', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'lifeStealPct', value: 4 }, { stat: 'flatMaxDmg', value: 25 }] },
     // ... rest of Death's
-    { id: 'deaths_hand', name: "Death's Hand", base: 'leather_gloves', rarity: RARITY.SET, icon: 'item_leather_gloves', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'poisRes', value: 50 }] },
+    { id: 'deaths_hand', name: "Death's Hand", base: 'leather_gloves', rarity: RARITY.SET, icon: 'item_gloves', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'poisRes', value: 50 }] },
     { id: 'deaths_guard', name: "Death's Guard", base: 'leather_belt', rarity: RARITY.SET, icon: 'item_belt', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'magicDmgReduce', value: 3 }] },
     // Milabrega's
     { id: 'milabrega_orb', name: "Milabrega's Orb", base: 'buckler', rarity: RARITY.SET, icon: 'item_shield_hd', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'magicFind', value: 20 }] },
@@ -62,7 +62,7 @@ const UNIQUES = [
         name: "Joaco's Val'anyr",
         base: 'mace',
         rarity: RARITY.UNIQUE,
-        icon: 'item_mace_hd',
+        icon: 'item_mace_hd_hd',
         dropLvl: 30,
         mods: [
             { stat: '+allSkills', value: 1 },

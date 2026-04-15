@@ -71,12 +71,12 @@ item_horadric_fragment
 item_key_hellfire
 item_leather_armor
 item_leather_boots
-item_leather_cap
-item_leather_gloves
+item_helm_leather
+item_gloves
 item_long_bow
 item_long_sword
-item_mace
-item_mace_base
+item_mace_hd
+item_mace_hd_base
 item_mephisto_soulstone
 item_orb
 item_orb_arcane
