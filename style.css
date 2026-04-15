@@ -1796,6 +1796,26 @@ body {
 /* =============================================
    INVENTORY — CAN'T EQUIP INDICATOR
    ============================================= */
+/* Item Durability Bar */
+.item-durability-bar {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  right: 2px;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 1px;
+  overflow: hidden;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.durability-fill {
+  height: 100%;
+  width: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
 .item-quantity-badge {
   position: absolute;
   top: 1px;

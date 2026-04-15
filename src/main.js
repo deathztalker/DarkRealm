@@ -2471,10 +2471,9 @@ function getItemHtml(item, cantEquip = false, isGamble = false) {
     const rarityClass = isGamble ? 'rarity-normal' : `rarity-${item.rarity || 'normal'}`;
     let iconName = isGamble ? 'item_orb' : item.icon;
 
-    // Icon Aliasing System to prevent 404s and handle legacy names
+    // Icon Aliasing System
     const iconAliases = {
-        'item_gem_perfect': 'item_ruby',    // Legacy item name fallback
-        'item_mace_club': 'item_mace',      // Fixed in data-bases but kept here for safety
+        'item_gem_perfect': 'item_ruby',
         'item_potion_rejuv': 'item_potion_hp',
         'item_potion_purple': 'item_potion_hp',
         'item_sword_short': 'item_short_sword',
@@ -2505,6 +2504,18 @@ function getItemHtml(item, cantEquip = false, isGamble = false) {
     };
     if (iconAliases[iconName]) iconName = iconAliases[iconName];
 
+    // --- Durability Bar ---
+    let durabilityHtml = '';
+    if (!isGamble && item.maxDurability > 0) {
+        const pct = (item.durability / item.maxDurability) * 100;
+        const color = pct > 60 ? '#4caf50' : (pct > 25 ? '#ff9800' : '#f44336');
+        durabilityHtml = `
+            <div class="item-durability-bar">
+                <div class="durability-fill" style="width: ${pct}%; background-color: ${color};"></div>
+            </div>
+        `;
+    }
+
     const ceClass = cantEquip ? 'cant-equip' : '';
     const quantityBadge = (!isGamble && item.quantity > 1) ? `<div class="item-quantity-badge">${item.quantity}</div>` : '';
 
@@ -2524,6 +2535,7 @@ function getItemHtml(item, cantEquip = false, isGamble = false) {
     return `<div class="inv-item ${rarityClass} ${ceClass} ${isGamble ? 'mystery-item' : ''}">
         ${quantityBadge}
         ${socketsHtml}
+        ${durabilityHtml}
         <img src="assets/${iconName}.png" onerror="this.src='assets/item_orb.png'">
         <div class="rarity-glow"></div>
     </div>`;
@@ -3779,6 +3791,7 @@ let socketingGemIndex = -1;
 
 function renderInventory() {
     if (!player) return;
+    player._recalcStats(); // Update charm stats
     syncInteractionStates();
 
     // 0. Belt (Phase 30 Finalization)
@@ -3958,7 +3971,17 @@ function renderInventory() {
         if (item) {
             const div = document.createElement('div');
             const check = player.canEquip(item);
-            div.innerHTML = getItemHtml(item, !check.ok);
+            
+            // Only show red 'cant-equip' if it's an item that IS equippable by type
+            // but fails requirements (stats/level) or is broken.
+            const equippableTypes = ['weapon', 'armor', 'helm', 'shield', 'gloves', 'boots', 'belt', 'ring', 'amulet', 'source', 'wand', 'staff'];
+            const isEquippableType = equippableTypes.includes(item.type) || (item.slot && item.slot !== 'none');
+            const isBroken = item.maxDurability > 0 && item.durability === 0;
+            
+            // It's 'red' if it's meant to be equipped but you can't right now
+            const showRed = isEquippableType && (!check.ok || isBroken);
+            
+            div.innerHTML = getItemHtml(item, showRed);
             const innerDiv = div.firstChild; // The .inv-item div
             setupTooltip(innerDiv, item);
 

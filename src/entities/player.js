@@ -1441,6 +1441,8 @@ export class Player {
         if (idx === -1) return false;
         this.inventory[idx] = item;
         if (!this.inventory[idx].quantity) this.inventory[idx].quantity = 1;
+        
+        this._recalcStats(); // Recalculate stats for charms
         return true;
     }
 
