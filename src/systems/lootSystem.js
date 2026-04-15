@@ -58,6 +58,20 @@ export const SET_ITEMS = [
 // Unique item definitions (hand-crafted, fixed mods)
 const UNIQUES = [
     {
+        id: 'joacos_valanyr',
+        name: "Joaco's Val'anyr",
+        base: 'mace',
+        rarity: RARITY.UNIQUE,
+        icon: 'item_mace_hd',
+        dropLvl: 30,
+        mods: [
+            { stat: '+allSkills', value: 1 },
+            { stat: 'allRes', value: 15 },
+            { stat: 'magicFind', value: 20 },
+        ],
+        flavor: '"Forged to retain guild members."'
+    },
+    {
         id: 'shako', name: "Harlequin Crest", base: 'circlet', rarity: RARITY.UNIQUE,
         icon: 'item_circlet', dropLvl: 45,
         mods: [
