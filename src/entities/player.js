@@ -145,15 +145,16 @@ export class Player {
         // --- Charms Logic (Wave 6) ---
         // Scan inventory for items that provide stats while carried.
         // Requires identification to work.
-        if (this.inventory) {
+        const activeUniques = new Set();
+        if (this.inventory && Array.isArray(this.inventory)) {
             for (const item of this.inventory) {
                 if (item && item.type === 'charm' && item.identified !== false) {
-                    if (item.mods) {
-                        for (const m of item.mods) {
-                            s[m.stat] = (s[m.stat] || 0) + m.value;
-                            if (m.stat === 'allRes') s.allRes = (s.allRes || 0) + m.value;
-                        }
+                    // Unique check: Only one of each unique charm ID counts
+                    if (item.rarity === 'unique') {
+                        if (activeUniques.has(item.id)) continue;
+                        activeUniques.add(item.id);
                     }
+                    this._addItemStats(item, s);
                 }
             }
         }
@@ -1273,6 +1274,16 @@ export class Player {
     // ─── Equipment Requirement Check ───
     canEquip(item) {
         if (!item) return { ok: false, reason: 'No item' };
+        
+        // --- Equippability Validation ---
+        const nonEquippableTypes = ['charm', 'gem', 'rune', 'potion', 'scroll', 'material', 'tome'];
+        if (nonEquippableTypes.includes(item.type)) {
+            return { ok: false, reason: `Cannot equip ${item.type}s` };
+        }
+        if (!item.slot || item.slot === 'none') {
+            return { ok: false, reason: 'Item cannot be equipped' };
+        }
+
         const req = item.req || {};
         if (req.str && this.str < req.str) return { ok: false, reason: `Requires ${req.str} Strength (you have ${this.str})` };
         if (req.dex && this.dex < req.dex) return { ok: false, reason: `Requires ${req.dex} Dexterity (you have ${this.dex})` };

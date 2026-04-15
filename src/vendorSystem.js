@@ -41,6 +41,7 @@ export const Vendor = {
             // Pass null as the third param if your loot.generate expects (lvl, rarity, type)
             const item = this.loot.generate(lvl, rarity);
             if (item) {
+                item.identified = true; // Vendor items are always identified
                 newItems.push(item);
             }
         }
