@@ -39,7 +39,7 @@ export const ITEM_BASES = {
     hand_axe: { name: 'Hand Axe', slot: SLOT.MAINHAND, type: 'axe', icon: 'item_axe_hd', minDmg: 4, maxDmg: 11, atkSpd: 1.0, req: { str: 5 }, size: [1, 2] },
     war_axe: { name: 'War Axe', slot: SLOT.MAINHAND, type: 'axe', icon: 'item_axe_hd', minDmg: 10, maxDmg: 22, atkSpd: 0.85, req: { str: 32 }, size: [1, 3] },
     // Maces
-    mace: { name: 'Mace', slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_hd_hd', minDmg: 5, maxDmg: 13, atkSpd: 0.95, req: { str: 8 }, size: [1, 2] },
+    mace: { name: 'Mace', slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_hd', minDmg: 5, maxDmg: 13, atkSpd: 0.95, req: { str: 8 }, size: [1, 2] },
     war_hammer: { name: 'War Hammer', slot: SLOT.MAINHAND, type: 'mace', icon: 'item_war_hammer_hd', minDmg: 12, maxDmg: 28, atkSpd: 0.75, req: { str: 50 }, size: [1, 3], twoHanded: true },
     // Staves
     short_staff: { name: 'Short Staff', slot: SLOT.MAINHAND, type: 'staff', icon: 'item_short_staff', minDmg: 2, maxDmg: 8, atkSpd: 1.1, req: { int: 5 }, size: [1, 3], twoHanded: true, manaBonus: 20 },

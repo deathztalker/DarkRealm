@@ -62,7 +62,7 @@ const UNIQUES = [
         name: "Joaco's Val'anyr",
         base: 'mace',
         rarity: RARITY.UNIQUE,
-        icon: 'item_mace_hd_hd',
+        icon: 'item_mace_hd',
         dropLvl: 30,
         mods: [
             { stat: '+allSkills', value: 1 },
