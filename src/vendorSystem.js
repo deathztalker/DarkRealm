@@ -21,6 +21,11 @@ export const Vendor = {
     },
 
     generateVendorStock(vendorId) {
+        // Auto-init fallback if needed
+        if (!this.loot && window.loot) {
+            this.loot = window.loot;
+        }
+
         if (!this.loot) {
             console.error("Vendor system not initialized with loot system!");
             return;

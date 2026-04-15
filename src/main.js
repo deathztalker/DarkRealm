@@ -23,10 +23,12 @@ import { ASSET_NAMES } from './data/assets_list.js';
 import { initAudio, playLoot, playCastFire, playCastCold, playCastLightning, playCastPoison, playCastShadow, playDeathSfx, playZoneTransition, startAmbientDungeon, startAmbientBoss, stopAmbient } from './engine/audio.js';
 import { ITEM_BASES, items } from './data/items.js';
 import { fx } from './engine/ParticleSystem.js';
+import { loot, SETS } from './systems/lootSystem.js';
 import { Vendor } from './vendorSystem.js';
 import { VendorUI } from './ui/vendorUI.js';
 
 // Expose globals for external modules
+window.loot = loot;
 window.Vendor = Vendor;
 window.VendorUI = VendorUI;
 window.calculateSellPrice = calculateSellPrice;
