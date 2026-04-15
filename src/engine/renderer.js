@@ -24,8 +24,17 @@ export class Renderer {
     }
 
     _resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
+        const isMobile = window.innerWidth <= 768 || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+        if (isMobile) {
+            // Mobile mode: scale internal resolution to make everything bigger and clearer
+            // Target roughly ~600px width internally for mobile
+            const scale = Math.max(1.5, window.innerWidth / 400);
+            this.canvas.width = Math.floor(window.innerWidth / scale);
+            this.canvas.height = Math.floor(window.innerHeight / scale);
+        } else {
+            this.canvas.width = window.innerWidth;
+            this.canvas.height = window.innerHeight;
+        }
     }
 
     get width() { return this.canvas.width; }

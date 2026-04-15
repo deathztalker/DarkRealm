@@ -1998,7 +1998,153 @@ body.socketing-mode .inv-slot {
 .dialogue-picker-menu {
   animation: bubblePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   border-radius: 8px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9), inset 0 0 10px rgba(186, 145, 88, 0.1);
+}
+
+/* =============================================
+   RESPONSIVE & MOBILE
+   ============================================= */
+
+@media (max-width: 768px) {
+  /* MAIN MENU */
+  .menu-content {
+    padding: 20px 10px;
+    gap: 16px;
+  }
+
+  .game-title {
+    font-size: clamp(1.8rem, 8vw, 3rem);
+  }
+
+  .game-subtitle {
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+  }
+
+  .class-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .class-card {
+    padding: 10px 4px;
+  }
+
+  .class-card-name {
+    font-size: 0.55rem;
+  }
+
+  .class-info-panel {
+    padding: 12px;
+    min-height: 120px;
+    max-height: 160px;
+    font-size: 0.85rem;
+  }
+
+  .class-info-panel h3 {
+    font-size: 1rem;
+  }
+
+  .class-info-panel p {
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .menu-buttons {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+    max-width: 280px;
+    padding: 10px 16px;
+    font-size: 0.8rem;
+  }
+
+  .difficulty-group {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .diff-btn {
+    padding: 4px 8px;
+    font-size: 9px;
+  }
+
+  #keybinds-legend {
+    display: none !important;
+  }
+
+  #auth-status-container {
+    top: 6px !important;
+    right: 6px !important;
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+  
+  /* IN-GAME HUD */
+  #hud {
+    transform: scale(0.75);
+    transform-origin: bottom center;
+    bottom: -12px;
+  }
+
+  #hud-buttons {
+    display: none; /* Hidden because mobile controls replace them */
+  }
+  
+  #combat-log {
+    display: none; /* Too spammy for mobile */
+  }
+
+  /* PANELS */
+  .panel {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    max-height: 80vh;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+  }
+
+  #equip-slots {
+    transform: scale(0.8);
+    transform-origin: top center;
+    gap: 4px;
+  }
+  
+  #inventory-grid {
+    grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+    padding: 8px;
+  }
+  
+  #talent-trees {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  #hud {
+    transform: scale(0.65);
+    bottom: -18px;
+  }
+
+  .game-title {
+    font-size: 1.6rem;
+  }
+
+  .class-info-panel {
+    min-height: 100px;
+    max-height: 140px;
+    padding: 8px;
+  }
+  
+  .panel {
+    max-height: 75vh;
+  }
+}
+box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9), inset 0 0 10px rgba(186, 145, 88, 0.1);
   background: rgba(10, 8, 5, 0.95);
   border: 1px solid #bf642f;
 }
@@ -2433,104 +2579,6 @@ body.socketing-mode .inv-item:not(.unidentified) {
   background: rgba(216, 176, 104, 0.1);
   border-color: var(--gold);
   box-shadow: 0 0 8px rgba(216, 176, 104, 0.3);
-}
-
-/* =============================================
-   RESPONSIVE — Main Menu
-   ============================================= */
-@media (max-width: 768px) {
-  .menu-content {
-    padding: 20px 10px;
-    gap: 16px;
-  }
-
-  .game-title {
-    font-size: clamp(1.8rem, 8vw, 3rem);
-  }
-
-  .game-subtitle {
-    font-size: 0.75rem;
-    letter-spacing: 0.2em;
-  }
-
-  .class-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-
-  .class-card {
-    padding: 10px 4px;
-  }
-
-  .class-card-name {
-    font-size: 0.55rem;
-  }
-
-  .class-info-panel {
-    padding: 12px;
-    min-height: 120px;
-    max-height: 160px;
-    font-size: 0.85rem;
-  }
-
-  .class-info-panel h3 {
-    font-size: 1rem;
-  }
-
-  .class-info-panel p {
-    font-size: 0.8rem;
-    line-height: 1.4;
-  }
-
-  .menu-buttons {
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .btn-primary,
-  .btn-secondary {
-    width: 100%;
-    max-width: 280px;
-    padding: 10px 16px;
-    font-size: 0.8rem;
-  }
-
-  .difficulty-group {
-    flex-wrap: wrap;
-  }
-
-  #keybinds-legend {
-    display: none !important;
-  }
-
-  #auth-status-container {
-    top: 6px !important;
-    right: 6px !important;
-    padding: 4px 8px;
-    font-size: 10px;
-  }
-}
-
-@media (max-width: 480px) {
-  .class-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-  }
-
-  .class-icon i {
-    font-size: 18px !important;
-  }
-
-  .game-title {
-    font-size: 1.6rem;
-  }
-
-  .class-info-panel {
-    min-height: 100px;
-    max-height: 140px;
-    padding: 8px;
-  }
 }
 
 /* =============================================
