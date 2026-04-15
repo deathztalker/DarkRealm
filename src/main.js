@@ -4660,8 +4660,7 @@ function renderDialoguePicker(npc) {
     menu.appendChild(portrait);
 
     const options = [
-        { label: 'Trade', action: () => { openShop(); menu.remove(); activeDialogueNpc = null; } },
-        {
+        { label: 'Trade', action: () => { Vendor.openShopForNpc(npc); menu.remove(); activeDialogueNpc = null; } },        {
             label: 'Talk', action: () => {
                 const questOffered = offerQuest(npc.id);
                 if (!questOffered) {
