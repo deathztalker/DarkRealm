@@ -376,6 +376,8 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         // Starting Gear for new characters
         if (!loadPlayerData) {
             player = new Player(selectedClass);
+            window.player = player;
+            Vendor.init(loot, player);
             if (charName) player.charName = charName;
 
             const idTome = { ...items.tome_identify, charges: 20, identified: true };
