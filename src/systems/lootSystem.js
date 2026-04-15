@@ -59,7 +59,7 @@ export const SET_ITEMS = [
 const UNIQUES = [
     {
         id: 'joacos_valanyr',
-        name: "Joaco's Val'anyr",
+        name: "Joaco's Valanyr",
         base: 'mace',
         rarity: RARITY.UNIQUE,
         icon: 'item_mace_hd',
