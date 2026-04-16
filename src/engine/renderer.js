@@ -28,8 +28,8 @@ export class Renderer {
         if (isMobile) {
             const isLandscape = window.innerWidth > window.innerHeight;
             // Native 1.0 scale in landscape for maximum sharpness and FOV
-            // 1.5 scale in portrait for legibility
-            const scale = isLandscape ? 1.0 : 1.5;
+            // 1.3 scale in portrait for better visibility and crispness
+            const scale = isLandscape ? 1.0 : 1.3;
             
             this.canvas.width = Math.floor(window.innerWidth / scale);
             this.canvas.height = Math.floor(window.innerHeight / scale);

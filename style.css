@@ -2033,6 +2033,15 @@ body.socketing-mode .inv-slot {
 /* =============================================
    RESPONSIVE & MOBILE
    ============================================= */
+:root {
+  --mobile-ui-scale: 1;
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  :root {
+    --mobile-ui-scale: 0.8;
+  }
+}
 
 @media (max-width: 768px) {
 
@@ -2155,8 +2164,8 @@ body.socketing-mode .inv-slot {
     }
 
     #hud {
-      transform: scale(0.6) translateX(-50%);
-      bottom: -15px;
+      transform: scale(0.55) translateX(-50%);
+      bottom: -18px;
     }
 
     #mercenary-hud {

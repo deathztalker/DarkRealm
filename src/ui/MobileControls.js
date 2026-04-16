@@ -48,21 +48,21 @@ export class MobileControls {
         // Joystick Base (Left Side)
         const jBase = document.createElement('div');
         jBase.id = 'joystick-base';
-        jBase.style.cssText = 'position:absolute; bottom:60px; left:40px; width:100px; height:100px; background:rgba(0,0,0,0.3); border:2px solid rgba(212,175,55,0.3); border-radius:50%; pointer-events:auto; backdrop-filter: blur(2px);';
+        jBase.style.cssText = 'position:absolute; bottom:calc(60px * var(--mobile-ui-scale)); left:calc(40px * var(--mobile-ui-scale)); width:calc(100px * var(--mobile-ui-scale)); height:calc(100px * var(--mobile-ui-scale)); background:rgba(0,0,0,0.3); border:2px solid rgba(212,175,55,0.3); border-radius:50%; pointer-events:auto; backdrop-filter: blur(2px);';
         container.appendChild(jBase);
         this.joystick.base = jBase;
 
         // Joystick Stick
         const jStick = document.createElement('div');
         jStick.id = 'joystick-stick';
-        jStick.style.cssText = 'position:absolute; top:50%; left:50%; width:44px; height:44px; background:rgba(212,175,55,0.4); border:1px solid rgba(212,175,55,0.6); border-radius:50%; transform:translate(-50%, -50%); transition: none; box-shadow: 0 0 10px rgba(0,0,0,0.5);';
+        jStick.style.cssText = 'position:absolute; top:50%; left:50%; width:calc(44px * var(--mobile-ui-scale)); height:calc(44px * var(--mobile-ui-scale)); background:rgba(212,175,55,0.4); border:1px solid rgba(212,175,55,0.6); border-radius:50%; transform:translate(-50%, -50%); transition: none; box-shadow: 0 0 10px rgba(0,0,0,0.5);';
         jBase.appendChild(jStick);
         this.joystick.stick = jStick;
 
         // Buttons Container (Right side)
         const btnContainer = document.createElement('div');
         btnContainer.id = 'mobile-buttons';
-        btnContainer.style.cssText = 'position:absolute; bottom:0; right:0; width:320px; height:320px; pointer-events:none;';
+        btnContainer.style.cssText = 'position:absolute; bottom:0; right:0; width:calc(320px * var(--mobile-ui-scale)); height:calc(320px * var(--mobile-ui-scale)); pointer-events:none;';
         container.appendChild(btnContainer);
 
         const skillButtonDefs = [
@@ -80,45 +80,56 @@ export class MobileControls {
             btn.className = 'mobile-btn';
             btn.innerHTML = `<span>${btnDef.icon}</span>`;
 
-            const rad = (btnDef.angle * Math.PI) / 180;
-            const x = Math.cos(rad) * btnDef.dist;
-            const y = Math.sin(rad) * btnDef.dist;
+            const btnBaseSize = btnDef.size === 'large' ? 74 : 52;
+            const btnSize = `calc(${btnBaseSize}px * var(--mobile-ui-scale))`;
+            const btnFontSize = btnDef.size === 'large' ? 'calc(32px * var(--mobile-ui-scale))' : 'calc(18px * var(--mobile-ui-scale))';
+            const dist = `calc(${btnDef.dist}px * var(--mobile-ui-scale))`;
 
+            const rad = (btnDef.angle * Math.PI) / 180;
+            // Note: coordinates will be handled by CSS transform for better performance
+            
             btn.style.cssText = `
                 position: absolute;
-                bottom: 50px; 
-                right: 50px;
-                width: 52px; height: 52px; 
-                transform: translate(${x}px, ${y}px);
+                bottom: calc(50px * var(--mobile-ui-scale)); 
+                right: calc(50px * var(--mobile-ui-scale));
+                width: ${btnSize}; height: ${btnSize}; 
+                transform: translate(calc(Math.cos(${rad}) * ${dist}), calc(Math.sin(${rad}) * ${dist}));
                 background: rgba(20, 20, 20, 0.85); 
                 border: 2px solid rgba(212,175,55,0.4); 
                 border-radius: 50%; 
                 display: flex; justify-content: center; align-items: center; 
-                font-size: 18px; color: white; 
+                font-size: ${btnFontSize}; color: white; 
                 pointer-events: auto;
                 transition: transform 0.1s, background 0.1s;
                 box-shadow: 0 4px 10px rgba(0,0,0,0.6);
                 backdrop-filter: blur(4px);
             `;
+            
+            // Re-calculate X and Y for JS logic
+            const x = Math.cos(rad) * btnDef.dist; 
+            const y = Math.sin(rad) * btnDef.dist;
+            
+            // Override transform with calc to use CSS variables
+            btn.style.transform = `translate(calc(${x}px * var(--mobile-ui-scale)), calc(${y}px * var(--mobile-ui-scale)))`;
 
             if (btnDef.size === 'large') {
-                btn.style.width = '74px';
-                btn.style.height = '74px';
-                btn.style.fontSize = '32px';
                 btn.style.border = '2px solid var(--gold, #d4af37)';
                 btn.style.boxShadow = '0 0 20px rgba(212,175,55,0.2)';
                 btn.style.zIndex = '5';
             }
 
+            const baseTransform = `translate(calc(${x}px * var(--mobile-ui-scale)), calc(${y}px * var(--mobile-ui-scale)))`;
+
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                btn.style.transform = `translate(${x}px, ${y}px) scale(0.9)`;
+                btn.style.transform = `${baseTransform} scale(0.9)`;
                 btn.style.background = 'rgba(212,175,55,0.4)';
-                bus.emit(btnDef.action, { mouse: this.input.mouse });
+                bus.emit(btnDef.action, { mouse: this.input ? this.input.mouse : null });
+                if (navigator.vibrate) navigator.vibrate(15);
             });
             btn.addEventListener('touchend', (e) => {
                 e.preventDefault();
-                btn.style.transform = `translate(${x}px, ${y}px) scale(1.0)`;
+                btn.style.transform = `${baseTransform} scale(1.0)`;
                 btn.style.background = 'rgba(20, 20, 20, 0.85)';
             });
 

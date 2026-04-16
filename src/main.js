@@ -412,7 +412,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         } else if (width > height) {
             camera.zoom = 1.6; // Mobile Landscape (Ultra-wide/Non-zoomed feel)
         } else {
-            camera.zoom = 1.8; // Mobile Portrait
+            camera.zoom = 1.5; // Mobile Portrait (Wider view)
         }
     };
 
