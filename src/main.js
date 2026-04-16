@@ -1024,20 +1024,20 @@ function gameLoop(timestamp) {
     aoeZones.forEach(a => a.render(renderer, lastTime));
 
     // Phase 15: Render Floating Combat Text (in World Space)
+    renderer.ctx.save();
+    renderer.ctx.textAlign = 'center'; // Center text properly for mobile/high-res
     for (const ft of floatingTexts) {
         const alpha = Math.min(1.0, ft.life * 2.5);
         const size = ft.isCrit ? 16 : 10;
-        const colorWithAlpha = ft.color + Math.floor(alpha * 255).toString(16).padStart(2, '0');
 
-        renderer.ctx.save();
         renderer.ctx.font = `${ft.isCrit ? 'bold ' : ''}${size}px Cinzel, serif`;
         renderer.ctx.fillStyle = `rgba(0,0,0,${alpha * 0.8})`; // Shadow
         renderer.ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
         renderer.ctx.fillStyle = ft.color;
         renderer.ctx.globalAlpha = alpha;
         renderer.ctx.fillText(ft.text, ft.x, ft.y);
-        renderer.ctx.restore();
     }
+    renderer.ctx.restore();
 
     bus.emit('render:effects', { renderer, lastTime });
 
@@ -1557,10 +1557,20 @@ function checkDeaths() {
                 const bossMsg = bossMessages[zoneLevel] || (zoneLevel > 25 ? `Rift Guardian defeated at Depth ${zoneLevel - 7}.` : 'The Guardian has been slain.');
 
                 setTimeout(() => {
-                    $('victory-screen').classList.remove('hidden');
-                    $('victory-stats').innerHTML = `Level ${player.level} ${player.className} — ${bossMsg}<br>` +
-                        `<div style="font-size:12px;color:#888;margin-top:10px;">Total Slain: ${totalMonstersSlain} | Gold Collected: ${totalGoldCollected}</div>`;
-                }, 1500);
+                    const isFinalEndgame = (zoneLevel === 25 && difficulty === 2);
+                    if (isFinalEndgame) {
+                        $('victory-screen').querySelector('p').textContent = bossMsg;
+                        $('victory-screen').classList.remove('hidden');
+                    } else {
+                        // Normal Act Boss Defeat - Spawn a Town Portal or simply continue
+                        addCombatLog(bossMsg, 'log-crit');
+                        const p = new GameObject('portal', e.x, e.y, 'env_water');
+                        p.targetZone = 0;
+                        portalReturnZone = zoneLevel;
+                        gameObjects.push(p);
+                        if (window.fx) window.fx.emitBurst(p.x, p.y, '#30ccff', 50, 4);
+                    }
+                }, 2000);
 
                 const tp = new GameObject('portal', e.x, e.y - 40, 'env_water');
                 // Act Transitions: 5->6 (Act 2 Town), 10->11 (Act 3), 15->16 (Act 4), 20->21 (Act 5), 25->0 (Back to Town)
@@ -3686,6 +3696,20 @@ function renderTalentTree() {
                 });
 
                 rowDiv.appendChild(el);
+
+                // MOBILE SLIDE-TO-INSPECT
+                el.addEventListener('touchstart', (e) => {
+                    const touch = e.touches[0];
+                    showSkillTooltip(node.id, touch.clientX, touch.clientY - 60); // Offset to be above thumb
+                });
+                el.addEventListener('touchmove', (e) => {
+                    e.preventDefault(); // Prevent scrolling while inspecting
+                    const touch = e.touches[0];
+                    showSkillTooltip(node.id, touch.clientX, touch.clientY - 60);
+                });
+                el.addEventListener('touchend', () => {
+                    hideTooltip();
+                });
             }
             col.appendChild(rowDiv);
         }

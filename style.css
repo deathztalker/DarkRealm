@@ -362,9 +362,17 @@ body {
 }
 
 @keyframes enchantedGlow {
-  0% { box-shadow: 0 0 15px rgba(200, 150, 42, 0.4); }
-  50% { box-shadow: 0 0 35px rgba(200, 150, 42, 0.8), inset 0 0 10px rgba(255, 230, 0, 0.2); }
-  100% { box-shadow: 0 0 15px rgba(200, 150, 42, 0.4); }
+  0% {
+    box-shadow: 0 0 15px rgba(200, 150, 42, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 35px rgba(200, 150, 42, 0.8), inset 0 0 10px rgba(255, 230, 0, 0.2);
+  }
+
+  100% {
+    box-shadow: 0 0 15px rgba(200, 150, 42, 0.4);
+  }
 }
 
 .btn-primary:disabled {
@@ -2027,6 +2035,7 @@ body.socketing-mode .inv-slot {
    ============================================= */
 
 @media (max-width: 768px) {
+
   /* MAIN MENU */
   .menu-content {
     padding: 20px 10px;
@@ -2090,6 +2099,7 @@ body.socketing-mode .inv-slot {
     flex-wrap: wrap;
     gap: 4px;
   }
+
   .diff-btn {
     padding: 4px 8px;
     font-size: 9px;
@@ -2105,7 +2115,7 @@ body.socketing-mode .inv-slot {
     padding: 4px 8px;
     font-size: 10px;
   }
-  
+
   /* IN-GAME HUD */
   #hud {
     transform: scale(0.75);
@@ -2117,15 +2127,17 @@ body.socketing-mode .inv-slot {
   body.is-mobile #hud-buttons {
     display: none !important;
   }
+
   #mercenary-hud,
   body.is-mobile #mercenary-hud {
     top: 5px !important;
     left: 5px !important;
     transform: scale(0.85);
   }
-  
+
   #combat-log {
-    display: none; /* Too spammy for mobile */
+    display: none;
+    /* Too spammy for mobile */
   }
 
   /* PANELS */
@@ -2142,12 +2154,12 @@ body.socketing-mode .inv-slot {
     transform-origin: top center;
     gap: 4px;
   }
-  
+
   #inventory-grid {
     grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
     padding: 8px;
   }
-  
+
   #talent-trees {
     flex-direction: column;
   }
@@ -2168,11 +2180,12 @@ body.socketing-mode .inv-slot {
     max-height: 140px;
     padding: 8px;
   }
-  
+
   .panel {
     max-height: 75vh;
   }
 }
+
 .dialogue-picker-menu {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9), inset 0 0 10px rgba(186, 145, 88, 0.1);
   background: rgba(10, 8, 5, 0.95);
@@ -2296,6 +2309,30 @@ body.socketing-mode .inv-slot {
 
 .inv-item.unidentified img {
   filter: grayscale(1) brightness(0.5) sepia(1) hue-rotate(-50deg);
+}
+
+/* Mobile Responsive Boss HP */
+@media screen and (max-width: 1024px) {
+  #boss-hp-bar {
+    width: 80% !important;
+    top: 60px !important;
+    height: 20px !important;
+  }
+
+  #boss-hp-text {
+    line-height: 20px !important;
+    font-size: 9px !important;
+  }
+
+  #boss-name {
+    font-size: 16px !important;
+    top: -24px !important;
+  }
+
+  .boss-elite-label {
+    font-size: 9px !important;
+    line-height: 20px !important;
+  }
 }
 
 .merc-dead-btn {
@@ -2780,35 +2817,68 @@ body.socketing-mode .inv-item:not(.unidentified) {
 }
 
 @media (max-width: 1023px) {
+
   /* Common Mobile Adjustments */
   #hud {
     height: 70px;
     padding: 0 10px;
   }
-  .orb { width: 60px; height: 60px; border-width: 2px; }
-  .orb-container { bottom: 5px; }
-  .orb-label { font-size: 0.6rem; }
-  #hud-center { gap: 2px; transform: scale(0.85); transform-origin: bottom center; }
+
+  .orb {
+    width: 60px;
+    height: 60px;
+    border-width: 2px;
+  }
+
+  .orb-container {
+    bottom: 5px;
+  }
+
+  .orb-label {
+    font-size: 0.6rem;
+  }
+
+  #hud-center {
+    gap: 2px;
+    transform: scale(0.85);
+    transform-origin: bottom center;
+  }
 
   .panel {
     width: 100% !important;
     height: 100% !important;
     max-width: 100% !important;
     max-height: 100% !important;
-    top: 0 !important; left: 0 !important;
-    transform: none !important; border: none !important; border-radius: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    border: none !important;
+    border-radius: 0 !important;
   }
 }
 
 /* Portrait Specific: Vertical layout optimization */
 @media (max-width: 1023px) and (orientation: portrait) {
-  #joystick-base { bottom: 25px; left: 15px; width: 110px; height: 110px; }
-  #mobile-buttons { bottom: 25px; right: 15px; transform: scale(1.0); }
+  #joystick-base {
+    bottom: 25px;
+    left: 15px;
+    width: 110px;
+    height: 110px;
+  }
+
+  #mobile-buttons {
+    bottom: 25px;
+    right: 15px;
+    transform: scale(1.0);
+  }
 }
 
 /* Landscape Specific: Horizontal layout (Keep HUD minimal) */
 @media (max-width: 1023px) and (orientation: landscape) {
-  #hud { height: 60px; }
+  #hud {
+    height: 60px;
+  }
+
   .mobile-btn {
     width: 60px;
     height: 60px;
@@ -2820,7 +2890,7 @@ body.socketing-mode .inv-item:not(.unidentified) {
 
   .mobile-btn span {
     font-size: 26px;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.9));
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9));
   }
 
   /* Mobile Trade UI Specifics */
