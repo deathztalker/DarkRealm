@@ -410,7 +410,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         if (width >= 1024) {
             camera.zoom = 2.0; // Desktop
         } else if (width > height) {
-            camera.zoom = 1.8; // Mobile Landscape (wider view, but not tiny)
+            camera.zoom = 1.6; // Mobile Landscape (Ultra-wide/Non-zoomed feel)
         } else {
             camera.zoom = 1.8; // Mobile Portrait
         }

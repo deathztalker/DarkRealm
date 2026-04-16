@@ -27,10 +27,9 @@ export class Renderer {
         const isMobile = window.innerWidth <= 768 || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
         if (isMobile) {
             const isLandscape = window.innerWidth > window.innerHeight;
-            // In landscape, we want less aggressive scaling to fix the "zoom" feeling
-            const baseScale = isLandscape ? 1.1 : 1.5;
-            const targetWidth = isLandscape ? 600 : 400;
-            const scale = Math.max(baseScale, window.innerWidth / targetWidth);
+            // Native 1.0 scale in landscape for maximum sharpness and FOV
+            // 1.5 scale in portrait for legibility
+            const scale = isLandscape ? 1.0 : 1.5;
             
             this.canvas.width = Math.floor(window.innerWidth / scale);
             this.canvas.height = Math.floor(window.innerHeight / scale);
