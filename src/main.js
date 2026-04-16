@@ -5257,6 +5257,8 @@ function renderShop() {
             renderInventory();
         });
         container.appendChild(row);
+    }
+
     // --- Phase 41: Mobile Specialized Trading UI ---
     if (window.innerWidth < 1024) {
         renderMobileShop('vendor');
