@@ -30,7 +30,7 @@ export class Renderer {
             // Native 1.0 scale for sharpest pixels and widest FOV 
             // across all mobile orientations.
             const scale = 1.0;
-
+            
             this.canvas.width = Math.floor(window.innerWidth / scale);
             this.canvas.height = Math.floor(window.innerHeight / scale);
         } else {
@@ -59,11 +59,11 @@ export class Renderer {
         const ctx = this.ctx;
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset to screen space
-
+        
         // Use a separate canvas or a multiply operation to darken the screen
         // But for 2D canvas, the easiest/fastest high-quality way is to draw the darkness
         // with a hole carved out.
-
+        
         const grad = ctx.createRadialGradient(sx, sy, radius * 0.2, sx, sy, radius);
         grad.addColorStop(0, 'rgba(0,0,0,0)');
         grad.addColorStop(1, ambientColor);
@@ -71,12 +71,12 @@ export class Renderer {
         ctx.fillStyle = grad;
         ctx.globalCompositeOperation = 'source-over'; // Standard overlay
         ctx.fillRect(0, 0, this.width, this.height);
-
+        
         // Optional: darken borders even more
         ctx.fillStyle = ambientColor;
         // Optimization: instead of a full rect, just the areas outside the grad are already filled by the grad's last stop if we use a different technique.
         // Actually, simple fillRect with the grad is effective if the grad covers the screen.
-
+        
         ctx.restore();
     }
 
@@ -151,13 +151,13 @@ export class Renderer {
     drawTile(name, x, y, size) {
         const img = Assets.get(name);
         if (!img || !img.complete || img.naturalWidth === 0) return;
-
+        
         // --- Phase 3.1: Grid Breakup (Subtle Jitter) ---
         // Reduced to 1px for subtle organic feel
         const seed = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
         const jitterX = (seed % 1) * 1.0;
         const jitterY = ((seed * 10) % 1) * 1.0;
-
+        
         this.ctx.drawImage(img, x + jitterX - size / 2, y + jitterY - size / 2, size, size);
     }
 
@@ -166,19 +166,19 @@ export class Renderer {
         const img = Assets.get(spriteName);
         if (!img || !img.complete || img.naturalWidth === 0 || img.width <= 64 || img.width === img.height) {
             this.drawSprite(spriteName, x, y, size, state === 'idle', time, filter);
-
+            
             // Dynamic Equipment Layering — Canvas-drawn overlays
             if (equipment) {
                 const ctx = this.ctx;
                 ctx.save();
-
+                
                 // Multi-layered filters
                 let combinedFilter = filter || '';
                 if (hitFlash > 0) {
                     combinedFilter += ' brightness(5)';
                 }
                 if (combinedFilter) ctx.filter = combinedFilter.trim();
-
+                
                 const anim = state === 'walk';
                 const bob = anim ? Math.sin(time * 0.005) * 2 : 0;
                 const drawY = y + bob;
@@ -252,7 +252,7 @@ export class Renderer {
                     ctx.lineCap = 'round';
                     ctx.shadowColor = rarityGlow(equipment.mainhand) || wColor;
                     ctx.shadowBlur = rarityGlow(equipment.mainhand) ? 8 : 2;
-
+                    
                     const startX = x + dirOff * 4;
                     const startY = drawY - 2 + dirOffy * 2;
                     const wLen = wt.includes('staff') || wt.includes('bow') ? 14 : 10;
@@ -318,8 +318,8 @@ export class Renderer {
             return;
         }
 
-        let rowBase = 12; // walk
-        let maxFrames = 12;
+        let rowBase = 8; // walk
+        let maxFrames = 6;
 
         if (state === 'attack') {
             rowBase = 12;
@@ -337,7 +337,7 @@ export class Renderer {
         const frameSpeed = state === 'walk' ? 100 : 60;
         const frame = state === 'idle' ? 0 : Math.floor(time / frameSpeed) % maxFrames;
 
-        const sw = 64, sh = 64;
+        const sw = 48, sh = 48; 
         const sx = frame * sw;
         const sy = row * sh;
 
