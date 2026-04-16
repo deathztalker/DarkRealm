@@ -65,6 +65,7 @@ export const SaveSystem = {
                 player: player.serialize(),
                 difficulty: extras?.difficulty || 0,
                 waypoints: extras?.waypoints || [0],
+                campaign: extras?.campaign || null,
             };
             const idx = slots.findIndex(s => s.id === slotId);
             if (idx >= 0) slots[idx] = entry;
@@ -98,6 +99,7 @@ export const SaveSystem = {
                 slotId: slot.id,
                 difficulty: slot.difficulty || 0,
                 waypoints: slot.waypoints || [0],
+                campaign: slot.campaign || null,
             };
         } catch (e) {
             console.error('Failed to load slot:', e);

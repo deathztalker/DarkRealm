@@ -1,0 +1,83 @@
+﻿    menu.appendChild(grid);
+
+    const footer = document.createElement('div');
+    footer.className = 'skill-picker-footer';
+    footer.textContent = "Right-click slot to clear";
+    menu.appendChild(footer);
+
+    // Close when clicking outside
+    const closeHandler = (e) => {
+        if (!menu.contains(e.target)) {
+            menu.remove();
+            window.removeEventListener('mousedown', closeHandler);
+        }
+    };
+    setTimeout(() => window.addEventListener('mousedown', closeHandler), 10);
+
+    document.body.appendChild(menu);
+}
+
+window.addEventListener('mousemove', (e) => {
+    if (dragGhost) {
+        dragGhost.style.left = ${e.clientX - 16}px;
+        dragGhost.style.top = ${e.clientY - 16}px;
+    }
+    if (dragSkillGhost) {
+        dragSkillGhost.style.left = ${e.clientX - 24}px;
+        dragSkillGhost.style.top = ${e.clientY - 24}px;
+    }
+});
+
+function clearSkillDrag() {
+    draggedSkill = null;
+    if (dragSkillGhost) { dragSkillGhost.remove(); dragSkillGhost = null; }
+    document.querySelectorAll('.skill-slot').forEach(el => el.classList.remove('dragging'));
+}
+
+function handleBossDeath(boss) {
+    let actNum = 0;
+    let actName = 'I';
+    let actSubtitle = 'The Sightless Eye';
+
+    // Quest Flags
+    if (boss.isRadament) campaign.setFlag('radament_slain', true);
+    if (boss.id === 'anya') campaign.setFlag('anya_rescued', true);
+
+    if (boss.isAndariel || zoneLevel === 5) { actNum = 1; actName = 'I'; actSubtitle = 'The Sightless Eye Cleared'; }
+    else if (boss.isDuriel || zoneLevel === 10) { actNum = 2; actName = 'II'; actSubtitle = 'The Secret of the Vizjerei Cleared'; }
+    else if (boss.isMephisto || zoneLevel === 15) { actNum = 3; actName = 'III'; actSubtitle = 'The Infernal Gate Cleared'; }
+    else if (boss.isDiablo || zoneLevel === 20) { actNum = 4; actName = 'IV'; actSubtitle = 'The Chaos Sanctuary Cleared'; }
+    else if (boss.isBaal || zoneLevel === 25) { actNum = 5; actName = 'V'; actSubtitle = 'The Lord of Destruction Slain'; }
+
+    if (actNum > 0) {
+        campaign.completeAct(actNum);
+        showActCleared(actName, actSubtitle);
+        
+        const portal = {
+            type: 'portal',
+            x: boss.x + 40,
+            y: boss.y,
+            icon: 'env_stairs_up',
+            targetZone: 0,
+            isActPortal: true
+        };
+        gameObjects.push({ ...portal, interact: () => ({ type: 'PORTAL', targetZone: 0 }) });
+        fx.emitHolyBurst(portal.x, portal.y);
+    }
+}
+
+function showActCleared(name, subtitle) {
+    const splash = document.getElementById('act-splash-container');
+    if (!splash) return;
+
+    splash.innerHTML = `
+        <div class="act-cleared-subtitle">Acto Completado</div>
+        <h1 class="act-cleared-title">Acto \</h1>
+        <div class="act-cleared-ornament"></div>
+        <div class="act-cleared-subtitle">\</div>
+    `;
+    splash.classList.add('show');
+    if (typeof playZoneTransition === 'function') playZoneTransition();
+
+    setTimeout(() => { splash.classList.remove('show'); }, 5000);
+}

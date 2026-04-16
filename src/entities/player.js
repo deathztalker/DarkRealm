@@ -1362,6 +1362,35 @@ export class Player {
         if (fx) fx.emitBurst(this.x, this.y, '#aaa', 10, 1.2);
     }
 
+    /**
+     * Use an item from inventory (Book of Skill, Tome, etc.)
+     */
+    useItem(idx, rightClick = false) {
+        const item = this.inventory[idx];
+        if (!item) return;
+
+        if (item.baseId === 'book_of_skill') {
+            this.talents.unspent++;
+            this.inventory[idx] = null;
+            bus.emit('combat:log', { text: "Knowledge of the ancients fills your mind! (+1 Skill Point)", cls: 'log-level' });
+            if (fx) fx.emitLevelUp(this.x, this.y);
+            return true;
+        }
+
+        // Potential for other use-on-click items (Elixirs, Scrolls)
+        if (item.type === 'potion') {
+            // Move to belt if slot empty? Or just use directly?
+            // Existing main.js logic for potions often uses them from the belt.
+            // Let's allow direct use for convenience.
+            this.inventory[idx] = null;
+            this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.35); // Simple direct use
+            bus.emit('combat:log', { text: `Used ${item.name}`, cls: 'log-heal' });
+            return true;
+        }
+
+        return false;
+    }
+
     // ─── Potions ───
     usePotion(slot) {
         const item = this.belt[slot];

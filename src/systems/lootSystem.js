@@ -274,6 +274,32 @@ const UNIQUES = [
         mods: [{ stat: 'flatLightDmg', value: 50 }, { stat: 'pctIAS', value: 20 }, { stat: 'flatINT', value: 10 }],
         flavor: '"There was something about a portal in the Dark Wood..."',
         identified: true
+    },
+    {
+        id: 'arreats_face', name: "Arreat's Face", base: 'great_helm', rarity: RARITY.UNIQUE,
+        icon: 'item_great_helm_hd', dropLvl: 42,
+        mods: [
+            { stat: '+classSkills:warrior', value: 2 },
+            { stat: 'pctIAS', value: 30 },
+            { stat: 'lifeStealPct', value: 6 },
+            { stat: 'allRes', value: 30 },
+            { stat: 'flatSTR', value: 20 },
+            { stat: 'flatVIT', value: 20 },
+        ],
+        flavor: '"The peak of Mount Arreat watches over its sons."'
+    },
+    {
+        id: 'titans_revenge', name: "Titan's Revenge", base: 'javelin', rarity: RARITY.UNIQUE,
+        icon: 'item_javelin', dropLvl: 42,
+        mods: [
+            { stat: '+classSkills:amazon', value: 2 },
+            { stat: 'pctIAS', value: 30 },
+            { stat: 'pctDmg', value: 150 },
+            { stat: 'flatSTR', value: 20 },
+            { stat: 'flatDEX', value: 20 },
+            { stat: 'pctMoveSpeed', value: 30 },
+        ],
+        flavor: '"The titans fell, but their fury remained."'
     }
 ];
 
@@ -345,10 +371,16 @@ export class LootSystem {
         const mfBoost = effectiveMF / 100;
 
         let targetRarity = RARITY.NORMAL;
-        if (r < 0.005 + boost * 0.6 + mfBoost * 0.003) targetRarity = RARITY.UNIQUE;
-        else if (r < 0.015 + boost * 0.5 + mfBoost * 0.008) targetRarity = RARITY.SET;
-        else if (r < 0.10 + boost + mfBoost * 0.05) targetRarity = RARITY.RARE;
-        else if (r < 0.45 + boost + mfBoost * 0.1) targetRarity = RARITY.MAGIC;
+        // MF Impact: D2-style diminishing returns but more pronounced for this game's pace
+        const uniqueChance = 0.005 + boost * 0.4 + mfBoost * 0.025;
+        const setChance = 0.015 + boost * 0.3 + mfBoost * 0.045;
+        const rareChance = 0.10 + boost * 0.2 + mfBoost * 0.15;
+        const magicChance = 0.45 + boost * 0.1 + mfBoost * 0.25;
+
+        if (r < uniqueChance) targetRarity = RARITY.UNIQUE;
+        else if (r < uniqueChance + setChance) targetRarity = RARITY.SET;
+        else if (r < uniqueChance + setChance + rareChance) targetRarity = RARITY.RARE;
+        else if (r < uniqueChance + setChance + rareChance + magicChance) targetRarity = RARITY.MAGIC;
 
         return targetRarity;
     }
@@ -395,6 +427,27 @@ export class LootSystem {
             sockets: 0, socketed: [], insertedRunes: [],
             identified: (base.type === 'gem' || base.type === 'potion' || base.type === 'scroll' || base.type === 'ring' || base.type === 'amulet' || base.type === 'charm' || rarity === RARITY.NORMAL),
         };
+
+        // --- Quality Tiering (Exceptional/Elite) ---
+        if (base.type !== 'gem' && base.type !== 'potion' && base.type !== 'scroll' && base.type !== 'material') {
+            if (ilvl >= 65) {
+                item.name = "Elite " + item.name;
+                item.minDmg = Math.round(item.minDmg * 2.2);
+                item.maxDmg = Math.round(item.maxDmg * 2.2);
+                item.armor = Math.round(item.armor * 2.2);
+                item.req.str = Math.round((item.req.str || 0) * 1.8);
+                item.req.dex = Math.round((item.req.dex || 0) * 1.8);
+                item.isElite = true;
+            } else if (ilvl >= 35) {
+                item.name = "Exceptional " + item.name;
+                item.minDmg = Math.round(item.minDmg * 1.5);
+                item.maxDmg = Math.round(item.maxDmg * 1.5);
+                item.armor = Math.round(item.armor * 1.5);
+                item.req.str = Math.round((item.req.str || 0) * 1.4);
+                item.req.dex = Math.round((item.req.dex || 0) * 1.4);
+                item.isExceptional = true;
+            }
+        }
 
         // Enforce normal rarity for gems, potions, and scrolls (Charms should roll affixes)
         if (base.type === 'gem' || base.type === 'potion' || base.type === 'scroll') {
@@ -667,6 +720,11 @@ export class LootSystem {
         const item = this._buildSetItem(template);
         item.identified = (template.base === 'ring' || template.base === 'amulet') ? true : false;
         return item;
+    }
+
+    generateQuestItem(itemId) {
+        // Quest items are normal rarity with special baseIds
+        return this._buildItem(itemId, RARITY.NORMAL, 1);
     }
 
     /**

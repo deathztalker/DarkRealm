@@ -956,16 +956,32 @@ export class Enemy {
             });
         }
 
-        // Uber Boss Reward: Hellfire Torch
-        if (this.isUber) {
-            import('../systems/lootSystem.js').then(l => {
-                // The actual drop is handled in the main loop's death check for bosses usually,
-                // but we can force a guaranteed unique here.
-                bus.emit('loot:special', { itemId: 'hellfire_torch', x: this.x, y: this.y });
-            });
+        // --- Custom Boss Death Logic ---
+        if (this.isRadament) {
+            bus.emit('loot:special', { itemId: 'book_of_skill', x: this.x, y: this.y });
+            bus.emit('campaign:flag', { flag: 'radament_slain' });
+        }
+        if (this.isBeetleburst) {
+            bus.emit('loot:special', { itemId: 'staff_of_kings', x: this.x, y: this.y });
+        }
+        if (this.isColdworm) {
+            bus.emit('loot:special', { itemId: 'viper_amulet', x: this.x, y: this.y });
+        }
+        if (this.isHephaisto) {
+            bus.emit('loot:special', { itemId: 'hellforge_hammer', x: this.x, y: this.y });
+            bus.emit('campaign:flag', { flag: 'hephaisto_slain' });
+        }
+        if (this.isIzual) {
+            bus.emit('campaign:flag', { flag: 'izual_freed' });
+            bus.emit('log:add', { text: "Izual's soul is freed! Return to Tyrael for your reward.", cls: 'log-level' });
+        }
+        if (this.isDenBoss) {
+            bus.emit('campaign:flag', { flag: 'den_cleared' });
+        }
+        if (this.id === 'boss_mephisto') {
+            bus.emit('loot:special', { itemId: 'mephisto_soulstone', x: this.x, y: this.y });
         }
 
-        // --- Custom Boss Death Logic ---
         bus.emit('boss:death', { name: this.name, id: this.id, deathSound: this.deathSound });
     }
 

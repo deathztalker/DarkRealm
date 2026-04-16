@@ -1,4 +1,4 @@
-/**
+﻿/**
  * MAIN.JS â€” Dark Realm entry point
  * Wires all systems together: menu â†’ game loop â†’ rendering â†’ UI
  */
@@ -1096,7 +1096,6 @@ function gameLoop(timestamp) {
             waypoints: [...discoveredWaypoints],
             mercenary: mercenary ? mercenary.serialize() : null,
             cube,
-            campaign: campaign.serialize(),
             achievements: Array.from(unlockedAchievements)
         });
         addCombatLog('Progress Saved.', 'log-info');
@@ -1225,11 +1224,7 @@ function checkInteractions(pos) {
                 if (!discoveredWaypoints.has(res.zone)) {
                     discoveredWaypoints.add(res.zone);
                     addCombatLog(`Waypoint Discovered: ${ZONE_NAMES[res.zone] || 'Area'}`, 'log-crit');
-                    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { 
-                        difficulty, 
-                        waypoints: Array.from(discoveredWaypoints),
-                        campaign: campaign.serialize()
-                    });
+                    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: Array.from(discoveredWaypoints) });
                     if (fx) fx.emitBurst(o.x, o.y, '#ffd700', 30, 2.5);
                 } else {
                     renderWaypointMenu(o);
@@ -1608,8 +1603,7 @@ function checkDeaths() {
                 SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
                     difficulty,
                     waypoints: Array.from(discoveredWaypoints),
-                    mercenary: mercenary ? mercenary.serialize() : null,
-                    campaign: campaign.serialize()
+                    mercenary: mercenary ? mercenary.serialize() : null
                 });
             }
         }
@@ -1853,7 +1847,6 @@ function finishZoneLoad() {
         waypoints: [...discoveredWaypoints],
         mercenary: mercenary ? mercenary.serialize() : null,
         cube,
-        campaign: campaign.serialize(),
         achievements: Array.from(unlockedAchievements),
         highestZone: player.highestZone || 0
     });
@@ -3171,31 +3164,22 @@ bus.on('log:add', d => {
     addCombatLog(d.text, d.cls || '');
 });
 
-// --- Phase 27+: Special Loot Handling ---
+// --- Phase 27: Special Loot Handling ---
 bus.on('loot:special', d => {
     const { item, itemId, x, y } = d;
     let dropped = item;
-
-    if (itemId) {
-        if (itemId === 'hellfire_torch') {
-            dropped = loot.generateFixedUnique('hellfire_torch');
-        } else {
-            // New Quest items (Book of Skill, Staff of Kings, etc)
-            dropped = loot.generateQuestItem(itemId);
-        }
+    if (itemId === 'hellfire_torch') {
+        const torch = loot.generateFixedUnique('hellfire_torch');
+        torch.x = x; torch.y = y;
+        droppedItems.push(torch);
+        fx.emitLootBeam(x, y, '#ff8000');
+        return;
     }
-
     if (dropped) {
         dropped.x = x; dropped.y = y;
         droppedItems.push(dropped);
-        // Special color for quest items
-        const isQuest = ['book_of_skill', 'staff_of_kings', 'viper_amulet', 'hellforge_hammer', 'mephisto_soulstone'].includes(dropped.baseId);
-        fx.emitLootBeam(x, y, isQuest ? '#4cc9f0' : '#ffd700');
+        fx.emitLootBeam(x, y, '#ffd700');
     }
-});
-
-bus.on('campaign:flag', d => {
-    if (campaign) campaign.setFlag(d.flag);
 });
 
 bus.on('item:broken', d => {
@@ -3431,47 +3415,7 @@ bus.on('action:interact', () => {
 
     if (closest) {
         if (closest instanceof NPC) renderDialoguePicker(closest);
-        else if (closest.interact) {
-            const result = closest.interact(player);
-            if (result) {
-                if (result.type === 'HELLFORGE') {
-                    // Check for Hammer and Soulstone
-                    const hammer = player.inventory.find(it => it && it.baseId === 'hellforge_hammer') || (player.equipment.mainhand && player.equipment.mainhand.baseId === 'hellforge_hammer');
-                    const stone = player.inventory.find(it => it && it.baseId === 'mephisto_soulstone');
-                    
-                    if (hammer && stone) {
-                        addCombatLog("You smash the Soulstone upon the Hellforge! Its demonic essence shatters!", 'log-crit');
-                        // Consume stone
-                        const stoneIdx = player.inventory.indexOf(stone);
-                        player.inventory[stoneIdx] = null;
-                        closest.isOpen = true;
-                        closest.icon = 'obj_forge_broken';
-                        
-                        // Drop 2-3 High Runes/Gems
-                        for(let i=0; i<3; i++) {
-                            const r = loot.generate(player.level, 0); // High level loot
-                            r.x = closest.x + (Math.random()-0.5)*20;
-                            r.y = closest.y + (Math.random()-0.5)*20;
-                            droppedItems.push(r);
-                        }
-                        fx.emitBurst(closest.x, closest.y, '#cc00ff', 40, 3);
-                        fx.shake(500, 8);
-                    } else if (!hammer) {
-                        addCombatLog("You need the Hellforge Hammer to destroy the Soulstone.", 'log-dmg');
-                    } else {
-                        addCombatLog("The Hellforge glows with infernal heat, but you have nothing to destroy.", 'log-info');
-                    }
-                } else if (result.type === 'PORTAL') {
-                    nextZone(result.targetZone);
-                } else if (result.type === 'LOOT') {
-                    for(let i=0; i<result.count; i++) {
-                        const itm = loot.generate(player.level);
-                        itm.x = closest.x; itm.y = closest.y;
-                        droppedItems.push(itm);
-                    }
-                }
-            }
-        }
+        else if (closest.interact) closest.interact(player);
         return;
     }
 
@@ -4811,13 +4755,9 @@ function renderDialoguePicker(npc) {
         options.push({ label: 'Recompensa de Radament', action: () => { campaign.claimReward('radament', player); menu.remove(); activeDialogueNpc = null; } });
     } else if (npc.id === 'malah' && campaign.hasFlag('anya_rescued') && !campaign.questRewards.has('anya')) {
         options.push({ label: 'Recompensa de Anya', action: () => { campaign.claimReward('anya', player); menu.remove(); activeDialogueNpc = null; } });
-    } else if (npc.id === 'akara' && campaign.hasFlag('den_cleared') && !campaign.questRewards.has('den_of_evil')) {
-        options.push({ label: 'Reset Stats/Skills', action: () => { campaign.claimReward('den_of_evil', player); menu.remove(); activeDialogueNpc = null; } });
-    } else if (npc.id === 'tyrael' && campaign.hasFlag('izual_freed') && !campaign.questRewards.has('izual')) {
-        options.push({ label: 'Izual Reward', action: () => { campaign.claimReward('izual', player); menu.remove(); activeDialogueNpc = null; } });
     }
 
-    // Priority: If quest is available or ready to turn in, add the 'Quest' button
+        // Priority: If quest is available or ready to turn in, add the 'Quest' button
     const hasQuestAction = QUEST_POOL.some(q => q.giver === npc.id && !completedQuests.has(q.id));
     if (hasQuestAction) {
         options.unshift({
@@ -6297,7 +6237,6 @@ async function renderSaveSlots() {
                         slotId: cloudMatch.id,
                         difficulty: cloudMatch.difficulty || 0,
                         waypoints: cloudMatch.waypoints || [0],
-                        campaign: cloudMatch.campaign || null,
                     };
                 }
             }
@@ -6788,8 +6727,7 @@ function returnToMainMenu() {
     if (player && window._activeSlotId) {
         SaveSystem.saveSlot(window._activeSlotId, player, zoneLevel, stash, {
             difficulty: window._difficulty,
-            waypoints: Array.from(discoveredWaypoints),
-            campaign: campaign.serialize()
+            waypoints: Array.from(discoveredWaypoints)
         });
     }
 
@@ -6895,12 +6833,12 @@ function openSkillPicker(slotIdx, x, y) {
 
 window.addEventListener('mousemove', (e) => {
     if (dragGhost) {
-        dragGhost.style.left = `${e.clientX - 16}px`;
-        dragGhost.style.top = `${e.clientY - 16}px`;
+        dragGhost.style.left = ${e.clientX - 16}px;
+        dragGhost.style.top = ${e.clientY - 16}px;
     }
     if (dragSkillGhost) {
-        dragSkillGhost.style.left = `${e.clientX - 24}px`;
-        dragSkillGhost.style.top = `${e.clientY - 24}px`;
+        dragSkillGhost.style.left = ${e.clientX - 24}px;
+        dragSkillGhost.style.top = ${e.clientY - 24}px;
     }
 });
 
@@ -6928,7 +6866,7 @@ function handleBossDeath(boss) {
     if (actNum > 0) {
         campaign.completeAct(actNum);
         showActCleared(actName, actSubtitle);
-
+        
         const portal = {
             type: 'portal',
             x: boss.x + 40,
@@ -6948,9 +6886,9 @@ function showActCleared(name, subtitle) {
 
     splash.innerHTML = `
         <div class="act-cleared-subtitle">Acto Completado</div>
-        <h1 class="act-cleared-title">Acto ${name}</h1>
+        <h1 class="act-cleared-title">Acto \</h1>
         <div class="act-cleared-ornament"></div>
-        <div class="act-cleared-subtitle">${subtitle}</div>
+        <div class="act-cleared-subtitle">\</div>
     `;
     splash.classList.add('show');
     if (typeof playZoneTransition === 'function') playZoneTransition();
