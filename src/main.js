@@ -6277,7 +6277,7 @@ async function renderSaveSlots() {
                 <div class="slot-name" style="text-shadow: 0 0 4px rgba(255,255,255,0.3);">${slot.name || slot.className}</div>
                 <div class="slot-detail" style="color:#aaa;">Level ${slot.level} ${slot.className} — ${date}</div>
             </div>
-            <button class="slot-delete" title="Delete character">âœ•</button>
+            <button class="slot-delete" title="Delete character">✖</button>
         `;
 
         // Click to load

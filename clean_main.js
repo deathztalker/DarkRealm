@@ -2114,25 +2114,25 @@ function updateHud() {
 
         // Shrine / Skill Buffs
         for (const b of (player._buffs || [])) {
-            let icon = 'ðŸ›¡ï¸'; let color = '#00ff00';
+            let icon = '🛡️'; let color = '#00ff00';
             const bid = b.id || b.type || '';
-            if (bid.includes('speed')) { icon = 'ðŸ’¨'; color = '#00ccff'; }
-            else if (bid.includes('damage') || bid.includes('berserk')) { icon = 'âš”ï¸'; color = '#ff3300'; }
-            else if (bid.includes('mana')) { icon = 'ðŸ’§'; color = '#3366ff'; }
-            else if (bid.includes('resist')) { icon = 'ðŸ”®'; color = '#ff00ff'; }
-            else if (bid.includes('exp')) { icon = 'âœ¨'; color = '#ffffcc'; }
+            if (bid.includes('speed')) { icon = '💨'; color = '#00ccff'; }
+            else if (bid.includes('damage') || bid.includes('berserk')) { icon = '⚔️'; color = '#ff3300'; }
+            else if (bid.includes('mana')) { icon = '💧'; color = '#3366ff'; }
+            else if (bid.includes('resist')) { icon = '🔮'; color = '#ff00ff'; }
+            else if (bid.includes('exp')) { icon = '✨'; color = '#ffffcc'; }
 
             createStatusIcon(bid, icon, color, `${bid.replace('shrine_', '').toUpperCase()}: ${Math.ceil(b.duration || 0)}s`);
         }
 
         // Debuffs (Slows, DoTs, Curses)
         if (player._auraSlowTimer > 0) {
-            createStatusIcon('slow', 'â„ï¸', '#88ccff', `SLOWED: ${Math.ceil(player._auraSlowTimer)}s`);
+            createStatusIcon('slow', '❄️', '#88ccff', `SLOWED: ${Math.ceil(player._auraSlowTimer)}s`);
         }
 
         for (const d of (player._dots || [])) {
-            let icon = 'ðŸ”¥'; let color = '#ff0000';
-            if (d.type === 'poison') { icon = 'â˜ ï¸'; color = '#00ff00'; }
+            let icon = '🔥'; let color = '#ff0000';
+            if (d.type === 'poison') { icon = '☠️'; color = '#00ff00'; }
             createStatusIcon(d.type, icon, color, `${d.type.toUpperCase()} DoT: ${Math.ceil(d.duration)}s`);
         }
     }
@@ -6216,7 +6216,7 @@ async function renderSaveSlots() {
                 <div class="slot-name" style="text-shadow: 0 0 4px rgba(255,255,255,0.3);">${slot.name || slot.className}</div>
                 <div class="slot-detail" style="color:#aaa;">Level ${slot.level} ${slot.className} â€” ${date}</div>
             </div>
-            <button class="slot-delete" title="Delete character">âœ•</button>
+            <button class="slot-delete" title="Delete character">✖</button>
         `;
 
         // Click to load
