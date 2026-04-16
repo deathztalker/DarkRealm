@@ -2813,6 +2813,23 @@ body.socketing-mode .inv-item:not(.unidentified) {
     font-size: 26px;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.9));
   }
+
+  /* Mobile Trade UI Specifics */
+  .mobile-trade-inv-grid {
+    border-top: 1px solid #444;
+    max-height: 250px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .inv-slot-mobile-shop {
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .inv-slot-mobile-shop:active {
+    background: rgba(212, 175, 55, 0.3) !important;
+    transform: scale(0.95);
+  }
 }
 
 @media (min-width: 1024px) {

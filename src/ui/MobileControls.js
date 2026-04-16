@@ -153,27 +153,38 @@ export class MobileControls {
     update(player) {
         if (!this.active || !player) return;
 
-        const skillMap = getSkillMap(player.classId);
+        // Skill icon mapping (replicated from main.js for sync)
+        const getRAIcon = (id) => {
+            const map = {
+                'warrior': 'ra-crossed-swords', 'arms': 'ra-sword', 'bash': 'ra-muscle-up', 'double_swing': 'ra-dervish-swords', 'rend': 'ra-dripping-sword', 'whirlwind': 'ra-spinning-sword', 'berserk': 'ra-player-pyromaniac', 'cleave': 'ra-axe-swing', 'execute': 'ra-decapitation', 'defense': 'ra-heavy-shield', 'shield_bash': 'ra-bolt-shield', 'iron_skin': 'ra-knight-helmet', 'block_mastery': 'ra-round-shield', 'revenge': 'ra-player-dodge', 'taunt': 'ra-horn-call', 'fortify': 'ra-guarded-tower', 'life_tap': 'ra-crowned-heart', 'last_stand': 'ra-blast', 'battle': 'ra-castle-flag', 'warcry': 'ra-horn-call', 'shout': 'ra-speech-bubble', 'leap_attack': 'ra-boot-stomp', 'battle_orders': 'ra-hand-emblem', 'commanding_shout': 'ra-speech-bubbles', 'slam': 'ra-groundbreaker', 'avatar_of_war': 'ra-heavy-fall',
+                'sorceress': 'ra-crystal-wand', 'fire': 'ra-fire-symbol', 'fire_bolt': 'ra-small-fire', 'fireball': 'ra-fire-bomb', 'fire_mastery': 'ra-burning-embers', 'meteor': 'ra-burning-meteor', 'fire_storm': 'ra-arson', 'immolate': 'ra-campfire', 'enchant': 'ra-fireball-sword', 'inferno': 'ra-fire-breath', 'cold': 'ra-snowflake', 'ice_bolt': 'ra-frost-emblem', 'frost_nova': 'ra-frostfire', 'ice_blast': 'ra-cold-heart', 'frozen_armor': 'ra-crystal-cluster', 'blizzard': 'ra-ice-cube', 'cold_mastery': 'ra-frozen-arrow', 'frozen_orb': 'ra-crystal-ball', 'absolute_zero': 'ra-brain-freeze', 'lightning': 'ra-lightning-bolt', 'charged_bolt': 'ra-focused-lightning', 'lightning_bolt': 'ra-lightning', 'chain_lightning': 'ra-lightning-trio', 'static_field': 'ra-energise', 'teleport': 'ra-player-teleport', 'light_mastery': 'ra-lightning-sword', 'nova': 'ra-explosion', 'energy_shield': 'ra-bolt-shield', 'thunder_storm': 'ra-lightning-storm',
+                'shaman': 'ra-lightning-trio', 'necromancer': 'ra-skull', 'rogue': 'ra-divert', 'warlock': 'ra-eye-shield', 'paladin': 'ra-holy-symbol', 'druid': 'ra-pawprint', 'ranger': 'ra-target-arrows'
+            };
+            return map[id] || 'ra-interdiction';
+        };
         
         // Update Skill Buttons
         this.skillButtons.forEach(btnObj => {
             const skillId = player.hotbar[btnObj.slot];
-            const skill = skillMap[skillId];
+            const span = btnObj.el.querySelector('span');
             
-            if (skill && skill.icon) {
-                btnObj.el.querySelector('span').textContent = skill.icon;
+            if (skillId) {
+                const iconClass = getRAIcon(skillId);
+                span.innerHTML = `<i class="ra ${iconClass}" style="color:var(--gold); font-size:24px;"></i>`;
             } else {
                 // If no skill equipped, show slot label (Q, E, R, etc)
-                btnObj.el.querySelector('span').textContent = btnObj.originalIcon;
+                span.textContent = btnObj.originalIcon;
             }
         });
 
-        // Update Potion Button if possible
+        // Update Potion Button
         if (this.potionButton) {
             const firstPotion = player.belt.find(p => p !== null);
-            if (firstPotion && firstPotion.icon) {
-                // We'd ideally use an emoji matching the potion type
-                this.potionButton.querySelector('span').textContent = '🧪';
+            const span = this.potionButton.querySelector('span');
+            if (firstPotion) {
+                span.innerHTML = '<i class="ra ra-bubbles" style="color:#ff5050; font-size:24px;"></i>';
+            } else {
+                span.textContent = '🧪';
             }
         }
     }

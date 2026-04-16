@@ -406,20 +406,20 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         if (!camera) return;
         const width = window.innerWidth;
         const height = window.innerHeight;
-        
+
         if (width >= 1024) {
             camera.zoom = 2.0; // Desktop
         } else if (width > height) {
-            camera.zoom = 1.1; // Mobile Landscape
+            camera.zoom = 0.75; // Mobile Landscape (wider view)
         } else {
-            camera.zoom = 0.8; // Mobile Portrait
+            camera.zoom = 1.2; // Mobile Portrait (reverted)
         }
     };
 
     renderer = new Renderer(canvas);
     camera = new Camera(renderer.width, renderer.height, 2.0); // Default to 2.0 initially
     adjustZoom(); // Apply correct zoom immediately
-    
+
     window.addEventListener('resize', adjustZoom);
 
     input = new Input(canvas);
@@ -3992,16 +3992,16 @@ function renderInventory() {
         if (item) {
             const div = document.createElement('div');
             const check = player.canEquip(item);
-            
+
             // Only show red 'cant-equip' if it's an item that IS equippable by type
             // but fails requirements (stats/level) or is broken.
             const equippableTypes = ['weapon', 'armor', 'helm', 'shield', 'gloves', 'boots', 'belt', 'ring', 'amulet', 'source', 'wand', 'staff'];
             const isEquippableType = equippableTypes.includes(item.type) || (item.slot && item.slot !== 'none');
             const isBroken = item.maxDurability > 0 && item.durability === 0;
-            
+
             // It's 'red' if it's meant to be equipped but you can't right now
             const showRed = isEquippableType && (!check.ok || isBroken);
-            
+
             div.innerHTML = getItemHtml(item, showRed);
             const innerDiv = div.firstChild; // The .inv-item div
             setupTooltip(innerDiv, item);
@@ -5200,7 +5200,7 @@ function renderShop() {
         row.querySelector('.tooltip-trigger').addEventListener('mouseleave', hideTooltip);
 
         const btn = row.querySelector('button');
-        btn.addEventListener('click', () => {
+        btn.onclick = () => {
             if (player.gold >= item.price) {
                 const purchased = { ...item };
                 delete purchased.price;
@@ -5215,7 +5215,7 @@ function renderShop() {
             } else {
                 addCombatLog('Not enough gold!', 'log-dmg');
             }
-        });
+        };
 
         container.appendChild(row);
     }
