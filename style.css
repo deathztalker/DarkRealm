@@ -2112,7 +2112,12 @@ body.socketing-mode .inv-slot {
   }
 
   #hud-buttons {
-    display: none; /* Hidden because mobile controls replace them */
+    display: none !important;
+  }
+  #mercenary-hud {
+    top: 5px !important;
+    left: 5px !important;
+    transform: scale(0.85);
   }
   
   #combat-log {

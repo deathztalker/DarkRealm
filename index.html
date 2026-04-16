@@ -284,25 +284,17 @@
   </div>
 
   <!-- Mobile Trading Panel -->
-  <div id="panel-trade-mobile" class="panel hidden">
-    <div class="panel-header" style="display: flex; justify-content: space-around; padding: 0;">
-        <button id="btn-trade-vendor-tab" class="trade-tab active" style="flex: 1; padding: 12px; background: #333; border: none; color: #fff; font-family: 'Cinzel', serif;">Vendor</button>
-        <button id="btn-trade-inventory-tab" class="trade-tab" style="flex: 1; padding: 12px; background: transparent; border: none; color: #888; font-family: 'Cinzel', serif;">Inventory</button>
+  <div id="panel-trade-mobile" class="panel hidden" style="display: flex; flex-direction: column;">
+    <div class="panel-header" style="display: flex; justify-content: space-around; padding: 0; min-height: 50px;">
+        <button id="btn-trade-vendor-tab" class="trade-tab active" style="flex: 1; padding: 12px; background: rgba(50,50,50,0.8); border: none; color: #fff; font-family: 'Cinzel', serif;">VENDOR</button>
+        <button id="btn-trade-inventory-tab" class="trade-tab" style="flex: 1; padding: 12px; background: transparent; border: none; color: #888; font-family: 'Cinzel', serif;">INVENTORY</button>
+        <button class="panel-close" data-panel="trade-mobile" style="position: absolute; top: 12px; right: 15px; font-size: 20px;">✕</button>
     </div>
-    <div id="mobile-trade-content" style="padding: 10px; max-height: 70vh; overflow-y: auto;">
-        <!-- Content will be rendered here by JS -->
+    <div id="mobile-trade-content" style="padding: 15px; flex: 1; overflow-y: auto; background: rgba(0,0,0,0.5);">
+        <!-- Content populated by JS -->
     </div>
-  </div>
-
-  <!-- Mobile Trading Panel -->
-  <div id="panel-trade-mobile" class="panel hidden">
-    <div class="panel-header" style="display: flex; justify-content: space-around; padding: 0;">
-        <button id="btn-trade-vendor-tab" class="trade-tab" style="flex: 1; padding: 12px; background: transparent; border: none; color: #888; font-family: 'Cinzel', serif;">Vendor</button>
-        <button id="btn-trade-inventory-tab" class="trade-tab" style="flex: 1; padding: 12px; background: transparent; border: none; color: #888; font-family: 'Cinzel', serif;">Inventory</button>
-        <button id="btn-close-mobile-trade" style="position: absolute; top: 8px; right: 8px; background: none; border: none; color: #888; font-size: 1.2rem;">&times;</button>
-    </div>
-    <div id="mobile-trade-content" style="max-height: 70vh; overflow-y: auto;">
-        <!-- Content will be rendered here by JS -->
+    <div id="mobile-trade-footer" style="padding: 10px; border-top: 1px solid #333; text-align: right; color: var(--gold); font-size: 14px;">
+        Total Gold: <span id="mobile-trade-gold-val">0</span>
     </div>
   </div>
 
