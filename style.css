@@ -2135,6 +2135,36 @@ body.socketing-mode .inv-slot {
     transform: scale(0.85);
   }
 
+  /* Landscape Specific Overrides */
+  @media (orientation: landscape) {
+    #minimap {
+      top: auto !important;
+      bottom: 10px !important;
+      right: 10px !important;
+      width: 120px !important;
+      height: 90px !important;
+      transform: scale(0.9);
+      transform-origin: bottom right;
+    }
+
+    #quest-hud {
+      top: 60px !important;
+      right: 10px !important;
+      width: 130px !important;
+      font-size: 9px;
+    }
+
+    #hud {
+      transform: scale(0.6) translateX(-50%);
+      bottom: -15px;
+    }
+
+    #mercenary-hud {
+        transform: scale(0.75);
+        transform-origin: top left;
+    }
+  }
+
   #combat-log {
     display: none;
     /* Too spammy for mobile */

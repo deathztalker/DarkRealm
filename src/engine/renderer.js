@@ -26,9 +26,12 @@ export class Renderer {
     _resize() {
         const isMobile = window.innerWidth <= 768 || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
         if (isMobile) {
-            // Mobile mode: scale internal resolution to make everything bigger and clearer
-            // Target roughly ~600px width internally for mobile
-            const scale = Math.max(1.5, window.innerWidth / 400);
+            const isLandscape = window.innerWidth > window.innerHeight;
+            // In landscape, we want less aggressive scaling to fix the "zoom" feeling
+            const baseScale = isLandscape ? 1.1 : 1.5;
+            const targetWidth = isLandscape ? 600 : 400;
+            const scale = Math.max(baseScale, window.innerWidth / targetWidth);
+            
             this.canvas.width = Math.floor(window.innerWidth / scale);
             this.canvas.height = Math.floor(window.innerHeight / scale);
         } else {

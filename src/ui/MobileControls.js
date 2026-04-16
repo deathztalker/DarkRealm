@@ -154,13 +154,13 @@ export class MobileControls {
             { id: 'inv', action: 'ui:toggle:inventory', icon: '🎒' },
             { id: 'char', action: 'ui:toggle:character', icon: '📊' },
             { id: 'skill', action: 'ui:toggle:talents', icon: '✨' },
-            { id: 'ques', action: 'ui:toggle:journal', icon: '⚔️' },
+            { id: 'ques', action: 'ui:toggle:journal', icon: '📜' },
             { id: 'map', action: 'ui:toggle:fullmap', icon: '🗺️' }
         ];
 
         uiButtons.forEach(btnDef => {
             const btn = document.createElement('div');
-            btn.style.cssText = 'width:42px; height:42px; background:rgba(255,255,255,0.05); border:1px solid rgba(212,175,55,0.2); border-radius:8px; display:flex; justify-content:center; align-items:center; font-size:20px; color:white; transition: all 0.2s;';
+            btn.style.cssText = 'width:42px; height:42px; background:rgba(0,0,0,0.4); border:1px solid rgba(212,175,55,0.2); border-radius:8px; display:flex; justify-content:center; align-items:center; font-size:20px; color:white; transition: all 0.2s; backdrop-filter: blur(4px);';
             btn.innerHTML = btnDef.icon;
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
@@ -169,27 +169,33 @@ export class MobileControls {
                 bus.emit(btnDef.action, {});
             });
             btn.addEventListener('touchend', () => {
-                btn.style.background = 'rgba(255,255,255,0.05)';
+                btn.style.background = 'rgba(0,0,0,0.4)';
                 btn.style.borderColor = 'rgba(212,175,55,0.2)';
             });
             uiBtnContainer.appendChild(btn);
         });
 
         // Resize handler for orientation shifts
-        window.addEventListener('resize', () => {
-            const portrait = window.innerHeight > window.innerWidth;
-            if (portrait) {
+        const applyLayout = () => {
+            const isPortrait = window.innerHeight > window.innerWidth;
+            if (isPortrait) {
                 this.uiContainer.style.top = '120px';
                 this.uiContainer.style.left = '10px';
+                this.uiContainer.style.right = 'auto';
                 this.uiContainer.style.transform = 'none';
                 this.uiContainer.style.flexDirection = 'column';
             } else {
+                // LANDSCAPE: Move to top right row
                 this.uiContainer.style.top = '10px';
-                this.uiContainer.style.left = '50%';
-                this.uiContainer.style.transform = 'translateX(-50%)';
+                this.uiContainer.style.right = '10px';
+                this.uiContainer.style.left = 'auto';
+                this.uiContainer.style.transform = 'none';
                 this.uiContainer.style.flexDirection = 'row';
             }
-        });
+        };
+
+        window.addEventListener('resize', applyLayout);
+        applyLayout(); // Run once
     }
 
     /**
