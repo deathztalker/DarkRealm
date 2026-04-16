@@ -127,10 +127,10 @@ export class MobileControls {
             }
         });
 
-        // Toggle UI buttons (Inventory, etc) - Place below mercenary portrait
+        // Toggle UI buttons (Inventory, etc) - Center at top
         const uiBtnContainer = document.createElement('div');
         uiBtnContainer.id = 'mobile-ui-shortcuts';
-        uiBtnContainer.style.cssText = 'position:absolute; top:120px; left:10px; display:flex; gap:10px; pointer-events:auto;';
+        uiBtnContainer.style.cssText = 'position:absolute; top:10px; left:50%; transform:translateX(-50%); display:flex; gap:10px; pointer-events:auto;';
         container.appendChild(uiBtnContainer);
 
         const uiButtons = [

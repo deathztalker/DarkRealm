@@ -379,6 +379,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
             player = new Player(selectedClass);
             window.player = player;
             Vendor.init(loot, player);
+            VendorUI.init();
             if (charName) player.charName = charName;
 
             const idTome = { ...items.tome_identify, charges: 20, identified: true };
@@ -4710,11 +4711,7 @@ function renderDialoguePicker(npc) {
         { 
             label: 'Trade', 
             action: () => { 
-                if (document.body.classList.contains('is-mobile')) {
-                    renderMobileShop('vendor');
-                } else {
-                    Vendor.openShopForNpc(npc); 
-                }
+                Vendor.openShopForNpc(npc); 
                 menu.remove(); 
                 activeDialogueNpc = null; 
             } 
@@ -5275,81 +5272,6 @@ function renderShop() {
     }
 }
 
-let mobileTradeActiveTab = 'vendor';
-
-function renderMobileShop(tab = 'vendor') {
-    mobileTradeActiveTab = tab;
-    const container = $('mobile-trade-content');
-    if (!container) return;
-    container.innerHTML = '';
-    
-    // Update Tab UI
-    const vTab = $('btn-trade-vendor-tab');
-    const iTab = $('btn-trade-inventory-tab');
-    if (vTab && iTab) {
-        vTab.classList.toggle('active', tab === 'vendor');
-        iTab.classList.toggle('active', tab === 'inventory');
-        vTab.style.background = tab === 'vendor' ? 'rgba(80,80,80,0.8)' : 'transparent';
-        iTab.style.background = tab === 'inventory' ? 'rgba(80,80,80,0.8)' : 'transparent';
-        vTab.style.color = tab === 'vendor' ? '#fff' : '#888';
-        iTab.style.color = tab === 'inventory' ? '#fff' : '#888';
-    }
-
-    const goldVal = $('mobile-trade-gold-val');
-    if (goldVal) goldVal.textContent = player.gold;
-    
-    togglePanel('trade-mobile', true);
-
-    if (tab === 'vendor') {
-        renderMobileVendorList(container);
-    } else {
-        renderMobileInventoryList(container);
-    }
-}
-
-function renderMobileVendorList(container) {
-    const shopInventory = [
-        { ...items.health_potion, price: 25 },
-        { ...items.mana_potion, price: 25 },
-        { ...items.rejuv_potion, price: 75 },
-        { ...items.scroll_identify, price: 100 },
-        { ...items.scroll_town_portal, price: 100 },
-        { ...items.tome_tp, price: 500 },
-        { ...items.tome_identify, price: 500 },
-    ];
-
-    shopInventory.forEach(item => {
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:12px; border:1px solid #333; background:#1a1a1a; margin-bottom:10px; border-radius:4px;';
-        row.innerHTML = `
-            <div style="display:flex; align-items:center; gap:15px;">
-                <div style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center;">
-                    ${getItemHtml(item)}
-                </div>
-                <div style="display:flex; flex-direction:column;">
-                    <span style="color:var(--gold); font-size:15px; font-family:Cinzel,serif;">${item.name}</span>
-                    <span style="color:#888; font-size:12px;">${item.price} gold</span>
-                </div>
-            </div>
-            <button class="btn-primary small" style="padding:8px 15px;">BUY</button>
-        `;
-        row.querySelector('button').onclick = () => {
-            if (player.gold >= item.price) {
-                const purchased = { ...item };
-                delete purchased.price;
-                if (player.addToInventory(purchased)) {
-                    player.gold -= item.price;
-                    addCombatLog(`Bought ${item.name}`, 'log-heal');
-                    playLoot();
-                    renderMobileShop('vendor');
-                } else {
-                    addCombatLog('Inventory full!', 'log-dmg');
-                }
-            } else {
-                addCombatLog('Not enough gold!', 'log-dmg');
-            }
-        };
-        container.appendChild(row);
     });
 }
 
