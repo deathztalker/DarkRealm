@@ -410,9 +410,9 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         if (width >= 1024) {
             camera.zoom = 2.0; // Desktop
         } else if (width > height) {
-            camera.zoom = 1.6; // Mobile Landscape (Ultra-wide/Non-zoomed feel)
+            camera.zoom = 1.3; // Mobile Landscape (Cinema / Wide view)
         } else {
-            camera.zoom = 1.5; // Mobile Portrait (Wider view)
+            camera.zoom = 1.1; // Mobile Portrait (Panoramic view)
         }
     };
 
@@ -3018,17 +3018,18 @@ $('minimap')?.addEventListener('click', (e) => {
 
 // ─── COMBAT EVENTS ───
 bus.on('combat:damage', d => {
+    const colors = {
+        physical: '#ffffff',
+        fire: '#ff6600',
+        cold: '#00ccff',
+        lightning: '#ffff00',
+        poison: '#00ff00',
+        magic: '#ff00ff',
+        shadow: '#a040ff',
+        holy: '#ffd700'
+    };
+
     if (d.worldX && d.worldY) {
-        const colors = {
-            physical: '#ffffff',
-            fire: '#ff6600',
-            cold: '#00ccff',
-            lightning: '#ffff00',
-            poison: '#00ff00',
-            magic: '#ff00ff',
-            shadow: '#a040ff',
-            holy: '#ffd700'
-        };
         const color = d.isCrit ? '#ffcc00' : (colors[d.type] || '#ffffff');
         const text = d.dealt === 'Blocked!' ? 'BLOCKED' : d.dealt;
         fx.emitText(d.worldX, d.worldY, text, color, d.isCrit);
