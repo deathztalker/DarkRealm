@@ -1,72 +1,65 @@
 import os
 from PIL import Image
 
-def fix_shaman():
-    print("Corrigiendo Spritesheet del Shaman...")
-    path = 'assets/class_shaman_spritesheet.png'
-    if not os.path.exists(path):
-        print("No se encontró assets/class_shaman_spritesheet.png")
+def smart_process(input_path, output_path, is_shaman=False):
+    print(f"Procesando {input_path}...")
+    if not os.path.exists(input_path):
+        print(f"No existe: {input_path}")
         return
-    
-    img = Image.open(path).convert("RGBA")
-    # El archivo mide 394x526. Gamelab suele hacer grids. 
-    # Vamos a asumir un grid de frames y redimensionar el resultado final.
-    # El motor espera un spritesheet de 48x48 por frame, 7 cols, 16 filas.
-    
-    target_sw, target_sh = 48, 48
-    cols, rows = 7, 16
-    final_out = Image.new("RGBA", (target_sw * cols, target_sh * rows), (0,0,0,0))
-    
-    # Redimensionamos la imagen original a algo que podamos manejar 
-    # (por ahora, usaremos la imagen base para rellenar el spritesheet de forma compatible)
-    # Como el spritesheet de Gamelab es una sola dirección/animación, lo usaremos para la fila de 'walk'
-    
-    base_frame = img.resize((48, 48), Image.Resampling.LANCZOS)
-    
-    # Llenamos todas las direcciones (0-3) y estados (Idle, Walk, Attack)
-    # para que el personaje sea visible y no un cuadro negro.
-    for dir_idx in range(4): # North, West, South, East
-        # Idle/Cast (Filas 0-3)
-        for c in range(7): final_out.paste(base_frame, (c * 48, (0 + dir_idx) * 48))
-        # Walk (Filas 8-11)
-        for c in range(6): final_out.paste(base_frame, (c * 48, (8 + dir_idx) * 48))
-        # Attack (Filas 12-15)
-        for c in range(6): final_out.paste(base_frame, (c * 48, (12 + dir_idx) * 48))
-        
-    final_out.save('assets/class_shaman.png')
-    print("✅ assets/class_shaman.png generado (48x48 compatible).")
 
-def fix_npc_mercenary(filename, out_name):
-    print(f"Procesando {filename} -> {out_name}...")
-    path = f'assets/{filename}.png'
-    if not os.path.exists(path):
-        print(f"No se encontró {path}")
+    img = Image.open(input_path).convert("RGBA")
+    
+    # 1. Auto-crop: Quitar todo el espacio transparente alrededor del personaje
+    bbox = img.getbbox()
+    if not bbox:
+        print(f"Imagen vacía: {input_path}")
         return
+    img = img.crop(bbox)
+
+    # 2. Redimensionar el personaje para que quepa bien en 48x48
+    # En este motor, los personajes miden unos 28-32px de alto
+    target_h = 32
+    aspect = img.width / img.height
+    new_h = target_h
+    new_w = int(new_h * aspect)
     
-    img = Image.open(path).convert("RGBA")
-    # Redimensionar la imagen de 1024x1024 a 48x48
-    base_frame = img.resize((48, 48), Image.Resampling.LANCZOS)
-    
-    # Crear spritesheet estándar de NPC (usaremos el formato de 48x48)
-    # Los NPCs en este motor suelen usar una sola imagen o un pequeño grid.
-    # Para máxima compatibilidad, crearemos un mini spritesheet.
-    final_out = Image.new("RGBA", (48, 48), (0,0,0,0))
-    final_out.paste(base_frame, (0, 0))
-    
-    final_out.save(f'assets/{out_name}.png')
-    print(f"✅ assets/{out_name}.png generado (48x48).")
+    # NEAREST para mantener los píxeles definidos y evitar borrosidad
+    img_resized = img.resize((new_w, new_h), Image.Resampling.NEAREST)
+
+    # 3. Crear el lienzo de 48x48 y centrar el personaje
+    canvas = Image.new("RGBA", (48, 48), (0,0,0,0))
+    paste_x = (48 - new_w) // 2
+    paste_y = (48 - new_h) // 2
+    canvas.paste(img_resized, (paste_x, paste_y), img_resized)
+
+    # 4. Caso Especial Shaman: El motor espera un Spritesheet de 7x16 frames
+    if is_shaman:
+        # Creamos una hoja de 7 columnas por 16 filas (cada celda 48x48)
+        final_shaman = Image.new("RGBA", (48 * 7, 48 * 16), (0,0,0,0))
+        for r in range(16):
+            for c in range(7):
+                final_shaman.paste(canvas, (c * 48, r * 48))
+        final_shaman.save(output_path)
+    else:
+        # Los NPCs y Mercenarios se guardan como una sola imagen de 48x48
+        # El motor (drawSprite) ya se encarga de darles movimiento de 'respiración'
+        canvas.save(output_path)
+        
+    print(f"✅ Generado: {output_path} (48x48 centrado y definido)")
 
 if __name__ == "__main__":
-    fix_shaman()
+    # Shaman (con formato de spritesheet para que el motor de clases lo reconozca)
+    smart_process('assets/class_shaman_spritesheet.png', 'assets/class_shaman.png', is_shaman=True)
     
-    assets_to_fix = [
-        ('npc_blacksmith', 'npc_blacksmith'),
-        ('npc_elder', 'npc_elder'),
-        ('npc_guard', 'npc_guard'),
-        ('npc_merchant', 'npc_merchant'),
-        ('mercenary_warrior', 'mercenary_warrior'),
-        ('mercenary_archer', 'mercenary_archer')
+    # NPCs y Mercenarios (imágenes individuales de 48x48)
+    assets = [
+        ('assets/npc_blacksmith.png', 'assets/npc_blacksmith.png'),
+        ('assets/npc_elder.png', 'assets/npc_elder.png'),
+        ('assets/npc_guard.png', 'assets/npc_guard.png'),
+        ('assets/npc_merchant.png', 'assets/npc_merchant.png'),
+        ('assets/mercenary_warrior.png', 'assets/mercenary_warrior.png'),
+        ('assets/mercenary_archer.png', 'assets/mercenary_archer.png'),
     ]
     
-    for inp, out in assets_to_fix:
-        fix_npc_mercenary(inp, out)
+    for inp, out in assets:
+        smart_process(inp, out)
