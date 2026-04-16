@@ -63,7 +63,7 @@ body {
 .screen.active {
   display: flex;
   align-items: center;
-  justify-content: center;
+  /*justify-content: center;*/
 }
 
 .screen.overlay {
@@ -2859,6 +2859,10 @@ body.socketing-mode .inv-item:not(.unidentified) {
 
 /* Portrait Specific: Vertical layout optimization */
 @media (max-width: 1023px) and (orientation: portrait) {
+  .minimap {
+    top: 10px;
+  }
+
   #joystick-base {
     bottom: 25px;
     left: 15px;
@@ -2875,6 +2879,10 @@ body.socketing-mode .inv-item:not(.unidentified) {
 
 /* Landscape Specific: Horizontal layout (Keep HUD minimal) */
 @media (max-width: 1023px) and (orientation: landscape) {
+  .minimap {
+    top: 10px;
+  }
+
   #hud {
     height: 60px;
   }

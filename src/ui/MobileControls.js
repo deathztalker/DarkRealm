@@ -145,7 +145,7 @@ export class MobileControls {
         if (isPortrait) {
             uiBtnContainer.style.cssText = `position:absolute; top:120px; left:10px; flex-direction:column; ${baseStyle}`;
         } else {
-            uiBtnContainer.style.cssText = `position:absolute; top:120px; left:10px; flex-direction:column; ${baseStyle}`;
+            uiBtnContainer.style.cssText = `position:absolute; top:10px; left:50%; transform:translateX(-50%); flex-direction:row; ${baseStyle}`;
         }
 
         container.appendChild(uiBtnContainer);

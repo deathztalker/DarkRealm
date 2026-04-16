@@ -1023,29 +1023,27 @@ function gameLoop(timestamp) {
     projectiles.forEach(p => p.render(renderer, lastTime));
     aoeZones.forEach(a => a.render(renderer, lastTime));
 
-    // Phase 15: Render Floating Combat Text (in Screen Space for Mobile Precision)
+    // Phase 15: Render Floating Combat Text (in World Space)
     renderer.ctx.save();
-    renderer.ctx.setTransform(1, 0, 0, 1, 0, 0); // Temporary switch to screen space
     renderer.ctx.textAlign = 'center'; 
     for (const ft of floatingTexts) {
         const alpha = Math.min(1.0, ft.life * 2.5);
         const size = ft.isCrit ? 16 : 10;
         
-        // Translate world coordinates to screen pixels
-        const screen = camera.toScreen(ft.x, ft.y);
-
         renderer.ctx.font = `${ft.isCrit ? 'bold ' : ''}${size}px Cinzel, serif`;
         renderer.ctx.fillStyle = `rgba(0,0,0,${alpha * 0.8})`; // Shadow
-        renderer.ctx.fillText(ft.text, screen.x + 1, screen.y + 1);
+        renderer.ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
         renderer.ctx.fillStyle = ft.color;
         renderer.ctx.globalAlpha = alpha;
-        renderer.ctx.fillText(ft.text, screen.x, screen.y);
+        renderer.ctx.fillText(ft.text, ft.x, ft.y);
     }
+    
+    // Phase 16: Render Effects & Particles (Inside Camera Context)
+    fx.render(renderer.ctx);
+    
     renderer.ctx.restore();
 
     bus.emit('render:effects', { renderer, lastTime });
-
-    fx.render(renderer.ctx);
 
     // --- Phase 20: Narrative Vision: Atmospheric Lighting Pass ---
     if (player && renderer && camera) {
