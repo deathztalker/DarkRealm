@@ -1022,118 +1022,120 @@ body {
 #equip-slots {
   display: grid;
   grid-template-areas:
-    "amulet  head    .     "
-    "mainhand chest   offhand"
-    "mainhand belt    offhand"
-    "gloves  ring1   boots "
-    ".       ring2   .     ";
-  grid-template-columns: 70px 70px 70px;
-  grid-template-rows: 70px 70px 50px 70px 50px;
-  gap: 10px;
+    ".         .       head     amulet  ."
+    "mainhand  .       chest    .       offhand"
+    "mainhand  ring1   belt     ring2   offhand"
+    "gloves    .       .        .       boots";
+  grid-template-columns: 65px 45px 75px 45px 65px;
+  grid-template-rows: repeat(4, auto);
+  gap: 15px 5px;
   justify-content: center;
-  padding: 20px;
-  background: radial-gradient(circle at center, rgba(30, 20, 10, 0.4) 0%, rgba(0, 0, 0, 0.8) 100%);
+  align-items: center;
+  padding: 30px 15px;
+  background: radial-gradient(circle at center, rgba(40, 30, 15, 0.5) 0%, rgba(0, 0, 0, 0.9) 100%);
   border-bottom: 2px solid #3a3025;
-  box-shadow: inset 0 0 40px #000;
+  box-shadow: inset 0 0 50px #000;
 }
 
 .equip-slot {
-  width: 56px;
-  height: 56px;
+  width: 54px;
+  height: 54px;
   background: #050505;
-  border: 2px solid #3a3025;
+  border: 1px solid #4a3520;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 0 10px #000;
+  box-shadow: inset 0 0 15px #000;
   cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .equip-slot:hover {
-  border-color: #d8b068;
+  border-color: var(--gold);
+  box-shadow: inset 0 0 15px rgba(216, 176, 104, 0.2), 0 0 10px rgba(216, 176, 104, 0.1);
 }
 
 .equip-slot::after {
   content: attr(data-label);
   position: absolute;
-  bottom: -16px;
-  left: 0;
-  right: 0;
+  bottom: -18px;
+  left: -10px;
+  right: -10px;
   text-align: center;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-family: 'Cinzel', serif;
-  color: #6a5a45;
+  color: #8a7a65;
   text-transform: uppercase;
   pointer-events: none;
+  letter-spacing: 1px;
 }
 
 .equip-slot[data-slot="head"] {
   grid-area: head;
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
 }
 
 .equip-slot[data-slot="chest"] {
   grid-area: chest;
-  width: 64px;
-  height: 96px;
+  width: 68px;
+  height: 90px;
 }
 
 .equip-slot[data-slot="mainhand"] {
   grid-area: mainhand;
-  width: 56px;
-  height: 110px;
+  width: 60px;
+  height: 100px;
 }
 
 .equip-slot[data-slot="offhand"] {
   grid-area: offhand;
-  width: 56px;
-  height: 110px;
-}
-
-.equip-slot[data-slot="gloves"],
-.equip-slot[data-slot="boots"] {
-  width: 52px;
-  height: 52px;
+  width: 60px;
+  height: 100px;
 }
 
 .equip-slot[data-slot="gloves"] {
   grid-area: gloves;
+  width: 50px;
+  height: 50px;
 }
 
 .equip-slot[data-slot="boots"] {
   grid-area: boots;
+  width: 50px;
+  height: 50px;
 }
 
 .equip-slot[data-slot="belt"] {
   grid-area: belt;
-  width: 64px;
-  height: 24px;
+  width: 68px;
+  height: 30px;
+  margin-top: 5px;
 }
 
 .equip-slot[data-slot="ring1"],
 .equip-slot[data-slot="ring2"],
 .equip-slot[data-slot="amulet"] {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
 }
 
 .equip-slot[data-slot="ring1"] {
   grid-area: ring1;
-  margin-top: -20px;
+  justify-self: center;
 }
 
 .equip-slot[data-slot="ring2"] {
   grid-area: ring2;
-  margin-top: -20px;
+  justify-self: center;
 }
 
 .equip-slot[data-slot="amulet"] {
   grid-area: amulet;
-  justify-self: end;
-  align-self: center;
+  justify-self: center;
 }
+
 
 /* Inventory Grid */
 #inventory-grid {

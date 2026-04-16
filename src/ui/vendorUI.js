@@ -3,6 +3,8 @@ import { Vendor } from '../vendorSystem.js';
 export const VendorUI = {
     currentTab: 'All',
     mobileTab: 'Vendor',
+    lastTapTime: 0,
+    lastTapIdx: -1,
 
     init() {
         const vTab = document.getElementById('btn-trade-vendor-tab');
@@ -177,9 +179,9 @@ export const VendorUI = {
         masterItems.forEach(item => {
             const price = item.price || (window.calculateSellPrice(item) * 4);
             const row = document.createElement('div');
-            row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px; border:1px solid #333; background:#111; margin-bottom:8px; border-radius:4px;';
+            row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px; border:1px solid #333; background:#111; margin-bottom:8px; border-radius:4px; transition: background 0.2s;';
             row.innerHTML = `
-                <div style="display:flex; align-items:center; gap:10px;">
+                <div style="display:flex; align-items:center; gap:10px; pointer-events:none;">
                     <div style="width:32px; height:32px; border:1px solid #444; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center;">
                         ${window.getItemHtml(item)}
                     </div>
@@ -188,9 +190,26 @@ export const VendorUI = {
                         <span style="color:var(--gold); font-size:11px;">${price}g</span>
                     </div>
                 </div>
-                <button class="btn-primary small" style="min-width:65px;">BUY</button>
+                <button class="btn-primary small" style="min-width:65px; position:relative; z-index:2;">BUY</button>
             `;
-            row.querySelector('button').onclick = () => {
+
+            // SLIDE TOOLTIP FOR MOBILE
+            row.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                window.showTooltip(item, touch.clientX, touch.clientY);
+                row.style.background = 'rgba(216, 176, 104, 0.1)';
+            });
+            row.addEventListener('touchmove', (e) => {
+                const touch = e.touches[0];
+                window.showTooltip(item, touch.clientX, touch.clientY);
+            });
+            row.addEventListener('touchend', () => {
+                window.hideTooltip();
+                row.style.background = '#111';
+            });
+
+            row.querySelector('button').onclick = (e) => {
+                e.stopPropagation();
                 if (window.player.gold >= price) {
                     if (window.player.addToInventory({...item})) {
                         window.player.gold -= price;
@@ -209,7 +228,6 @@ export const VendorUI = {
             gHeader.style.cssText = 'color:#bf642f; font-size:12px; margin:15px 0 8px; border-bottom:1px solid #4a3520; padding-bottom:5px;';
             gHeader.textContent = 'GAMBLE';
             container.appendChild(gHeader);
-            // Mystery logic could be added here similar to Gamble shop
         }
     },
 
@@ -228,14 +246,29 @@ export const VendorUI = {
             
             if (item) {
                 slot.innerHTML = window.getItemHtml(item);
-                slot.onclick = () => {
-                    const p = window.calculateSellPrice(item);
-                    if (confirm(`Sell ${item.name} for ${p}g?`)) {
+                
+                // DOUBLE TAP TO SELL
+                slot.addEventListener('touchstart', (e) => {
+                    const now = Date.now();
+                    const delta = now - this.lastTapTime;
+                    
+                    if (delta < 350 && this.lastTapIdx === i) {
+                        // Success Double Tap!
+                        const p = window.calculateSellPrice(item);
                         window.player.gold += p;
                         window.player.inventory[i] = null;
                         VendorUI.renderMobile('Inventory');
+                        if (window.addCombatLog) window.addCombatLog(`Sold ${item.name} for ${p}g`, 'log-heal');
+                        this.lastTapTime = 0;
+                    } else {
+                        this.lastTapTime = now;
+                        this.lastTapIdx = i;
+                        // Single tap: Show tooltip or hint
+                        const touch = e.touches[0];
+                        window.showTooltip(item, touch.clientX, touch.clientY);
                     }
-                };
+                });
+                slot.addEventListener('touchend', () => window.hideTooltip());
             }
             grid.appendChild(slot);
         });
