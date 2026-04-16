@@ -20,6 +20,7 @@ characters = {
     'npc_merchant': '6df53205-1049-4653-8707-690462701ef4',
     'npc_elder': 'cd664987-a540-4bab-8c54-5e074ef9c26a',
     'npc_guard': 'dc4b6c63-ec01-4432-98bd-091c5299c526',
+    'npc_female': '983089b2-82fa-4cf1-ac06-dd8789654980',
     'mercenary_warrior': '6b069940-48d2-4807-a972-54e4b37172fc',
     'mercenary_archer': 'c0889882-47fa-4b39-9f0f-e880ef0987d6'
 }

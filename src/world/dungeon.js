@@ -352,7 +352,7 @@ export class Dungeon {
                 type: "elder",
                 x: (cx - 3) * this.tileSize,
                 y: (cy - 4) * this.tileSize,
-                icon: "npc_elder",
+                icon: "npc_female",
                 dialogue: "Greetings, traveler. I sense a great darkness rising."
             });
 
@@ -372,7 +372,7 @@ export class Dungeon {
                 type: "mercenary_hire",
                 x: (cx - 4) * this.tileSize,
                 y: (cy + 2) * this.tileSize,
-                icon: "npc_guard",
+                icon: "npc_female",
                 dialogue: "Need a fighter? I can send one of my rogues to aid you... for a price."
             });
 

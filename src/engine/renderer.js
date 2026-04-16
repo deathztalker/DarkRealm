@@ -192,7 +192,9 @@ export class Renderer {
             grad.addColorStop(1, 'rgba(0,0,0,0)');
             ctx.fillStyle = grad;
             ctx.globalCompositeOperation = 'multiply';
-            ctx.fillCircle(x, y, size * 1.5, grad);
+            ctx.beginPath();
+            ctx.arc(x, y, size * 1.5, 0, Math.PI * 2);
+            ctx.fill();
         }
         
         ctx.restore();

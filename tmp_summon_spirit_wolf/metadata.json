@@ -1,0 +1,26 @@
+{
+  "character": {
+    "id": "238af4cd-19e4-48cc-9d6d-21eccdb135de",
+    "name": "Spirit Wolf",
+    "prompt": "spectral spirit wolf, translucent blue fur, glowing eyes, 48x48, pixel art, low top-down view",
+    "size": {
+      "width": 68,
+      "height": 68
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:27:14.825366+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-16T23:52:52.841108"
+}

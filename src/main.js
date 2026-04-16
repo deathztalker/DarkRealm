@@ -954,12 +954,24 @@ function gameLoop(timestamp) {
             // Draw high-quality dynamic shadow
             renderer.drawShadow(e.x, e.y + 6, 8, 0.4);
 
-            // Draw dynamic VFX Layer (Lightning, Shadow Aura, etc)
-            if (e.hitFlashTimer > 0) {
+            // === DYNAMIC CLASS VFX ===
+            if (e.classId === 'shaman' || e.hitFlashTimer > 0) {
                 renderer.drawVFX('lightning', e.x, e.y, 18, lastTime);
             }
-            if (e.classId === 'warlock') {
+            if (e.classId === 'warlock' || e.classId === 'necromancer') {
                 renderer.drawVFX('aura_shadow', e.x, e.y, 18, lastTime);
+            }
+            if (e.classId === 'sorceress') {
+                renderer.ctx.save();
+                renderer.ctx.shadowBlur = 15;
+                renderer.ctx.shadowColor = '#4080ff';
+                renderer.ctx.restore();
+            }
+            if (e.classId === 'paladin') {
+                renderer.ctx.save();
+                renderer.ctx.shadowBlur = 10;
+                renderer.ctx.shadowColor = '#ffd700';
+                renderer.ctx.restore();
             }
 
             // Draw aura ring if active
@@ -981,18 +993,23 @@ function gameLoop(timestamp) {
                 renderer.ctx.beginPath();
                 renderer.ctx.ellipse(e.x, e.y + 2, auraRadius, auraRadius * 0.4, 0, 0, Math.PI * 2);
                 renderer.ctx.stroke();
-                
-                // Add a secondary inner ring for "Pro" feel
-                renderer.ctx.lineWidth = 1;
-                renderer.ctx.beginPath();
-                renderer.ctx.ellipse(e.x, e.y + 2, auraRadius * 0.7, auraRadius * 0.3, 0, 0, Math.PI * 2);
-                renderer.ctx.stroke();
                 renderer.ctx.restore();
             }
 
             renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 18, e.animState, e.facingDir, lastTime, null, e.equipment, e.hitFlashTimer);
             e.renderMinions(renderer, lastTime);
         } else {
+            // Mercenary specific icon handling
+            if (e.type === 'mercenary') {
+                const mercIcons = { 
+                    'Rogue': 'class_rogue', 
+                    'Desert Warrior': 'class_warrior', 
+                    'Iron Wolf': 'class_shaman',
+                    'Mercenary Warrior': 'mercenary_warrior',
+                    'Mercenary Archer': 'mercenary_archer'
+                };
+                e.icon = mercIcons[e.subType] || e.icon;
+            }
             e.render(renderer, lastTime);
         }
     }

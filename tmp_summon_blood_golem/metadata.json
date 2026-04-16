@@ -1,0 +1,61 @@
+{
+  "character": {
+    "id": "883719ec-6bbd-4e55-ad2e-d445cb04aaf8",
+    "name": "Summon Blood Golem",
+    "prompt": "Blood Golem: terrifying tall golem made of pulsing dark red muscle and blood, glowing red eyes, 64x64, pixel art, low top-down view",
+    "size": {
+      "width": 92,
+      "height": 92
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:29:06.366749+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {
+      "walking-1ce36102": {
+        "west": [
+          "animations/walking-1ce36102/west/frame_000.png",
+          "animations/walking-1ce36102/west/frame_001.png",
+          "animations/walking-1ce36102/west/frame_002.png",
+          "animations/walking-1ce36102/west/frame_003.png",
+          "animations/walking-1ce36102/west/frame_004.png",
+          "animations/walking-1ce36102/west/frame_005.png"
+        ],
+        "north": [
+          "animations/walking-1ce36102/north/frame_000.png",
+          "animations/walking-1ce36102/north/frame_001.png",
+          "animations/walking-1ce36102/north/frame_002.png",
+          "animations/walking-1ce36102/north/frame_003.png",
+          "animations/walking-1ce36102/north/frame_004.png",
+          "animations/walking-1ce36102/north/frame_005.png"
+        ],
+        "south": [
+          "animations/walking-1ce36102/south/frame_000.png",
+          "animations/walking-1ce36102/south/frame_001.png",
+          "animations/walking-1ce36102/south/frame_002.png",
+          "animations/walking-1ce36102/south/frame_003.png",
+          "animations/walking-1ce36102/south/frame_004.png",
+          "animations/walking-1ce36102/south/frame_005.png"
+        ],
+        "east": [
+          "animations/walking-1ce36102/east/frame_000.png",
+          "animations/walking-1ce36102/east/frame_001.png",
+          "animations/walking-1ce36102/east/frame_002.png",
+          "animations/walking-1ce36102/east/frame_003.png",
+          "animations/walking-1ce36102/east/frame_004.png",
+          "animations/walking-1ce36102/east/frame_005.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-16T23:52:48.603194"
+}

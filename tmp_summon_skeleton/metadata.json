@@ -1,0 +1,26 @@
+{
+  "character": {
+    "id": "8b6f40fe-7838-4ad6-9151-46a39cc46b2e",
+    "name": "Summon Skeleton",
+    "prompt": "summoned skeleton warrior, silver bones, glowing blue eyes, shield and sword, pixel art, 48x48, low top-down view",
+    "size": {
+      "width": 68,
+      "height": 68
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:27:14.851989+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-16T23:52:44.217592"
+}
