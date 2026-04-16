@@ -5272,36 +5272,7 @@ function renderShop() {
     }
 }
 
-    });
-}
-
-function renderMobileInventoryList(container) {
-    const grid = document.createElement('div');
-    grid.style.cssText = 'display:grid; grid-template-columns: repeat(4, 1fr); gap:12px;';
-    container.appendChild(grid);
-
-    player.inventory.forEach((itm, idx) => {
-        const slot = document.createElement('div');
-        slot.style.cssText = 'width:100%; aspect-ratio:1; border:1px solid #444; background:rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; position:relative;';
-        if (itm) {
-            slot.innerHTML = getItemHtml(itm);
-            slot.onclick = () => {
-                const price = Math.max(1, typeof calculateSellPrice === 'function' ? calculateSellPrice(itm) : 5);
-                player.gold += price;
-                player.inventory[idx] = null;
-                addCombatLog(`Sold ${itm.name} for ${price}g`, 'log-heal');
-                renderMobileShop('inventory');
-            };
-        }
-        grid.appendChild(slot);
-    });
-}
-
-// Global hook for mobile trade tabs
-document.addEventListener('click', (e) => {
-    if (e.target.id === 'btn-trade-vendor-tab') renderMobileShop('vendor');
-    if (e.target.id === 'btn-trade-inventory-tab') renderMobileShop('inventory');
-});
+// Removal of redundant logic and illegal braces to fix syntax error.
 
 // ─── STASH & CUBE ───
 function renderStash() {
