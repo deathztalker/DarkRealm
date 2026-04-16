@@ -3036,53 +3036,31 @@ $('minimap')?.addEventListener('click', (e) => {
 
 // ─── COMBAT EVENTS ───
 bus.on('combat:damage', d => {
-    if (d.worldX && d.worldY) {
-        const colors = {
-            physical: '#ffffff',
-            fire: '#ff6600',
-            cold: '#00ccff',
-            lightning: '#ffff00',
-            poison: '#00ff00',
-            magic: '#ff00ff',
-            shadow: '#a040ff',
-            holy: '#ffd700'
-        };
-        const color = d.isCrit ? '#ffcc00' : (colors[d.type] || '#ffffff');
-        const text = d.dealt === 'Blocked!' ? 'BLOCKED' : d.dealt;
-        fx.emitText(d.worldX, d.worldY, text, color, d.isCrit);
-
-        // Impact FX
-        if (d.dealt !== 'Blocked!') {
-            fx.emitBurst(d.worldX, d.worldY, color, d.isCrit ? 12 : 5, 1.5);
-            if (d.isCrit) fx.shake(200, 4);
-        }
-    }
-
     const cls = d.isCrit ? 'log-crit' : 'log-dmg';
     if (d.dealt === 'Blocked!') {
         addCombatLog(`Blocked attack!`, 'log-info');
     } else if (d.target?.isPlayer) {
         lastHitTime = performance.now();
     }
+    
     if (!d.target?.isPlayer) {
-        const cls = d.isCrit ? 'log-crit' : 'log-dmg';
         if (d.dealt === 0 && d.type !== 'physical') {
             addCombatLog(`Target is IMMUNE to ${d.type}!`, 'log-dmg');
         } else {
             addCombatLog(`${d.dealt} ${d.type} damage${d.isCrit ? ' CRIT!' : ''}`, cls);
         }
     }
+
+    if (camera && renderer) {
         // Use our high-precision Canvas-based system instead of DOM for perfect mobile alignment
-        const color = d.isCrit ? '#ffa040' : (colors[d.type] || (d.target?.isPlayer ? '#e05050' : '#ffffff'));
+        const dmgColors = { fire: '#ff6030', cold: '#30ccff', lightning: '#ffff40', poison: '#50ff50', shadow: '#cc60ff', physical: '#ffffff' };
+        const color = d.isCrit ? '#ffa040' : (dmgColors[d.type] || (d.target?.isPlayer ? '#e05050' : '#ffffff'));
         const finalText = d.dealt === 'Blocked!' ? 'BLOCKED' : (d.dealt === 0 && d.type !== 'physical' && !d.target?.isPlayer ? 'IMMUNE!' : d.dealt);
         
         spawnFloatingText(d.worldX || d.target?.x || 0, d.worldY || d.target?.y || 0, finalText, d.type, d.isCrit, color);
 
         // Audio Triggers
-        if (d.target?.isPlayer) {
-            // Player hit is already handled in audio.js bus listener, 
-            // but we can add more feedback here if needed.
-        } else {
+        if (!d.target?.isPlayer) {
             const spellAudio = { fire: playCastFire, cold: playCastCold, lightning: playCastLightning, poison: playCastPoison, shadow: playCastShadow };
             if (spellAudio[d.type]) spellAudio[d.type]();
         }
@@ -3094,16 +3072,8 @@ bus.on('combat:damage', d => {
 
         // Steal Visuals
         if (d.attacker?.isPlayer && !d.target?.isPlayer) {
-            if (d.attacker.lifeStealPct && Math.random() < 0.3) {
-                fx.emitHeal(d.attacker.x, d.attacker.y);
-                const stolen = Math.round(d.dealt * d.attacker.lifeStealPct / 100);
-                if (stolen > 0) bus.emit('combat:text', { x: d.attacker.x, y: d.attacker.y - 15, text: `+${stolen}`, color: '#40ff40' });
-            }
-            if (d.attacker.manaStealPct && Math.random() < 0.3) {
-                fx.emitManaSteal(d.attacker.x, d.attacker.y);
-                const stolen = Math.round(d.dealt * d.attacker.manaStealPct / 100);
-                if (stolen > 0) bus.emit('combat:text', { x: d.attacker.x, y: d.attacker.y - 5, text: `+${stolen}`, color: '#4080ff' });
-            }
+            if (d.attacker.lifeStealPct && Math.random() < 0.3) fx.emitHeal(d.attacker.x, d.attacker.y);
+            if (d.attacker.manaStealPct && Math.random() < 0.3) fx.emitManaSteal(d.attacker.x, d.attacker.y);
         }
     }
 });
