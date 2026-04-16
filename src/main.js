@@ -1024,17 +1024,17 @@ function gameLoop(timestamp) {
     aoeZones.forEach(a => a.render(renderer, lastTime));
 
     renderer.ctx.restore(); // END CAMERA TRANSLATION (Switching to Screen Space for UI)
-    
+
     // Phase 15 & 16: Unified FX & Combat Text Layer
     // We use fx.renderScreen to handle all particles and floating text in a single pass
     // that correctly accounts for camera coordinates and mobile scaling.
     renderer.ctx.save();
-    renderer.ctx.setTransform(1, 0, 0, 1, 0, 0); 
-    
+    renderer.ctx.setTransform(1, 0, 0, 1, 0, 0);
+
     if (fx && fx.renderScreen) {
         fx.renderScreen(renderer.ctx, camera);
     }
-    
+
     renderer.ctx.restore();
 
     bus.emit('render:effects', { renderer, lastTime });
@@ -3054,41 +3054,41 @@ bus.on('combat:damage', d => {
             addCombatLog(`${d.dealt} ${d.type} damage${d.isCrit ? ' CRIT!' : ''}`, cls);
         }
     }
-        // Use our high-precision Canvas-based system instead of DOM for perfect mobile alignment
-        const color = d.isCrit ? '#ffa040' : (colors[d.type] || (d.target?.isPlayer ? '#e05050' : '#ffffff'));
-        const finalText = d.dealt === 'Blocked!' ? 'BLOCKED' : (d.dealt === 0 && d.type !== 'physical' && !d.target?.isPlayer ? 'IMMUNE!' : d.dealt);
-        
-        spawnFloatingText(d.worldX || d.target?.x || 0, d.worldY || d.target?.y || 0, finalText, d.type, d.isCrit, color);
+    // Use our high-precision Canvas-based system instead of DOM for perfect mobile alignment
+    const color = d.isCrit ? '#ffa040' : (colors[d.type] || (d.target?.isPlayer ? '#e05050' : '#ffffff'));
+    const finalText = d.dealt === 'Blocked!' ? 'BLOCKED' : (d.dealt === 0 && d.type !== 'physical' && !d.target?.isPlayer ? 'IMMUNE!' : d.dealt);
 
-        // Audio Triggers
-        if (d.target?.isPlayer) {
-            // Player hit is already handled in audio.js bus listener, 
-            // but we can add more feedback here if needed.
-        } else {
-            const spellAudio = { fire: playCastFire, cold: playCastCold, lightning: playCastLightning, poison: playCastPoison, shadow: playCastShadow };
-            if (spellAudio[d.type]) spellAudio[d.type]();
+    spawnFloatingText(d.worldX || d.target?.x || 0, d.worldY || d.target?.y || 0, finalText, d.type, d.isCrit, color);
+
+    // Audio Triggers
+    if (d.target?.isPlayer) {
+        // Player hit is already handled in audio.js bus listener, 
+        // but we can add more feedback here if needed.
+    } else {
+        const spellAudio = { fire: playCastFire, cold: playCastCold, lightning: playCastLightning, poison: playCastPoison, shadow: playCastShadow };
+        if (spellAudio[d.type]) spellAudio[d.type]();
+    }
+
+    // Particle Burst
+    const burstColor = d.target?.isPlayer ? '#f00' : (d.type === 'fire' ? '#f60' : d.type === 'cold' ? '#0cf' : '#ff0');
+    fx.emitBurst(d.worldX || d.target?.x, d.worldY || d.target?.y, burstColor, d.isCrit ? 20 : 8);
+    if (d.isCrit) fx.shake(200, 4);
+
+    // Steal Visuals
+    if (d.attacker?.isPlayer && !d.target?.isPlayer) {
+        if (d.attacker.lifeStealPct && Math.random() < 0.3) {
+            fx.emitHeal(d.attacker.x, d.attacker.y);
+            const stolen = Math.round(d.dealt * d.attacker.lifeStealPct / 100);
+            if (stolen > 0) bus.emit('combat:text', { x: d.attacker.x, y: d.attacker.y - 15, text: `+${stolen}`, color: '#40ff40' });
         }
-
-        // Particle Burst
-        const burstColor = d.target?.isPlayer ? '#f00' : (d.type === 'fire' ? '#f60' : d.type === 'cold' ? '#0cf' : '#ff0');
-        fx.emitBurst(d.worldX || d.target?.x, d.worldY || d.target?.y, burstColor, d.isCrit ? 20 : 8);
-        if (d.isCrit) fx.shake(200, 4);
-
-        // Steal Visuals
-        if (d.attacker?.isPlayer && !d.target?.isPlayer) {
-            if (d.attacker.lifeStealPct && Math.random() < 0.3) {
-                fx.emitHeal(d.attacker.x, d.attacker.y);
-                const stolen = Math.round(d.dealt * d.attacker.lifeStealPct / 100);
-                if (stolen > 0) bus.emit('combat:text', { x: d.attacker.x, y: d.attacker.y - 15, text: `+${stolen}`, color: '#40ff40' });
-            }
-            if (d.attacker.manaStealPct && Math.random() < 0.3) {
-                fx.emitManaSteal(d.attacker.x, d.attacker.y);
-                const stolen = Math.round(d.dealt * d.attacker.manaStealPct / 100);
-                if (stolen > 0) bus.emit('combat:text', { x: d.attacker.x, y: d.attacker.y - 5, text: `+${stolen}`, color: '#4080ff' });
-            }
+        if (d.attacker.manaStealPct && Math.random() < 0.3) {
+            fx.emitManaSteal(d.attacker.x, d.attacker.y);
+            const stolen = Math.round(d.dealt * d.attacker.manaStealPct / 100);
+            if (stolen > 0) bus.emit('combat:text', { x: d.attacker.x, y: d.attacker.y - 5, text: `+${stolen}`, color: '#4080ff' });
         }
     }
-});
+}
+    ,);
 
 bus.on('combat:text', d => {
     if (camera && renderer) {
