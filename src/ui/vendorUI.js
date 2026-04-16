@@ -9,11 +9,11 @@ export const VendorUI = {
         const iTab = document.getElementById('btn-trade-inventory-tab');
         const closeBtn = document.getElementById('btn-close-mobile-trade');
 
-        if (vTab) vTab.onclick = () => this.renderMobile('Vendor');
-        if (iTab) iTab.onclick = () => this.renderMobile('Inventory');
-        if (closeBtn) closeBtn.onclick = () => {
+        if (vTab) vTab.addEventListener('click', (e) => { e.preventDefault(); VendorUI.renderMobile('Vendor'); });
+        if (iTab) iTab.addEventListener('click', (e) => { e.preventDefault(); VendorUI.renderMobile('Inventory'); });
+        if (closeBtn) closeBtn.addEventListener('click', () => {
             document.getElementById('panel-trade-mobile').classList.add('hidden');
-        };
+        });
     },
 
     open() {
@@ -128,8 +128,15 @@ export const VendorUI = {
         const iTab = document.getElementById('btn-trade-inventory-tab');
         const goldVal = document.getElementById('mobile-trade-gold-val');
         
-        if(vTab) vTab.style.background = tab === 'Vendor' ? 'rgba(100,100,100,0.9)' : 'rgba(30,30,30,0.5)';
-        if(iTab) iTab.style.background = tab === 'Inventory' ? 'rgba(100,100,100,0.9)' : 'rgba(30,30,30,0.5)';
+        // Visual Feedback for tabs
+        if(vTab) {
+            vTab.style.background = tab === 'Vendor' ? 'rgba(100,100,100,0.9)' : 'rgba(30,30,30,0.5)';
+            vTab.style.color = tab === 'Vendor' ? '#fff' : '#888';
+        }
+        if(iTab) {
+            iTab.style.background = tab === 'Inventory' ? 'rgba(100,100,100,0.9)' : 'rgba(30,30,30,0.5)';
+            iTab.style.color = tab === 'Inventory' ? '#fff' : '#888';
+        }
         if(goldVal) goldVal.textContent = window.player.gold;
 
         if (tab === 'Vendor') {
@@ -157,7 +164,7 @@ export const VendorUI = {
             if (repairCost > 0 && window.player.gold >= repairCost) {
                 window.player.gold -= repairCost;
                 Object.values(window.player.equipment).forEach(it => { if (it) it.durability = it.maxDurability; });
-                this.renderMobile('Vendor');
+                VendorUI.renderMobile('Vendor');
             }
         };
         services.appendChild(repBtn);
@@ -190,7 +197,7 @@ export const VendorUI = {
                         const idx = masterItems.indexOf(item);
                         if (idx > -1) masterItems.splice(idx, 1);
                         window.playLoot();
-                        this.renderMobile('Vendor');
+                        VendorUI.renderMobile('Vendor');
                     }
                 }
             };
@@ -226,7 +233,7 @@ export const VendorUI = {
                     if (confirm(`Sell ${item.name} for ${p}g?`)) {
                         window.player.gold += p;
                         window.player.inventory[i] = null;
-                        this.renderMobile('Inventory');
+                        VendorUI.renderMobile('Inventory');
                     }
                 };
             }

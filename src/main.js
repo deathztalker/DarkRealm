@@ -379,7 +379,6 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
             player = new Player(selectedClass);
             window.player = player;
             Vendor.init(loot, player);
-            VendorUI.init();
             if (charName) player.charName = charName;
 
             const idTome = { ...items.tome_identify, charges: 20, identified: true };
@@ -6002,6 +6001,7 @@ function checkAchievements() {
 window.addEventListener('DOMContentLoaded', () => {
     // Phase 31: Init Supabase
     DB.init();
+    VendorUI.init();
 
     // Setup Auth UI Hooks
     $('btn-open-auth').addEventListener('click', () => {
