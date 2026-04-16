@@ -15,7 +15,13 @@ characters = {
     'class_necromancer': 'da856a08-f21b-47d5-8a73-0ff5640d2184',
     'class_ranger': 'd27723e9-23e1-4b8f-a5ca-3b6a266e2dda',
     'class_paladin': 'd075b40e-6c41-432e-bebe-a86b7bfdc3a3',
-    'boss_diablo': '504e1076-bb7b-41eb-82ea-5d07bfbfd31a'
+    'boss_diablo': '504e1076-bb7b-41eb-82ea-5d07bfbfd31a',
+    'npc_blacksmith': 'bbb9fce5-39ef-4137-84e9-e5f736d83b3b',
+    'npc_merchant': '6df53205-1049-4653-8707-690462701ef4',
+    'npc_elder': 'cd664987-a540-4bab-8c54-5e074ef9c26a',
+    'npc_guard': 'dc4b6c63-ec01-4432-98bd-091c5299c526',
+    'mercenary_warrior': '6b069940-48d2-4807-a972-54e4b37172fc',
+    'mercenary_archer': 'c0889882-47fa-4b39-9f0f-e880ef0987d6'
 }
 
 sw, sh = 48, 48

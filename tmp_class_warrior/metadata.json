@@ -1,0 +1,99 @@
+{
+  "character": {
+    "id": "939ecb81-5b1d-4a1f-94bc-5eb780613093",
+    "name": "Warrior Hero Pro",
+    "prompt": "Warrior hero in heavy plate armor with a massive two-handed sword, 48x48, pro mode, low top-down view",
+    "size": {
+      "width": 92,
+      "height": 92
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:14:36.046384+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {
+      "walking-60712c95": {
+        "west": [
+          "animations/walking-60712c95/west/frame_000.png",
+          "animations/walking-60712c95/west/frame_001.png",
+          "animations/walking-60712c95/west/frame_002.png",
+          "animations/walking-60712c95/west/frame_003.png",
+          "animations/walking-60712c95/west/frame_004.png",
+          "animations/walking-60712c95/west/frame_005.png"
+        ],
+        "south-west": [
+          "animations/walking-60712c95/south-west/frame_000.png",
+          "animations/walking-60712c95/south-west/frame_001.png",
+          "animations/walking-60712c95/south-west/frame_002.png",
+          "animations/walking-60712c95/south-west/frame_003.png",
+          "animations/walking-60712c95/south-west/frame_004.png",
+          "animations/walking-60712c95/south-west/frame_005.png"
+        ],
+        "south": [
+          "animations/walking-60712c95/south/frame_000.png",
+          "animations/walking-60712c95/south/frame_001.png",
+          "animations/walking-60712c95/south/frame_002.png",
+          "animations/walking-60712c95/south/frame_003.png",
+          "animations/walking-60712c95/south/frame_004.png",
+          "animations/walking-60712c95/south/frame_005.png"
+        ],
+        "north": [
+          "animations/walking-60712c95/north/frame_000.png",
+          "animations/walking-60712c95/north/frame_001.png",
+          "animations/walking-60712c95/north/frame_002.png",
+          "animations/walking-60712c95/north/frame_003.png",
+          "animations/walking-60712c95/north/frame_004.png",
+          "animations/walking-60712c95/north/frame_005.png"
+        ]
+      },
+      "walking-8bd72b87": {
+        "south-east": [
+          "animations/walking-8bd72b87/south-east/frame_000.png",
+          "animations/walking-8bd72b87/south-east/frame_001.png",
+          "animations/walking-8bd72b87/south-east/frame_002.png",
+          "animations/walking-8bd72b87/south-east/frame_003.png",
+          "animations/walking-8bd72b87/south-east/frame_004.png",
+          "animations/walking-8bd72b87/south-east/frame_005.png"
+        ],
+        "east": [
+          "animations/walking-8bd72b87/east/frame_000.png",
+          "animations/walking-8bd72b87/east/frame_001.png",
+          "animations/walking-8bd72b87/east/frame_002.png",
+          "animations/walking-8bd72b87/east/frame_003.png",
+          "animations/walking-8bd72b87/east/frame_004.png",
+          "animations/walking-8bd72b87/east/frame_005.png"
+        ],
+        "north-east": [
+          "animations/walking-8bd72b87/north-east/frame_000.png",
+          "animations/walking-8bd72b87/north-east/frame_001.png",
+          "animations/walking-8bd72b87/north-east/frame_002.png",
+          "animations/walking-8bd72b87/north-east/frame_003.png",
+          "animations/walking-8bd72b87/north-east/frame_004.png",
+          "animations/walking-8bd72b87/north-east/frame_005.png"
+        ],
+        "north-west": [
+          "animations/walking-8bd72b87/north-west/frame_000.png",
+          "animations/walking-8bd72b87/north-west/frame_001.png",
+          "animations/walking-8bd72b87/north-west/frame_002.png",
+          "animations/walking-8bd72b87/north-west/frame_003.png",
+          "animations/walking-8bd72b87/north-west/frame_004.png",
+          "animations/walking-8bd72b87/north-west/frame_005.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-16T23:44:55.835794"
+}

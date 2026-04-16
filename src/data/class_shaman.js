@@ -213,12 +213,12 @@ export const SHAMAN_CLASS = {
                     dmgBase: 40, dmgPerLvl: 16,
                 },
                 {
-                    id: 'ancestral_spirit', row: 1, col: 2, type: 'active', icon: '👻',
+                    id: 'ancestral_spirit', row: 1, col: 2, type: 'active', icon: '👼',
                     name: 'Ancestral Spirit',
-                    desc: 'Summon an ancestor warrior for 20+slvl×2s. It attacks (dmg: 20+slvl×10), casts mini-heals every 3s for 15+slvl×6 HP.',
-                    endgame: 'slvl 20: 60s duration spirit, 220 attack dmg, 135 HP heal every 3s. Permanent up-time with CDR gear.',
-                    maxPts: 20, mana: 20, cd: 45, group: 'summon', req: 'healing_wave:5',
-                    dmgBase: 20, dmgPerLvl: 10,
+                    desc: 'Call a Golden Valkyrie spirit warrior for 20+slvl×2s. She tanks with (150+slvl×40) HP and strikes with spectral spear (dmg: 25+slvl×12).',
+                    endgame: 'slvl 20: 60s duration Valkyrie, 950 HP, 265 holy dmg. The ultimate ancestral protector for the Spiritkeeper build.',
+                    maxPts: 20, mana: 25, cd: 60, group: 'summon', req: 'healing_wave:5',
+                    dmgBase: 25, dmgPerLvl: 12,
                 },
 
                 // Row 2 — Mastery

@@ -1,0 +1,37 @@
+{
+  "character": {
+    "id": "6df53205-1049-4653-8707-690462701ef4",
+    "name": "Merchant NPC",
+    "prompt": "mysterious hooded merchant with a huge backpack filled with scrolls and potions, dark fantasy RPG style, 48x48, pixel art",
+    "size": {
+      "width": 68,
+      "height": 68
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:10:09.028001+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {
+      "walking-66b598bd": {
+        "south": [
+          "animations/walking-66b598bd/south/frame_000.png",
+          "animations/walking-66b598bd/south/frame_001.png",
+          "animations/walking-66b598bd/south/frame_002.png",
+          "animations/walking-66b598bd/south/frame_003.png",
+          "animations/walking-66b598bd/south/frame_004.png",
+          "animations/walking-66b598bd/south/frame_005.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-16T23:45:19.167347"
+}

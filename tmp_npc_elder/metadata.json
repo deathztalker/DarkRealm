@@ -1,0 +1,26 @@
+{
+  "character": {
+    "id": "cd664987-a540-4bab-8c54-5e074ef9c26a",
+    "name": "Elder NPC",
+    "prompt": "town elder with a very long white beard and simple grey robes, holding a wooden staff, dark fantasy RPG style, 48x48, pixel art",
+    "size": {
+      "width": 68,
+      "height": 68
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:10:09.027645+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-16T23:45:21.895599"
+}

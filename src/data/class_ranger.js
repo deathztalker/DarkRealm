@@ -110,10 +110,10 @@ export const RANGER_CLASS = {
                     maxPts: 20, mana: 16, cd: 15, group: 'buff', req: 'spirit_guide:5'
                 },
                 {
-                    id: 'stampede_ranger', row: 4, col: 1, type: 'active', icon: '🦬', name: 'Stampede',
-                    desc: 'Ultimate: all companions and wolves charge together: each dealing +(100+slvl×10)% damage burst.',
-                    endgame: 'slvl 20: +300% damage charge from all pets. 6 wolves + hawk = devastating coordinated strike.',
-                    maxPts: 20, mana: 30, cd: 60, req: 'wolf_pack:10',
+                    id: 'valkyrie', row: 4, col: 1, type: 'active', icon: '👼', name: 'Call Valkyrie',
+                    desc: 'Celestial protector: (200+slvl×50) HP and (15+slvl×8) physical dmg. Spear attacks pierce. Indestructible tank.',
+                    endgame: 'slvl 20: 1200 HP celestial ally. Best tank in the game for snipers.',
+                    maxPts: 20, mana: 40, cd: 90, group: 'summon', req: 'wolf_pack:10',
                     synergies: [{ from: 'comp_mastery', pctPerPt: 5 }]
                 },
             ]
