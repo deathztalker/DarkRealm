@@ -59,17 +59,19 @@ export const SET_ITEMS = [
 const UNIQUES = [
     {
         id: 'joacos_valanyr',
-        name: "Joaco's Valanyr",
+        name: "Joaco's Val'anyr",
         base: 'mace',
         rarity: RARITY.UNIQUE,
         icon: 'item_mace_hd',
         dropLvl: 30,
         mods: [
             { stat: '+allSkills', value: 1 },
-            { stat: 'allRes', value: 15 },
-            { stat: 'magicFind', value: 20 },
+            { stat: 'allRes', value: 20 },
+            { stat: 'lifeStealPct', value: 10 },
+            { stat: 'flatVIT', value: 15 },
+            { stat: 'magicFind', value: 25 },
         ],
-        flavor: '"Forged to retain guild members."'
+        flavor: '"Hecha para fidelizar guildies."'
     },
     {
         id: 'shako', name: "Harlequin Crest", base: 'circlet', rarity: RARITY.UNIQUE,

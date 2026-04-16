@@ -400,8 +400,28 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
 
     // Init canvas
     const canvas = $('game-canvas');
+
+    // Determine zoom level based on screen width
+    const adjustZoom = () => {
+        if (!camera) return;
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        if (width >= 1024) {
+            camera.zoom = 2.0; // Desktop
+        } else if (width > height) {
+            camera.zoom = 1.6; // Mobile Landscape
+        } else {
+            camera.zoom = 1.2; // Mobile Portrait
+        }
+    };
+
     renderer = new Renderer(canvas);
-    camera = new Camera(renderer.width, renderer.height);
+    camera = new Camera(renderer.width, renderer.height, 2.0); // Default to 2.0 initially
+    adjustZoom(); // Apply correct zoom immediately
+    
+    window.addEventListener('resize', adjustZoom);
+
     input = new Input(canvas);
     new MobileControls(input);
 

@@ -2,10 +2,10 @@
  * Camera — Smooth follow, world↔screen transforms
  */
 export class Camera {
-    constructor(canvasW, canvasH) {
+    constructor(canvasW, canvasH, zoom = 2) {
         this.x = 0; this.y = 0;       // world position of camera center
         this.w = canvasW; this.h = canvasH;
-        this.zoom = 2;                 // pixel scale (tile size on screen)
+        this.zoom = zoom;                 // pixel scale (tile size on screen)
         this.lerpSpeed = 8;
         this._target = null;
     }
