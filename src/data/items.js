@@ -60,7 +60,7 @@ export const ITEM_BASES = {
     // Quest Items
     wirts_leg: { name: "Niruko's Leg", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_hd', minDmg: 2, maxDmg: 8, atkSpd: 0.9, req: {}, size: [1, 3], flavor: '"A wooden prosthetic with a tragic history."' },
     // VALANYR
-    joacos_valanyr: { name: "joacos_valanyr", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_hd', minDmg: 2, maxDmg: 8, atkSpd: 0.9, req: {}, size: [1, 3], flavor: '"Forged to retain guild members."' },
+    joacos_valanyr: { name: "Joaco's Valanyr", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_mace_hd', minDmg: 2, maxDmg: 8, atkSpd: 0.9, req: {}, size: [1, 3], flavor: '"Forged to retain guild members."' },
 
     // === ARMOR ===
     // Helmets

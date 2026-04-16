@@ -2486,6 +2486,8 @@ function getIconForSkill(id) {
     };
     return iconMap[id] || 'ra-cog';
 }
+window.getIconForSkill = getIconForSkill;
+
 
 function getItemHtml(item, cantEquip = false, isGamble = false) {
     if (!item) return '';
@@ -2751,15 +2753,28 @@ function renderMinimap() {
     const ctx = mc.getContext('2d');
     const mw = mc.width, mh = mc.height;
 
-    // Update explored tiles based on camera view
-    if (explored && camera) {
-        const camL = Math.max(0, Math.floor((camera.x - camera.w / 2) / dungeon.tileSize));
-        const camR = Math.min(dungeon.width - 1, Math.ceil((camera.x + camera.w / 2) / dungeon.tileSize));
-        const camT = Math.max(0, Math.floor((camera.y - camera.h / 2) / dungeon.tileSize));
-        const camB = Math.min(dungeon.height - 1, Math.ceil((camera.y + camera.h / 2) / dungeon.tileSize));
-        for (let r = camT; r <= camB; r++)
-            for (let c = camL; c <= camR; c++)
-                explored[r][c] = true;
+    // Minimap Discovery (Mobile: Radius-based, Desktop: Camera-based)
+    const isMobileMap = window.innerWidth <= 1024 || document.body.classList.contains('is-mobile');
+    if (explored) {
+        if (isMobileMap) {
+            const radius = 10;
+            const px = Math.floor(player.x / dungeon.tileSize);
+            const py = Math.floor(player.y / dungeon.tileSize);
+            for (let r = Math.max(0, py - radius); r <= Math.min(dungeon.height - 1, py + radius); r++) {
+                for (let c = Math.max(0, px - radius); c <= Math.min(dungeon.width - 1, px + radius); c++) {
+                    const dist = Math.sqrt((r - py) ** 2 + (c - px) ** 2);
+                    if (dist <= radius) explored[r][c] = true;
+                }
+            }
+        } else if (camera) {
+            const camL = Math.max(0, Math.floor((camera.x - camera.w / 2) / dungeon.tileSize));
+            const camR = Math.min(dungeon.width - 1, Math.ceil((camera.x + camera.w / 2) / dungeon.tileSize));
+            const camT = Math.max(0, Math.floor((camera.y - camera.h / 2) / dungeon.tileSize));
+            const camB = Math.min(dungeon.height - 1, Math.ceil((camera.y + camera.h / 2) / dungeon.tileSize));
+            for (let r = camT; r <= camB; r++)
+                for (let c = camL; c <= camR; c++)
+                    explored[r][c] = true;
+        }
     }
 
     ctx.clearRect(0, 0, mw, mh);

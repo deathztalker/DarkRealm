@@ -48,32 +48,31 @@ export class MobileControls {
         // Joystick Base (Left Side)
         const jBase = document.createElement('div');
         jBase.id = 'joystick-base';
-        jBase.style.cssText = 'position:absolute; bottom:40px; left:40px; width:100px; height:100px; background:rgba(255,255,255,0.1); border:2px solid rgba(255,255,255,0.2); border-radius:50%; pointer-events:auto;';
+        jBase.style.cssText = 'position:absolute; bottom:60px; left:40px; width:100px; height:100px; background:rgba(0,0,0,0.3); border:2px solid rgba(212,175,55,0.3); border-radius:50%; pointer-events:auto; backdrop-filter: blur(2px);';
         container.appendChild(jBase);
         this.joystick.base = jBase;
 
         // Joystick Stick
         const jStick = document.createElement('div');
         jStick.id = 'joystick-stick';
-        jStick.style.cssText = 'position:absolute; top:50%; left:50%; width:40px; height:40px; background:rgba(255,255,255,0.3); border-radius:50%; transform:translate(-50%, -50%); transition: none;';
+        jStick.style.cssText = 'position:absolute; top:50%; left:50%; width:44px; height:44px; background:rgba(212,175,55,0.4); border:1px solid rgba(212,175,55,0.6); border-radius:50%; transform:translate(-50%, -50%); transition: none; box-shadow: 0 0 10px rgba(0,0,0,0.5);';
         jBase.appendChild(jStick);
         this.joystick.stick = jStick;
 
         // Buttons Container (Right side)
-        // We'll use an ergonomic arc around the Mana orb area
         const btnContainer = document.createElement('div');
         btnContainer.id = 'mobile-buttons';
-        btnContainer.style.cssText = 'position:absolute; bottom:0; right:0; width:300px; height:300px; pointer-events:none;';
+        btnContainer.style.cssText = 'position:absolute; bottom:0; right:0; width:320px; height:320px; pointer-events:none;';
         container.appendChild(btnContainer);
 
         const skillButtonDefs = [
-            { slot: 0, angle: -160, dist: 150, action: 'skill:use:0', icon: 'Q' },
-            { slot: 1, angle: -135, dist: 160, action: 'skill:use:1', icon: 'E' },
-            { slot: 2, angle: -110, dist: 160, action: 'skill:use:2', icon: 'R' },
-            { slot: 3, angle: -85, dist: 155, action: 'skill:use:3', icon: 'F' },
-            { slot: 4, angle: -65, dist: 140, action: 'skill:use:4', icon: 'G' },
-            { slot: 'potion', angle: -180, dist: 100, action: 'potion:use:0', icon: '🧪' },
-            { slot: 'interact', angle: -130, dist: 80, action: 'action:interact', icon: '✋', size: 'large' }
+            { slot: 0, angle: -155, dist: 160, action: 'skill:use:0', icon: 'Q' },
+            { slot: 1, angle: -130, dist: 175, action: 'skill:use:1', icon: 'E' },
+            { slot: 2, angle: -105, dist: 175, action: 'skill:use:2', icon: 'R' },
+            { slot: 3, angle: -80, dist: 160, action: 'skill:use:3', icon: 'F' },
+            { slot: 4, angle: -60, dist: 135, action: 'skill:use:4', icon: 'G' },
+            { slot: 'potion', angle: -185, dist: 105, action: 'potion:use:0', icon: '🧪' },
+            { slot: 'interact', angle: -140, dist: 85, action: 'action:interact', icon: '⚔️', size: 'large' }
         ];
 
         skillButtonDefs.forEach(btnDef => {
@@ -81,41 +80,45 @@ export class MobileControls {
             btn.className = 'mobile-btn';
             btn.innerHTML = `<span>${btnDef.icon}</span>`;
             
-            // Positioning in an arc relative to the bottom-right corner (Mana Orb area)
             const rad = (btnDef.angle * Math.PI) / 180;
             const x = Math.cos(rad) * btnDef.dist;
             const y = Math.sin(rad) * btnDef.dist;
 
             btn.style.cssText = `
                 position: absolute;
-                bottom: 40px; 
-                right: 40px;
-                width: 55px; height: 55px; 
+                bottom: 50px; 
+                right: 50px;
+                width: 54px; height: 54px; 
                 transform: translate(${x}px, ${y}px);
-                background: rgba(0,0,0,0.6); 
+                background: linear-gradient(135deg, rgba(20,20,20,0.8) 0%, rgba(10,10,10,0.9) 100%); 
                 border: 2px solid rgba(212,175,55,0.4); 
                 border-radius: 50%; 
                 display: flex; justify-content: center; align-items: center; 
-                font-size: 22px; color: white; 
+                font-size: 20px; color: white; 
                 pointer-events: auto;
-                transition: transform 0.1s;
+                transition: transform 0.1s, background 0.1s;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+                backdrop-filter: blur(2px);
             `;
             
             if (btnDef.size === 'large') {
-                btn.style.width = '70px';
-                btn.style.height = '70px';
-                btn.style.fontSize = '30px';
-                btn.style.border = '3px solid var(--gold, #d4af37)';
+                btn.style.width = '72px';
+                btn.style.height = '72px';
+                btn.style.fontSize = '32px';
+                btn.style.border = '3px solid #bf642f';
+                btn.style.boxShadow = '0 0 15px rgba(191,100,47,0.3)';
             }
 
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                btn.style.background = 'rgba(212,175,55,0.5)';
+                btn.style.transform = `translate(${x}px, ${y}px) scale(0.9)`;
+                btn.style.background = 'rgba(212,175,55,0.4)';
                 bus.emit(btnDef.action, { mouse: this.input.mouse });
             });
             btn.addEventListener('touchend', (e) => {
                 e.preventDefault();
-                btn.style.background = 'rgba(0,0,0,0.6)';
+                btn.style.transform = `translate(${x}px, ${y}px) scale(1.0)`;
+                btn.style.background = 'linear-gradient(135deg, rgba(20,20,20,0.8) 0%, rgba(10,10,10,0.9) 100%)';
             });
 
             btnContainer.appendChild(btn);
@@ -124,33 +127,63 @@ export class MobileControls {
                 this.skillButtons.push({ el: btn, slot: btnDef.slot, originalIcon: btnDef.icon });
             } else if (btnDef.slot === 'potion') {
                 this.potionButton = btn;
+            } else if (btnDef.slot === 'interact') {
+                this.interactButton = btn;
             }
         });
 
-        // Toggle UI buttons (Inventory, etc) - Center at top
+        // Toggle UI buttons (Inventory, etc)
         const uiBtnContainer = document.createElement('div');
         uiBtnContainer.id = 'mobile-ui-shortcuts';
-        uiBtnContainer.style.cssText = 'position:absolute; top:10px; left:50%; transform:translateX(-50%); display:flex; gap:10px; pointer-events:auto;';
+        this.uiContainer = uiBtnContainer;
+        
+        // Portrait vs Landscape Logic
+        const isPortrait = window.innerHeight > window.innerWidth;
+        if (isPortrait) {
+            uiBtnContainer.style.cssText = 'position:absolute; top:120px; left:10px; display:flex; flex-direction:column; gap:12px; pointer-events:auto;';
+        } else {
+            uiBtnContainer.style.cssText = 'position:absolute; top:10px; left:50%; transform:translateX(-50%); display:flex; gap:12px; pointer-events:auto;';
+        }
+        
         container.appendChild(uiBtnContainer);
 
         const uiButtons = [
-            { label: 'I', action: 'ui:toggle:inventory', icon: '🎒' },
-            { label: 'C', action: 'ui:toggle:character', icon: '📊' },
-            { label: 'T', action: 'ui:toggle:talents', icon: '✨' },
-            { label: 'J', action: 'ui:toggle:journal', icon: '⚔️' },
-            { label: 'A', action: 'ui:toggle:achievements', icon: '🏆' },
-            { label: 'M', action: 'ui:toggle:fullmap', icon: '🗺️' }
+            { id: 'inv', action: 'ui:toggle:inventory', icon: '🎒' },
+            { id: 'char', action: 'ui:toggle:character', icon: '📊' },
+            { id: 'skill', action: 'ui:toggle:talents', icon: '✨' },
+            { id: 'ques', action: 'ui:toggle:journal', icon: '⚔️' },
+            { id: 'map', action: 'ui:toggle:fullmap', icon: '🗺️' }
         ];
 
         uiButtons.forEach(btnDef => {
             const btn = document.createElement('div');
-            btn.style.cssText = 'width:40px; height:40px; background:rgba(0,0,0,0.5); border:1px solid #444; border-radius:4px; display:flex; justify-content:center; align-items:center; font-size:18px; color:white;';
+            btn.style.cssText = 'width:44px; height:44px; background:rgba(30,25,20,0.8); border:1px solid #5a4530; border-radius:6px; display:flex; justify-content:center; align-items:center; font-size:20px; color:white; box-shadow: 0 4px 6px rgba(0,0,0,0.5); backdrop-filter: blur(4px); transition: background 0.2s;';
             btn.innerHTML = btnDef.icon;
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
+                btn.style.background = '#bf642f';
                 bus.emit(btnDef.action, {});
             });
+            btn.addEventListener('touchend', () => {
+                btn.style.background = 'rgba(30,25,20,0.8)';
+            });
             uiBtnContainer.appendChild(btn);
+        });
+
+        // Resize handler for orientation shifts
+        window.addEventListener('resize', () => {
+            const portrait = window.innerHeight > window.innerWidth;
+            if (portrait) {
+                this.uiContainer.style.top = '120px';
+                this.uiContainer.style.left = '10px';
+                this.uiContainer.style.transform = 'none';
+                this.uiContainer.style.flexDirection = 'column';
+            } else {
+                this.uiContainer.style.top = '10px';
+                this.uiContainer.style.left = '50%';
+                this.uiContainer.style.transform = 'translateX(-50%)';
+                this.uiContainer.style.flexDirection = 'row';
+            }
         });
     }
 
@@ -160,14 +193,11 @@ export class MobileControls {
     update(player) {
         if (!this.active || !player) return;
 
-        // Skill icon mapping (replicated from main.js for sync)
+        // Use global icon map for perfect 1:1 mirroring with Hero bar
         const getRAIcon = (id) => {
-            const map = {
-                'warrior': 'ra-crossed-swords', 'arms': 'ra-sword', 'bash': 'ra-muscle-up', 'double_swing': 'ra-dervish-swords', 'rend': 'ra-dripping-sword', 'whirlwind': 'ra-spinning-sword', 'berserk': 'ra-player-pyromaniac', 'cleave': 'ra-axe-swing', 'execute': 'ra-decapitation', 'defense': 'ra-heavy-shield', 'shield_bash': 'ra-bolt-shield', 'iron_skin': 'ra-knight-helmet', 'block_mastery': 'ra-round-shield', 'revenge': 'ra-player-dodge', 'taunt': 'ra-horn-call', 'fortify': 'ra-guarded-tower', 'life_tap': 'ra-crowned-heart', 'last_stand': 'ra-blast', 'battle': 'ra-castle-flag', 'warcry': 'ra-horn-call', 'shout': 'ra-speech-bubble', 'leap_attack': 'ra-boot-stomp', 'battle_orders': 'ra-hand-emblem', 'commanding_shout': 'ra-speech-bubbles', 'slam': 'ra-groundbreaker', 'avatar_of_war': 'ra-heavy-fall',
-                'sorceress': 'ra-crystal-wand', 'fire': 'ra-fire-symbol', 'fire_bolt': 'ra-small-fire', 'fireball': 'ra-fire-bomb', 'fire_mastery': 'ra-burning-embers', 'meteor': 'ra-burning-meteor', 'fire_storm': 'ra-arson', 'immolate': 'ra-campfire', 'enchant': 'ra-fireball-sword', 'inferno': 'ra-fire-breath', 'cold': 'ra-snowflake', 'ice_bolt': 'ra-frost-emblem', 'frost_nova': 'ra-frostfire', 'ice_blast': 'ra-cold-heart', 'frozen_armor': 'ra-crystal-cluster', 'blizzard': 'ra-ice-cube', 'cold_mastery': 'ra-frozen-arrow', 'frozen_orb': 'ra-crystal-ball', 'absolute_zero': 'ra-brain-freeze', 'lightning': 'ra-lightning-bolt', 'charged_bolt': 'ra-focused-lightning', 'lightning_bolt': 'ra-lightning', 'chain_lightning': 'ra-lightning-trio', 'static_field': 'ra-energise', 'teleport': 'ra-player-teleport', 'light_mastery': 'ra-lightning-sword', 'nova': 'ra-explosion', 'energy_shield': 'ra-bolt-shield', 'thunder_storm': 'ra-lightning-storm',
-                'shaman': 'ra-lightning-trio', 'necromancer': 'ra-skull', 'rogue': 'ra-divert', 'warlock': 'ra-eye-shield', 'paladin': 'ra-holy-symbol', 'druid': 'ra-pawprint', 'ranger': 'ra-target-arrows'
-            };
-            return map[id] || 'ra-interdiction';
+            if (window.getIconForSkill) return window.getIconForSkill(id);
+            // Fallback map if needed
+            return 'ra-interdiction';
         };
         
         // Update Skill Buttons
@@ -177,10 +207,13 @@ export class MobileControls {
             
             if (skillId) {
                 const iconClass = getRAIcon(skillId);
-                span.innerHTML = `<i class="ra ${iconClass}" style="color:var(--gold); font-size:24px;"></i>`;
+                span.innerHTML = `<i class="ra ${iconClass}" style="color:var(--gold, #d4af37); font-size:24px;"></i>`;
+                btnObj.el.style.borderColor = 'rgba(212,175,55,0.8)';
+                btnObj.el.style.boxShadow = '0 0 10px rgba(212,175,55,0.2)';
             } else {
-                // If no skill equipped, show slot label (Q, E, R, etc)
                 span.textContent = btnObj.originalIcon;
+                btnObj.el.style.borderColor = 'rgba(212,175,55,0.2)';
+                btnObj.el.style.boxShadow = 'none';
             }
         });
 
@@ -194,7 +227,28 @@ export class MobileControls {
                 span.textContent = '🧪';
             }
         }
+
+        // Update Interact/Attack Button based on Weapon
+        if (this.interactButton) {
+            const weapon = player.equipment.mainhand;
+            const span = this.interactButton.querySelector('span');
+            if (weapon) {
+                const wType = weapon.type?.toLowerCase() || 'sword';
+                const iconMap = {
+                    'sword': 'ra-sword', 'axe': 'ra-axe', 'mace': 'ra-mace-head',
+                    'bow': 'ra-bow-arrow', 'staff': 'ra-crystal-wand', 'wand': 'ra-wand',
+                    'polearm': 'ra-halberd', 'shield': 'ra-heavy-shield'
+                };
+                const icon = iconMap[wType] || 'ra-crossed-swords';
+                span.innerHTML = `<i class="ra ${icon}" style="color:var(--gold, #d4af37); font-size:32px;"></i>`;
+                this.interactButton.style.borderColor = '#bf642f';
+            } else {
+                span.innerHTML = '<i class="ra ra-hand" style="color:#aaa; font-size:30px;"></i>';
+                this.interactButton.style.borderColor = 'rgba(212,175,55,0.4)';
+            }
+        }
     }
+
 
     _setupEvents() {
         if (!this.joystick.base) return;
@@ -242,7 +296,6 @@ export class MobileControls {
             this.input.keys['KeyA'] = normalizedX < -threshold;
             this.input.keys['KeyD'] = normalizedX > threshold;
             
-            // For diagonal movement, we might want to be more lenient or strict
         }, { passive: false });
 
         window.addEventListener('touchend', e => {

@@ -76,7 +76,6 @@ item_gloves
 item_long_bow
 item_long_sword
 item_mace_hd
-item_mace_hd_base
 item_mephisto_soulstone
 item_orb
 item_orb_arcane
