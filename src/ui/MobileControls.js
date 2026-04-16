@@ -66,13 +66,13 @@ export class MobileControls {
         container.appendChild(btnContainer);
 
         const skillButtonDefs = [
-            { slot: 0, angle: -155, dist: 160, action: 'skill:use:0', icon: 'Q' },
-            { slot: 1, angle: -130, dist: 175, action: 'skill:use:1', icon: 'E' },
-            { slot: 2, angle: -105, dist: 175, action: 'skill:use:2', icon: 'R' },
-            { slot: 3, angle: -80, dist: 160, action: 'skill:use:3', icon: 'F' },
-            { slot: 4, angle: -60, dist: 135, action: 'skill:use:4', icon: 'G' },
-            { slot: 'potion', angle: -185, dist: 105, action: 'potion:use:0', icon: '🧪' },
-            { slot: 'interact', angle: -140, dist: 85, action: 'action:interact', icon: '⚔️', size: 'large' }
+            { slot: 3, angle: -100, dist: 175, action: 'skill:use:3', icon: 'F' }, // Top Small
+            { slot: 2, angle: -125, dist: 175, action: 'skill:use:2', icon: 'R' },
+            { slot: 1, angle: -150, dist: 170, action: 'skill:use:1', icon: 'E' },
+            { slot: 0, angle: -175, dist: 160, action: 'skill:use:0', icon: 'Q' }, // Far Left
+            { slot: 4, angle: -75, dist: 140, action: 'skill:use:4', icon: 'G' },  // Right
+            { slot: 'potion', angle: -200, dist: 110, action: 'potion:use:0', icon: '🧪' },
+            { slot: 'interact', angle: -140, dist: 90, action: 'action:interact', icon: '⚔️', size: 'large' }
         ];
 
         skillButtonDefs.forEach(btnDef => {
@@ -88,25 +88,26 @@ export class MobileControls {
                 position: absolute;
                 bottom: 50px; 
                 right: 50px;
-                width: 54px; height: 54px; 
+                width: 52px; height: 52px; 
                 transform: translate(${x}px, ${y}px);
-                background: linear-gradient(135deg, rgba(20,20,20,0.8) 0%, rgba(10,10,10,0.9) 100%); 
+                background: rgba(20, 20, 20, 0.85); 
                 border: 2px solid rgba(212,175,55,0.4); 
                 border-radius: 50%; 
                 display: flex; justify-content: center; align-items: center; 
-                font-size: 20px; color: white; 
+                font-size: 18px; color: white; 
                 pointer-events: auto;
                 transition: transform 0.1s, background 0.1s;
-                box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-                backdrop-filter: blur(2px);
+                box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+                backdrop-filter: blur(4px);
             `;
             
             if (btnDef.size === 'large') {
-                btn.style.width = '72px';
-                btn.style.height = '72px';
+                btn.style.width = '74px';
+                btn.style.height = '74px';
                 btn.style.fontSize = '32px';
-                btn.style.border = '3px solid #bf642f';
-                btn.style.boxShadow = '0 0 15px rgba(191,100,47,0.3)';
+                btn.style.border = '2px solid var(--gold, #d4af37)';
+                btn.style.boxShadow = '0 0 20px rgba(212,175,55,0.2)';
+                btn.style.zIndex = '5';
             }
 
             btn.addEventListener('touchstart', (e) => {
@@ -118,7 +119,7 @@ export class MobileControls {
             btn.addEventListener('touchend', (e) => {
                 e.preventDefault();
                 btn.style.transform = `translate(${x}px, ${y}px) scale(1.0)`;
-                btn.style.background = 'linear-gradient(135deg, rgba(20,20,20,0.8) 0%, rgba(10,10,10,0.9) 100%)';
+                btn.style.background = 'rgba(20, 20, 20, 0.85)';
             });
 
             btnContainer.appendChild(btn);
@@ -139,10 +140,12 @@ export class MobileControls {
         
         // Portrait vs Landscape Logic
         const isPortrait = window.innerHeight > window.innerWidth;
+        const baseStyle = 'display:flex; gap:12px; pointer-events:auto; padding:8px; background:rgba(0,0,0,0.4); border:1px solid #4a3520; border-radius:12px; backdrop-filter:blur(6px); box-shadow:0 0 20px rgba(0,0,0,0.5);';
+        
         if (isPortrait) {
-            uiBtnContainer.style.cssText = 'position:absolute; top:120px; left:10px; display:flex; flex-direction:column; gap:12px; pointer-events:auto;';
+            uiBtnContainer.style.cssText = `position:absolute; top:120px; left:10px; flex-direction:column; ${baseStyle}`;
         } else {
-            uiBtnContainer.style.cssText = 'position:absolute; top:10px; left:50%; transform:translateX(-50%); display:flex; gap:12px; pointer-events:auto;';
+            uiBtnContainer.style.cssText = `position:absolute; top:10px; left:50%; transform:translateX(-50%); flex-direction:row; ${baseStyle}`;
         }
         
         container.appendChild(uiBtnContainer);
@@ -157,15 +160,17 @@ export class MobileControls {
 
         uiButtons.forEach(btnDef => {
             const btn = document.createElement('div');
-            btn.style.cssText = 'width:44px; height:44px; background:rgba(30,25,20,0.8); border:1px solid #5a4530; border-radius:6px; display:flex; justify-content:center; align-items:center; font-size:20px; color:white; box-shadow: 0 4px 6px rgba(0,0,0,0.5); backdrop-filter: blur(4px); transition: background 0.2s;';
+            btn.style.cssText = 'width:42px; height:42px; background:rgba(255,255,255,0.05); border:1px solid rgba(212,175,55,0.2); border-radius:8px; display:flex; justify-content:center; align-items:center; font-size:20px; color:white; transition: all 0.2s;';
             btn.innerHTML = btnDef.icon;
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                btn.style.background = '#bf642f';
+                btn.style.background = 'rgba(212,175,55,0.3)';
+                btn.style.borderColor = 'rgba(212,175,55,0.8)';
                 bus.emit(btnDef.action, {});
             });
             btn.addEventListener('touchend', () => {
-                btn.style.background = 'rgba(30,25,20,0.8)';
+                btn.style.background = 'rgba(255,255,255,0.05)';
+                btn.style.borderColor = 'rgba(212,175,55,0.2)';
             });
             uiBtnContainer.appendChild(btn);
         });
