@@ -6011,9 +6011,17 @@ function hireMercenary(type = 'Rogue') {
     const names = {
         'Rogue': ['Aliza', 'Kyra', 'Paige', 'Blaise'],
         'Desert Warrior': ['Heseir', 'Raheer', 'EMez', 'Fazel'],
-        'Iron Wolf': ['Jarulf', 'Isenhart', 'Telash', 'Flux']
+        'Iron Wolf': ['Jarulf', 'Isenhart', 'Telash', 'Flux'],
+        'Mercenary Warrior': ['Kormac', 'Lyon', 'Torion', 'Garek'],
+        'Mercenary Archer': ['Eirena', 'Valla', 'Lyra', 'Sarya']
     };
-    const icons = { 'Rogue': 'class_rogue', 'Desert Warrior': 'class_warrior', 'Iron Wolf': 'class_shaman' };
+    const icons = { 
+        'Rogue': 'class_rogue', 
+        'Desert Warrior': 'class_warrior', 
+        'Iron Wolf': 'class_shaman',
+        'Mercenary Warrior': 'mercenary_warrior',
+        'Mercenary Archer': 'mercenary_archer'
+    };
 
     const nameList = names[type] || names['Rogue'];
     mercenary = new Mercenary({

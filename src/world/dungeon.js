@@ -372,7 +372,7 @@ export class Dungeon {
                 type: "mercenary_hire",
                 x: (cx - 4) * this.tileSize,
                 y: (cy + 2) * this.tileSize,
-                icon: "npc_elder",
+                icon: "npc_guard",
                 dialogue: "Need a fighter? I can send one of my rogues to aid you... for a price."
             });
 
@@ -392,7 +392,7 @@ export class Dungeon {
                 type: "merchant",
                 x: (cx + 5) * this.tileSize,
                 y: (cy - 3) * this.tileSize,
-                icon: "npc_merchant",
+                icon: "npc_blacksmith",
                 dialogue: "Need a new blade? I can keep your gear in fighting shape."
             });
         }
