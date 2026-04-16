@@ -81,18 +81,28 @@ export class FloatingText {
         return this.life > 0;
     }
 
-    render(ctx) {
+    render(ctx, camera = null) {
         ctx.save();
         ctx.globalAlpha = this.alpha;
         ctx.fillStyle = this.color;
         ctx.textAlign = 'center';
+
+        // Choose draw position: Screen space if camera is provided, else World space
+        let dx = this.x;
+        let dy = this.y;
+        if (camera) {
+            const screen = camera.toScreen(this.x, this.y);
+            dx = screen.x;
+            dy = screen.y;
+        }
+
         ctx.font = this.isCrit ? 'bold 16px "Cinzel", serif' : '12px "Inter", sans-serif';
         if (this.isCrit) {
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 2;
-            ctx.strokeText(this.text, this.x, this.y);
+            ctx.strokeText(this.text, dx, dy);
         }
-        ctx.fillText(this.text, this.x, this.y);
+        ctx.fillText(this.text, dx, dy);
         ctx.restore();
     }
 }
@@ -382,6 +392,26 @@ export class ParticleSystem {
         }
         for (const p of this.particles) p.render(ctx);
         for (const t of this.floatingTexts) t.render(ctx);
+        ctx.restore();
+    }
+
+    /** New method to handle screen-space projection (used in main.js for mobile sync) */
+    renderScreen(ctx, camera) {
+        ctx.save();
+        if (this.shakeTimer > 0) {
+            ctx.translate((Math.random() - 0.5) * this.shakeIntensity, (Math.random() - 0.5) * this.shakeIntensity);
+        }
+        // Particles still rendered in current ctx state
+        // (If ctx was already reset to 1,0,0,1, we need to toScreen these too)
+        for (const p of this.particles) {
+            const screen = camera.toScreen(p.x, p.y);
+            // Patch particle to use screen coords temporary for drawing
+            const prevX = p.x, prevY = p.y;
+            p.x = screen.x; p.y = screen.y;
+            p.render(ctx);
+            p.x = prevX; p.y = prevY;
+        }
+        for (const t of this.floatingTexts) t.render(ctx, camera);
         ctx.restore();
     }
 }

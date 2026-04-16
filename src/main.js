@@ -1023,23 +1023,35 @@ function gameLoop(timestamp) {
     projectiles.forEach(p => p.render(renderer, lastTime));
     aoeZones.forEach(a => a.render(renderer, lastTime));
 
-    // Phase 15: Render Floating Combat Text (in World Space)
+    renderer.ctx.restore(); // END CAMERA TRANSLATION (Switching to Screen Space for UI)
+    
+    // Phase 15: Render Floating Combat Text (Locked to Character Screen Position)
     renderer.ctx.save();
+    renderer.ctx.setTransform(1, 0, 0, 1, 0, 0); 
     renderer.ctx.textAlign = 'center'; 
     for (const ft of floatingTexts) {
         const alpha = Math.min(1.0, ft.life * 2.5);
         const size = ft.isCrit ? 16 : 10;
         
+        // Manual world-to-screen conversion to bypass mobile scaling errors
+        const screen = camera.toScreen(ft.x, ft.y);
+        
         renderer.ctx.font = `${ft.isCrit ? 'bold ' : ''}${size}px Cinzel, serif`;
         renderer.ctx.fillStyle = `rgba(0,0,0,${alpha * 0.8})`; // Shadow
-        renderer.ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
+        renderer.ctx.fillText(ft.text, screen.x + 1, screen.y + 1);
         renderer.ctx.fillStyle = ft.color;
         renderer.ctx.globalAlpha = alpha;
-        renderer.ctx.fillText(ft.text, ft.x, ft.y);
+        renderer.ctx.fillText(ft.text, screen.x, screen.y);
     }
     
-    // Phase 16: Render Effects & Particles (Inside Camera Context)
-    fx.render(renderer.ctx);
+    // Phase 16: Render Effects & Particles (Manual Screen Translation)
+    // We pass the camera to ensure ParticleSystem draws correctly in screen space
+    if (fx.renderScreen) {
+        fx.renderScreen(renderer.ctx, camera);
+    } else {
+        // Fallback: draw as-is but we should add renderScreen to ParticleSystem
+        fx.render(renderer.ctx); 
+    }
     
     renderer.ctx.restore();
 
