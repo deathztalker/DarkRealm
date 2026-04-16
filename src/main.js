@@ -3072,37 +3072,11 @@ bus.on('combat:damage', d => {
             addCombatLog(`${d.dealt} ${d.type} damage${d.isCrit ? ' CRIT!' : ''}`, cls);
         }
     }
-    // Floating number
-    if (camera && renderer) {
-        const screen = camera.toScreen(d.worldX || d.target?.x || 0, d.worldY || d.target?.y || 0);
-        const el = document.createElement('div');
-        el.className = 'dmg-number';
-
-        let isSpecial = false;
-        if (d.dealt === 'Blocked!') {
-            el.textContent = 'BLOCKED!';
-            el.style.color = '#aaa';
-            isSpecial = true;
-            playLoot(); // Use loot sound as a 'clink' for now
-        } else if (d.dealt === 0 && d.type !== 'physical' && !d.target?.isPlayer) {
-            el.textContent = 'IMMUNE!';
-            el.style.color = '#fff';
-            el.style.fontWeight = 'bold';
-            isSpecial = true;
-            playLoot();
-        } else {
-            el.textContent = d.dealt;
-        }
-
-        el.style.left = screen.x + 'px';
-        el.style.top = (screen.y - 20) + 'px';
-        const dmgColors = { fire: '#ff6030', cold: '#30ccff', lightning: '#ffff40', poison: '#50ff50', shadow: '#cc60ff', physical: '#ffffff' };
-        const baseColor = d.target?.isPlayer ? '#e05050' : (dmgColors[d.type] || '#fff');
-        el.style.color = d.isCrit ? '#ffa040' : (el.textContent === 'IMMUNE!' ? '#fff' : baseColor);
-        el.style.fontSize = d.isCrit ? '18px' : '14px';
-        el.style.textShadow = d.isCrit ? '0 0 8px #ff6000' : '1px 1px 2px #000';
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 1200);
+        // Use our high-precision Canvas-based system instead of DOM for perfect mobile alignment
+        const color = d.isCrit ? '#ffa040' : (colors[d.type] || (d.target?.isPlayer ? '#e05050' : '#ffffff'));
+        const finalText = d.dealt === 'Blocked!' ? 'BLOCKED' : (d.dealt === 0 && d.type !== 'physical' && !d.target?.isPlayer ? 'IMMUNE!' : d.dealt);
+        
+        spawnFloatingText(d.worldX || d.target?.x || 0, d.worldY || d.target?.y || 0, finalText, d.type, d.isCrit, color);
 
         // Audio Triggers
         if (d.target?.isPlayer) {
@@ -3136,16 +3110,7 @@ bus.on('combat:damage', d => {
 
 bus.on('combat:text', d => {
     if (camera && renderer) {
-        const screen = camera.toScreen(d.x, d.y);
-        const el = document.createElement('div');
-        el.className = 'dmg-number';
-        el.textContent = d.text;
-        el.style.left = screen.x + 'px';
-        el.style.top = screen.y + 'px';
-        el.style.color = d.color || '#fff';
-        el.style.fontSize = '12px';
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 1000);
+        spawnFloatingText(d.x, d.y, d.text, 'physical', false, d.color || '#fff');
     }
 });
 

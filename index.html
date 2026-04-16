@@ -157,7 +157,7 @@
 
     <!-- Minimap -->
     <canvas id="minimap" width="160" height="120"
-      style="position:absolute; top:10px; right:8px; border:2px solid #444; background:#000; z-index:50; opacity:0.85; border-radius:4px; cursor:crosshair;"></canvas>
+      style="position:absolute; top:54px; right:8px; border:2px solid #444; background:#000; z-index:50; opacity:0.85; border-radius:4px; cursor:crosshair;"></canvas>
 
     <div id="quest-hud" class="hidden"
       style="position:absolute; right:10px; top:195px; width:150px; background:rgba(0,0,0,0.8); border:1px solid #bf642f; padding:8px; border-radius:4px; font-family:'Cinzel',serif; box-sizing:border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.5); z-index:50;">
@@ -286,15 +286,19 @@
   <!-- Mobile Trading Panel -->
   <div id="panel-trade-mobile" class="panel hidden" style="display: flex; flex-direction: column;">
     <div class="panel-header" style="display: flex; justify-content: space-around; padding: 0; min-height: 50px;">
-        <button id="btn-trade-vendor-tab" class="trade-tab active" style="flex: 1; padding: 12px; background: rgba(50,50,50,0.8); border: none; color: #fff; font-family: 'Cinzel', serif;">VENDOR</button>
-        <button id="btn-trade-inventory-tab" class="trade-tab" style="flex: 1; padding: 12px; background: transparent; border: none; color: #888; font-family: 'Cinzel', serif;">INVENTORY</button>
-        <button class="panel-close" data-panel="trade-mobile" style="position: absolute; top: 12px; right: 15px; font-size: 20px;">✕</button>
+      <button id="btn-trade-vendor-tab" class="trade-tab active"
+        style="flex: 1; padding: 12px; background: rgba(50,50,50,0.8); border: none; color: #fff; font-family: 'Cinzel', serif;">VENDOR</button>
+      <button id="btn-trade-inventory-tab" class="trade-tab"
+        style="flex: 1; padding: 12px; background: transparent; border: none; color: #888; font-family: 'Cinzel', serif;">INVENTORY</button>
+      <button class="panel-close" data-panel="trade-mobile"
+        style="position: absolute; top: 12px; right: 15px; font-size: 20px;">✕</button>
     </div>
     <div id="mobile-trade-content" style="padding: 15px; flex: 1; overflow-y: auto; background: rgba(0,0,0,0.5);">
-        <!-- Content populated by JS -->
+      <!-- Content populated by JS -->
     </div>
-    <div id="mobile-trade-footer" style="padding: 10px; border-top: 1px solid #333; text-align: right; color: var(--gold); font-size: 14px;">
-        Total Gold: <span id="mobile-trade-gold-val">0</span>
+    <div id="mobile-trade-footer"
+      style="padding: 10px; border-top: 1px solid #333; text-align: right; color: var(--gold); font-size: 14px;">
+      Total Gold: <span id="mobile-trade-gold-val">0</span>
     </div>
   </div>
 

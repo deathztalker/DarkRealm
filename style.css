@@ -2860,7 +2860,7 @@ body.socketing-mode .inv-item:not(.unidentified) {
 /* Portrait Specific: Vertical layout optimization */
 @media (max-width: 1023px) and (orientation: portrait) {
   .minimap {
-    top: 10px;
+    top: 10px !important;
   }
 
   #joystick-base {
@@ -2880,7 +2880,7 @@ body.socketing-mode .inv-item:not(.unidentified) {
 /* Landscape Specific: Horizontal layout (Keep HUD minimal) */
 @media (max-width: 1023px) and (orientation: landscape) {
   .minimap {
-    top: 10px;
+    top: 10px !important;
   }
 
   #hud {
