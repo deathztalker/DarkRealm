@@ -1023,19 +1023,23 @@ function gameLoop(timestamp) {
     projectiles.forEach(p => p.render(renderer, lastTime));
     aoeZones.forEach(a => a.render(renderer, lastTime));
 
-    // Phase 15: Render Floating Combat Text (in World Space)
+    // Phase 15: Render Floating Combat Text (in Screen Space for Mobile Precision)
     renderer.ctx.save();
-    renderer.ctx.textAlign = 'center'; // Center text properly for mobile/high-res
+    renderer.ctx.setTransform(1, 0, 0, 1, 0, 0); // Temporary switch to screen space
+    renderer.ctx.textAlign = 'center'; 
     for (const ft of floatingTexts) {
         const alpha = Math.min(1.0, ft.life * 2.5);
         const size = ft.isCrit ? 16 : 10;
+        
+        // Translate world coordinates to screen pixels
+        const screen = camera.toScreen(ft.x, ft.y);
 
         renderer.ctx.font = `${ft.isCrit ? 'bold ' : ''}${size}px Cinzel, serif`;
         renderer.ctx.fillStyle = `rgba(0,0,0,${alpha * 0.8})`; // Shadow
-        renderer.ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
+        renderer.ctx.fillText(ft.text, screen.x + 1, screen.y + 1);
         renderer.ctx.fillStyle = ft.color;
         renderer.ctx.globalAlpha = alpha;
-        renderer.ctx.fillText(ft.text, ft.x, ft.y);
+        renderer.ctx.fillText(ft.text, screen.x, screen.y);
     }
     renderer.ctx.restore();
 
@@ -1561,14 +1565,6 @@ function checkDeaths() {
                     if (isFinalEndgame) {
                         $('victory-screen').querySelector('p').textContent = bossMsg;
                         $('victory-screen').classList.remove('hidden');
-                    } else {
-                        // Normal Act Boss Defeat - Spawn a Town Portal or simply continue
-                        addCombatLog(bossMsg, 'log-crit');
-                        const p = new GameObject('portal', e.x, e.y, 'env_water');
-                        p.targetZone = 0;
-                        portalReturnZone = zoneLevel;
-                        gameObjects.push(p);
-                        if (window.fx) window.fx.emitBurst(p.x, p.y, '#30ccff', 50, 4);
                     }
                 }, 2000);
 
@@ -4746,13 +4742,13 @@ function renderDialoguePicker(npc) {
     menu.appendChild(portrait);
 
     const options = [
-        { 
-            label: 'Trade', 
-            action: () => { 
-                Vendor.openShopForNpc(npc); 
-                menu.remove(); 
-                activeDialogueNpc = null; 
-            } 
+        {
+            label: 'Trade',
+            action: () => {
+                Vendor.openShopForNpc(npc);
+                menu.remove();
+                activeDialogueNpc = null;
+            }
         }, {
             label: 'Talk', action: () => {
                 const questOffered = offerQuest(npc.id);

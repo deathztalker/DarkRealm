@@ -5,7 +5,7 @@ export class MobileControls {
     constructor(input) {
         this.input = input; // Reference to Input handler to set keys
         this.active = false;
-        
+
         this.joystick = {
             base: null,
             stick: null,
@@ -79,7 +79,7 @@ export class MobileControls {
             const btn = document.createElement('div');
             btn.className = 'mobile-btn';
             btn.innerHTML = `<span>${btnDef.icon}</span>`;
-            
+
             const rad = (btnDef.angle * Math.PI) / 180;
             const x = Math.cos(rad) * btnDef.dist;
             const y = Math.sin(rad) * btnDef.dist;
@@ -100,7 +100,7 @@ export class MobileControls {
                 box-shadow: 0 4px 10px rgba(0,0,0,0.6);
                 backdrop-filter: blur(4px);
             `;
-            
+
             if (btnDef.size === 'large') {
                 btn.style.width = '74px';
                 btn.style.height = '74px';
@@ -123,7 +123,7 @@ export class MobileControls {
             });
 
             btnContainer.appendChild(btn);
-            
+
             if (typeof btnDef.slot === 'number') {
                 this.skillButtons.push({ el: btn, slot: btnDef.slot, originalIcon: btnDef.icon });
             } else if (btnDef.slot === 'potion') {
@@ -137,17 +137,17 @@ export class MobileControls {
         const uiBtnContainer = document.createElement('div');
         uiBtnContainer.id = 'mobile-ui-shortcuts';
         this.uiContainer = uiBtnContainer;
-        
+
         // Portrait vs Landscape Logic
         const isPortrait = window.innerHeight > window.innerWidth;
         const baseStyle = 'display:flex; gap:12px; pointer-events:auto; padding:8px; background:rgba(0,0,0,0.4); border:1px solid #4a3520; border-radius:12px; backdrop-filter:blur(6px); box-shadow:0 0 20px rgba(0,0,0,0.5);';
-        
+
         if (isPortrait) {
             uiBtnContainer.style.cssText = `position:absolute; top:120px; left:10px; flex-direction:column; ${baseStyle}`;
         } else {
-            uiBtnContainer.style.cssText = `position:absolute; top:10px; left:50%; transform:translateX(-50%); flex-direction:row; ${baseStyle}`;
+            uiBtnContainer.style.cssText = `position:absolute; top:120px; left:10px; flex-direction:column; ${baseStyle}`;
         }
-        
+
         container.appendChild(uiBtnContainer);
 
         const uiButtons = [
@@ -204,12 +204,12 @@ export class MobileControls {
             // Fallback map if needed
             return 'ra-interdiction';
         };
-        
+
         // Update Skill Buttons
         this.skillButtons.forEach(btnObj => {
             const skillId = player.hotbar[btnObj.slot];
             const span = btnObj.el.querySelector('span');
-            
+
             if (skillId) {
                 const iconClass = getRAIcon(skillId);
                 span.innerHTML = `<i class="ra ${iconClass}" style="color:var(--gold, #d4af37); font-size:24px;"></i>`;
@@ -270,7 +270,7 @@ export class MobileControls {
 
         window.addEventListener('touchmove', e => {
             if (!this.joystick.active) return;
-            
+
             let touch = null;
             for (let i = 0; i < e.changedTouches.length; i++) {
                 if (e.changedTouches[i].identifier === this.joystick.identifier) {
@@ -300,7 +300,7 @@ export class MobileControls {
             this.input.keys['KeyS'] = normalizedY > threshold;
             this.input.keys['KeyA'] = normalizedX < -threshold;
             this.input.keys['KeyD'] = normalizedX > threshold;
-            
+
         }, { passive: false });
 
         window.addEventListener('touchend', e => {
