@@ -2111,10 +2111,12 @@ body.socketing-mode .inv-slot {
     bottom: -12px;
   }
 
-  #hud-buttons {
+  #hud-buttons,
+  body.is-mobile #hud-buttons {
     display: none !important;
   }
-  #mercenary-hud {
+  #mercenary-hud,
+  body.is-mobile #mercenary-hud {
     top: 5px !important;
     left: 5px !important;
     transform: scale(0.85);

@@ -5081,6 +5081,10 @@ let sharedStash = sharedStashData.items;
 let sharedGold = sharedStashData.gold;
 
 function renderShop() {
+    if (document.body.classList.contains('is-mobile') || window.innerWidth < 1024) {
+        renderMobileShop('vendor');
+        return;
+    }
     const container = $('shop-items');
     container.innerHTML = '';
     $('shop-gold').innerHTML = `Your Gold: <span style="color:var(--gold)">${player.gold}</span><div style="font-size:11px;color:#888;margin-top:4px;">(Click items in your Inventory to Sell them!)</div>`;
@@ -5257,12 +5261,6 @@ function renderShop() {
             renderInventory();
         });
         container.appendChild(row);
-    }
-
-    // --- Phase 41: Mobile Specialized Trading UI ---
-    if (window.innerWidth < 1024) {
-        renderMobileShop('vendor');
-        return;
     }
 }
 

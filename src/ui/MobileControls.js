@@ -28,6 +28,7 @@ export class MobileControls {
         if (!isTouch) return;
 
         this.active = true;
+        document.body.classList.add('is-mobile');
         this._createUI();
         this._setupEvents();
     }

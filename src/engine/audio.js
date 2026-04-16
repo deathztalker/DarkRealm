@@ -69,16 +69,19 @@ export function initAudio() {
 
         bus.on('boss:death', d => {
             console.log("Boss death event received:", d);
-            // Case-insensitive check and ID check for robustness
+            
+            // Priority 1: Assigned deathSound from data
+            if (d.deathSound) {
+                console.log(`Triggering specifically assigned death sound: ${d.deathSound}`);
+                playCustomSound(d.deathSound, 0.85);
+                return;
+            }
+
+            // Priority 2: Hardcoded fallbacks (for legacy support)
             const name = (d.name || "").toLowerCase().trim();
             const id = (d.id || "").toLowerCase().trim();
-            const isAngryJano = name.includes('jano') || id === 'angry_jano';
-            
-            if (isAngryJano) {
-                console.log("Triggering Angry Jano custom death sound...");
+            if (name.includes('jano') || id === 'angry_jano') {
                 playCustomSound('assets/death_jano.mp3', 0.82);
-            } else {
-                console.log(`Boss death mismatch for Jano: Name='${name}', ID='${id}'`);
             }
         });
 

@@ -47,7 +47,7 @@ const BOSS_POOL = [
     { id: 'uber_diablo', name: 'Uber Diablo', hpMult: 80, dmgMult: 15, xpMult: 150, isUber: true },
     { id: 'uber_baal', name: 'Uber Baal', hpMult: 100, dmgMult: 14, xpMult: 200, isUber: true },
     { id: 'cow_king', name: 'The Cow King', hpMult: 25, dmgMult: 6, xpMult: 50, special: 'lightning_enchanted', icon: 'enemy_zombie' },
-    { id: 'angry_jano', name: 'Angry Jano', hpMult: 35, dmgMult: 8, xpMult: 100, icon: 'enemy_demon', special: 'berserker' },
+    { id: 'angry_jano', name: 'Angry Jano', hpMult: 35, dmgMult: 8, xpMult: 100, icon: 'enemy_demon', special: 'berserker', deathSound: 'assets/death_jano.mp3' },
 ];
 
 const ELITE_AFFIXES = [
@@ -157,7 +157,8 @@ export class Enemy {
 
             this.icon = spawn.icon || bossSource.icon || base.icon;
             this.name = spawn.name || bossSource.name;
-            this.id = bossSource.id || this.id; // Preserve specific boss ID for event triggers
+            this.id = bossSource.id || this.id;
+            this.deathSound = bossSource.deathSound || null;
             const hpm = spawn.hpMult || bossSource.hpMult || 10;
             const dmgm = spawn.dmgMult || bossSource.dmgMult || 3;
             const xpm = spawn.xpMult || bossSource.xpMult || 20;
@@ -965,7 +966,7 @@ export class Enemy {
         }
 
         // --- Custom Boss Death Logic ---
-        bus.emit('boss:death', { name: this.name, id: this.id });
+        bus.emit('boss:death', { name: this.name, id: this.id, deathSound: this.deathSound });
     }
 
     _castRiftNova(element) {
