@@ -1,0 +1,61 @@
+{
+  "character": {
+    "id": "fa4eb4b3-3634-4b58-b3d8-735f7e008570",
+    "name": "Ranger",
+    "prompt": "Humanoid male ranger in camouflage green and brown leather, holding a longbow and a quiver on back, pixel art, diablo 2 style, 32px",
+    "size": {
+      "width": 48,
+      "height": 48
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T21:13:10.401737+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {
+      "walking-b5cee159": {
+        "south": [
+          "animations/walking-b5cee159/south/frame_000.png",
+          "animations/walking-b5cee159/south/frame_001.png",
+          "animations/walking-b5cee159/south/frame_002.png",
+          "animations/walking-b5cee159/south/frame_003.png",
+          "animations/walking-b5cee159/south/frame_004.png",
+          "animations/walking-b5cee159/south/frame_005.png"
+        ],
+        "north": [
+          "animations/walking-b5cee159/north/frame_000.png",
+          "animations/walking-b5cee159/north/frame_001.png",
+          "animations/walking-b5cee159/north/frame_002.png",
+          "animations/walking-b5cee159/north/frame_003.png",
+          "animations/walking-b5cee159/north/frame_004.png",
+          "animations/walking-b5cee159/north/frame_005.png"
+        ],
+        "west": [
+          "animations/walking-b5cee159/west/frame_000.png",
+          "animations/walking-b5cee159/west/frame_001.png",
+          "animations/walking-b5cee159/west/frame_002.png",
+          "animations/walking-b5cee159/west/frame_003.png",
+          "animations/walking-b5cee159/west/frame_004.png",
+          "animations/walking-b5cee159/west/frame_005.png"
+        ],
+        "east": [
+          "animations/walking-b5cee159/east/frame_000.png",
+          "animations/walking-b5cee159/east/frame_001.png",
+          "animations/walking-b5cee159/east/frame_002.png",
+          "animations/walking-b5cee159/east/frame_003.png",
+          "animations/walking-b5cee159/east/frame_004.png",
+          "animations/walking-b5cee159/east/frame_005.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-16T21:44:01.935621"
+}

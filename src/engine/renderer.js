@@ -319,7 +319,7 @@ export class Renderer {
         }
 
         let rowBase = 8; // walk
-        let maxFrames = 9;
+        let maxFrames = 6;
 
         if (state === 'attack') {
             rowBase = 12;
@@ -337,13 +337,13 @@ export class Renderer {
         const frameSpeed = state === 'walk' ? 100 : 60;
         const frame = state === 'idle' ? 0 : Math.floor(time / frameSpeed) % maxFrames;
 
-        const sw = 64, sh = 64; 
+        const sw = 48, sh = 48; 
         const sx = frame * sw;
         const sy = row * sh;
 
         if (filter) this.ctx.filter = filter;
         if (img && img.complete && img.naturalWidth > 0) {
-            this.ctx.drawImage(img, sx, sy, sw, sh, x - size, y - size * 1.5, size * 2, size * 2);
+            this.ctx.drawImage(img, sx, sy, sw, sh, x - size, y - size * 1.2, size * 2, size * 2);
         }
         if (filter) this.ctx.filter = 'none';
     }

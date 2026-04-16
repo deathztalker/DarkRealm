@@ -1,0 +1,61 @@
+{
+  "character": {
+    "id": "903756f6-65b8-43bb-955e-53820e01a050",
+    "name": "Paladin",
+    "prompt": "Humanoid male paladin in polished silver armor with gold accents, holding a mace and a large shield with a cross, pixel art, diablo 2 style, 32px",
+    "size": {
+      "width": 48,
+      "height": 48
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T21:13:10.387957+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {
+      "walking-30e46189": {
+        "east": [
+          "animations/walking-30e46189/east/frame_000.png",
+          "animations/walking-30e46189/east/frame_001.png",
+          "animations/walking-30e46189/east/frame_002.png",
+          "animations/walking-30e46189/east/frame_003.png",
+          "animations/walking-30e46189/east/frame_004.png",
+          "animations/walking-30e46189/east/frame_005.png"
+        ],
+        "south": [
+          "animations/walking-30e46189/south/frame_000.png",
+          "animations/walking-30e46189/south/frame_001.png",
+          "animations/walking-30e46189/south/frame_002.png",
+          "animations/walking-30e46189/south/frame_003.png",
+          "animations/walking-30e46189/south/frame_004.png",
+          "animations/walking-30e46189/south/frame_005.png"
+        ],
+        "north": [
+          "animations/walking-30e46189/north/frame_000.png",
+          "animations/walking-30e46189/north/frame_001.png",
+          "animations/walking-30e46189/north/frame_002.png",
+          "animations/walking-30e46189/north/frame_003.png",
+          "animations/walking-30e46189/north/frame_004.png",
+          "animations/walking-30e46189/north/frame_005.png"
+        ],
+        "west": [
+          "animations/walking-30e46189/west/frame_000.png",
+          "animations/walking-30e46189/west/frame_001.png",
+          "animations/walking-30e46189/west/frame_002.png",
+          "animations/walking-30e46189/west/frame_003.png",
+          "animations/walking-30e46189/west/frame_004.png",
+          "animations/walking-30e46189/west/frame_005.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-16T21:44:04.589012"
+}
