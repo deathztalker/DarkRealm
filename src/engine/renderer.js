@@ -343,7 +343,7 @@ export class Renderer {
 
         if (filter) this.ctx.filter = filter;
         if (img && img.complete && img.naturalWidth > 0) {
-            this.ctx.drawImage(img, sx, sy, sw, sh, x - size, y - size * 1.2, size * 2, size * 2);
+            this.ctx.drawImage(img, sx, sy, sw, sh, x - size, y - size * 1.5, size * 2, size * 2);
         }
         if (filter) this.ctx.filter = 'none';
     }
