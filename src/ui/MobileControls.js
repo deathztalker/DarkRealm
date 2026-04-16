@@ -29,6 +29,11 @@ export class MobileControls {
 
         this.active = true;
         document.body.classList.add('is-mobile');
+
+        // Force hide desktop HUD buttons immediately
+        const desktopHud = document.getElementById('hud-buttons');
+        if (desktopHud) desktopHud.style.display = 'none';
+
         this._createUI();
         this._setupEvents();
     }
@@ -122,9 +127,10 @@ export class MobileControls {
             }
         });
 
-        // Toggle UI buttons (Inventory, etc) - Keep at top left
+        // Toggle UI buttons (Inventory, etc) - Place below mercenary portrait
         const uiBtnContainer = document.createElement('div');
-        uiBtnContainer.style.cssText = 'position:absolute; top:10px; left:10px; display:flex; gap:10px; pointer-events:auto;';
+        uiBtnContainer.id = 'mobile-ui-shortcuts';
+        uiBtnContainer.style.cssText = 'position:absolute; top:120px; left:10px; display:flex; gap:10px; pointer-events:auto;';
         container.appendChild(uiBtnContainer);
 
         const uiButtons = [
