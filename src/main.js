@@ -951,8 +951,16 @@ function gameLoop(timestamp) {
     const entities = [...(enemies || []), player].filter(e => e).sort((a, b) => a.y - b.y);
     for (const e of entities) {
         if (e.isPlayer) {
-            renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            renderer.ctx.beginPath(); renderer.ctx.ellipse(e.x, e.y + 6, 8, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
+            // Draw high-quality dynamic shadow
+            renderer.drawShadow(e.x, e.y + 6, 8, 0.4);
+
+            // Draw dynamic VFX Layer (Lightning, Shadow Aura, etc)
+            if (e.hitFlashTimer > 0) {
+                renderer.drawVFX('lightning', e.x, e.y, 18, lastTime);
+            }
+            if (e.classId === 'warlock') {
+                renderer.drawVFX('aura_shadow', e.x, e.y, 18, lastTime);
+            }
 
             // Draw aura ring if active
             if (e.activeAura) {
@@ -961,16 +969,23 @@ function gameLoop(timestamp) {
                     resist_all: '#4080ff', vigor: '#ffffff', fanaticism: '#ffa000', conviction: '#a040ff'
                 };
                 const auraColor = auraColors[e.activeAura] || '#ffe880';
-                const pulse = 0.3 + Math.sin(lastTime * 0.004) * 0.15;
-                const auraRadius = 25 + Math.sin(lastTime * 0.003) * 3;
+                const pulse = 0.4 + Math.sin(lastTime * 0.006) * 0.2;
+                const auraRadius = 28 + Math.sin(lastTime * 0.004) * 4;
+                
                 renderer.ctx.save();
                 renderer.ctx.globalAlpha = pulse;
                 renderer.ctx.strokeStyle = auraColor;
-                renderer.ctx.lineWidth = 1.5;
+                renderer.ctx.lineWidth = 2;
                 renderer.ctx.shadowColor = auraColor;
-                renderer.ctx.shadowBlur = 8;
+                renderer.ctx.shadowBlur = 12;
                 renderer.ctx.beginPath();
                 renderer.ctx.ellipse(e.x, e.y + 2, auraRadius, auraRadius * 0.4, 0, 0, Math.PI * 2);
+                renderer.ctx.stroke();
+                
+                // Add a secondary inner ring for "Pro" feel
+                renderer.ctx.lineWidth = 1;
+                renderer.ctx.beginPath();
+                renderer.ctx.ellipse(e.x, e.y + 2, auraRadius * 0.7, auraRadius * 0.3, 0, 0, Math.PI * 2);
                 renderer.ctx.stroke();
                 renderer.ctx.restore();
             }

@@ -127,10 +127,27 @@ export class Renderer {
         this.ctx.fillRect(x, y, w * Math.max(0, Math.min(1, ratio)), h);
     }
 
+    // Draw a high-quality dynamic shadow
+    drawShadow(x, y, radius, alpha = 0.5) {
+        const ctx = this.ctx;
+        ctx.save();
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        grad.addColorStop(0, `rgba(0,0,0,${alpha})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.ellipse(x, y, radius, radius * 0.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
     // Draw Image Sprite
     drawSprite(spriteName, x, y, size, animate = false, time = 0, filter = null) {
         const img = Assets.get(spriteName);
         let drawY = y;
+
+        // Draw shadow first
+        this.drawShadow(x, y + size * 0.4, size * 0.6);
 
         if (animate) {
             drawY += Math.sin(time * 0.005) * 2;
@@ -145,6 +162,40 @@ export class Renderer {
             this.ctx.fillStyle = '#ff00ff';
             this.ctx.fillRect(x - size / 2, drawY - size / 2, size, size);
         }
+    }
+
+    // Draw special visual effects (Lightning, Auras, etc)
+    drawVFX(type, x, y, size, time) {
+        const ctx = this.ctx;
+        ctx.save();
+        
+        if (type === 'lightning') {
+            ctx.strokeStyle = '#80d0ff';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#0080ff';
+            ctx.shadowBlur = 10;
+            ctx.globalCompositeOperation = 'screen';
+            
+            ctx.beginPath();
+            let curX = x;
+            let curY = y - size * 2;
+            ctx.moveTo(curX, curY);
+            for (let i = 0; i < 5; i++) {
+                curX += (Math.random() - 0.5) * 20;
+                curY += size * 0.4;
+                ctx.lineTo(curX, curY);
+            }
+            ctx.stroke();
+        } else if (type === 'aura_shadow') {
+            const grad = ctx.createRadialGradient(x, y, 0, x, y, size * 1.5);
+            grad.addColorStop(0, 'rgba(40, 0, 80, 0.4)');
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad;
+            ctx.globalCompositeOperation = 'multiply';
+            ctx.fillCircle(x, y, size * 1.5, grad);
+        }
+        
+        ctx.restore();
     }
 
     /** Draw a tile (exactly at tile size, for backgrounds) */

@@ -1,0 +1,30 @@
+{
+  "character": {
+    "id": "b157912c-df80-464a-aa53-3442cde1cf39",
+    "name": "Sorceress Hero Pro",
+    "prompt": "Sorceress hero in elegant blue robes with an arcane orb, 48x48, pro mode, low top-down view",
+    "size": {
+      "width": 80,
+      "height": 80
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:14:36.021033+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-16T23:40:30.135039"
+}
