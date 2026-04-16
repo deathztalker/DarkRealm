@@ -1,4 +1,4 @@
-﻿    menu.appendChild(grid);
+    menu.appendChild(grid);
 
     const footer = document.createElement('div');
     footer.className = 'skill-picker-footer';
@@ -19,12 +19,12 @@
 
 window.addEventListener('mousemove', (e) => {
     if (dragGhost) {
-        dragGhost.style.left = ${e.clientX - 16}px;
-        dragGhost.style.top = ${e.clientY - 16}px;
+        dragGhost.style.left = `${e.clientX - 16}px`;
+        dragGhost.style.top = `${e.clientY - 16}px`;
     }
     if (dragSkillGhost) {
-        dragSkillGhost.style.left = ${e.clientX - 24}px;
-        dragSkillGhost.style.top = ${e.clientY - 24}px;
+        dragSkillGhost.style.left = `${e.clientX - 24}px`;
+        dragSkillGhost.style.top = `${e.clientY - 24}px`;
     }
 });
 
@@ -53,15 +53,10 @@ function handleBossDeath(boss) {
         campaign.completeAct(actNum);
         showActCleared(actName, actSubtitle);
         
-        const portal = {
-            type: 'portal',
-            x: boss.x + 40,
-            y: boss.y,
-            icon: 'env_stairs_up',
-            targetZone: 0,
-            isActPortal: true
-        };
-        gameObjects.push({ ...portal, interact: () => ({ type: 'PORTAL', targetZone: 0 }) });
+        const portal = new GameObject('portal', boss.x + 40, boss.y, 'env_stairs_up');
+        portal.targetZone = 0;
+        portal.isActPortal = true;
+        gameObjects.push(portal);
         fx.emitHolyBurst(portal.x, portal.y);
     }
 }
@@ -71,10 +66,10 @@ function showActCleared(name, subtitle) {
     if (!splash) return;
 
     splash.innerHTML = `
-        <div class="act-cleared-subtitle">Acto Completado</div>
-        <h1 class="act-cleared-title">Acto \</h1>
+        <div class="act-cleared-subtitle">Act Cleared</div>
+        <h1 class="act-cleared-title">Act ${name}</h1>
         <div class="act-cleared-ornament"></div>
-        <div class="act-cleared-subtitle">\</div>
+        <div class="act-cleared-subtitle">${subtitle}</div>
     `;
     splash.classList.add('show');
     if (typeof playZoneTransition === 'function') playZoneTransition();

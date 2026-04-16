@@ -1,6 +1,6 @@
 /**
- * MAIN.JS â€” Dark Realm entry point
- * Wires all systems together: menu â†’ game loop â†’ rendering â†’ UI
+ * MAIN.JS — Dark Realm entry point
+ * Wires all systems together: menu → game loop → rendering → UI
  */
 import { bus } from './engine/EventBus.js';
 import { Renderer, Assets } from './engine/renderer.js';
@@ -41,7 +41,7 @@ window.addCombatLog = addCombatLog;
 
 import { RUNEWORDS } from './data/runes.js';
 
-// â”€â”€â”€ GLOBALS â”€â”€â”€
+// ─── GLOBALS ───
 let renderer, camera, input, dungeon, player;
 let enemies = [], npcs = [], gameObjects = [];
 let projectiles = [], aoeZones = [];
@@ -98,12 +98,12 @@ function syncInteractionStates() {
     document.body.classList.toggle('socketing-mode', socketingGemIndex !== -1 || isLarzukSocketing);
 }
 
-// â”€â”€â”€ Phase 12 GLOBALS â”€â”€â”€
+// ─── Phase 12 GLOBALS ───
 let timeScale = 1.0;
 let uiActiveBoss = null;
 let lastBossWarnTime = 0;
 
-// â”€â”€â”€ RIFT GLOBALS â”€â”€â”€
+// ─── RIFT GLOBALS ───
 window.riftProgress = 0; // 0-100
 window.riftLevel = 1; // Phase 22: Infinite Rift Depth
 window.riftGuardianSpawned = false;
@@ -288,10 +288,10 @@ const ZONE_NAMES = {
 window.DIFFICULTY_NAMES = ['Normal', 'Nightmare', 'Hell', 'Rift Mode'];
 window.DIFFICULTY_MULT = [1.0, 2.5, 5.0, 5.0]; // Rift mode uses Hell base stats
 
-// â”€â”€â”€ DOM REFS â”€â”€â”€
+// ─── DOM REFS ───
 const $ = id => document.getElementById(id);
 
-// â”€â”€â”€ MENU PARTICLES â”€â”€â”€
+// ─── MENU PARTICLES ───
 function initParticles() {
     const el = $('particles');
     for (let i = 0; i < 30; i++) {
@@ -307,7 +307,7 @@ function initParticles() {
     }
 }
 
-// â”€â”€â”€ CLASS SELECTION GRID â”€â”€â”€
+// ─── CLASS SELECTION GRID ───
 function initClassGrid() {
     const grid = $('class-grid');
     if (!grid) return;
@@ -361,7 +361,7 @@ function showClassInfo(classId) {
     $('class-stats').innerHTML = statsHtml;
 }
 
-// â”€â”€â”€ START GAME â”€â”€â”€
+// ─── START GAME ───
 function startGame(slotId = null, loadPlayerData = null, charName = null) {
     if (!selectedClass && !loadPlayerData) return;
 
@@ -593,7 +593,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     requestAnimationFrame(gameLoop);
 }
 
-// â”€â”€â”€ GAME LOOP â”€â”€â”€
+// ─── GAME LOOP ───
 function gameLoop(timestamp) {
     if (state !== 'GAME') return;
     const rawDt = Math.min(0.1, (timestamp - lastTime) / 1000);
@@ -679,7 +679,7 @@ function gameLoop(timestamp) {
         camera.update(dt);
     }
 
-    // Update entities â€” pass dungeon for collision checks
+    // Update entities — pass dungeon for collision checks
     for (const e of (enemies || [])) e.update(dt, player, dungeon, enemies);
     for (const n of npcs) n.update(dt);
     if (activePet) activePet.update(dt, player, droppedGold);
@@ -1126,7 +1126,7 @@ function gameLoop(timestamp) {
     renderer.ctx.fillStyle = grd;
     renderer.ctx.fillRect(0, 0, renderer.width, renderer.height);
 
-    // â”€â”€â”€ MINIMAP â”€â”€â”€
+    // ─── MINIMAP ───
     // Render minimap (top right)
     renderMinimap();
 
@@ -1225,8 +1225,8 @@ function checkInteractions(pos) {
                 if (!discoveredWaypoints.has(res.zone)) {
                     discoveredWaypoints.add(res.zone);
                     addCombatLog(`Waypoint Discovered: ${ZONE_NAMES[res.zone] || 'Area'}`, 'log-crit');
-                    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { 
-                        difficulty, 
+                    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
+                        difficulty,
                         waypoints: Array.from(discoveredWaypoints),
                         campaign: campaign.serialize()
                     });
@@ -1376,7 +1376,7 @@ function checkDeaths() {
         if (e.hp <= 0 && e.state !== 'dead') {
             e.state = 'dead';
 
-            // Death VFX â€” blood burst
+            // Death VFX — blood burst
             fx.emitBurst(e.x, e.y, '#a01010', e.type === 'boss' ? 40 : 15, 3);
             if (e.type === 'boss') {
                 fx.shake(500, 8);
@@ -1600,7 +1600,7 @@ function checkDeaths() {
                     else if (player.maxDifficulty === 3) diffName = 'Rift Mode';
 
                     if (diffName) {
-                        addCombatLog(`â­ ${diffName} Unlocked! â­`, 'log-crit');
+                        addCombatLog(`⭐ ${diffName} Unlocked! ⭐`, 'log-crit');
                     }
                 }
 
@@ -1701,7 +1701,7 @@ function nextZone(targetZone = null) {
         if (targetZone !== null) {
             const targetAct = campaign.getActForZone(targetZone);
             if (!campaign.isActUnlocked(targetAct) && targetZone !== 0) {
-                addCombatLog(`! EL ACTO SIGUIENTE ESTÃ BLOQUEADO. Â¡Derrota primero al Jefe de Acto!`, 'log-dmg');
+                addCombatLog(`! THE NEXT ACT IS LOCKED. Defeat the Act Boss first!`, 'log-dmg');
                 isTransitioning = false;
                 if (overlay) overlay.style.opacity = '0';
                 return;
@@ -1906,7 +1906,7 @@ function finishZoneLoad() {
     explored = Array.from({ length: dungeon.height }, () => Array(dungeon.width).fill(false));
 }
 
-// â”€â”€â”€ HUD â”€â”€â”€
+// ─── HUD ───
 function updateQuestHud() {
     const qhud = $('quest-hud');
     if (!qhud) return;
@@ -2003,7 +2003,7 @@ function updateHud() {
     const xpBar = $('xp-bar');
     if (xpBar) {
         xpBar.style.width = xpPct + '%';
-        $('xp-bar-container').title = `Level ${player.level} â€” ${Math.floor(xpPct)}%`;
+        $('xp-bar-container').title = `Level ${player.level} — ${Math.floor(xpPct)}%`;
     }
 
     // --- Phase 3 Wave 6: Mercenary HUD Update ---
@@ -2041,7 +2041,7 @@ function updateHud() {
 
                 if (performance.now() - lastBossWarnTime > 60000) {
                     fx.shake(500, 5);
-                    addCombatLog(`âš  TARGET DETECTED: ${uiActiveBoss.name}`, 'log-warn');
+                    addCombatLog(`⚠️ TARGET DETECTED: ${uiActiveBoss.name}`, 'log-warn');
                     lastBossWarnTime = performance.now();
                 }
             } else {
@@ -2116,30 +2116,30 @@ function updateHud() {
 
         // Active Aura
         if (player.activeAura) {
-            createStatusIcon(player.activeAura, 'ðŸ”†', '#ffd700', `Aura: ${player.activeAura.replace('_', ' ').toUpperCase()}`);
+            createStatusIcon(player.activeAura, '🕯️', '#ffd700', `Aura: ${player.activeAura.replace('_', ' ').toUpperCase()}`);
         }
 
         // Shrine / Skill Buffs
         for (const b of (player._buffs || [])) {
-            let icon = 'ðŸ›¡ï¸'; let color = '#00ff00';
+            let icon = '🛡️'; let color = '#00ff00';
             const bid = b.id || b.type || '';
-            if (bid.includes('speed')) { icon = 'ðŸ’¨'; color = '#00ccff'; }
-            else if (bid.includes('damage') || bid.includes('berserk')) { icon = 'âš”ï¸'; color = '#ff3300'; }
-            else if (bid.includes('mana')) { icon = 'ðŸ’§'; color = '#3366ff'; }
-            else if (bid.includes('resist')) { icon = 'ðŸ”®'; color = '#ff00ff'; }
-            else if (bid.includes('exp')) { icon = 'âœ¨'; color = '#ffffcc'; }
+            if (bid.includes('speed')) { icon = '💨'; color = '#00ccff'; }
+            else if (bid.includes('damage') || bid.includes('berserk')) { icon = '⚔️'; color = '#ff3300'; }
+            else if (bid.includes('mana')) { icon = '💧'; color = '#3366ff'; }
+            else if (bid.includes('resist')) { icon = '🔮'; color = '#ff00ff'; }
+            else if (bid.includes('exp')) { icon = '✨'; color = '#ffffcc'; }
 
             createStatusIcon(bid, icon, color, `${bid.replace('shrine_', '').toUpperCase()}: ${Math.ceil(b.duration || 0)}s`);
         }
 
         // Debuffs (Slows, DoTs, Curses)
         if (player._auraSlowTimer > 0) {
-            createStatusIcon('slow', 'â„ï¸', '#88ccff', `SLOWED: ${Math.ceil(player._auraSlowTimer)}s`);
+            createStatusIcon('slow', '❄️', '#88ccff', `SLOWED: ${Math.ceil(player._auraSlowTimer)}s`);
         }
 
         for (const d of (player._dots || [])) {
-            let icon = 'ðŸ”¥'; let color = '#ff0000';
-            if (d.type === 'poison') { icon = 'â˜ ï¸'; color = '#00ff00'; }
+            let icon = '🔥'; let color = '#ff0000';
+            if (d.type === 'poison') { icon = '☠️'; color = '#00ff00'; }
             createStatusIcon(d.type, icon, color, `${d.type.toUpperCase()} DoT: ${Math.ceil(d.duration)}s`);
         }
     }
@@ -2243,10 +2243,10 @@ function updateHud() {
     }
 }
 
-// â”€â”€â”€ ICON HELPERS (RPG-AWESOME) â”€â”€â”€
+// ─── ICON HELPERS (RPG-AWESOME) ───
 function getIconForSkill(id) {
     const iconMap = {
-        // â•â•â•â•â•â•â•â•â•â• WARRIOR â•â•â•â•â•â•â•â•â•â•
+        // ══════════ WARRIOR ══════════
         'warrior': 'ra-crossed-swords',
         'arms': 'ra-sword',
         'bash': 'ra-muscle-up',
@@ -2276,7 +2276,7 @@ function getIconForSkill(id) {
         'avatar_of_war': 'ra-heavy-fall',
         'war_syn': 'ra-all-for-one',
 
-        // â•â•â•â•â•â•â•â•â•â• SORCERESS â•â•â•â•â•â•â•â•â•â•
+        // ══════════ SORCERESS ══════════
         'sorceress': 'ra-crystal-wand',
         'fire': 'ra-fire-symbol',
         'fire_bolt': 'ra-small-fire',
@@ -2307,7 +2307,7 @@ function getIconForSkill(id) {
         'energy_shield': 'ra-bolt-shield',
         'thunder_storm': 'ra-lightning-storm',
 
-        // â•â•â•â•â•â•â•â•â•â• NECROMANCER â•â•â•â•â•â•â•â•â•â•
+        // ══════════ NECROMANCER ══════════
         'necromancer': 'ra-skull',
         'summoning': 'ra-tombstone',
         'summon_skeleton': 'ra-broken-bone',
@@ -2337,7 +2337,7 @@ function getIconForSkill(id) {
         'bone_storm': 'ra-skull-trophy',
         'poison_nova': 'ra-poison-cloud',
 
-        // â•â•â•â•â•â•â•â•â•â• PALADIN â•â•â•â•â•â•â•â•â•â•
+        // ══════════ PALADIN ══════════
         'paladin': 'ra-ankh',
         'holy': 'ra-angel-wings',
         'holy_light': 'ra-sunbeams',
@@ -2366,7 +2366,7 @@ function getIconForSkill(id) {
         'cleansing': 'ra-hospital-cross',
         'judgment': 'ra-crown',
 
-        // â•â•â•â•â•â•â•â•â•â• SHAMAN â•â•â•â•â•â•â•â•â•â•
+        // ══════════ SHAMAN ══════════
         'shaman': 'ra-lightning',
         'elemental': 'ra-lightning-bolt',
         'lightning_bolt': 'ra-focused-lightning',
@@ -2393,7 +2393,7 @@ function getIconForSkill(id) {
         'ancestral_spirit': 'ra-angel-wings',
         'hw_syn': 'ra-droplets',
 
-        // â•â•â•â•â•â•â•â•â•â• ROGUE â•â•â•â•â•â•â•â•â•â•
+        // ══════════ ROGUE ══════════
         'rogue': 'ra-hood',
         'assassination': 'ra-daggers',
         'backstab': 'ra-diving-dagger',
@@ -2421,7 +2421,7 @@ function getIconForSkill(id) {
         'death_sentry': 'ra-barbed-arrow',
         'shadow_dance': 'ra-player-dodge',
 
-        // â•â•â•â•â•â•â•â•â•â• WARLOCK â•â•â•â•â•â•â•â•â•â•
+        // ══════════ WARLOCK ══════════
         'warlock': 'ra-burning-eye',
         'destruction': 'ra-fire-symbol',
         'shadow_bolt': 'ra-bottled-bolt',
@@ -2451,7 +2451,7 @@ function getIconForSkill(id) {
         'infernal': 'ra-lava',
         'metamorphosis': 'ra-hydra',
 
-        // â•â•â•â•â•â•â•â•â•â• DRUID â•â•â•â•â•â•â•â•â•â•
+        // ══════════ DRUID ══════════
         'druid': 'ra-leaf',
         'shapeshifting': 'ra-wolf-head',
         'wolf_form': 'ra-wolf-howl',
@@ -2482,7 +2482,7 @@ function getIconForSkill(id) {
         'stampede': 'ra-lion',
         'companion_hawk': 'ra-bird-claw',
 
-        // â•â•â•â•â•â•â•â•â•â• RANGER â•â•â•â•â•â•â•â•â•â•
+        // ══════════ RANGER ══════════
         'ranger': 'ra-archer',
         'marksmanship': 'ra-archery-target',
         'power_shot': 'ra-supersonic-arrow',
@@ -2507,7 +2507,7 @@ function getIconForSkill(id) {
         'minefield': 'ra-bombs',
         'mark_death': 'ra-targeted',
 
-        // â•â•â•â•â•â•â•â•â•â• MISC / SYNERGIES â•â•â•â•â•â•â•â•â•â•
+        // ══════════ MISC / SYNERGIES ══════════
         'chain_reaction': 'ra-chain',
         'fortress': 'ra-locked-fortress',
     };
@@ -2726,7 +2726,7 @@ function skillTooltipText(skillId) {
 
     let t = `<div class="tooltip-inner" style="color:#fff; min-width: 220px;">`;
     t += `<div class="tooltip-name" style="color:var(--gold);">${skill.name} <span style="color:#aaa; font-size:12px;">(Lv ${effLvl})</span></div>`;
-    t += `<div class="tooltip-rarity" style="color:#666; margin-bottom: 8px;">â€” Active Skill â€”</div>`;
+    t += `<div class="tooltip-rarity" style="color:#666; margin-bottom: 8px;">— Active Skill —</div>`;
     t += `<div class="tooltip-stats" style="color:#ccc; font-size:12px;">${skill.desc}</div>`;
 
     t += `<div style="margin-top:10px; padding-top:6px; border-top:1px solid #333;">`;
@@ -2772,7 +2772,7 @@ function addCombatLog(text, cls = '') {
     while (log.children.length > 15) log.removeChild(log.lastChild);
 }
 
-// â”€â”€â”€ MINIMAP â”€â”€â”€
+// ─── MINIMAP ───
 function renderMinimap() {
     if (!dungeon || !player) return;
     const mc = $('minimap');
@@ -2849,7 +2849,7 @@ function renderMinimap() {
                 ctx.fillStyle = '#ffd700';
                 ctx.font = '10px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('â­', obx, oby + 4);
+                ctx.fillText('⭐', obx, oby + 4);
             } else if (obj.type === 'portal' || obj.type === 'uber_portal' || obj.type === 'rift_exit') {
                 ctx.fillStyle = '#30ccff';
                 ctx.beginPath(); ctx.arc(obx, oby, 3, 0, Math.PI * 2); ctx.fill();
@@ -2876,7 +2876,7 @@ function renderMinimap() {
             ctx.fillStyle = '#ff0000';
             ctx.font = '8px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('ðŸ’€', ex, ey + 3);
+            ctx.fillText('💀', ex, ey + 3);
         } else {
             ctx.fillStyle = e.type === 'unique' ? '#bf642f' : (e.type === 'rare' ? '#ffff00' : '#e04040');
             ctx.fillRect(ex - 1, ey - 1, 2, 2);
@@ -2893,7 +2893,7 @@ function renderMinimap() {
         ctx.font = '10px Arial';
         ctx.textAlign = 'center';
         // Distinct icons for key NPCs
-        const nIcon = n.id === 'akara' ? 'â˜¥' : (n.id === 'gheed' ? 'ðŸ’°' : 'ðŸ‘¤');
+        const nIcon = n.id === 'akara' ? '☥' : (n.id === 'gheed' ? '💰' : '👤');
         ctx.fillText(nIcon, nx, ny + 4);
     }
 
@@ -2936,7 +2936,7 @@ function renderMinimap() {
         ctx.fillText(zoneName.toUpperCase(), mw / 2, 32);
     }
 }
-// â”€â”€â”€ POTION EVENTS â”€â”€â”€
+// ─── POTION EVENTS ───
 for (let i = 0; i < 4; i++) {
     bus.on(`potion:use:${i}`, () => {
         player.usePotion(i);
@@ -2945,7 +2945,7 @@ for (let i = 0; i < 4; i++) {
     });
 }
 
-// â”€â”€â”€ INPUT EVENTS â”€â”€â”€
+// ─── INPUT EVENTS ───
 bus.on('input:click', p => { input.click = { x: p.screenX, y: p.screenY }; });
 bus.on('input:rightclick', p => {
     // Handle right-click for quick actions if needed
@@ -2962,7 +2962,7 @@ bus.on('action:weapon_swap', () => {
     }
 });
 
-// â”€â”€â”€ TOGGLES â”€â”€â”€
+// ─── TOGGLES ───
 bus.on('ui:toggle:fullmap', () => {
     showFullMap = !showFullMap;
     bus.emit('ui:click');
@@ -3045,7 +3045,7 @@ $('minimap')?.addEventListener('click', (e) => {
     }
 });
 
-// â”€â”€â”€ COMBAT EVENTS â”€â”€â”€
+// ─── COMBAT EVENTS ───
 bus.on('combat:damage', d => {
     const colors = {
         physical: '#ffffff',
@@ -3199,7 +3199,7 @@ bus.on('campaign:flag', d => {
 });
 
 bus.on('item:broken', d => {
-    addCombatLog(`âš  ALERT: Your ${d.item.name} is BROKEN!`, 'log-dmg');
+    addCombatLog(`⚠️ ALERT: Your ${d.item.name} is BROKEN!`, 'log-dmg');
     if (player) player._recalcStats();
     renderInventory();
     renderCharacterPanel();
@@ -3228,7 +3228,7 @@ bus.on('skill:used', d => {
         const screen = camera.toScreen(player.x, player.y - 10);
         const el = document.createElement('div');
         el.className = 'dmg-number';
-        el.textContent = 'âœ¨';
+        el.textContent = '✨';
         el.style.left = screen.x + 'px';
         el.style.top = screen.y + 'px';
         el.style.color = '#80ffff';
@@ -3239,7 +3239,7 @@ bus.on('skill:used', d => {
     }
 });
 
-// â”€â”€â”€ PANEL TOGGLES â”€â”€â”€
+// ─── PANEL TOGGLES ───
 function togglePanel(name) {
     const panel = $(`panel-${name}`);
     panel.classList.toggle('hidden');
@@ -3342,7 +3342,7 @@ function renderMercenaryPanel() {
     if (mercenary._buffs && mercenary._buffs.length > 0) {
         buffHtml = '<div style="display:flex; gap:4px; margin-top:8px; padding-top:5px; border-top:1px solid #444;">';
         for (const b of mercenary._buffs) {
-            buffHtml += `<div style="width:16px; height:16px; background:#330; border:1px solid #aa0; color:#ff0; font-size:9px; display:flex; justify-content:center; align-items:center; border-radius:2px;" title="${b.type.toUpperCase()}: ${b.duration.toFixed(1)}s">âš¡</div>`;
+            buffHtml += `<div style="width:16px; height:16px; background:#330; border:1px solid #aa0; color:#ff0; font-size:9px; display:flex; justify-content:center; align-items:center; border-radius:2px;" title="${b.type.toUpperCase()}: ${b.duration.toFixed(1)}s">⚡</div>`;
         }
         buffHtml += '</div>';
     }
@@ -3374,7 +3374,7 @@ function renderBountyBoard() {
         const card = document.createElement('div');
         card.className = `bounty-card ${isDone ? 'bounty-complete' : ''}`;
         card.innerHTML = `
-            <div class="bounty-title">${b.title} ${isDone ? 'âœ…' : ''}</div>
+            <div class="bounty-title">${b.title} ${isDone ? '✅' : ''}</div>
             <div style="font-size:11px; font-style:italic;">${b.desc}</div>
             <div class="bounty-progress">Progress: ${b.progress} / ${b.targetCount}</div>
             <div class="bounty-reward">Reward: ${b.reward.gold} Gold, ${b.reward.xp} XP</div>
@@ -3438,7 +3438,7 @@ bus.on('action:interact', () => {
                     // Check for Hammer and Soulstone
                     const hammer = player.inventory.find(it => it && it.baseId === 'hellforge_hammer') || (player.equipment.mainhand && player.equipment.mainhand.baseId === 'hellforge_hammer');
                     const stone = player.inventory.find(it => it && it.baseId === 'mephisto_soulstone');
-                    
+
                     if (hammer && stone) {
                         addCombatLog("You smash the Soulstone upon the Hellforge! Its demonic essence shatters!", 'log-crit');
                         // Consume stone
@@ -3446,12 +3446,12 @@ bus.on('action:interact', () => {
                         player.inventory[stoneIdx] = null;
                         closest.isOpen = true;
                         closest.icon = 'obj_forge_broken';
-                        
+
                         // Drop 2-3 High Runes/Gems
-                        for(let i=0; i<3; i++) {
+                        for (let i = 0; i < 3; i++) {
                             const r = loot.generate(player.level, 0); // High level loot
-                            r.x = closest.x + (Math.random()-0.5)*20;
-                            r.y = closest.y + (Math.random()-0.5)*20;
+                            r.x = closest.x + (Math.random() - 0.5) * 20;
+                            r.y = closest.y + (Math.random() - 0.5) * 20;
                             droppedItems.push(r);
                         }
                         fx.emitBurst(closest.x, closest.y, '#cc00ff', 40, 3);
@@ -3464,7 +3464,7 @@ bus.on('action:interact', () => {
                 } else if (result.type === 'PORTAL') {
                     nextZone(result.targetZone);
                 } else if (result.type === 'LOOT') {
-                    for(let i=0; i<result.count; i++) {
+                    for (let i = 0; i < result.count; i++) {
                         const itm = loot.generate(player.level);
                         itm.x = closest.x; itm.y = closest.y;
                         droppedItems.push(itm);
@@ -3559,7 +3559,7 @@ $('btn-quests')?.addEventListener('click', () => {
     if (!$('panel-quests').classList.contains('hidden')) renderQuestJournal();
 });
 
-// â”€â”€â”€ QUEST LOG â”€â”€â”€
+// ─── QUEST LOG ───
 function renderQuestJournal() {
     const list = $('quest-list');
     const stats = $('quest-stats');
@@ -3577,11 +3577,11 @@ function renderQuestJournal() {
         const done = q.progress >= q.target;
         div.style.cssText = 'padding:8px;margin-bottom:6px;border:1px solid #333;border-radius:4px;background:#1a1a2a;';
         div.innerHTML = `
-            <div style="color:${done ? '#4caf50' : '#ffd700'};font-size:13px;font-family:Cinzel,serif;">${done ? 'âœ…' : 'âš”ï¸'} ${q.desc}</div>
+            <div style="color:${done ? '#4caf50' : '#ffd700'};font-size:13px;font-family:Cinzel,serif;">${done ? '✅' : '⚔️'} ${q.desc}</div>
             <div style="margin-top:4px;height:6px;background:#222;border-radius:3px;overflow:hidden;">
                 <div style="height:100%;width:${pct}%;background:${done ? '#4caf50' : '#bf642f'};transition:width 0.3s;"></div>
             </div>
-            <div style="color:#888;font-size:11px;margin-top:2px;">${q.progress}/${q.target} â€” Reward: ${q.goldReward}g + ${q.xpReward} XP${done ? ' â€” Return to Akara!' : ''}</div>
+            <div style="color:#888;font-size:11px;margin-top:2px;">${q.progress}/${q.target} — Reward: ${q.goldReward}g + ${q.xpReward} XP${done ? ' — Return to Akara!' : ''}</div>
         `;
         list.appendChild(div);
     }
@@ -3590,23 +3590,23 @@ function renderQuestJournal() {
     if (completedQuests.size > 0) {
         const header = document.createElement('div');
         header.style.cssText = 'color:#4caf50;font-family:Cinzel,serif;font-size:12px;padding:8px 0 4px;border-bottom:1px solid #333;margin-top:8px;';
-        header.textContent = `â€” Completed (${completedQuests.size}) â€”`;
+        header.textContent = `— Completed (${completedQuests.size}) —`;
         list.appendChild(header);
         for (const qId of completedQuests) {
             const qd = QUEST_POOL.find(q => q.id === qId);
             if (!qd) continue;
             const div = document.createElement('div');
             div.style.cssText = 'color:#666;padding:4px;font-size:11px;';
-            div.textContent = `âœ… ${qd.desc}`;
+            div.textContent = `✅ ${qd.desc}`;
             list.appendChild(div);
         }
     }
 
     // Session stats
     stats.innerHTML = `
-        <div>âš”ï¸ Monsters slain: <span style="color:#fff;">${killCount}</span></div>
+        <div>⚔️ Monsters slain: <span style="color:#fff;">${killCount}</span></div>
         <div>ðŸŽ–ï¸ Quests completed: <span style="color:#fff;">${completedQuests.size}</span></div>
-        <div>ðŸ’€ Difficulty: <span style="color:#bf642f;">${DIFFICULTY_NAMES[difficulty]}</span></div>
+        <div>💀 Difficulty: <span style="color:#bf642f;">${DIFFICULTY_NAMES[difficulty]}</span></div>
         <div>ðŸ“ Zones discovered: <span style="color:#fff;">${discoveredWaypoints.size}</span></div>
     `;
 }
@@ -3635,7 +3635,7 @@ function renderAchievementsList() {
         `;
 
         card.innerHTML = `
-            <div style="font-size: 24px;">${isUnlocked ? 'ðŸ†' : 'ðŸ”’'}</div>
+            <div style="font-size: 24px;">${isUnlocked ? '🏆' : '🔒'}</div>
             <div style="flex: 1;">
                 <div style="color: ${isUnlocked ? '#ffd700' : '#888'}; font-weight: bold; font-family: Cinzel, serif;">${ach.name}</div>
                 <div style="font-size: 11px; color: #aaa;">${ach.desc}</div>
@@ -3648,7 +3648,7 @@ function renderAchievementsList() {
     list.appendChild(frag);
 }
 
-// â”€â”€â”€ AUTO-BELT REFILL â”€â”€â”€
+// ─── AUTO-BELT REFILL ───
 function autoBeltRefill() {
     if (!player) return;
     for (let i = 0; i < 4; i++) {
@@ -3668,7 +3668,7 @@ document.querySelectorAll('.panel-close').forEach(btn => {
     btn.addEventListener('click', () => togglePanel(btn.dataset.panel));
 });
 
-// â”€â”€â”€ TALENT TREE RENDER â”€â”€â”€
+// ─── TALENT TREE RENDER ───
 function renderTalentTree() {
     if (!player) return;
     const cls = getClass(player.classId);
@@ -3749,7 +3749,7 @@ function renderTalentTree() {
     }
 }
 
-// â”€â”€â”€ CHARACTER PANEL â”€â”€â”€
+// ─── CHARACTER PANEL ───
 function renderCharacterPanel() {
     if (!player) return;
     const panel = $('character-stats-panel');
@@ -3761,17 +3761,17 @@ function renderCharacterPanel() {
         ['Gold', player.gold],
         ['Stat Points', `<span style="color:${sp > 0 ? '#ffd700' : '#888'}">${sp}</span>`],
         ['Paragon Pts', `<span style="color:${player.paragonPoints > 0 ? 'var(--cyan)' : '#888'}">${player.paragonPoints}</span> ${player.level >= 99 ? `<button id="btn-open-paragon" style="padding:0 4px;font-size:10px;">VIEW</button>` : ''}`],
-        ['â”€ ATTRIBUTES â”€', ''],
+        ['─ ATTRIBUTES ─', ''],
         ['Strength', `${player.str} ${btn('str')}`, `Strength: ${player.str} [Base: ${player.baseStr}, Gear: +${player.str - player.baseStr}]`],
         ['Dexterity', `${player.dex} ${btn('dex')}`, `Dexterity: ${player.dex} [Base: ${player.baseDex}, Gear: +${player.dex - player.baseDex}]`],
         ['Vitality', `${player.vit} ${btn('vit')}`, `Vitality: ${player.vit} [Base: ${player.baseVit}, Gear: +${player.vit - player.baseVit}]`],
         ['Intellect', `${player.int} ${btn('int')}`, `Intellect: ${player.int} [Base: ${player.baseInt}, Gear: +${player.int - player.baseInt}]`],
-        ['â”€ OFFENSE â”€', ''],
-        ['Weapon Dmg', `${player.wepMin}â€“${player.wepMax}`, `Physical Base: ${player.wepMin} to ${player.wepMax}`],
+        ['─ OFFENSE ─', ''],
+        ['Weapon Dmg', `${player.wepMin}–${player.wepMax}`, `Physical Base: ${player.wepMin} to ${player.wepMax}`],
         ['Attack Speed', player.atkSpd.toFixed(2), `Swings per second. Modified by Weapon Base and IAS.`],
         ['Crit Chance', player.critChance + '%', `Chance to deal ${player.critMulti}% damage.`],
         ['Crit Multi', player.critMulti + '%', `Damage multiplier on critical strikes.`],
-        ['â”€ DEFENSE â”€', ''],
+        ['─ DEFENSE ─', ''],
         ['HP', `${Math.round(player.hp)} / ${player.maxHp}`, `Life: Keep this above zero!`],
         ['MP', `${Math.round(player.mp)} / ${player.maxMp}`, `Mana: Used to cast powerful spells.`],
         ['Armor', Math.round(player.armor), `Reduces physical damage taken by approximately ${Math.round(100 * player.armor / (player.armor + 400))}%`],
@@ -3783,24 +3783,24 @@ function renderCharacterPanel() {
         ['Life Steal', (player.lifeStealPct || 0) + '%', `Percentage of physical damage returned as life.`],
         ['Mana Steal', (player.manaStealPct || 0) + '%', `Percentage of physical damage returned as mana.`],
         ['Move Speed', Math.round(player.moveSpeed), `Current movement velocity.`],
-        ['â”€ REGEN â”€', ''],
+        ['─ REGEN ─', ''],
         ['Life Regen', (player.lifeRegenPerSec || 0).toFixed(1) + '/s', `Passive life recovery per second.`],
         ['Mana Regen', (player.manaRegenPerSec || 0).toFixed(1) + '/s', `Passive mana recovery per second.`],
-        ['â”€ ADVANCED â”€', ''],
+        ['─ ADVANCED ─', ''],
         ['Dmg Reduction', (player.pctDmgReduce || 0) + '%', `Percentage reduction to all incoming damage.`],
         ['Flat Dmg Red', (player.flatDmgReduce || 0), `Integer reduction to incoming physical damage.`],
         ['Magic Dmg Red', (player.magicDmgReduce || 0), `Integer reduction to incoming non-physical damage.`],
         ['Thorns', (player.thorns || 0), `Reflects integer damage back to melee attackers.`],
-        ['â”€ FIND â”€', ''],
+        ['─ FIND ─', ''],
         ['Magic Find', (player.magicFind || 0) + '%', `Chance to find better loot.`],
         ['Gold Find', (player.goldFind || 0) + '%', `Increases gold dropped by enemies.`],
         ['Light Radius', '+' + (player.lightRadius || 0), `Increases your vision range in dark areas.`],
-        ['â”€ DIFFICULTY â”€', ''],
+        ['─ DIFFICULTY ─', ''],
         ['Current', DIFFICULTY_NAMES[difficulty], `Current game difficulty level.`],
         ['Resist Penalty', (difficulty === 2 ? '-100%' : (difficulty === 1 ? '-40%' : '0%')), `Resistance reduction from higher difficulty.`],
     ];
     panel.innerHTML = stats.map(([n, v, tooltip]) =>
-        n.startsWith('â”€') ? `<div class="stat-row" style="border-bottom:none;"><span class="stat-name" style="color:var(--gold);font-size:0.75rem;">${n}</span><span></span></div>`
+        n.startsWith('─') ? `<div class="stat-row" style="border-bottom:none;"><span class="stat-name" style="color:var(--gold);font-size:0.75rem;">${n}</span><span></span></div>`
             : `<div class="stat-row"><span class="stat-name" ${tooltip ? `data-tooltip="${tooltip}"` : ''}>${n}</span><span class="stat-val">${v}</span></div>`
     ).join('');
 
@@ -3877,8 +3877,8 @@ function renderParagonPanel() {
     });
 }
 
-// â”€â”€â”€ INVENTORY â”€â”€â”€
-// â”€â”€â”€ INVENTORY â”€â”€â”€
+// ─── INVENTORY ───
+// ─── INVENTORY ───
 let socketingGemIndex = -1;
 
 function renderInventory() {
@@ -4471,7 +4471,7 @@ function itemTooltipText(item, isComparison = false) {
         ((item.rarity === 'normal' && item.sockets > 0) ? '#999' : (colors[item.rarity] || '#fff'));
 
     let t = `<div class="tooltip-inner" style="color:${c}; ${isComparison ? 'border-color: #444; opacity: 0.9;' : ''}">`;
-    if (isComparison) t += `<div style="font-size:10px; color:#aaa; text-align:center; margin-bottom:4px;">â€” EQUIPPED â€”</div>`;
+    if (isComparison) t += `<div style="font-size:10px; color:#aaa; text-align:center; margin-bottom:4px;">— EQUIPPED —</div>`;
 
     t += `<div class="tooltip-name">${item.identified === false ? 'Unidentified ' + (items[item.baseId]?.name || 'Item') : (item.name || items[item.baseId]?.name || 'Unknown Item')}</div>`;
 
@@ -4479,7 +4479,7 @@ function itemTooltipText(item, isComparison = false) {
     const skipID = (item.type === 'gem' || item.type === 'rune' || item.type === 'charm' || item.type === 'potion');
 
     if (item.identified === false && !skipID) {
-        t += `<div class="tooltip-rarity" style="color:#666;">â€” Unknown Potential â€”</div>`;
+        t += `<div class="tooltip-rarity" style="color:#666;">— Unknown Potential —</div>`;
         t += `<div class="tooltip-stats" style="color:#666; font-style:italic;">Use a Scroll of Identification to reveal this item's powers.</div>`;
         t += `<div class="tooltip-footer">[Left-Click: Equip / Move to Stash] | [Right-Click: Drop / Sell]</div>`;
         t += `</div>`;
@@ -4488,7 +4488,7 @@ function itemTooltipText(item, isComparison = false) {
 
     if (item.rarity && item.rarity !== 'normal' && typeof item.rarity === 'string') {
         const rarityLabel = item.rarity === 'set' ? (item.setName || "SET ITEM") : item.rarity.toUpperCase();
-        t += `<div class="tooltip-rarity">â€” ${rarityLabel} â€”</div>`;
+        t += `<div class="tooltip-rarity">— ${rarityLabel} —</div>`;
     }
 
     // Item Tier
@@ -4542,7 +4542,7 @@ function itemTooltipText(item, isComparison = false) {
     if (item.minDmg) {
         const avg = (item.minDmg + item.maxDmg) / 2;
         const compAvg = compareItem ? (compareItem.minDmg + compareItem.maxDmg) / 2 : avg;
-        t += `<div style="color:${getCompareColor(avg, compAvg)}">Damage: ${item.minDmg}â€“${item.maxDmg}${getDiffText(avg, compAvg)}</div>`;
+        t += `<div style="color:${getCompareColor(avg, compAvg)}">Damage: ${item.minDmg}–${item.maxDmg}${getDiffText(avg, compAvg)}</div>`;
     }
     if (item.armor) t += `<div style="color:${getCompareColor(item.armor, compareItem?.armor)}">Armor: ${item.armor}${getDiffText(item.armor, compareItem?.armor)}</div>`;
     if (item.block) t += `<div style="color:${getCompareColor(item.block, compareItem?.block)}">Block: ${item.block}%${getDiffText(item.block, compareItem?.block)}</div>`;
@@ -4555,7 +4555,7 @@ function itemTooltipText(item, isComparison = false) {
     // Support for Gem/Rune Socket Effects (Compact & Categorized)
     if (item.type === 'gem' && item.socketEffect) {
         t += `<div style="background:rgba(191,100,47,0.1); border:1px solid rgba(191,100,47,0.3); padding:8px; margin-top:10px; border-radius:4px;">`;
-        t += `<div style="color:#bf642f; margin-bottom:6px; font-weight:bold; font-size:12px; border-bottom:1px solid #332a1e; padding-bottom:3px;">â€” SOCKETABLE DATA â€”</div>`;
+        t += `<div style="color:#bf642f; margin-bottom:6px; font-weight:bold; font-size:12px; border-bottom:1px solid #332a1e; padding-bottom:3px;">— SOCKETABLE DATA —</div>`;
         for (const [loc, effect] of Object.entries(item.socketEffect)) {
             const locName = loc.charAt(0).toUpperCase() + loc.slice(1);
             let statLabel = friendlyNames[effect.stat] || effect.stat.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
@@ -4689,7 +4689,7 @@ function itemTooltipText(item, isComparison = false) {
     return t;
 }
 
-// â”€â”€â”€ DEATH SCREEN â”€â”€â”€
+// ─── DEATH SCREEN ───
 $('btn-respawn').addEventListener('click', () => {
     $('death-screen').classList.add('hidden');
     // Death penalty: lose 10% gold
@@ -4725,7 +4725,7 @@ $('btn-reset-talents')?.addEventListener('click', () => {
     addCombatLog('Talents reset!', 'log-level');
 });
 
-// â”€â”€â”€ SHOP UI â”€â”€â”€
+// ─── SHOP UI ───
 function calculateSellPrice(item) {
     if (!item) return 0;
     let base = item.price || 10;
@@ -4800,17 +4800,17 @@ function renderDialoguePicker(npc) {
 
     // --- Phase 12+: Campaign & Quest Buttons ---
     if (npc.id === 'warriv' && campaign.completedActs >= 1) {
-        options.push({ label: 'Viajar al Este', action: () => { nextZone(6); menu.remove(); activeDialogueNpc = null; } });
+        options.push({ label: 'Travel East', action: () => { nextZone(6); menu.remove(); activeDialogueNpc = null; } });
     } else if (npc.id === 'meshif' && campaign.completedActs >= 2) {
-        options.push({ label: 'Navegar al Este', action: () => { nextZone(11); menu.remove(); activeDialogueNpc = null; } });
+        options.push({ label: 'Sail East', action: () => { nextZone(11); menu.remove(); activeDialogueNpc = null; } });
     } else if (npc.id === 'tyrael' && (zoneLevel === 16 || zoneLevel === 21) && campaign.completedActs >= 4) {
-        options.push({ label: 'Viajar a Harrogath', action: () => { nextZone(21); menu.remove(); activeDialogueNpc = null; } });
+        options.push({ label: 'Travel to Harrogath', action: () => { nextZone(21); menu.remove(); activeDialogueNpc = null; } });
     }
 
     if (npc.id === 'atma' && campaign.hasFlag('radament_slain') && !campaign.questRewards.has('radament')) {
-        options.push({ label: 'Recompensa de Radament', action: () => { campaign.claimReward('radament', player); menu.remove(); activeDialogueNpc = null; } });
+        options.push({ label: 'Radament Reward', action: () => { campaign.claimReward('radament', player); menu.remove(); activeDialogueNpc = null; } });
     } else if (npc.id === 'malah' && campaign.hasFlag('anya_rescued') && !campaign.questRewards.has('anya')) {
-        options.push({ label: 'Recompensa de Anya', action: () => { campaign.claimReward('anya', player); menu.remove(); activeDialogueNpc = null; } });
+        options.push({ label: 'Anya Reward', action: () => { campaign.claimReward('anya', player); menu.remove(); activeDialogueNpc = null; } });
     } else if (npc.id === 'akara' && campaign.hasFlag('den_cleared') && !campaign.questRewards.has('den_of_evil')) {
         options.push({ label: 'Reset Stats/Skills', action: () => { campaign.claimReward('den_of_evil', player); menu.remove(); activeDialogueNpc = null; } });
     } else if (npc.id === 'tyrael' && campaign.hasFlag('izual_freed') && !campaign.questRewards.has('izual')) {
@@ -5030,7 +5030,7 @@ function renderDialoguePicker(npc) {
         btn.style.cssText = 'color: #d8b068; cursor: pointer; padding: 10px; margin: 4px 0; text-align: left; transition: all 0.2s; font-size: 13px; background: rgba(191,100,47,0.05); border: 1px solid transparent;';
         btn.onmouseover = () => { btn.style.color = '#fff'; btn.style.background = 'rgba(191,100,47,0.2)'; btn.style.borderColor = '#bf642f'; };
         btn.onmouseout = () => { btn.style.color = '#d8b068'; btn.style.background = 'rgba(191,100,47,0.05)'; btn.style.borderColor = 'transparent'; };
-        btn.textContent = `â€¢ ${opt.label}`;
+        btn.textContent = `• ${opt.label}`;
         btn.onclick = opt.action;
         menu.appendChild(btn);
     });
@@ -5094,7 +5094,7 @@ function renderWaypointMenu(obj) {
             btn.style.cssText = 'color: #d8b068; cursor: pointer; padding: 8px; margin: 2px 0; text-align: left; transition: all 0.2s; font-size: 12px; background: rgba(191,100,47,0.05); border: 1px solid transparent;';
             btn.onmouseover = () => { btn.style.color = '#fff'; btn.style.background = 'rgba(191,100,47,0.2)'; btn.style.borderColor = '#bf642f'; };
             btn.onmouseout = () => { btn.style.color = '#d8b068'; btn.style.background = 'rgba(191,100,47,0.05)'; btn.style.borderColor = 'transparent'; };
-            btn.textContent = `âš¡ ${ZONE_NAMES[wz] || 'Area ' + wz}`;
+            btn.textContent = `⚡ ${ZONE_NAMES[wz] || 'Area ' + wz}`;
             btn.onclick = () => {
                 addCombatLog(`Teleporting to ${ZONE_NAMES[wz] || 'Area ' + wz}...`, 'log-level');
                 nextZone(wz);
@@ -5104,6 +5104,7 @@ function renderWaypointMenu(obj) {
             scrollArea.appendChild(btn);
         });
     });
+
 
     menu.appendChild(scrollArea);
 
@@ -5198,7 +5199,7 @@ function renderShop() {
 
     const repairRow = document.createElement('div');
     repairRow.style.cssText = `padding:8px; margin: 4px 0; border:1px solid ${repairCost > 0 ? '#4caf50' : '#333'}; background:${repairCost > 0 ? '#1a2a1a' : '#111'}; border-radius:4px; text-align:center; cursor:${repairCost > 0 ? 'pointer' : 'default'}; font-family:Cinzel,serif; color:${repairCost > 0 ? '#4caf50' : '#666'};`;
-    repairRow.innerHTML = `ðŸ› ï¸ Repair All Gear (${repairCost}g)`;
+    repairRow.innerHTML = `🛠️ Repair All Gear (${repairCost}g)`;
     if (repairCost > 0) {
         repairRow.onclick = () => {
             if (player.gold >= repairCost) {
@@ -5224,7 +5225,7 @@ function renderShop() {
 
     const refillRow = document.createElement('div');
     refillRow.style.cssText = `padding:8px; margin: 4px 0; border:1px solid ${totalRefillCost > 0 ? '#30ccff' : '#333'}; background:${totalRefillCost > 0 ? '#0a1a2a' : '#111'}; border-radius:4px; text-align:center; cursor:${totalRefillCost > 0 ? 'pointer' : 'default'}; font-family:Cinzel,serif; color:${totalRefillCost > 0 ? '#30ccff' : '#666'};`;
-    refillRow.innerHTML = `ðŸ“– Refill All Tomes (${totalRefillCost}g)`;
+    refillRow.innerHTML = `📖 Refill All Tomes (${totalRefillCost}g)`;
     if (totalRefillCost > 0) {
         refillRow.onclick = () => {
             if (player.gold >= totalRefillCost) {
@@ -5243,7 +5244,7 @@ function renderShop() {
     // Identify All Service
     const idAllRow = document.createElement('div');
     idAllRow.style.cssText = 'padding:6px; margin: 4px 0; border:1px solid #bf642f; background:#302010; border-radius:4px; text-align:center; cursor:pointer; font-family:Cinzel,serif; color:#ffd700;';
-    idAllRow.innerHTML = `ðŸ“œ Identify All Inventory (300g)`;
+    idAllRow.innerHTML = `📜 Identify All Inventory (300g)`;
     idAllRow.onclick = () => {
         if (player.gold >= 300) {
             let count = 0;
@@ -5266,7 +5267,7 @@ function renderShop() {
     // Section Header: Buy
     const buyHeader = document.createElement('div');
     buyHeader.style.cssText = 'color:var(--gold);font-family:Cinzel,serif;font-size:14px;padding:4px 0;border-bottom:1px solid #333;';
-    buyHeader.textContent = 'â€” Buy Items â€”';
+    buyHeader.textContent = '— Buy Items —';
     container.appendChild(buyHeader);
 
     const shopInventory = [
@@ -5326,7 +5327,7 @@ function renderShop() {
     // Section: Gambling
     const gambleHeader = document.createElement('div');
     gambleHeader.style.cssText = 'color:#bf642f;font-family:Cinzel,serif;font-size:14px;padding:8px 0 4px;border-bottom:1px solid #333;margin-top:8px;';
-    gambleHeader.textContent = 'â€” Gamble â€”';
+    gambleHeader.textContent = '— Gamble —';
     container.appendChild(gambleHeader);
 
     const gambleCosts = [
@@ -5340,7 +5341,7 @@ function renderShop() {
         row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px;border:1px solid #4a3520;background:#1a1208;border-radius:4px;';
         row.innerHTML = `
             <div style="display:flex;align-items:center;gap:8px;">
-                <span style="color:#bf642f; font-size:20px;">ðŸŽ²</span>
+                <span style="color:#bf642f; font-size:20px;">🎲</span>
                 <span style="color:#bf642f;">${g.label}</span>
             </div>
             <button class="btn-secondary small" style="border-color:#bf642f;">Gamble (${g.cost}g)</button>
@@ -5365,7 +5366,7 @@ function renderShop() {
 
 // Removal of redundant logic and illegal braces to fix syntax error.
 
-// â”€â”€â”€ STASH & CUBE â”€â”€â”€
+// ─── STASH & CUBE ───
 function renderStash() {
     const grid = $('stash-grid');
     if (!grid) return;
@@ -5691,7 +5692,7 @@ $('btn-transmute')?.addEventListener('click', () => {
     }
 });
 
-// â”€â”€â”€ QUEST SYSTEM â”€â”€â”€
+// ─── QUEST SYSTEM ───
 const ACT_1_QUESTS = {
     'den_of_evil': {
         id: 'den_of_evil',
@@ -5958,7 +5959,7 @@ function offerQuest(giverId = null) {
                     if (fx) fx.emitLevelUp(player.x, player.y);
                 }
 
-                addCombatLog(`Quest Complete: "${q.name}" â€” Reward received!`, 'log-level');
+                addCombatLog(`Quest Complete: "${q.name}" — Reward received!`, 'log-level');
                 completedQuests.add(q.id);
                 activeQuests.splice(i, 1);
                 if (fx) fx.emitBurst(player.x, player.y, '#4caf50', 50, 2.5);
@@ -5983,7 +5984,7 @@ function offerQuest(giverId = null) {
 }
 
 
-// â”€â”€â”€ MERCENARY HIRE â”€â”€â”€
+// ─── MERCENARY HIRE ───
 function hireMercenary(type = 'Rogue') {
     if (!player) return;
     if (player.gold < 500) {
@@ -6064,12 +6065,12 @@ function checkBountyProgress(enemy) {
     }
 }
 
-// â”€â”€â”€ ACHIEVEMENTS â”€â”€â”€
+// ─── ACHIEVEMENTS ───
 function checkAchievements() {
     for (const ach of ACHIEVEMENTS) {
         if (!unlockedAchievements.has(ach.id) && ach.check()) {
             unlockedAchievements.add(ach.id);
-            addCombatLog(`ðŸ† Achievement Unlocked: ${ach.name}!`, 'log-crit');
+            addCombatLog(`🏆 Achievement Unlocked: ${ach.name}!`, 'log-crit');
 
             // CELEBRATORY BANNER
             const banner = $('achievement-announcement');
@@ -6089,7 +6090,7 @@ function checkAchievements() {
     }
 }
 
-// â”€â”€â”€ INIT â”€â”€â”€
+// ─── INIT ───
 window.addEventListener('DOMContentLoaded', () => {
     // Phase 31: Init Supabase
     DB.init();
@@ -6186,7 +6187,7 @@ window.addEventListener('DOMContentLoaded', () => {
             player.gold = Math.floor(player.gold * 0.9); // 10% gold penalty
         }
         state = 'GAME';
-        nextZone(0); // Respawn in town
+        nextZone(0); espawn in town
     });
 
     $('btn-main-menu-death').addEventListener('click', () => {
@@ -6244,7 +6245,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// â”€â”€â”€ SAVE SLOT UI â”€â”€â”€
+// ─── SAVE SLOT UI ───
 async function renderSaveSlots() {
     const container = $('save-slots');
     let slots = [];
@@ -6274,7 +6275,7 @@ async function renderSaveSlots() {
             <i class="ra ${getIconForClass(slot.classId)} slot-icon" style="font-size:32px; color:var(--gold); text-shadow: 0 0 8px rgba(255,215,0,0.5);"></i>
             <div class="slot-info">
                 <div class="slot-name" style="text-shadow: 0 0 4px rgba(255,255,255,0.3);">${slot.name || slot.className}</div>
-                <div class="slot-detail" style="color:#aaa;">Level ${slot.level} ${slot.className} â€” ${date}</div>
+                <div class="slot-detail" style="color:#aaa;">Level ${slot.level} ${slot.className} — ${date}</div>
             </div>
             <button class="slot-delete" title="Delete character">âœ•</button>
         `;
@@ -6321,7 +6322,7 @@ async function renderSaveSlots() {
                     btn.style.cssText = 'display:block; width:100%; margin-bottom:10px; padding:12px; font-weight:bold; font-size:14px;';
 
                     if (d === 3) {
-                        btn.textContent = 'âš¡ Rift Mode âš¡';
+                        btn.textContent = '⚡ Rift Mode ⚡';
                         btn.style.color = '#bf642f'; // Unique orange
                         btn.style.border = '1px solid #ff9000';
                     } else {
@@ -6420,7 +6421,7 @@ function updateWorldClockUI() {
     const min = Math.floor(worldTime % 60);
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const h12 = hour % 12 || 12;
-    clock.textContent = `${h12}:${min < 10 ? '0' : ''}${min} ${ampm} ${window.isNight ? 'ðŸŒ™' : 'â˜€ï¸'}`;
+    clock.textContent = `${h12}:${min < 10 ? '0' : ''}${min} ${ampm} ${window.isNight ? '🌙' : '☀️'}`;
 }
 
 // --- Phase 29: Blacksmith Crafting UI ---
@@ -6485,7 +6486,7 @@ function renderCraftingMenu() {
 // --- Phase 30: Drag & Drop Implementation ---
 function startDrag(e, item, source, idx) {
     if (!item) return;
-    draggedItem = item;
+    draggedItem = iteem;
     dragSource = source;
     dragSourceIdx = idx;
 
@@ -6929,15 +6930,10 @@ function handleBossDeath(boss) {
         campaign.completeAct(actNum);
         showActCleared(actName, actSubtitle);
 
-        const portal = {
-            type: 'portal',
-            x: boss.x + 40,
-            y: boss.y,
-            icon: 'env_stairs_up',
-            targetZone: 0,
-            isActPortal: true
-        };
-        gameObjects.push({ ...portal, interact: () => ({ type: 'PORTAL', targetZone: 0 }) });
+        const portal = new GameObject('portal', boss.x + 40, boss.y, 'env_stairs_up');
+        portal.targetZone = 0;
+        portal.isActPortal = true;
+        gameObjects.push(portal);
         fx.emitHolyBurst(portal.x, portal.y);
     }
 }
@@ -6947,8 +6943,8 @@ function showActCleared(name, subtitle) {
     if (!splash) return;
 
     splash.innerHTML = `
-        <div class="act-cleared-subtitle">Acto Completado</div>
-        <h1 class="act-cleared-title">Acto ${name}</h1>
+        <div class="act-cleared-subtitle">Act Cleared</div>
+        <h1 class="act-cleared-title">Act ${name}</h1>
         <div class="act-cleared-ornament"></div>
         <div class="act-cleared-subtitle">${subtitle}</div>
     `;
