@@ -2800,15 +2800,19 @@ body.socketing-mode .inv-item:not(.unidentified) {
 /* Landscape Specific: Horizontal layout (Keep HUD minimal) */
 @media (max-width: 1023px) and (orientation: landscape) {
   #hud { height: 60px; }
-  #hud-center { transform: scale(0.75); }
-  #joystick-base { bottom: 15px; left: 25px; width: 100px; height: 100px; }
-  #mobile-buttons { 
-    bottom: 15px; right: 25px; 
-    transform: scale(0.9);
-    grid-template-columns: repeat(3, 55px);
-    gap: 10px;
+  .mobile-btn {
+    width: 60px;
+    height: 60px;
+    background: rgba(0, 0, 0, 0.7) !important;
+    border: 2px solid rgba(212, 175, 55, 0.5) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8), inset 0 0 10px rgba(212, 175, 55, 0.1);
+    backdrop-filter: blur(4px);
   }
-  .class-grid { grid-template-columns: repeat(4, 1fr); }
+
+  .mobile-btn span {
+    font-size: 26px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.9));
+  }
 }
 
 @media (min-width: 1024px) {

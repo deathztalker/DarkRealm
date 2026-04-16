@@ -1,7 +1,5 @@
-/**
- * Mobile Controls — Virtual Joystick and Skill Buttons
- */
 import { bus } from '../engine/EventBus.js';
+import { getSkillMap } from '../data/classes.js';
 
 export class MobileControls {
     constructor(input) {
@@ -20,7 +18,7 @@ export class MobileControls {
             maxRadius: 40
         };
 
-        this.buttons = [];
+        this.skillButtons = []; // Stores { el, slotIdx, originalIcon }
         this._init();
     }
 
@@ -41,7 +39,7 @@ export class MobileControls {
         container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1000; user-select:none;';
         document.getElementById('game-screen').appendChild(container);
 
-        // Joystick Base
+        // Joystick Base (Left Side)
         const jBase = document.createElement('div');
         jBase.id = 'joystick-base';
         jBase.style.cssText = 'position:absolute; bottom:40px; left:40px; width:100px; height:100px; background:rgba(255,255,255,0.1); border:2px solid rgba(255,255,255,0.2); border-radius:50%; pointer-events:auto;';
@@ -56,34 +54,45 @@ export class MobileControls {
         this.joystick.stick = jStick;
 
         // Buttons Container (Right side)
+        // We'll use an ergonomic arc around the Mana orb area
         const btnContainer = document.createElement('div');
         btnContainer.id = 'mobile-buttons';
-        btnContainer.style.cssText = 'position:absolute; bottom:40px; right:40px; display:grid; grid-template-columns: repeat(3, 60px); gap:15px; pointer-events:auto;';
+        btnContainer.style.cssText = 'position:absolute; bottom:0; right:0; width:300px; height:300px; pointer-events:none;';
         container.appendChild(btnContainer);
 
-        const skillButtons = [
-            { label: 'Q', action: 'skill:use:0', icon: '🔥', grid: '1 / 2' },
-            { label: 'E', action: 'skill:use:1', icon: '❄️', grid: '1 / 3' },
-            { label: 'R', action: 'skill:use:2', icon: '⚡', grid: '2 / 3' },
-            { label: 'F', action: 'skill:use:3', icon: '💀', grid: '3 / 3' },
-            { label: 'G', action: 'skill:use:4', icon: '🛡️', grid: '3 / 2' },
-            { label: '1', action: 'potion:use:0', icon: '🧪', grid: '2 / 1' },
-            { label: 'Interact', action: 'action:interact', icon: '✋', grid: '3 / 1', size: 'large' }
+        const skillButtonDefs = [
+            { slot: 0, angle: -160, dist: 150, action: 'skill:use:0', icon: 'Q' },
+            { slot: 1, angle: -135, dist: 160, action: 'skill:use:1', icon: 'E' },
+            { slot: 2, angle: -110, dist: 160, action: 'skill:use:2', icon: 'R' },
+            { slot: 3, angle: -85, dist: 155, action: 'skill:use:3', icon: 'F' },
+            { slot: 4, angle: -65, dist: 140, action: 'skill:use:4', icon: 'G' },
+            { slot: 'potion', angle: -180, dist: 100, action: 'potion:use:0', icon: '🧪' },
+            { slot: 'interact', angle: -130, dist: 80, action: 'action:interact', icon: '✋', size: 'large' }
         ];
 
-        skillButtons.forEach(btnDef => {
+        skillButtonDefs.forEach(btnDef => {
             const btn = document.createElement('div');
             btn.className = 'mobile-btn';
             btn.innerHTML = `<span>${btnDef.icon}</span>`;
+            
+            // Positioning in an arc relative to the bottom-right corner (Mana Orb area)
+            const rad = (btnDef.angle * Math.PI) / 180;
+            const x = Math.cos(rad) * btnDef.dist;
+            const y = Math.sin(rad) * btnDef.dist;
+
             btn.style.cssText = `
-                width: 60px; height: 60px; 
-                background: rgba(0,0,0,0.5); 
-                border: 2px solid rgba(212,175,55,0.5); 
+                position: absolute;
+                bottom: 40px; 
+                right: 40px;
+                width: 55px; height: 55px; 
+                transform: translate(${x}px, ${y}px);
+                background: rgba(0,0,0,0.6); 
+                border: 2px solid rgba(212,175,55,0.4); 
                 border-radius: 50%; 
                 display: flex; justify-content: center; align-items: center; 
-                font-size: 24px; color: white; 
-                grid-area: ${btnDef.grid};
-                active { background: rgba(212,175,55,0.3); }
+                font-size: 22px; color: white; 
+                pointer-events: auto;
+                transition: transform 0.1s;
             `;
             
             if (btnDef.size === 'large') {
@@ -100,13 +109,19 @@ export class MobileControls {
             });
             btn.addEventListener('touchend', (e) => {
                 e.preventDefault();
-                btn.style.background = 'rgba(0,0,0,0.5)';
+                btn.style.background = 'rgba(0,0,0,0.6)';
             });
 
             btnContainer.appendChild(btn);
+            
+            if (typeof btnDef.slot === 'number') {
+                this.skillButtons.push({ el: btn, slot: btnDef.slot, originalIcon: btnDef.icon });
+            } else if (btnDef.slot === 'potion') {
+                this.potionButton = btn;
+            }
         });
 
-        // Toggle UI buttons (Inventory, etc)
+        // Toggle UI buttons (Inventory, etc) - Keep at top left
         const uiBtnContainer = document.createElement('div');
         uiBtnContainer.style.cssText = 'position:absolute; top:10px; left:10px; display:flex; gap:10px; pointer-events:auto;';
         container.appendChild(uiBtnContainer);
@@ -130,6 +145,37 @@ export class MobileControls {
             });
             uiBtnContainer.appendChild(btn);
         });
+    }
+
+    /**
+     * Synchronize mobile icons with player's actual equipped skills
+     */
+    update(player) {
+        if (!this.active || !player) return;
+
+        const skillMap = getSkillMap(player.classId);
+        
+        // Update Skill Buttons
+        this.skillButtons.forEach(btnObj => {
+            const skillId = player.hotbar[btnObj.slot];
+            const skill = skillMap[skillId];
+            
+            if (skill && skill.icon) {
+                btnObj.el.querySelector('span').textContent = skill.icon;
+            } else {
+                // If no skill equipped, show slot label (Q, E, R, etc)
+                btnObj.el.querySelector('span').textContent = btnObj.originalIcon;
+            }
+        });
+
+        // Update Potion Button if possible
+        if (this.potionButton) {
+            const firstPotion = player.belt.find(p => p !== null);
+            if (firstPotion && firstPotion.icon) {
+                // We'd ideally use an emoji matching the potion type
+                this.potionButton.querySelector('span').textContent = '🧪';
+            }
+        }
     }
 
     _setupEvents() {

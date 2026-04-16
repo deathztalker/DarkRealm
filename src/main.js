@@ -410,9 +410,9 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         if (width >= 1024) {
             camera.zoom = 2.0; // Desktop
         } else if (width > height) {
-            camera.zoom = 1.6; // Mobile Landscape
+            camera.zoom = 1.1; // Mobile Landscape
         } else {
-            camera.zoom = 1.2; // Mobile Portrait
+            camera.zoom = 0.8; // Mobile Portrait
         }
     };
 
@@ -423,7 +423,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     window.addEventListener('resize', adjustZoom);
 
     input = new Input(canvas);
-    new MobileControls(input);
+    window.mobileControls = new MobileControls(input);
 
     // Extract early fields for generation theming
     let curHighestZone = 0;
@@ -616,6 +616,7 @@ function gameLoop(timestamp) {
     window.isNight = (hour >= 20 || hour < 6);
 
     if (input) input.update();
+    if (window.mobileControls) window.mobileControls.update(player);
 
     // --- Phase 3.1: Atmospheric Weather System ---
     if (window.fx && player) {
