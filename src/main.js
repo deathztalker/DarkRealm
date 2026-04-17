@@ -889,55 +889,55 @@ function gameLoop(timestamp) {
         if (lootFilter >= 1 && (!di.rarity || di.rarity === 'normal')) continue;
         if (lootFilter >= 2 && di.rarity === 'magic') continue;
 
-        // 1. Enhanced Loot Beams & Ground Glow
-        if (di.rarity === 'unique' || di.rarity === 'rare' || di.rarity === 'set' || di.isQuestItem) {
-            const ctx = renderer.ctx;
+        const ctx = renderer.ctx;
+
+        // 1. Rarity Glow (Pulse)
+        if (di.rarity !== 'normal') {
             ctx.save();
             ctx.globalCompositeOperation = 'screen';
-            let color = di.rarity === 'unique' ? 'rgba(232, 160, 32, 0.7)' : di.rarity === 'set' ? 'rgba(0, 255, 0, 0.6)' : 'rgba(240, 208, 48, 0.5)';
-            if (di.isQuestItem) color = 'rgba(76, 201, 240, 0.7)';
-
-            const radial = ctx.createRadialGradient(di.x, di.y, 2, di.x, di.y, 16);
+            let color = di.rarity === 'unique' ? 'rgba(232, 160, 32, 0.3)' : di.rarity === 'set' ? 'rgba(0, 255, 0, 0.25)' : di.rarity === 'rare' ? 'rgba(240, 208, 48, 0.2)' : 'rgba(64, 128, 255, 0.15)';
+            if (di.isQuestItem) color = 'rgba(76, 201, 240, 0.4)';
+            
+            const pulse = 0.8 + Math.sin(lastTime * 0.005) * 0.2;
+            const radial = ctx.createRadialGradient(di.x, di.y, 2, di.x, di.y, 14 * pulse);
             radial.addColorStop(0, color);
             radial.addColorStop(1, 'transparent');
             ctx.fillStyle = radial;
-            ctx.beginPath(); ctx.arc(di.x, di.y, 16, 0, Math.PI * 2); ctx.fill();
-
-            const shimmer = 0.5 + Math.sin(lastTime * 0.004) * 0.4;
-            ctx.globalAlpha = shimmer;
-            const beamG = ctx.createLinearGradient(0, di.y, 0, di.y - 140);
-            beamG.addColorStop(0, color);
-            beamG.addColorStop(1, 'transparent');
-            ctx.fillStyle = beamG;
-            ctx.beginPath();
-            ctx.moveTo(di.x - 5, di.y); ctx.lineTo(di.x + 5, di.y);
-            ctx.lineTo(di.x + 1, di.y - 140); ctx.lineTo(di.x - 1, di.y - 140);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(di.x, di.y, 14 * pulse, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
         }
 
-        // 2. Render Sprite
-        renderer.drawSprite(di.icon, di.x, di.y, 16);
+        // 2. Pro Ground Sprite (2.5D tilt & Shadow)
+        ctx.save();
+        // Drop Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath(); ctx.ellipse(di.x + 2, di.y + 2, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
+        
+        // Tilt icon to look like it's on the floor
+        ctx.translate(di.x, di.y);
+        ctx.rotate(0.2); // 10-ish degree tilt
+        renderer.drawSprite(di.icon, 0, 0, 20); // Larger 20px icon
+        ctx.restore();
 
-        // 3. Smart Non-Overlapping Labels
+        // 3. Smart Non-Overlapping Labels (Diablo II Style)
         renderer.ctx.font = 'bold 10px "Exocet", "Cinzel", serif';
         const labelText = di.name;
         const textWidth = renderer.ctx.measureText(labelText).width;
-        const padding = 4;
+        const padding = 5;
         const lw = textWidth + padding * 2;
-        const lh = 14;
+        const lh = 15;
 
         let lx = di.x - lw / 2;
-        let ly = di.y + 12;
+        let ly = di.y + 14;
 
         // Label Stacking Logic
         let attempts = 0;
         let overlapping = true;
-        while (overlapping && attempts < 10) {
+        while (overlapping && attempts < 15) {
             overlapping = false;
             for (const r of labelRects) {
                 if (!(lx + lw < r.x || lx > r.x + r.w || ly + lh < r.y || ly > r.y + r.h)) {
-                    ly += lh + 2; 
+                    ly += lh + 1; 
                     overlapping = true;
                     break;
                 }
@@ -947,20 +947,20 @@ function gameLoop(timestamp) {
         
         const finalRect = { x: lx, y: ly, w: lw, h: lh };
         labelRects.push(finalRect);
-        di.labelRect = finalRect; // For click detection in world coords
+        di.labelRect = finalRect; 
 
-        // Draw Box
-        renderer.ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        // Draw Label Box
+        renderer.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
         const rCol = di.rarity === 'unique' ? '#e8a020' : di.rarity === 'set' ? '#00ff00' : di.rarity === 'rare' ? '#f0d030' : di.rarity === 'magic' ? '#4080ff' : '#aaa';
         renderer.ctx.strokeStyle = rCol;
-        renderer.ctx.lineWidth = 1;
+        renderer.ctx.lineWidth = 1.5;
         renderer.ctx.fillRect(lx, ly, lw, lh);
         renderer.ctx.strokeRect(lx, ly, lw, lh);
 
-        // Draw Text
+        // Draw Name
         renderer.ctx.textAlign = 'center';
         renderer.ctx.fillStyle = rCol;
-        renderer.ctx.fillText(labelText, di.x, ly + 11);
+        renderer.ctx.fillText(labelText, di.x, ly + 11.5);
     }
 
     // --- Phase 29: World Time Overlay (Post-Objects) ---
@@ -1377,25 +1377,33 @@ function checkInteractions(pos) {
         }
     }
 
-    // Manual Pickup: Items
+    // Manual Pickup: Items (Smart Label + Sprite Detection)
     for (let i = droppedItems.length - 1; i >= 0; i--) {
         const di = droppedItems[i];
+        
+        // 1. Check Label Click (Priority for stacked items)
+        let isLabelClicked = false;
+        if (di.labelRect) {
+            const r = di.labelRect;
+            if (worldPos.x >= r.x && worldPos.x <= r.x + r.w && worldPos.y >= r.y && worldPos.y <= r.y + r.h) {
+                isLabelClicked = true;
+            }
+        }
+
+        // 2. Check Sprite Click (Distance-based)
         const dist = Math.sqrt((di.x - worldPos.x) ** 2 + (di.y - worldPos.y) ** 2);
-        if (dist < 22) { // Increased pickup radius for comfort
+        const isSpriteClicked = dist < 18;
+
+        if (isLabelClicked || isSpriteClicked) {
             const distToPlayer = Math.sqrt((di.x - player.x) ** 2 + (di.y - player.y) ** 2);
-            if (distToPlayer < 45) {
-                // Quest Item logic
+            if (distToPlayer < 60) { // Slightly increased pickup distance for QoL
                 if (di.isQuestItem) {
-                    const qId = di.qId;
-                    const quest = activeQuests.find(q => q.id === qId);
+                    const quest = activeQuests.find(q => q.id === di.qId);
                     if (quest) {
                         quest.progress = Math.min(quest.target, quest.progress + 1);
                         addCombatLog(`Recovered ${di.name}!`, 'log-crit');
-                        if (quest.progress === quest.target) {
-                            addCombatLog(`Quest Objective Complete: ${quest.name}`, 'log-unique');
-                        }
+                        if (quest.progress === quest.target) addCombatLog(`Quest Objective Complete: ${quest.name}`, 'log-unique');
                         updateHud();
-                        // Proceed to inventory check (don't return yet)
                     }
                 }
 
@@ -1405,6 +1413,7 @@ function checkInteractions(pos) {
                     droppedItems.splice(i, 1);
                     playLoot();
                     renderInventory();
+                    updateHud();
                 } else {
                     addCombatLog('Inventory full!', 'log-dmg');
                 }

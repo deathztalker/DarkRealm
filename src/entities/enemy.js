@@ -474,6 +474,18 @@ export class Enemy {
         if (this.type !== 'normal') this._tickEliteAbilities(dt);
 
         let currentMoveSpeed = this.moveSpeed;
+
+        // Terrain-based Slow
+        if (dungeon) {
+            const gx = Math.floor(this.x / dungeon.tileSize);
+            const gy = Math.floor(this.y / dungeon.tileSize);
+            if (gx >= 0 && gx < dungeon.width && gy >= 0 && gy < dungeon.height) {
+                const tile = dungeon.grid[gy][gx];
+                if (tile === 8) currentMoveSpeed *= 0.5; // Water
+                else if (tile === 13) currentMoveSpeed *= 0.7; // Lava
+            }
+        }
+
         const slow = getSlowFactor(this);
         if (slow > 0) currentMoveSpeed *= (1 - slow / 100);
 
@@ -528,7 +540,7 @@ export class Enemy {
 
         if (this.fleeing) {
             const angle = Math.atan2(-dy, -dx);
-            tryMove(Math.cos(angle) * this.moveSpeed * 1.2 * dt, Math.sin(angle) * this.moveSpeed * 1.2 * dt);
+            tryMove(Math.cos(angle) * currentMoveSpeed * 1.2 * dt, Math.sin(angle) * currentMoveSpeed * 1.2 * dt);
             if (effectiveDistSq > aggroRange * aggroRange * 2) this.fleeing = false;
         }
         else if (effectiveDistSq < aggroRange * aggroRange) {

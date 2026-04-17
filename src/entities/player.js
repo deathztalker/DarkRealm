@@ -622,6 +622,21 @@ export class Player {
         let movedThisFrame = false;
         let moveDx = 0, moveDy = 0;
 
+        // --- Terrain-based Movement Penalty ---
+        let finalMoveSpeed = this.moveSpeed;
+        if (dungeon) {
+            const gx = Math.floor(this.x / dungeon.tileSize);
+            const gy = Math.floor(this.y / dungeon.tileSize);
+            if (gx >= 0 && gx < dungeon.width && gy >= 0 && gy < dungeon.height) {
+                const tile = dungeon.grid[gy][gx];
+                if (tile === 8) { // TILE.WATER
+                    finalMoveSpeed *= 0.5; // 50% slow in water
+                } else if (tile === 13) { // TILE.LAVA
+                    finalMoveSpeed *= 0.7; // 30% slow in lava
+                }
+            }
+        }
+
         // Helper for sliding collision with radius-based checks
         const PLAYER_RADIUS = 5; // collision radius in pixels
         const tryMove = (dx, dy) => {
@@ -670,7 +685,7 @@ export class Player {
 
             if (kx !== 0 || ky !== 0) {
                 const len = Math.sqrt(kx*kx + ky*ky);
-                const spd = this.moveSpeed * dt;
+                const spd = finalMoveSpeed * dt;
                 tryMove((kx / len) * spd, (ky / len) * spd);
 
                 this.path = [];
@@ -698,7 +713,7 @@ export class Player {
             const dist = Math.sqrt(dx * dx + dy * dy);
             const range = this.attackRange || 30;
             if (dist > range) {
-                const spd = this.moveSpeed * dt;
+                const spd = finalMoveSpeed * dt;
                 tryMove((dx / dist) * Math.min(spd, dist), (dy / dist) * Math.min(spd, dist));
             } else if (this.attackCd <= 0) {
                 this._autoAttack(this.attackTarget);
@@ -711,7 +726,7 @@ export class Player {
             const target = this.path[0];
             const dx = target.x - this.x, dy = target.y - this.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            const spd = this.moveSpeed * dt;
+            const spd = finalMoveSpeed * dt;
             if (dist < spd) {
                 this.x = target.x;
                 this.y = target.y;

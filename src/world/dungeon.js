@@ -446,7 +446,8 @@ export class Dungeon {
         const c = Math.floor(wx / this.tileSize), r = Math.floor(wy / this.tileSize);
         if (r < 0 || r >= this.height || c < 0 || c >= this.width) return false;
         const tile = this.grid[r][c];
-        return tile !== TILE.WALL && tile !== TILE.WATER && tile !== TILE.TREE;
+        // Allow walking on Water and Lava but movement logic will apply a penalty
+        return tile !== TILE.WALL && tile !== TILE.TREE;
     }
 
     /** Raycast using Digital Differential Analyzer (DDA) to check Line of Sight */
