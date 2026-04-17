@@ -1,0 +1,30 @@
+{
+  "character": {
+    "id": "f73581cc-b48d-448d-89cc-9196a9f85072",
+    "name": "Boss Andariel",
+    "prompt": "Andariel, Maiden of Anguish: tall demonic woman with four large bone-spikes/stingers emerging from her back, long red hair, dark fantasy, pro mode, 96px, low top-down view",
+    "size": {
+      "width": 144,
+      "height": 144
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:42:41.962476+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-17T00:02:47.986931"
+}

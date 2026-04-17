@@ -1,0 +1,26 @@
+{
+  "character": {
+    "id": "e3253d3b-d2d4-427e-8d8d-95a632527281",
+    "name": "Enemy Ghost",
+    "prompt": "eerie floating ghost specter, translucent white wispy body, glowing hollow eyes, pixel art, 48x48, low top-down view",
+    "size": {
+      "width": 68,
+      "height": 68
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:42:41.918952+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-17T00:03:16.905899"
+}

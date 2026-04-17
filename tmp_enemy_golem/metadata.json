@@ -1,0 +1,26 @@
+{
+  "character": {
+    "id": "33616bae-c7cc-4eeb-8487-0f1d89082537",
+    "name": "Enemy Golem",
+    "prompt": "massive animated stone golem, mossy boulders, glowing orange core, pixel art, 64x64, low top-down view",
+    "size": {
+      "width": 92,
+      "height": 92
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:42:41.955317+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-17T00:03:18.401621"
+}

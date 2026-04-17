@@ -1,0 +1,26 @@
+{
+  "character": {
+    "id": "79ed604a-5a85-4105-94ec-1ddcca138559",
+    "name": "Enemy Bat",
+    "prompt": "large black void bat with glowing purple eyes and leathery wings, pixel art, 32x32, low top-down view",
+    "size": {
+      "width": 48,
+      "height": 48
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:42:41.961824+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-17T00:03:21.056210"
+}

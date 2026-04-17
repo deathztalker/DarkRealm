@@ -1,0 +1,30 @@
+{
+  "character": {
+    "id": "e1976334-f91e-4c7c-90ce-e20ce68b910f",
+    "name": "Boss Leoric",
+    "prompt": "King Leoric: giant skeleton king, ornate golden crown, heavy rusted mace, tattered royal cape, dark fantasy, pro mode, 80px, low top-down view",
+    "size": {
+      "width": 148,
+      "height": 148
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:54:43.100755+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-17T00:03:06.007897"
+}

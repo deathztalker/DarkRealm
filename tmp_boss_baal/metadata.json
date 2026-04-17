@@ -1,0 +1,30 @@
+{
+  "character": {
+    "id": "3080de8c-2ad5-414c-ac79-9fb2490e3413",
+    "name": "Boss Baal",
+    "prompt": "Baal, Lord of Destruction: demonic spider-like entity with multiple sharp legs and a humanoid upper body, horns, dark fantasy, pro mode, 128px, low top-down view",
+    "size": {
+      "width": 256,
+      "height": 256
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:54:43.023999+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-17T00:03:03.357487"
+}

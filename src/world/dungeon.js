@@ -392,7 +392,7 @@ export class Dungeon {
                 type: "merchant",
                 x: (cx + 5) * this.tileSize,
                 y: (cy - 3) * this.tileSize,
-                icon: "npc_blacksmith",
+                icon: "npc_female",
                 dialogue: "Need a new blade? I can keep your gear in fighting shape."
             });
         }

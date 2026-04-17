@@ -1,0 +1,37 @@
+{
+  "character": {
+    "id": "5bc2abf8-ea38-4557-abcc-c1a14bf8123b",
+    "name": "Summon Iron Golem",
+    "prompt": "Iron Golem: tall golem constructed from sharp rusted iron plates and gears, spikes on shoulders, pixel art, 64x64, low top-down view",
+    "size": {
+      "width": 92,
+      "height": 92
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:49:15.517901+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {
+      "walking-e7da98a4": {
+        "south": [
+          "animations/walking-e7da98a4/south/frame_000.png",
+          "animations/walking-e7da98a4/south/frame_001.png",
+          "animations/walking-e7da98a4/south/frame_002.png",
+          "animations/walking-e7da98a4/south/frame_003.png",
+          "animations/walking-e7da98a4/south/frame_004.png",
+          "animations/walking-e7da98a4/south/frame_005.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-17T00:03:35.554591"
+}

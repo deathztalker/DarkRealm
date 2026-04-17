@@ -1,0 +1,26 @@
+{
+  "character": {
+    "id": "8e6c49b1-f547-4312-8536-75edfba72ed8",
+    "name": "Enemy Goblin",
+    "prompt": "malicious small goblin with a jagged dagger and stolen trinkets, green skin, long ears, pixel art, 48x48, low top-down view",
+    "size": {
+      "width": 68,
+      "height": 68
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:42:41.961776+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-17T00:03:15.272446"
+}
