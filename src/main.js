@@ -1000,7 +1000,7 @@ function gameLoop(timestamp) {
             e.renderMinions(renderer, lastTime);
         } else {
             // Mercenary specific icon handling
-            if (e.type === 'mercenary') {
+            if (e.isMercenary) {
                 const mercIcons = { 
                     'Rogue': 'class_rogue', 
                     'Desert Warrior': 'class_warrior', 
@@ -1008,7 +1008,7 @@ function gameLoop(timestamp) {
                     'Mercenary Warrior': 'mercenary_warrior',
                     'Mercenary Archer': 'mercenary_archer'
                 };
-                e.icon = mercIcons[e.subType] || e.icon;
+                e.icon = mercIcons[e.className] || e.icon;
             }
             e.render(renderer, lastTime);
         }

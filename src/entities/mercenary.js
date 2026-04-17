@@ -215,6 +215,32 @@ export class Mercenary {
         this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.008 * dt);
     }
 
+    render(renderer, time) {
+        if (this.hp <= 0) return;
+
+        // Map facing direction
+        const mx = (this.target ? this.target.x : 0) - this.x;
+        const my = (this.target ? this.target.y : 0) - this.y;
+        let dir = 'down';
+        if (Math.abs(mx) > Math.abs(my)) {
+            dir = mx > 0 ? 'right' : 'left';
+        } else {
+            dir = my > 0 ? 'down' : 'up';
+        }
+
+        const state = (this._atkCd > 0) ? 'attack' : 'walk'; // Simplistic state mapping
+        
+        // Use the Pro Animator with high-quality size
+        renderer.drawAnim(this.icon, this.x, this.y - 4, 32, state, dir, time, null, this.equipment);
+        
+        // Draw HP bar
+        const hpPct = this.hp / this.maxHp;
+        renderer.ctx.fillStyle = '#000';
+        renderer.ctx.fillRect(this.x - 10, this.y - 22, 20, 3);
+        renderer.ctx.fillStyle = '#40c040';
+        renderer.ctx.fillRect(this.x - 10, this.y - 22, 20 * hpPct, 3);
+    }
+
     pulseAura(player) {
         fx.emitShockwave(this.x, this.y, 120, 'rgba(255, 215, 0, 0.3)');
         const dist = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
