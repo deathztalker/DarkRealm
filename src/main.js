@@ -888,64 +888,76 @@ function gameLoop(timestamp) {
         if (lootFilter >= 1 && (!di.rarity || di.rarity === 'normal')) continue;
         if (lootFilter >= 2 && di.rarity === 'magic') continue;
 
-        // Loot Beam & Ground Glow
-        if (di.rarity === 'unique' || di.rarity === 'rare' || di.rarity === 'set') {
+        // 1. Enhanced Loot Beams & Ground Glow
+        if (di.rarity === 'unique' || di.rarity === 'rare' || di.rarity === 'set' || di.isQuestItem) {
             const ctx = renderer.ctx;
             ctx.save();
             ctx.globalCompositeOperation = 'screen';
-            const color = di.rarity === 'unique' ? 'rgba(232, 160, 32, 0.6)' : di.rarity === 'set' ? 'rgba(0, 255, 0, 0.5)' : 'rgba(240, 208, 48, 0.5)';
+            let color = di.rarity === 'unique' ? 'rgba(232, 160, 32, 0.7)' : di.rarity === 'set' ? 'rgba(0, 255, 0, 0.6)' : 'rgba(240, 208, 48, 0.5)';
+            if (di.isQuestItem) color = 'rgba(76, 201, 240, 0.7)';
 
-            // Ground Glow
-            const radial = ctx.createRadialGradient(di.x, di.y, 2, di.x, di.y, 12);
+            // Strong Ground Glow
+            const radial = ctx.createRadialGradient(di.x, di.y, 2, di.x, di.y, 16);
             radial.addColorStop(0, color);
             radial.addColorStop(1, 'transparent');
             ctx.fillStyle = radial;
-            ctx.beginPath(); ctx.arc(di.x, di.y, 12, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(di.x, di.y, 16, 0, Math.PI * 2); ctx.fill();
 
-            // Rhythmic Shimmer
-            const shimmer = 0.6 + Math.sin(lastTime * 0.005) * 0.3;
+            // Persistent Rhythmic Beam
+            const shimmer = 0.5 + Math.sin(lastTime * 0.004) * 0.4;
             ctx.globalAlpha = shimmer;
-
-            const g = ctx.createLinearGradient(0, di.y, 0, di.y - 120);
-            g.addColorStop(0, color);
-            g.addColorStop(1, 'transparent');
-            ctx.fillStyle = g;
+            const beamG = ctx.createLinearGradient(0, di.y, 0, di.y - 140);
+            beamG.addColorStop(0, color);
+            beamG.addColorStop(1, 'transparent');
+            ctx.fillStyle = beamG;
             ctx.beginPath();
-            ctx.moveTo(di.x - 4, di.y);
-            ctx.lineTo(di.x + 4, di.y);
-            ctx.lineTo(di.x + 1, di.y - 120);
-            ctx.lineTo(di.x - 1, di.y - 120);
-            ctx.closePath();
+            ctx.moveTo(di.x - 5, di.y);
+            ctx.lineTo(di.x + 5, di.y);
+            ctx.lineTo(di.x + 1, di.y - 140);
+            ctx.lineTo(di.x - 1, di.y - 140);
             ctx.fill();
-
-            // Core beam
-            const g2 = ctx.createLinearGradient(0, di.y, 0, di.y - 100);
-            g2.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
-            g2.addColorStop(1, 'transparent');
-            ctx.fillStyle = g2;
-            ctx.fillRect(di.x - 0.5, di.y - 100, 1, 100);
             ctx.restore();
         }
 
-        renderer.drawSprite(di.icon, di.x, di.y, 14);
-        renderer.ctx.font = '4px Cinzel, serif';
+        // 2. Render Sprite
+        renderer.drawSprite(di.icon, di.x, di.y, 16);
+
+        // 3. Pro Item Label (Diablo II Style)
+        const labelText = di.name;
+        renderer.ctx.font = 'bold 10px "Exocet", "Cinzel", serif';
+        const textWidth = renderer.ctx.measureText(labelText).width;
+        const padding = 4;
+        
+        // Background box for readability
+        renderer.ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        renderer.ctx.strokeStyle = di.rarity === 'unique' ? '#e8a020' : di.rarity === 'set' ? '#00ff00' : di.rarity === 'rare' ? '#f0d030' : di.rarity === 'magic' ? '#4080ff' : '#aaa';
+        renderer.ctx.lineWidth = 1;
+        renderer.ctx.fillRect(di.x - textWidth/2 - padding, di.y + 10, textWidth + padding*2, 14);
+        renderer.ctx.strokeRect(di.x - textWidth/2 - padding, di.y + 10, textWidth + padding*2, 14);
+
+        // Text
         renderer.ctx.textAlign = 'center';
-        renderer.ctx.fillStyle = di.rarity === 'unique' ? '#e8a020' : di.rarity === 'set' ? '#00ff00' : di.rarity === 'rare' ? '#f0d030' : di.rarity === 'magic' ? '#4080ff' : '#aaa';
-        renderer.ctx.fillText(di.name, di.x, di.y + 10);
+        renderer.ctx.fillStyle = renderer.ctx.strokeStyle;
+        renderer.ctx.fillText(labelText, di.x, di.y + 21);
     }
 
     // --- Phase 29: World Time Overlay (Post-Objects) ---
     renderWorldOverlay(renderer.ctx, renderer.width, renderer.height);
 
-    // Old vignette system (Removed to prevent over-darkening in favor of primary Narrative Vision pass)
-
     for (const g of droppedGold) {
         renderer.fillCircle(g.x, g.y, 4, '#ffd700');
         renderer.strokeCircle(g.x, g.y, 4, '#c8972a', 1);
-        renderer.ctx.font = '4px Cinzel, serif';
+        renderer.ctx.font = 'bold 9px "Cinzel", serif';
         renderer.ctx.textAlign = 'center';
-        renderer.ctx.fillStyle = '#fff';
-        renderer.ctx.fillText(g.amount, g.x, g.y + 7);
+        
+        // Gold label box
+        const goldText = `${g.amount}`;
+        const tw = renderer.ctx.measureText(goldText).width;
+        renderer.ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        renderer.ctx.fillRect(g.x - tw/2 - 2, g.y + 6, tw + 4, 10);
+        
+        renderer.ctx.fillStyle = '#ffd700';
+        renderer.ctx.fillText(goldText, g.x, g.y + 14);
     }
 
     const entities = [...(enemies || []), player].filter(e => e).sort((a, b) => a.y - b.y);
