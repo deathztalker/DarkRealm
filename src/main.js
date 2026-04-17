@@ -883,7 +883,8 @@ function gameLoop(timestamp) {
         renderer.ctx.restore();
     }
 
-    // Dropped items (with loot filter)
+    // Dropped items (with loot filter and non-overlapping labels)
+    const labelRects = [];
     for (const di of droppedItems) {
         if (lootFilter >= 1 && (!di.rarity || di.rarity === 'normal')) continue;
         if (lootFilter >= 2 && di.rarity === 'magic') continue;
@@ -896,14 +897,12 @@ function gameLoop(timestamp) {
             let color = di.rarity === 'unique' ? 'rgba(232, 160, 32, 0.7)' : di.rarity === 'set' ? 'rgba(0, 255, 0, 0.6)' : 'rgba(240, 208, 48, 0.5)';
             if (di.isQuestItem) color = 'rgba(76, 201, 240, 0.7)';
 
-            // Strong Ground Glow
             const radial = ctx.createRadialGradient(di.x, di.y, 2, di.x, di.y, 16);
             radial.addColorStop(0, color);
             radial.addColorStop(1, 'transparent');
             ctx.fillStyle = radial;
             ctx.beginPath(); ctx.arc(di.x, di.y, 16, 0, Math.PI * 2); ctx.fill();
 
-            // Persistent Rhythmic Beam
             const shimmer = 0.5 + Math.sin(lastTime * 0.004) * 0.4;
             ctx.globalAlpha = shimmer;
             const beamG = ctx.createLinearGradient(0, di.y, 0, di.y - 140);
@@ -911,10 +910,8 @@ function gameLoop(timestamp) {
             beamG.addColorStop(1, 'transparent');
             ctx.fillStyle = beamG;
             ctx.beginPath();
-            ctx.moveTo(di.x - 5, di.y);
-            ctx.lineTo(di.x + 5, di.y);
-            ctx.lineTo(di.x + 1, di.y - 140);
-            ctx.lineTo(di.x - 1, di.y - 140);
+            ctx.moveTo(di.x - 5, di.y); ctx.lineTo(di.x + 5, di.y);
+            ctx.lineTo(di.x + 1, di.y - 140); ctx.lineTo(di.x - 1, di.y - 140);
             ctx.fill();
             ctx.restore();
         }
@@ -922,23 +919,48 @@ function gameLoop(timestamp) {
         // 2. Render Sprite
         renderer.drawSprite(di.icon, di.x, di.y, 16);
 
-        // 3. Pro Item Label (Diablo II Style)
-        const labelText = di.name;
+        // 3. Smart Non-Overlapping Labels
         renderer.ctx.font = 'bold 10px "Exocet", "Cinzel", serif';
+        const labelText = di.name;
         const textWidth = renderer.ctx.measureText(labelText).width;
         const padding = 4;
+        const lw = textWidth + padding * 2;
+        const lh = 14;
 
-        // Background box for readability
+        let lx = di.x - lw / 2;
+        let ly = di.y + 12;
+
+        // Label Stacking Logic
+        let attempts = 0;
+        let overlapping = true;
+        while (overlapping && attempts < 10) {
+            overlapping = false;
+            for (const r of labelRects) {
+                if (!(lx + lw < r.x || lx > r.x + r.w || ly + lh < r.y || ly > r.y + r.h)) {
+                    ly += lh + 2; 
+                    overlapping = true;
+                    break;
+                }
+            }
+            attempts++;
+        }
+        
+        const finalRect = { x: lx, y: ly, w: lw, h: lh };
+        labelRects.push(finalRect);
+        di.labelRect = finalRect; // For click detection in world coords
+
+        // Draw Box
         renderer.ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-        renderer.ctx.strokeStyle = di.rarity === 'unique' ? '#e8a020' : di.rarity === 'set' ? '#00ff00' : di.rarity === 'rare' ? '#f0d030' : di.rarity === 'magic' ? '#4080ff' : '#aaa';
+        const rCol = di.rarity === 'unique' ? '#e8a020' : di.rarity === 'set' ? '#00ff00' : di.rarity === 'rare' ? '#f0d030' : di.rarity === 'magic' ? '#4080ff' : '#aaa';
+        renderer.ctx.strokeStyle = rCol;
         renderer.ctx.lineWidth = 1;
-        renderer.ctx.fillRect(di.x - textWidth / 2 - padding, di.y + 10, textWidth + padding * 2, 14);
-        renderer.ctx.strokeRect(di.x - textWidth / 2 - padding, di.y + 10, textWidth + padding * 2, 14);
+        renderer.ctx.fillRect(lx, ly, lw, lh);
+        renderer.ctx.strokeRect(lx, ly, lw, lh);
 
-        // Text
+        // Draw Text
         renderer.ctx.textAlign = 'center';
-        renderer.ctx.fillStyle = renderer.ctx.strokeStyle;
-        renderer.ctx.fillText(labelText, di.x, di.y + 21);
+        renderer.ctx.fillStyle = rCol;
+        renderer.ctx.fillText(labelText, di.x, ly + 11);
     }
 
     // --- Phase 29: World Time Overlay (Post-Objects) ---
