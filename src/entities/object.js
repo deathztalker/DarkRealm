@@ -46,7 +46,7 @@ export class GameObject {
         const time = Date.now();
         const ctx = renderer.ctx;
         
-        let drawSize = 24; // Base size incremented for Pro art
+        let drawSize = 16; // Reduced base size
         let bobY = 0;
         let scale = 1;
         let glowColor = null;
@@ -54,12 +54,12 @@ export class GameObject {
 
         // Custom properties per object type
         if (this.icon === 'obj_portal') {
-            drawSize = 32;
+            drawSize = 22;
             scale = 1 + Math.sin(time * 0.003) * 0.05; // Gentle breathing scale
             glowColor = '#00aaff';
             glowBlur = 20 + Math.sin(time * 0.005) * 5;
         } else if (this.icon === 'obj_waypoint') {
-            drawSize = 32;
+            drawSize = 22;
             glowColor = '#4080ff';
             glowBlur = 15 + Math.sin(time * 0.002) * 10; // Slow pulse
         } else if (this.icon === 'obj_shrine' && !this.isOpen) {
@@ -77,6 +77,7 @@ export class GameObject {
             glowColor = shrineColors[this.shrineType] || '#ff2020';
             glowBlur = 15 + Math.sin(time * 0.003) * 5;
         } else if (this.icon === 'obj_torch' || this.icon === 'obj_brazier') {
+            drawSize = 18;
             // Flickering fire effect
             const flicker = Math.random() * 0.4 + 0.6;
             glowColor = this.icon === 'obj_torch' ? `rgba(0, 150, 255, ${flicker})` : `rgba(255, 60, 0, ${flicker})`;
@@ -84,7 +85,7 @@ export class GameObject {
         }
 
         // Draw shadow first
-        renderer.drawShadow(this.x, this.y + 12, 14, 0.4);
+        renderer.drawShadow(this.x, this.y + 12, 10, 0.4);
 
         ctx.save();
         

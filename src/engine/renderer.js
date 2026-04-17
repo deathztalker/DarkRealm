@@ -129,7 +129,13 @@ export class Renderer {
         if (img && img.complete && img.naturalWidth > 0) {
             if (filter) this.ctx.filter = filter;
             const drawSize = size * 2;
+            
+            this.ctx.save();
+            // Critical for items and objects to remain crisp pixel art
+            this.ctx.imageSmoothingEnabled = false;
             this.ctx.drawImage(img, x - drawSize / 2, (drawY - 4) - drawSize / 2, drawSize, drawSize);
+            this.ctx.restore();
+            
             if (filter) this.ctx.filter = 'none';
         } else {
             this.ctx.fillStyle = '#ff00ff';
@@ -203,11 +209,26 @@ export class Renderer {
         const sx = col * sw;
         const sy = row * sh;
 
+        // Dynamic scaling: preserves aspect ratio perfectly
+        // "size" represents the game logic radius (e.g. 26 for heroes, 36 for bosses)
+        // We use it as a multiplier so bosses look massive and heroes look normal.
+        const scale = size / 22; 
+        const drawW = sw * scale;
+        const drawH = sh * scale;
+
         this.ctx.save();
+        
+        // Critical for crisp pixel art
+        this.ctx.imageSmoothingEnabled = false;
+
         if (filter) this.ctx.filter = filter;
         if (hitFlash > 0) this.ctx.filter = (filter || '') + ' brightness(5)';
-        this.drawShadow(x, y + size * 0.4, size * 0.6);
-        this.ctx.drawImage(img, sx, sy, sw, sh, x - size, y - size, size * 2, size * 2);
+        
+        // Shadow sized based on drawing width
+        this.drawShadow(x, y + drawH * 0.3, drawW * 0.35);
+        
+        // Draw perfectly scaled native resolution frame
+        this.ctx.drawImage(img, sx, sy, sw, sh, x - drawW / 2, y - drawH * 0.6, drawW, drawH);
         this.ctx.restore();
     }
 }
