@@ -31,6 +31,20 @@ export class Dungeon {
     }
 
     generate(zoneLevel = 1, theme = 'cathedral') {
+        this.zoneLevel = zoneLevel;
+        this.theme = theme;
+        
+        // Map themes to PixelLab tilesets
+        const tilesetMap = {
+            'cathedral': 'tileset_act1_wilderness',
+            'desert': 'tileset_act2_desert',
+            'jungle': 'tileset_act3_jungle',
+            'hell': 'tileset_act4_hell',
+            'snow': 'tileset_act5_snow',
+            'town': 'tileset_act1_town'
+        };
+        this.themeTileset = tilesetMap[theme] || null;
+
         if (zoneLevel === 0 || zoneLevel === 6 || zoneLevel === 11 || zoneLevel === 16 || zoneLevel === 21) {
             return this.generateTown(theme, zoneLevel);
         }
@@ -236,109 +250,126 @@ export class Dungeon {
         this.rooms = [];
         this.enemySpawns = [];
         this.lootSpawns = [];
+        this.npcSpawns = [];
+        this.objectSpawns = [];
 
-        // Central Path
-        for (let y = 10; y < this.height - 10; y++) {
-            for (let x = this.width / 2 - 2; x <= this.width / 2 + 2; x++) {
-                this.grid[y][x] = TILE.PATH;
-            }
+        // 1. Create a "Cross" of main roads
+        const cx = Math.floor(this.width / 2);
+        const cy = Math.floor(this.height / 2);
+
+        // Vertical Road
+        for (let y = 5; y < this.height - 5; y++) {
+            for (let x = cx - 2; x <= cx + 2; x++) this.grid[y][x] = TILE.PATH;
+        }
+        // Horizontal Road
+        for (let x = 5; x < this.width - 5; x++) {
+            for (let y = cy - 1; y <= cy + 1; y++) this.grid[y][x] = TILE.PATH;
         }
 
-        // River crossing (except desert/hell where it's different)
-        if (theme !== 'desert' && theme !== 'hell') {
-            for (let x = 10; x < this.width - 10; x++) {
-                for (let y = this.height / 2 - 2; y <= this.height / 2 + 2; y++) {
+        // 2. Town Square in the middle
+        for (let y = cy - 5; y <= cy + 5; y++) {
+            for (let x = cx - 6; x <= cx + 6; x++) this.grid[y][x] = TILE.PATH;
+        }
+
+        // 3. Helper to place buildings near roads
+        const placeBuilding = (bx, by, icon, type = 'decoration') => {
+            this.objectSpawns.push({ type, x: bx * this.tileSize, y: by * this.tileSize, icon });
+            // Add a small path clearing in front
+            for(let dy=1; dy<=2; dy++) {
+                if (this.grid[by+dy]) this.grid[by+dy][bx] = TILE.PATH;
+            }
+        };
+
+        // 4. Act-Specific Customization
+        if (theme === 'town') { // Act 1
+            placeBuilding(cx, cy, 'obj_bonfire'); // Center
+            placeBuilding(cx - 10, cy - 8, 'obj_tent_leather');
+            placeBuilding(cx + 10, cy - 6, 'obj_tent_leather');
+            placeBuilding(cx - 12, cy + 8, 'obj_wagon_merchant');
+            placeBuilding(cx + 12, cy + 6, 'obj_wagon_merchant');
+        } else if (theme === 'desert') { // Act 2
+            placeBuilding(cx, cy, 'obj_fountain');
+            placeBuilding(cx - 12, cy - 10, 'obj_house_sandstone');
+            placeBuilding(cx + 14, cy - 8, 'obj_house_sandstone');
+            placeBuilding(cx - 15, cy + 4, 'obj_stall_bazaar');
+            placeBuilding(cx + 10, cy + 10, 'obj_stall_bazaar');
+            for(let i=0; i<12; i++) {
+                const rx = 5 + Math.floor(Math.random()*(this.width-10));
+                const ry = 5 + Math.floor(Math.random()*(this.height-10));
+                if (this.grid[ry][rx] === TILE.SAND) this.objectSpawns.push({ type: 'decoration', x: rx*this.tileSize, y: ry*this.tileSize, icon: 'obj_tree_palm' });
+            }
+        } else if (theme === 'jungle') { // Act 3
+            placeBuilding(cx - 8, cy - 8, 'obj_hut_stilt');
+            placeBuilding(cx + 10, cy - 10, 'obj_hut_stilt');
+            placeBuilding(cx - 12, cy + 12, 'obj_hut_stilt');
+            // River/Bridge logic
+            for (let x = 0; x < this.width; x++) {
+                for (let y = cy + 12; y <= cy + 16; y++) {
                     if (this.grid[y][x] === TILE.PATH) this.grid[y][x] = TILE.BRIDGE;
                     else this.grid[y][x] = TILE.WATER;
                 }
             }
-        }
-
-        // Town Square
-        const cx = Math.floor(this.width / 2);
-        const cy = 20;
-
-        for (let y = cy - 4; y <= cy + 4; y++) {
-            for (let x = cx - 5; x <= cx + 5; x++) {
-                this.grid[y][x] = TILE.PATH;
+            this.objectSpawns.push({ type: 'decoration', x: cx * this.tileSize, y: (cy + 14) * this.tileSize, icon: 'obj_bridge_rope' });
+            for(let i=0; i<15; i++) {
+                const rx = 2 + Math.floor(Math.random()*(this.width-4));
+                const ry = 2 + Math.floor(Math.random()*(this.height-4));
+                if (this.grid[ry][rx] === TILE.GRASS) this.objectSpawns.push({ type: 'decoration', x: rx*this.tileSize, y: ry*this.tileSize, icon: 'obj_tree_jungle' });
+            }
+        } else if (theme === 'hell') { // Act 4
+            placeBuilding(cx - 6, cy - 6, 'obj_statue_angel');
+            placeBuilding(cx + 6, cy - 6, 'obj_statue_angel');
+            placeBuilding(cx - 10, cy + 4, 'obj_pillar_holy');
+            placeBuilding(cx + 10, cy + 4, 'obj_pillar_holy');
+            // Add some lava cracks
+            for(let i=0; i<20; i++) {
+                const rx = Math.floor(Math.random()*this.width);
+                const ry = Math.floor(Math.random()*this.height);
+                if (this.grid[ry][rx] === bgTile) this.grid[ry][rx] = TILE.LAVA;
+            }
+        } else if (theme === 'snow') { // Act 5
+            placeBuilding(cx - 15, cy - 5, 'obj_longhouse_stone');
+            placeBuilding(cx + 15, cy - 5, 'obj_longhouse_stone');
+            placeBuilding(cx + 8, cy + 8, 'obj_anvil_hot');
+            for(let i=0; i<15; i++) {
+                const rx = Math.floor(Math.random()*this.width);
+                const ry = Math.floor(Math.random()*this.height);
+                if (this.grid[ry][rx] === TILE.SNOW) this.objectSpawns.push({ type: 'decoration', x: rx*this.tileSize, y: ry*this.tileSize, icon: 'obj_tree_snowy_pine' });
             }
         }
 
-        // Add City-Specific Landmarks (PixelLab Map Objects)
-        if (theme === 'town') { // Act 1: Rogue Encampment
-            this.objectSpawns.push({ type: 'decoration', x: cx * this.tileSize, y: (cy + 6) * this.tileSize, icon: 'obj_bonfire' });
-            this.objectSpawns.push({ type: 'decoration', x: (cx - 8) * this.tileSize, y: (cy - 6) * this.tileSize, icon: 'obj_tent_leather' });
-            this.objectSpawns.push({ type: 'decoration', x: (cx + 8) * this.tileSize, y: (cy + 4) * this.tileSize, icon: 'obj_wagon_merchant' });
-        } else if (theme === 'desert') { // Act 2: Lut Gholein
-            this.objectSpawns.push({ type: 'decoration', x: cx * this.tileSize, y: (cy + 6) * this.tileSize, icon: 'obj_fountain' });
-            this.objectSpawns.push({ type: 'decoration', x: (cx - 8) * this.tileSize, y: (cy - 6) * this.tileSize, icon: 'obj_house_sandstone' });
-            this.objectSpawns.push({ type: 'decoration', x: (cx + 6) * this.tileSize, y: (cy - 4) * this.tileSize, icon: 'obj_stall_bazaar' });
-            for(let i=0; i<5; i++) {
-                this.objectSpawns.push({ type: 'decoration', 
-                    x: (5 + Math.random()*(this.width-10)) * this.tileSize, 
-                    y: (5 + Math.random()*(this.height-10)) * this.tileSize, 
-                    icon: 'obj_tree_palm' });
-            }
-        } else if (theme === 'jungle') { // Act 3: Kurast Docks
-            this.objectSpawns.push({ type: 'decoration', x: (cx - 10) * this.tileSize, y: (cy + 10) * this.tileSize, icon: 'obj_hut_stilt' });
-            this.objectSpawns.push({ type: 'decoration', x: cx * this.tileSize, y: (this.height/2) * this.tileSize, icon: 'obj_bridge_rope' });
-            for(let i=0; i<8; i++) {
-                this.objectSpawns.push({ type: 'decoration', 
-                    x: (3 + Math.random()*(this.width-6)) * this.tileSize, 
-                    y: (3 + Math.random()*(this.height-6)) * this.tileSize, 
-                    icon: 'obj_tree_jungle' });
-            }
-        } else if (theme === 'hell') { // Act 4: Pandemonium Fortress
-            this.objectSpawns.push({ type: 'decoration', x: (cx - 4) * this.tileSize, y: (cy - 6) * this.tileSize, icon: 'obj_statue_angel' });
-            this.objectSpawns.push({ type: 'decoration', x: (cx + 4) * this.tileSize, y: (cy - 6) * this.tileSize, icon: 'obj_pillar_holy' });
-        } else if (theme === 'snow') { // Act 5: Harrogath
-            this.objectSpawns.push({ type: 'decoration', x: (cx - 12) * this.tileSize, y: (cy - 4) * this.tileSize, icon: 'obj_longhouse_stone' });
-            this.objectSpawns.push({ type: 'decoration', x: (cx + 8) * this.tileSize, y: (cy + 6) * this.tileSize, icon: 'obj_anvil_hot' });
-            for(let i=0; i<10; i++) {
-                this.objectSpawns.push({ type: 'decoration', 
-                    x: (2 + Math.random()*(this.width-4)) * this.tileSize, 
-                    y: (2 + Math.random()*(this.height-4)) * this.tileSize, 
-                    icon: 'obj_tree_snowy_pine' });
-            }
-        }
+        // 5. Spawn NPCs
+        const spawnNPC = (id, name, type, relX, relY, icon, dialogue) => {
+            this.npcSpawns.push({ id, name, type, x: (cx + relX) * this.tileSize, y: (cy + relY) * this.tileSize, icon, dialogue });
+        };
 
-        // Spawn NPCs with unique PixelLab sprites
-        this.npcSpawns.push({
-            id: "deckard_cain",
-            name: "Deckard Cain",
-            type: "elder",
-            x: (cx + 2) * this.tileSize,
-            y: (cy - 3) * this.tileSize,
-            icon: "npc_deckard_cain",
-            dialogue: "Stay awhile and listen!"
-        });
+        spawnNPC("deckard_cain", "Deckard Cain", "elder", 3, -2, "npc_deckard_cain", "Stay awhile and listen!");
 
-        if (zoneLevel === 0) { // Act I
-            this.npcSpawns.push({ id: "akara", name: "Akara", type: "elder", x: (cx - 3) * this.tileSize, y: (cy - 4) * this.tileSize, icon: "npc_akara", dialogue: "I am Akara, High Priestess of the Sightless Eye." });
-            this.npcSpawns.push({ id: "kashya", name: "Kashya", type: "mercenary_hire", x: (cx - 4) * this.tileSize, y: (cy + 2) * this.tileSize, icon: "npc_female", dialogue: "My rogues are at your service." });
-            this.npcSpawns.push({ id: "charsi", name: "Charsi", type: "merchant", x: (cx + 5) * this.tileSize, y: (cy - 3) * this.tileSize, icon: "npc_female", dialogue: "Need a new blade?" });
-        } else if (zoneLevel === 6) { // Act II
-            this.npcSpawns.push({ id: "drognan", name: "Drognan", type: "merchant", x: (cx - 5) * this.tileSize, y: (cy - 5) * this.tileSize, icon: "npc_drognan", dialogue: "Ancient texts speak of a great evil." });
-            this.npcSpawns.push({ id: "jerhyn", name: "Jerhyn", type: "elder", x: cx * this.tileSize, y: (cy - 6) * this.tileSize, icon: "npc_elder", dialogue: "Welcome to Lut Gholein." });
-            this.npcSpawns.push({ id: "meshif", name: "Meshif", type: "waypoint", x: (cx + 8) * this.tileSize, y: (cy + 4) * this.tileSize, icon: "npc_merchant", dialogue: "I can take you across the sea." });
-        } else if (zoneLevel === 11) { // Act III
-            this.npcSpawns.push({ id: "ormus", name: "Ormus", type: "merchant", x: (cx + 5) * this.tileSize, y: (cy - 4) * this.tileSize, icon: "npc_ormus", dialogue: "Ormus speaks in riddles, but his magic is real." });
-            this.npcSpawns.push({ id: "asheara", name: "Asheara", type: "mercenary_hire", x: (cx - 5) * this.tileSize, y: (cy + 2) * this.tileSize, icon: "npc_female", dialogue: "The Iron Wolves are ready." });
-        } else if (zoneLevel === 16) { // Act IV
-            this.npcSpawns.push({ id: "jamella", name: "Jamella", type: "merchant", x: (cx + 5) * this.tileSize, y: (cy - 4) * this.tileSize, icon: "npc_jamella", dialogue: "I can heal your wounds." });
-            this.npcSpawns.push({ id: "tyrael", name: "Tyrael", type: "elder", x: (cx - 4) * this.tileSize, y: (cy - 2) * this.tileSize, icon: "npc_tyrael", dialogue: "The gates of Hell await." });
-        } else if (zoneLevel === 21) { // Act V
-            this.npcSpawns.push({ id: "malah", name: "Malah", type: "merchant", x: (cx + 5) * this.tileSize, y: (cy - 4) * this.tileSize, icon: "npc_malah", dialogue: "Harrogath endures." });
-            this.npcSpawns.push({ id: "larzuk", name: "Larzuk", type: "blacksmith", x: (cx - 9) * this.tileSize, y: (cy - 1) * this.tileSize, icon: "npc_larzuk", dialogue: "Need a socket in that?" });
-            this.npcSpawns.push({ id: "nihlathak", name: "Nihlathak", type: "elder", x: (cx - 6) * this.tileSize, y: (cy + 2) * this.tileSize, icon: "npc_nihlathak", dialogue: "Leave me be." });
+        if (zoneLevel === 0) {
+            spawnNPC("akara", "Akara", "elder", -4, -4, "npc_akara", "I am Akara, High Priestess of the Sightless Eye.");
+            spawnNPC("kashya", "Kashya", "mercenary_hire", -6, 2, "npc_female", "My rogues are at your service.");
+            spawnNPC("charsi", "Charsi", "merchant", 6, -3, "npc_female", "Need a new blade?");
+        } else if (zoneLevel === 6) {
+            spawnNPC("drognan", "Drognan", "merchant", -5, -5, "npc_drognan", "Ancient texts speak of a great evil.");
+            spawnNPC("jerhyn", "Jerhyn", "elder", 0, -7, "npc_elder", "Welcome to Lut Gholein.");
+            spawnNPC("meshif", "Meshif", "waypoint", 8, 4, "npc_merchant", "I can take you across the sea.");
+        } else if (zoneLevel === 11) {
+            spawnNPC("ormus", "Ormus", "merchant", 5, -4, "npc_ormus", "Ormus speaks in riddles, but his magic is real.");
+            spawnNPC("asheara", "Asheara", "mercenary_hire", -6, 2, "npc_female", "The Iron Wolves are ready.");
+        } else if (zoneLevel === 16) {
+            spawnNPC("jamella", "Jamella", "merchant", 5, -4, "npc_jamella", "I can heal your wounds.");
+            spawnNPC("tyrael", "Tyrael", "elder", -4, -2, "npc_tyrael", "The gates of Hell await.");
+        } else if (zoneLevel === 21) {
+            spawnNPC("malah", "Malah", "merchant", 5, -4, "npc_malah", "Harrogath endures.");
+            spawnNPC("larzuk", "Larzuk", "blacksmith", -8, 2, "npc_larzuk", "Need a socket in that?");
+            spawnNPC("nihlathak", "Nihlathak", "elder", -6, 5, "npc_nihlathak", "Leave me be.");
         }
 
         this.playerStart = { x: cx * this.tileSize, y: (cy + 2) * this.tileSize };
-        this.exitPos = { x: cx * this.tileSize, y: (this.height - 12) * this.tileSize };
-        this.grid[this.height - 12][cx] = TILE.STAIRS_DOWN;
+        this.exitPos = { x: cx * this.tileSize, y: (this.height - 8) * this.tileSize };
+        this.grid[this.height - 8][cx] = TILE.STAIRS_DOWN;
 
         this.objectSpawns.push({ id: 'waypoint', type: 'waypoint', x: cx * this.tileSize, y: cy * this.tileSize, icon: 'obj_waypoint', zone: 0 });
-        this.objectSpawns.push({ id: 'stash', type: 'stash', name: 'Alijo (Stash)', x: (cx - 6) * this.tileSize, y: cy * this.tileSize, icon: 'obj_chest' });
+        this.objectSpawns.push({ id: 'stash', type: 'stash', name: 'Alijo (Stash)', x: (cx - 4) * this.tileSize, y: cy * this.tileSize, icon: 'obj_chest' });
 
         this._populate(zoneLevel, theme);
         return this;
@@ -578,13 +609,15 @@ export class Dungeon {
                 if (spriteName) {
                     if (tile === TILE.TREE || tile === TILE.CACTUS) {
                         renderer.drawSprite(spriteName, c * ts + ts / 2, r * ts + ts / 2, ts);
-                    } else if (this.townTileset && (tile === TILE.GRASS || tile === TILE.SAND || tile === TILE.SNOW || tile === TILE.PATH || tile === TILE.FLOOR)) {
-                        // Special handling for Town Wang Tilesets (simple centered draw for now)
-                        // In a real implementation we would sample corners and use the 4x4 grid.
-                        // Here we just use the first tile (0,0) of the 4x4 grid.
-                        const img = Assets.get(spriteName);
+                    } else if (this.themeTileset && (tile === TILE.GRASS || tile === TILE.SAND || tile === TILE.SNOW || tile === TILE.PATH || tile === TILE.FLOOR)) {
+                        // Variety: Pick one of the 16 tiles in the 4x4 tileset grid based on world coordinates (for stability)
+                        const variantX = (c % 4) * 16;
+                        const variantY = (r % 4) * 16;
+                        const img = Assets.get(this.themeTileset);
                         if (img && img.complete) {
-                            ctx.drawImage(img, 0, 0, 16, 16, c * ts, r * ts, ts, ts);
+                            ctx.drawImage(img, variantX, variantY, 16, 16, c * ts, r * ts, ts, ts);
+                        } else {
+                            renderer.drawTile(spriteName, c * ts + ts / 2, r * ts + ts / 2, ts);
                         }
                     } else {
                         renderer.drawTile(spriteName, c * ts + ts / 2, r * ts + ts / 2, ts);
