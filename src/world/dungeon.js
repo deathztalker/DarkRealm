@@ -255,123 +255,70 @@ export class Dungeon {
         this.npcSpawns = [];
         this.objectSpawns = [];
 
-        // 1. Create a "Cross" of main roads
+        // 1. Assign PixelLab Master Layout
+        const layoutMap = {
+            'town': 'map_act1_layout',
+            'desert': 'map_act2_layout',
+            'jungle': 'map_act3_layout',
+            'hell': 'map_act4_layout',
+            'snow': 'map_act5_layout'
+        };
+        this.masterLayout = layoutMap[theme] || null;
+
+        // 2. Center and Walkable Area
         const cx = Math.floor(this.width / 2);
         const cy = Math.floor(this.height / 2);
 
-        // Vertical Road
-        for (let y = 5; y < this.height - 5; y++) {
-            for (let x = cx - 2; x <= cx + 2; x++) this.grid[y][x] = TILE.PATH;
-        }
-        // Horizontal Road
-        for (let x = 5; x < this.width - 5; x++) {
-            for (let y = cy - 1; y <= cy + 1; y++) this.grid[y][x] = TILE.PATH;
-        }
-
-        // 2. Town Square in the middle
-        for (let y = cy - 5; y <= cy + 5; y++) {
-            for (let x = cx - 6; x <= cx + 6; x++) this.grid[y][x] = TILE.PATH;
-        }
-
-        // 3. Helper to place buildings near roads
-        const placeBuilding = (bx, by, icon, type = 'decoration') => {
-            this.objectSpawns.push({ type, x: bx * this.tileSize, y: by * this.tileSize, icon });
-            // Add a small path clearing in front
-            for(let dy=1; dy<=2; dy++) {
-                if (this.grid[by+dy]) this.grid[by+dy][bx] = TILE.PATH;
-            }
-        };
-
-        // 4. Act-Specific Customization
-        if (theme === 'town') { // Act 1
-            placeBuilding(cx, cy, 'obj_bonfire'); // Center
-            placeBuilding(cx - 10, cy - 8, 'obj_tent_leather');
-            placeBuilding(cx + 10, cy - 6, 'obj_tent_leather');
-            placeBuilding(cx - 12, cy + 8, 'obj_wagon_merchant');
-            placeBuilding(cx + 12, cy + 6, 'obj_wagon_merchant');
-        } else if (theme === 'desert') { // Act 2
-            placeBuilding(cx, cy, 'obj_fountain');
-            placeBuilding(cx - 12, cy - 10, 'obj_house_sandstone');
-            placeBuilding(cx + 14, cy - 8, 'obj_house_sandstone');
-            placeBuilding(cx - 15, cy + 4, 'obj_stall_bazaar');
-            placeBuilding(cx + 10, cy + 10, 'obj_stall_bazaar');
-            for(let i=0; i<12; i++) {
-                const rx = 5 + Math.floor(Math.random()*(this.width-10));
-                const ry = 5 + Math.floor(Math.random()*(this.height-10));
-                if (this.grid[ry][rx] === TILE.SAND) this.objectSpawns.push({ type: 'decoration', x: rx*this.tileSize, y: ry*this.tileSize, icon: 'obj_tree_palm' });
-            }
-        } else if (theme === 'jungle') { // Act 3
-            placeBuilding(cx - 8, cy - 8, 'obj_hut_stilt');
-            placeBuilding(cx + 10, cy - 10, 'obj_hut_stilt');
-            placeBuilding(cx - 12, cy + 12, 'obj_hut_stilt');
-            // River/Bridge logic
-            for (let x = 0; x < this.width; x++) {
-                for (let y = cy + 12; y <= cy + 16; y++) {
-                    if (this.grid[y][x] === TILE.PATH) this.grid[y][x] = TILE.BRIDGE;
-                    else this.grid[y][x] = TILE.WATER;
+        // Make the 20x20 area under the 320x320 master layout walkable (320 / 16 = 20 tiles)
+        for (let y = cy - 10; y < cy + 10; y++) {
+            for (let x = cx - 10; x < cx + 10; x++) {
+                if (this.grid[y] && this.grid[y][x] !== undefined) {
+                    this.grid[y][x] = TILE.PATH;
                 }
             }
-            this.objectSpawns.push({ type: 'decoration', x: cx * this.tileSize, y: (cy + 14) * this.tileSize, icon: 'obj_bridge_rope' });
-            for(let i=0; i<15; i++) {
-                const rx = 2 + Math.floor(Math.random()*(this.width-4));
-                const ry = 2 + Math.floor(Math.random()*(this.height-4));
-                if (this.grid[ry][rx] === TILE.GRASS) this.objectSpawns.push({ type: 'decoration', x: rx*this.tileSize, y: ry*this.tileSize, icon: 'obj_tree_jungle' });
-            }
-        } else if (theme === 'hell') { // Act 4
-            placeBuilding(cx - 6, cy - 6, 'obj_statue_angel');
-            placeBuilding(cx + 6, cy - 6, 'obj_statue_angel');
-            placeBuilding(cx - 10, cy + 4, 'obj_pillar_holy');
-            placeBuilding(cx + 10, cy + 4, 'obj_pillar_holy');
-            // Add some lava cracks
-            for(let i=0; i<20; i++) {
-                const rx = Math.floor(Math.random()*this.width);
-                const ry = Math.floor(Math.random()*this.height);
-                if (this.grid[ry][rx] === bgTile) this.grid[ry][rx] = TILE.LAVA;
-            }
-        } else if (theme === 'snow') { // Act 5
-            placeBuilding(cx - 15, cy - 5, 'obj_longhouse_stone');
-            placeBuilding(cx + 15, cy - 5, 'obj_longhouse_stone');
-            placeBuilding(cx + 8, cy + 8, 'obj_anvil_hot');
-            for(let i=0; i<15; i++) {
-                const rx = Math.floor(Math.random()*this.width);
-                const ry = Math.floor(Math.random()*this.height);
-                if (this.grid[ry][rx] === TILE.SNOW) this.objectSpawns.push({ type: 'decoration', x: rx*this.tileSize, y: ry*this.tileSize, icon: 'obj_tree_snowy_pine' });
-            }
         }
 
-        // 5. Spawn NPCs
+        // 3. Main roads connecting to borders
+        for (let y = 0; y < this.height; y++) {
+            for (let x = cx - 2; x <= cx + 2; x++) this.grid[y][cx] = TILE.PATH;
+        }
+        for (let x = 0; x < this.width; x++) {
+            for (let y = cy - 1; y <= cy + 1; y++) this.grid[cy][x] = TILE.PATH;
+        }
+
+        // 4. Act-Specific NPC Spawning around the master layout
         const spawnNPC = (id, name, type, relX, relY, icon, dialogue) => {
             this.npcSpawns.push({ id, name, type, x: (cx + relX) * this.tileSize, y: (cy + relY) * this.tileSize, icon, dialogue });
         };
 
-        spawnNPC("deckard_cain", "Deckard Cain", "elder", 3, -2, "npc_deckard_cain", "Stay awhile and listen!");
+        spawnNPC("deckard_cain", "Deckard Cain", "elder", 4, -4, "npc_deckard_cain", "Stay awhile and listen!");
 
         if (zoneLevel === 0) {
-            spawnNPC("akara", "Akara", "elder", -4, -4, "npc_akara", "I am Akara, High Priestess of the Sightless Eye.");
-            spawnNPC("kashya", "Kashya", "mercenary_hire", -6, 2, "npc_female", "My rogues are at your service.");
-            spawnNPC("charsi", "Charsi", "merchant", 6, -3, "npc_female", "Need a new blade?");
+            spawnNPC("akara", "Akara", "elder", -6, -6, "npc_akara", "I am Akara, High Priestess of the Sightless Eye.");
+            spawnNPC("kashya", "Kashya", "mercenary_hire", -7, 3, "npc_female", "My rogues are at your service.");
+            spawnNPC("charsi", "Charsi", "merchant", 7, -2, "npc_female", "Need a new blade?");
         } else if (zoneLevel === 6) {
-            spawnNPC("drognan", "Drognan", "merchant", -5, -5, "npc_drognan", "Ancient texts speak of a great evil.");
-            spawnNPC("jerhyn", "Jerhyn", "elder", 0, -7, "npc_elder", "Welcome to Lut Gholein.");
-            spawnNPC("meshif", "Meshif", "waypoint", 8, 4, "npc_merchant", "I can take you across the sea.");
+            spawnNPC("drognan", "Drognan", "merchant", -6, -7, "npc_drognan", "Ancient texts speak of a great evil.");
+            spawnNPC("jerhyn", "Jerhyn", "elder", 0, -8, "npc_elder", "Welcome to Lut Gholein.");
+            spawnNPC("meshif", "Meshif", "waypoint", 9, 5, "npc_merchant", "I can take you across the sea.");
         } else if (zoneLevel === 11) {
-            spawnNPC("ormus", "Ormus", "merchant", 5, -4, "npc_ormus", "Ormus speaks in riddles, but his magic is real.");
-            spawnNPC("asheara", "Asheara", "mercenary_hire", -6, 2, "npc_female", "The Iron Wolves are ready.");
+            spawnNPC("ormus", "Ormus", "merchant", 6, -5, "npc_ormus", "Ormus speaks in riddles, but his magic is real.");
+            spawnNPC("asheara", "Asheara", "mercenary_hire", -7, 3, "npc_female", "The Iron Wolves are ready.");
         } else if (zoneLevel === 16) {
-            spawnNPC("jamella", "Jamella", "merchant", 5, -4, "npc_jamella", "I can heal your wounds.");
-            spawnNPC("tyrael", "Tyrael", "elder", -4, -2, "npc_tyrael", "The gates of Hell await.");
+            spawnNPC("jamella", "Jamella", "merchant", 7, -4, "npc_jamella", "I can heal your wounds.");
+            spawnNPC("tyrael", "Tyrael", "elder", -5, -3, "npc_tyrael", "The gates of Hell await.");
         } else if (zoneLevel === 21) {
-            spawnNPC("malah", "Malah", "merchant", 5, -4, "npc_malah", "Harrogath endures.");
-            spawnNPC("larzuk", "Larzuk", "blacksmith", -8, 2, "npc_larzuk", "Need a socket in that?");
-            spawnNPC("nihlathak", "Nihlathak", "elder", -6, 5, "npc_nihlathak", "Leave me be.");
+            spawnNPC("malah", "Malah", "merchant", 6, -5, "npc_malah", "Harrogath endures.");
+            spawnNPC("larzuk", "Larzuk", "blacksmith", -9, 3, "npc_larzuk", "Need a socket in that?");
+            spawnNPC("nihlathak", "Nihlathak", "elder", -7, 6, "npc_nihlathak", "Leave me be.");
         }
 
-        this.playerStart = { x: cx * this.tileSize, y: (cy + 2) * this.tileSize };
-        this.exitPos = { x: cx * this.tileSize, y: (this.height - 8) * this.tileSize };
-        this.grid[this.height - 8][cx] = TILE.STAIRS_DOWN;
+        this.playerStart = { x: cx * this.tileSize, y: (cy + 4) * this.tileSize };
+        this.exitPos = { x: cx * this.tileSize, y: (this.height - 5) * this.tileSize };
+        this.grid[this.height - 5][cx] = TILE.STAIRS_DOWN;
 
         this.objectSpawns.push({ id: 'waypoint', type: 'waypoint', x: cx * this.tileSize, y: cy * this.tileSize, icon: 'obj_waypoint', zone: 0 });
-        this.objectSpawns.push({ id: 'stash', type: 'stash', name: 'Alijo (Stash)', x: (cx - 4) * this.tileSize, y: cy * this.tileSize, icon: 'obj_chest' });
+        this.objectSpawns.push({ id: 'stash', type: 'stash', name: 'Alijo (Stash)', x: (cx - 5) * this.tileSize, y: cy * this.tileSize, icon: 'obj_chest' });
 
         this._populate(zoneLevel, theme);
         return this;

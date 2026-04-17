@@ -1,0 +1,30 @@
+{
+  "character": {
+    "id": "f65db7e5-b2ff-4e13-abf9-d796e727a6a7",
+    "name": "Fire Golem",
+    "prompt": "Fire Golem: towering elemental golem made entirely of molten rock and roaring flames, pixel art for ARPG",
+    "size": {
+      "width": 68,
+      "height": 68
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-17T04:05:44.426184+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-17T04:12:24.141346"
+}

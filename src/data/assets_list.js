@@ -18,6 +18,7 @@ export const ASSET_NAMES = [
     'tileset_act1_wilderness', 'tileset_act1_town', 'tileset_act2_desert', 'tileset_act2_town', 
     'tileset_act3_jungle', 'tileset_act3_town', 'tileset_act4_hell', 'tileset_act4_town', 
     'tileset_act5_snow', 'tileset_act5_town',
+    'map_act1_layout', 'map_act2_layout', 'map_act3_layout', 'map_act4_layout', 'map_act5_layout',
     'obj_portal', 'obj_waypoint', 'obj_stairs_up', 'obj_stairs_down',
     'obj_barrel', 'obj_chest', 'obj_chest_hd_v2', 'obj_chest_open', 'obj_debris', 'obj_shrine', 'obj_shrine_used', 'obj_urn',
     'obj_bonfire', 'obj_fountain', 'obj_bridge_rope', 'obj_statue_angel', 'obj_anvil_hot', 

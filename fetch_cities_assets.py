@@ -29,7 +29,12 @@ assets = {
     "obj_wagon_merchant": "053a872d-f5ef-4e65-9f94-3f4d99ffd230",
     "obj_stall_bazaar": "0b5474c1-c598-42f4-9ff0-e72e2123336f",
     "obj_tree_jungle": "679d0fb2-961a-4f03-bd00-7b3bc9717bfc",
-    "obj_tree_snowy_pine": "9980ff8f-e57c-4134-a779-3cbf977a4bba"
+    "obj_tree_snowy_pine": "9980ff8f-e57c-4134-a779-3cbf977a4bba",
+    "map_act1_layout": "a9bb69eb-c4c0-47de-b85f-f20f16bf34a2",
+    "map_act2_layout": "840c2804-7900-4f24-a316-62702169bc58",
+    "map_act3_layout": "49c361aa-7c98-444f-878b-b0ce07173d52",
+    "map_act4_layout": "dcc61df2-4f4d-4f74-8d55-acd1b75d7714",
+    "map_act5_layout": "e6326150-b94e-4173-a04a-b51718c8bd09"
 }
 
 if not os.path.exists("assets"):

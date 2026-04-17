@@ -1,0 +1,30 @@
+{
+  "character": {
+    "id": "d833cbdb-4ffe-43a5-9e09-3fa65d97f49b",
+    "name": "Fallen Demon",
+    "prompt": "Fallen Demon: small red-skinned impish demon holding a crude blade, aggressive, pixel art for ARPG",
+    "size": {
+      "width": 68,
+      "height": 68
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-17T04:05:44.455578+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-17T04:12:22.268677"
+}
