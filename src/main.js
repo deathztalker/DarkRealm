@@ -5952,7 +5952,8 @@ const ACT_5_QUESTS = {
     }
 };
 
-const QUEST_POOL = [...Object.values(ACT_1_QUESTS), ...Object.values(ACT_2_QUESTS), ...Object.values(ACT_3_QUESTS), ...Object.values(ACT_4_QUESTS), ...Object.values(ACT_5_QUESTS)];
+const ALL_QUESTS = { ...ACT_1_QUESTS, ...ACT_2_QUESTS, ...ACT_3_QUESTS, ...ACT_4_QUESTS, ...ACT_5_QUESTS };
+const QUEST_POOL = Object.values(ALL_QUESTS);
 
 function offerQuest(giverId = null) {
     if (!player) return;

@@ -12,7 +12,16 @@ export const ASSET_NAMES = [
     'env_bridge', 'env_door', 'env_floor', 'env_grass', 'env_path', 'env_sand', 
     'env_sand_hd', 'env_stairs_down', 'env_stairs_up', 'env_tree', 'env_wall', 'env_water', 
     'npc_elder', 'npc_merchant', 'npc_female', 'mercenary_warrior', 'mercenary_archer',
+    'npc_deckard_cain', 'npc_tyrael', 'npc_akara', 'npc_ormus', 'npc_larzuk', 
+    'npc_drognan', 'npc_jamella', 'npc_nihlathak', 'npc_malah',
+    'tileset_act1_wilderness', 'tileset_act1_town', 'tileset_act2_desert', 'tileset_act2_town', 
+    'tileset_act3_jungle', 'tileset_act3_town', 'tileset_act4_hell', 'tileset_act4_town', 
+    'tileset_act5_snow', 'tileset_act5_town',
     'obj_portal', 'obj_waypoint', 'obj_stairs_up', 'obj_stairs_down',
     'obj_barrel', 'obj_chest', 'obj_chest_hd_v2', 'obj_chest_open', 'obj_debris', 'obj_shrine', 'obj_shrine_used', 'obj_urn',
+    'obj_bonfire', 'obj_fountain', 'obj_bridge_rope', 'obj_statue_angel', 'obj_anvil_hot', 
+    'obj_tent_leather', 'obj_house_sandstone', 'obj_hut_stilt', 'obj_longhouse_stone', 
+    'obj_pillar_holy', 'obj_tree_palm', 'obj_wagon_merchant', 'obj_stall_bazaar', 
+    'obj_tree_jungle', 'obj_tree_snowy_pine',
     'item_amulet', 'item_armor_leather', 'item_armor_plate', 'item_potion_hp', 'item_potion_mp', 'item_ring'
 ];

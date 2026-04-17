@@ -1,0 +1,30 @@
+{
+  "character": {
+    "id": "a5bd1da6-719b-414b-833c-60f701126dfd",
+    "name": "Akara",
+    "prompt": "Akara: high priestess of the Sightless Eye, wearing purple and red hooded robes, holding a wooden staff with a small crystal, serene and mysterious look, pixel art for ARPG",
+    "size": {
+      "width": 68,
+      "height": 68
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-17T03:09:49.893379+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-17T03:17:15.634527"
+}
