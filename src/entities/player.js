@@ -753,22 +753,6 @@ export class Player {
                 }
             }
         }
-        }
-        // --- Lava Damage Logic ---
-        if (dungeon) {
-            const gx = Math.floor(this.x / dungeon.tileSize);
-            const gy = Math.floor(this.y / dungeon.tileSize);
-            if (gx >= 0 && gx < dungeon.width && gy >= 0 && gy < dungeon.height) {
-                if (dungeon.grid[gy][gx] === 13) { // TILE.LAVA
-                    this._lavaTimer = (this._lavaTimer || 0) + dt;
-                    if (this._lavaTimer >= 0.5) { // Damage every 0.5s
-                        this._lavaTimer = 0;
-                        applyDamage(null, this, { dealt: 5, isCrit: false, type: 'fire' }, 'lava');
-                        if (fx) fx.emitBurst(this.x, this.y, '#ff4500', 8);
-                    }
-                }
-            }
-        }
     }
 
     _setAnimState(state) {
