@@ -927,13 +927,13 @@ function gameLoop(timestamp) {
         renderer.ctx.font = 'bold 10px "Exocet", "Cinzel", serif';
         const textWidth = renderer.ctx.measureText(labelText).width;
         const padding = 4;
-        
+
         // Background box for readability
         renderer.ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
         renderer.ctx.strokeStyle = di.rarity === 'unique' ? '#e8a020' : di.rarity === 'set' ? '#00ff00' : di.rarity === 'rare' ? '#f0d030' : di.rarity === 'magic' ? '#4080ff' : '#aaa';
         renderer.ctx.lineWidth = 1;
-        renderer.ctx.fillRect(di.x - textWidth/2 - padding, di.y + 10, textWidth + padding*2, 14);
-        renderer.ctx.strokeRect(di.x - textWidth/2 - padding, di.y + 10, textWidth + padding*2, 14);
+        renderer.ctx.fillRect(di.x - textWidth / 2 - padding, di.y + 10, textWidth + padding * 2, 14);
+        renderer.ctx.strokeRect(di.x - textWidth / 2 - padding, di.y + 10, textWidth + padding * 2, 14);
 
         // Text
         renderer.ctx.textAlign = 'center';
@@ -949,13 +949,13 @@ function gameLoop(timestamp) {
         renderer.strokeCircle(g.x, g.y, 4, '#c8972a', 1);
         renderer.ctx.font = 'bold 9px "Cinzel", serif';
         renderer.ctx.textAlign = 'center';
-        
+
         // Gold label box
         const goldText = `${g.amount}`;
         const tw = renderer.ctx.measureText(goldText).width;
         renderer.ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        renderer.ctx.fillRect(g.x - tw/2 - 2, g.y + 6, tw + 4, 10);
-        
+        renderer.ctx.fillRect(g.x - tw / 2 - 2, g.y + 6, tw + 4, 10);
+
         renderer.ctx.fillStyle = '#ffd700';
         renderer.ctx.fillText(goldText, g.x, g.y + 14);
     }
@@ -995,7 +995,7 @@ function gameLoop(timestamp) {
                 const auraColor = auraColors[e.activeAura] || '#ffe880';
                 const pulse = 0.4 + Math.sin(lastTime * 0.006) * 0.2;
                 const auraRadius = 28 + Math.sin(lastTime * 0.004) * 4;
-                
+
                 renderer.ctx.save();
                 renderer.ctx.globalAlpha = pulse;
                 renderer.ctx.strokeStyle = auraColor;
@@ -1013,9 +1013,9 @@ function gameLoop(timestamp) {
         } else {
             // Mercenary specific icon handling
             if (e.isMercenary) {
-                const mercIcons = { 
-                    'Rogue': 'class_rogue', 
-                    'Desert Warrior': 'class_warrior', 
+                const mercIcons = {
+                    'Rogue': 'class_rogue',
+                    'Desert Warrior': 'class_warrior',
                     'Iron Wolf': 'class_shaman',
                     'Mercenary Warrior': 'mercenary_warrior',
                     'Mercenary Archer': 'mercenary_archer'
@@ -6060,9 +6060,9 @@ function hireMercenary(type = 'Rogue') {
         'Mercenary Warrior': ['Kormac', 'Lyon', 'Torion', 'Garek'],
         'Mercenary Archer': ['Eirena', 'Valla', 'Lyra', 'Sarya']
     };
-    const icons = { 
-        'Rogue': 'class_rogue', 
-        'Desert Warrior': 'class_warrior', 
+    const icons = {
+        'Rogue': 'class_rogue',
+        'Desert Warrior': 'class_warrior',
         'Iron Wolf': 'class_shaman',
         'Mercenary Warrior': 'mercenary_warrior',
         'Mercenary Archer': 'mercenary_archer'
@@ -6539,7 +6539,7 @@ function renderCraftingMenu() {
 // --- Phase 30: Drag & Drop Implementation ---
 function startDrag(e, item, source, idx) {
     if (!item) return;
-    draggedItem = iteem;
+    draggedItem = item;
     dragSource = source;
     dragSourceIdx = idx;
 
