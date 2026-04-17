@@ -448,6 +448,47 @@ export class Dungeon {
         const tile = this.grid[r][c];
         return tile !== TILE.WALL && tile !== TILE.WATER && tile !== TILE.TREE;
     }
+
+    /** Raycast using Digital Differential Analyzer (DDA) to check Line of Sight */
+    hasLineOfSight(x0, y0, x1, y1) {
+        const c0 = Math.floor(x0 / this.tileSize);
+        const r0 = Math.floor(y0 / this.tileSize);
+        const c1 = Math.floor(x1 / this.tileSize);
+        const r1 = Math.floor(y1 / this.tileSize);
+
+        let dx = Math.abs(c1 - c0);
+        let dy = Math.abs(r1 - r0);
+        let x = c0;
+        let y = r0;
+        let n = 1 + dx + dy;
+        const x_inc = (c1 > c0) ? 1 : -1;
+        const y_inc = (r1 > r0) ? 1 : -1;
+        let error = dx - dy;
+        dx *= 2;
+        dy *= 2;
+
+        for (; n > 0; --n) {
+            if (y < 0 || y >= this.height || x < 0 || x >= this.width) return false;
+            const tile = this.grid[y][x];
+            if (tile === TILE.WALL || tile === TILE.TREE) return false;
+
+            if (error > 0) {
+                x += x_inc;
+                error -= dy;
+            } else if (error < 0) {
+                y += y_inc;
+                error += dx;
+            } else {
+                x += x_inc;
+                error -= dy;
+                y += y_inc;
+                error += dx;
+                n--;
+            }
+        }
+        return true;
+    }
+
     render(renderer, camera) {
         const ctx = renderer.ctx; camera.apply(ctx);
         const ts = this.tileSize;
