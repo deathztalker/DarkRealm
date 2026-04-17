@@ -31,15 +31,10 @@ assets = {
     "obj_tree_jungle": "679d0fb2-961a-4f03-bd00-7b3bc9717bfc",
     "obj_tree_snowy_pine": "9980ff8f-e57c-4134-a779-3cbf977a4bba",
     "map_act1_layout": "a9bb69eb-c4c0-47de-b85f-f20f16bf34a2",
-    "map_act1_layout_north": "0ea3afba-6efa-47db-be75-23e7f59bd58a",
     "map_act2_layout": "840c2804-7900-4f24-a316-62702169bc58",
-    "map_act2_layout_harbor": "434a2e26-941a-4f2d-b454-56924c4965ec",
     "map_act3_layout": "49c361aa-7c98-444f-878b-b0ce07173d52",
-    "map_act3_layout_temple": "4e664b7a-6a6d-4dcd-90dd-a72d8f9957b0",
     "map_act4_layout": "dcc61df2-4f4d-4f74-8d55-acd1b75d7714",
-    "map_act4_layout_overlook": "6b0ef90f-9d0c-423a-a62f-e72fb11bab3e",
-    "map_act5_layout": "e6326150-b94e-4173-a04a-b51718c8bd09",
-    "map_act5_layout_gate": "d5986412-a72e-4fa1-8786-0f6d3e31b09b"
+    "map_act5_layout": "e6326150-b94e-4173-a04a-b51718c8bd09"
 }
 
 if not os.path.exists("assets"):
