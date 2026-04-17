@@ -19,8 +19,19 @@
       "east": "rotations/east.png",
       "north": "rotations/north.png"
     },
-    "animations": {}
+    "animations": {
+      "walking-9b3f2bdc": {
+        "south": [
+          "animations/walking-9b3f2bdc/south/frame_000.png",
+          "animations/walking-9b3f2bdc/south/frame_001.png",
+          "animations/walking-9b3f2bdc/south/frame_002.png",
+          "animations/walking-9b3f2bdc/south/frame_003.png",
+          "animations/walking-9b3f2bdc/south/frame_004.png",
+          "animations/walking-9b3f2bdc/south/frame_005.png"
+        ]
+      }
+    }
   },
   "export_version": "2.0",
-  "export_date": "2026-04-17T00:03:21.056210"
+  "export_date": "2026-04-17T01:38:45.555445"
 }

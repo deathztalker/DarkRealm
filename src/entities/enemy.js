@@ -17,7 +17,7 @@ const ENEMY_TYPES = {
     golem: { icon: 'enemy_golem', name: 'Stone Golem', hp: 120, dmg: 18, spd: 25, xp: 40, armor: 30, group: 'construct', attackType: 'melee' },
     cultist: { icon: 'enemy_cultist', name: 'Cultist', hp: 45, dmg: 14, spd: 40, xp: 28, armor: 4, group: 'human', lightRes: 20, attackType: 'caster', element: 'fire', projColor: '#ff6000', projRadius: 10 },
     bat: { icon: 'enemy_bat', name: 'Void Bat', hp: 20, dmg: 4, spd: 80, xp: 10, armor: 0, group: 'beast', attackType: 'melee' },
-    wraith: { icon: 'enemy_ghost', name: 'Wraith', hp: 45, dmg: 10, spd: 55, xp: 30, armor: 0, group: 'undead', lightRes: 50, attackType: 'melee', element: 'lightning' },
+    wraith: { icon: 'enemy_wraith', name: 'Wraith', hp: 45, dmg: 10, spd: 55, xp: 30, armor: 0, group: 'undead', lightRes: 50, attackType: 'melee', element: 'lightning' },
     fetish: { icon: 'enemy_goblin', name: 'Fetish', hp: 25, dmg: 8, spd: 90, xp: 15, armor: 0, group: 'humanoid', attackType: 'melee' },
     vampire: { icon: 'enemy_cultist', name: 'Vampire', hp: 90, dmg: 22, spd: 45, xp: 60, armor: 12, group: 'undead', fireRes: 40, attackType: 'caster', element: 'fire', projColor: '#ff0000', projRadius: 14 },
     scarab: { icon: 'enemy_demon', name: 'Death Beetle', hp: 70, dmg: 12, spd: 40, xp: 40, armor: 25, group: 'beast', lightRes: 75, attackType: 'melee', isLightningEnchanted: true },
@@ -40,14 +40,15 @@ const BOSS_POOL = [
     { icon: 'enemy_skeleton', name: 'Bone Lord Varkath', hpMult: 12, dmgMult: 2.5, xpMult: 18 },
     { icon: 'enemy_golem', name: 'Infernal Sentinel', hpMult: 9, dmgMult: 3.5, xpMult: 14 },
     { icon: 'enemy_demon', name: 'Azmodan, Lord of Sin', hpMult: 18, dmgMult: 4.5, xpMult: 25, riftOnly: true, element: 'fire' },
-    { icon: 'enemy_cultist', name: 'Baal, Lord of Destruction', hpMult: 22, dmgMult: 3.5, xpMult: 35, riftOnly: true, element: 'cold' },
-    { icon: 'enemy_ghost', name: 'Mephisto, Lord of Hatred', hpMult: 18, dmgMult: 4.8, xpMult: 40 },
+    { icon: 'boss_baal', name: 'Baal, Lord of Destruction', hpMult: 22, dmgMult: 3.5, xpMult: 35, riftOnly: true, element: 'cold' },
+    { icon: 'boss_mephisto', name: 'Mephisto, Lord of Hatred', hpMult: 18, dmgMult: 4.8, xpMult: 40 },
     // --- Phase 27: Uber Bosses ---
-    { id: 'uber_mephisto', name: 'Uber Mephisto', hpMult: 60, dmgMult: 12, xpMult: 100, isUber: true },
-    { id: 'uber_diablo', name: 'Uber Diablo', hpMult: 80, dmgMult: 15, xpMult: 150, isUber: true },
-    { id: 'uber_baal', name: 'Uber Baal', hpMult: 100, dmgMult: 14, xpMult: 200, isUber: true },
+    { id: 'uber_mephisto', name: 'Uber Mephisto', hpMult: 60, dmgMult: 12, xpMult: 100, icon: 'boss_mephisto', isUber: true },
+    { id: 'uber_diablo', name: 'Uber Diablo', hpMult: 80, dmgMult: 15, xpMult: 150, icon: 'boss_diablo', isUber: true },
+    { id: 'uber_baal', name: 'Uber Baal', hpMult: 100, dmgMult: 14, xpMult: 200, icon: 'boss_baal', isUber: true },
     { id: 'cow_king', name: 'The Cow King', hpMult: 25, dmgMult: 6, xpMult: 50, special: 'lightning_enchanted', icon: 'enemy_zombie' },
-    { id: 'angry_jano', name: 'Angry Jano', hpMult: 35, dmgMult: 8, xpMult: 100, icon: 'enemy_demon', special: 'berserker', deathSound: 'assets/death_jano.mp3' },
+    { id: 'angry_jano', name: 'Angry Jano', hpMult: 35, dmgMult: 8, xpMult: 100, icon: 'boss_angry_jano', special: 'berserker', deathSound: 'assets/death_jano.mp3' },
+    { id: 'demon_wirt', name: 'Wirt the Fallen', hpMult: 15, dmgMult: 10, xpMult: 80, icon: 'boss_demon_wirt', special: 'extra_fast' },
 ];
 
 const ELITE_AFFIXES = [
@@ -1103,6 +1104,27 @@ export class Enemy {
             renderer.ctx.setLineDash([5, 5]); // Dashed aura ring
             renderer.ctx.lineDashOffset = Date.now() / 50;
             renderer.ctx.stroke();
+            renderer.ctx.restore();
+        }
+
+        // Boss Unique VFX Aura
+        if (this.type === 'boss') {
+            renderer.ctx.save();
+            const pulse = 0.5 + Math.sin(time * 0.004) * 0.3;
+            let auraColor = 'rgba(255, 0, 0,'; // Default red
+            
+            if (this.isAndariel) auraColor = 'rgba(0, 255, 0,'; // Poison green
+            if (this.isBaal) auraColor = 'rgba(0, 100, 255,'; // Cold blue
+            if (this.isMephisto) auraColor = 'rgba(255, 255, 255,'; // Ghostly white
+            if (this.isDiablo) auraColor = 'rgba(255, 100, 0,'; // Hellfire orange
+            
+            const grd = renderer.ctx.createRadialGradient(this.x, this.y, 10, this.x, this.y, 40);
+            grd.addColorStop(0, auraColor + (pulse * 0.4) + ')');
+            grd.addColorStop(1, 'transparent');
+            renderer.ctx.fillStyle = grd;
+            renderer.ctx.beginPath();
+            renderer.ctx.arc(this.x, this.y, 40, 0, Math.PI * 2);
+            renderer.ctx.fill();
             renderer.ctx.restore();
         }
 

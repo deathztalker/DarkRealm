@@ -11,7 +11,16 @@ export const Assets = {
         this.images[name] = img;
     },
     get: function (name) {
-        return this.images[name];
+        // Safe get with fallback to avoid 404/Null breaks
+        if (this.images[name]) return this.images[name];
+        
+        // Portrait fallbacks
+        if (name && name.startsWith('npc_portrait_')) {
+            return this.images['npc_female'] || this.images['npc_merchant'];
+        }
+        
+        // Default generic fallbacks
+        return this.images['class_warrior'] || this.images['npc_female'];
     }
 };
 

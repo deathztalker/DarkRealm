@@ -23,8 +23,19 @@
       "west": "rotations/west.png",
       "south-west": "rotations/south-west.png"
     },
-    "animations": {}
+    "animations": {
+      "walking-068317a9": {
+        "south": [
+          "animations/walking-068317a9/south/frame_000.png",
+          "animations/walking-068317a9/south/frame_001.png",
+          "animations/walking-068317a9/south/frame_002.png",
+          "animations/walking-068317a9/south/frame_003.png",
+          "animations/walking-068317a9/south/frame_004.png",
+          "animations/walking-068317a9/south/frame_005.png"
+        ]
+      }
+    }
   },
   "export_version": "2.0",
-  "export_date": "2026-04-17T00:03:13.328450"
+  "export_date": "2026-04-17T01:38:27.304983"
 }
