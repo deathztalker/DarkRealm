@@ -129,7 +129,7 @@ export class Dungeon {
             type: 'waypoint', 
             x: this.playerStart.x + 32, 
             y: this.playerStart.y, 
-            icon: 'env_stairs_up', 
+            icon: 'obj_waypoint', 
             zone: zoneLevel 
         });
 
@@ -878,11 +878,10 @@ export class Dungeon {
         const r = Math.floor(wy / this.tileSize);
         if (r < 0 || r >= this.height || c < 0 || c >= this.width) return false;
         const tile = this.grid[r][c];
-        // Non-walkable: WALL, WATER, TREE, CACTUS, LAVA
-        return tile !== TILE.WALL && tile !== TILE.WATER && tile !== TILE.TREE 
-            && tile !== TILE.CACTUS && tile !== TILE.LAVA;
-    }
-
+        // Non-walkable: WALL, WATER, TREE, CACTUS. LAVA is now walkable but dangerous.
+        return tile !== TILE.WALL && tile !== TILE.WATER && tile !== TILE.TREE
+            && tile !== TILE.CACTUS;
+        }
     /** Raycast using Digital Differential Analyzer (DDA) to check Line of Sight */
     hasLineOfSight(x0, y0, x1, y1) {
         const c0 = Math.floor(x0 / this.tileSize);

@@ -996,7 +996,7 @@ function gameLoop(timestamp) {
                 renderer.ctx.restore();
             }
 
-            renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 36, e.animState, e.facingDir, lastTime, null, e.equipment, e.hitFlashTimer);
+            renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 26, e.animState, e.facingDir, lastTime, null, e.equipment, e.hitFlashTimer);
             e.renderMinions(renderer, lastTime);
         } else {
             // Mercenary specific icon handling

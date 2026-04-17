@@ -12,6 +12,7 @@ export const ASSET_NAMES = [
     'env_bridge', 'env_door', 'env_floor', 'env_grass', 'env_path', 'env_sand', 
     'env_sand_hd', 'env_stairs_down', 'env_stairs_up', 'env_tree', 'env_wall', 'env_water', 
     'npc_elder', 'npc_merchant', 'npc_female', 'mercenary_warrior', 'mercenary_archer',
+    'obj_portal', 'obj_waypoint', 'obj_stairs_up', 'obj_stairs_down',
     'obj_barrel', 'obj_chest', 'obj_chest_hd_v2', 'obj_chest_open', 'obj_debris', 'obj_shrine', 'obj_shrine_used', 'obj_urn',
     'item_amulet', 'item_armor_leather', 'item_armor_plate', 'item_potion_hp', 'item_potion_mp', 'item_ring'
 ];

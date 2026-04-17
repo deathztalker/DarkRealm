@@ -227,11 +227,9 @@ export class Mercenary {
         } else {
             dir = my > 0 ? 'down' : 'up';
         }
-
-        const state = (this._atkCd > 0) ? 'attack' : 'walk'; // Simplistic state mapping
         
-        // Use the Pro Animator with high-quality size
-        renderer.drawAnim(this.icon, this.x, this.y - 4, 32, state, dir, time, null, this.equipment);
+        // Use the Pro Animator with scale 24 and forced IDLE
+        renderer.drawAnim(this.icon, this.x, this.y - 4, 24, 'idle', dir, time, null, this.equipment);
         
         // Draw HP bar
         const hpPct = this.hp / this.maxHp;
