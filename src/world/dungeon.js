@@ -582,21 +582,12 @@ export class Dungeon {
             [TILE.LAVA]: 'env_floor'
         };
 
-        // Act-specific town tileset overrides
-        if (this.townTileset) {
-            TILE_SPRITES[TILE.GRASS] = this.townTileset;
-            TILE_SPRITES[TILE.SAND] = this.townTileset;
-            TILE_SPRITES[TILE.SNOW] = this.townTileset;
-            TILE_SPRITES[TILE.PATH] = this.townTileset;
-            TILE_SPRITES[TILE.FLOOR] = this.townTileset;
-        }
-
         for (let r = camTop; r < camBottom; r++) {
             for (let c = camLeft; c < camRight; c++) {
                 const tile = this.grid[r][c];
                 let spriteName = TILE_SPRITES[tile];
 
-                // Draw base rect as fallback/background with better colors
+                // Draw base rect
                 const baseColors = {
                     [TILE.FLOOR]: '#1a1820', [TILE.WALL]: '#0a080c', [TILE.DOOR]: '#3a2a1a',
                     [TILE.STAIRS_DOWN]: '#151525', [TILE.STAIRS_UP]: '#151525',
@@ -607,39 +598,38 @@ export class Dungeon {
                 ctx.fillStyle = baseColors[tile] || '#000';
                 ctx.fillRect(c * ts, r * ts, ts, ts);
 
-                // Draw tile sprite
-                if (spriteName) {
+                // Draw tile sprite with PixelLab sampling
+                if (this.themeTileset && (tile === TILE.GRASS || tile === TILE.SAND || tile === TILE.SNOW || tile === TILE.PATH || tile === TILE.FLOOR)) {
+                    const img = Assets.get(this.themeTileset);
+                    if (img && img.complete) {
+                        // Logic: Lower terrain (Grass/Sand/Snow) at (0,0), Upper (Floor/Path) at (3,3)
+                        // Sample from 2x2 variations within those corners
+                        let sx = 0, sy = 0;
+                        if (tile === TILE.PATH || tile === TILE.FLOOR) {
+                            sx = (2 + (c % 2)) * 16;
+                            sy = (2 + (r % 2)) * 16;
+                        } else {
+                            sx = (c % 2) * 16;
+                            sy = (r % 2) * 16;
+                        }
+                        ctx.drawImage(img, sx, sy, 16, 16, c * ts, r * ts, ts, ts);
+                    } else if (spriteName) {
+                        renderer.drawTile(spriteName, c * ts + ts / 2, r * ts + ts / 2, ts);
+                    }
+                } else if (spriteName) {
                     if (tile === TILE.TREE || tile === TILE.CACTUS) {
                         renderer.drawSprite(spriteName, c * ts + ts / 2, r * ts + ts / 2, ts);
-                    } else if (this.themeTileset && (tile === TILE.GRASS || tile === TILE.SAND || tile === TILE.SNOW || tile === TILE.PATH || tile === TILE.FLOOR)) {
-                        // Variety: Pick one of the 16 tiles in the 4x4 tileset grid based on world coordinates (for stability)
-                        const variantX = (c % 4) * 16;
-                        const variantY = (r % 4) * 16;
-                        const img = Assets.get(this.themeTileset);
-                        if (img && img.complete) {
-                            ctx.drawImage(img, variantX, variantY, 16, 16, c * ts, r * ts, ts, ts);
-                        } else {
-                            renderer.drawTile(spriteName, c * ts + ts / 2, r * ts + ts / 2, ts);
-                        }
                     } else {
                         renderer.drawTile(spriteName, c * ts + ts / 2, r * ts + ts / 2, ts);
                     }
                 }
 
-                // Premium Detail: Wall depth
                 if (tile === TILE.WALL) {
                     ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                    ctx.fillRect(c * ts, (r + 1) * ts - 2, ts, 2); // bottom shadow
-                    ctx.fillStyle = 'rgba(255,255,255,0.05)';
-                    ctx.fillRect(c * ts, r * ts, ts, 1); // top highlight
+                    ctx.fillRect(c * ts, (r + 1) * ts - 2, ts, 2);
                 }
             }
         }
-
-        // Premium Ambient Lighting Overlay
-        const cx = camera.x + camera.w / 2;
-        const cy = camera.y + camera.h / 2;
-
         camera.reset(ctx);
     }
 
