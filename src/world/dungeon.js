@@ -34,19 +34,20 @@ export class Dungeon {
     generate(zoneLevel = 1, theme = 'cathedral') {
         this.zoneLevel = zoneLevel;
         this.theme = theme;
+        const isTown = (zoneLevel === 0 || zoneLevel === 6 || zoneLevel === 11 || zoneLevel === 16 || zoneLevel === 21);
         
-        // Map themes to PixelLab tilesets
+        // Map themes to PixelLab tilesets (Differentiating Town vs Wilderness)
         const tilesetMap = {
             'cathedral': 'tileset_act1_wilderness',
-            'desert': 'tileset_act2_desert',
-            'jungle': 'tileset_act3_jungle',
-            'hell': 'tileset_act4_hell',
-            'snow': 'tileset_act5_snow',
+            'desert': isTown ? 'tileset_act2_town' : 'tileset_act2_desert',
+            'jungle': isTown ? 'tileset_act3_town' : 'tileset_act3_jungle',
+            'hell': isTown ? 'tileset_act4_town' : 'tileset_act4_hell',
+            'snow': isTown ? 'tileset_act5_town' : 'tileset_act5_snow',
             'town': 'tileset_act1_town'
         };
-        this.themeTileset = tilesetMap[theme] || null;
+        this.themeTileset = tilesetMap[theme] || 'tileset_act1_wilderness';
 
-        if (zoneLevel === 0 || zoneLevel === 6 || zoneLevel === 11 || zoneLevel === 16 || zoneLevel === 21) {
+        if (isTown) {
             return this.generateTown(theme, zoneLevel);
         }
         if (zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0)) return this.generateBossRoom(theme, zoneLevel);
@@ -174,28 +175,28 @@ export class Dungeon {
 
                 // Inject Unique Mini-Bosses into normal zones
                 if (isBoss) {
-                    if (zoneLevel === 7) { spawn.name = "Radament"; spawn.icon = "enemy_skeleton"; spawn.isRadament = true; spawn.hpMult = 3.0; }
-                    if (zoneLevel === 8) { spawn.name = "Beetleburst"; spawn.icon = "enemy_spider"; spawn.isBeetleburst = true; spawn.hpMult = 2.5; }
+                    if (zoneLevel === 7) { spawn.name = "Radament"; spawn.icon = "boss_radament"; spawn.isRadament = true; spawn.hpMult = 3.0; }
+                    if (zoneLevel === 8) { spawn.name = "Beetleburst"; spawn.icon = "boss_beetleburst"; spawn.isBeetleburst = true; spawn.hpMult = 2.5; }
                     if (zoneLevel === 9) { spawn.name = "Coldworm the Burrower"; spawn.icon = "enemy_spider"; spawn.isColdworm = true; spawn.hpMult = 3.0; }
                     if (zoneLevel === 13) { spawn.name = "Battlemaid Sarina"; spawn.icon = "enemy_ghost"; spawn.isSarina = true; spawn.hpMult = 2.5; }
                     if (zoneLevel === 14) { spawn.name = "Toorc Icefist"; spawn.icon = "enemy_skeleton"; spawn.isCouncil = true; spawn.hpMult = 4.0; }
-                    if (zoneLevel === 22) { spawn.name = "Shenk the Overseer"; spawn.icon = "enemy_demon"; spawn.isShenk = true; spawn.hpMult = 3.5; }
+                    if (zoneLevel === 22) { spawn.name = "Shenk the Overseer"; spawn.icon = "boss_shenk"; spawn.isShenk = true; spawn.hpMult = 3.5; }
                     if (zoneLevel === 23) { spawn.name = "Frozenstein"; spawn.icon = "enemy_demon"; spawn.isFrozenstein = true; spawn.hpMult = 3.5; }
                     
                     // Act I Unique: The Butcher in Zone 5 (Second to last room)
                     if (zoneLevel === 5 && i === this.rooms.length - 2 && Math.random() < 0.3) {
                         spawn.name = "The Butcher";
-                        spawn.icon = "enemy_demon";
+                        spawn.icon = "boss_the_butcher";
                         spawn.isButcher = true;
                         spawn.hpMult = 5.0;
                     }
 
                     // Act IV Unique Bosses
                     if (zoneLevel === 18 && i === this.rooms.length - 1) {
-                        spawn.name = "Izual"; spawn.icon = "enemy_ghost"; spawn.isIzual = true; spawn.hpMult = 6.0;
+                        spawn.name = "Izual"; spawn.icon = "boss_izual"; spawn.isIzual = true; spawn.hpMult = 6.0;
                     }
                     if (zoneLevel === 19 && i === this.rooms.length - 1) {
-                        spawn.name = "Hephaisto"; spawn.icon = "enemy_demon"; spawn.isHephaisto = true; spawn.hpMult = 6.0;
+                        spawn.name = "Hephaisto"; spawn.icon = "boss_hephaisto"; spawn.isHephaisto = true; spawn.hpMult = 6.0;
                         // Inject Hellforge Object nearby
                         this.objectSpawns.push({ id: 'hellforge', type: 'hellforge', name: 'The Hellforge', x: spawn.x + 60, y: spawn.y, icon: 'obj_altar' });
                     }

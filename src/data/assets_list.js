@@ -6,6 +6,7 @@ export const ASSET_NAMES = [
     'enemy_golem', 'enemy_skeleton', 'enemy_spider', 'enemy_zombie', 'enemy_wraith',
     'boss_diablo', 'boss_andariel', 'boss_duriel', 'boss_the_butcher', 'boss_mephisto', 
     'boss_baal', 'boss_leoric', 'boss_angry_jano', 'boss_demon_wirt',
+    'boss_radament', 'boss_beetleburst', 'boss_shenk', 'boss_hephaisto', 'boss_izual',
     'summon_skeleton', 'summon_skeleton_mage', 'summon_clay_golem', 'summon_blood_golem', 
     'summon_iron_golem', 'summon_spirit_wolf', 'summon_dire_wolf', 'summon_grizzly', 
     'summon_valkyrie', 'summon_voidwalker',

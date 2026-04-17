@@ -1,0 +1,30 @@
+{
+  "character": {
+    "id": "27375161-6d87-4f88-9f02-c10b6651d489",
+    "name": "Izual",
+    "prompt": "Izual: fallen angel with tattered blue energy wings, corrupted silver plate armor, holding a long azure blade, mournful but dangerous look, pixel art for ARPG",
+    "size": {
+      "width": 68,
+      "height": 68
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-17T03:41:40.63363+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {}
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-17T03:43:52.364122"
+}
