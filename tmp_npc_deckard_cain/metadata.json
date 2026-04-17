@@ -1,16 +1,16 @@
 {
   "character": {
-    "id": "f73581cc-b48d-448d-89cc-9196a9f85072",
-    "name": "Boss Andariel",
-    "prompt": "Andariel, Maiden of Anguish: tall demonic woman with four large bone-spikes/stingers emerging from her back, long red hair, dark fantasy, pro mode, 96px, low top-down view",
+    "id": "2b2b979f-373a-47f1-a7e0-0c803184bcb7",
+    "name": "NPC Deckard Cain",
+    "prompt": "Deckard Cain: old wise scholar in brown robes, long white beard, holding a large ancient book and a cane, pixel art, pro mode, 48x48, low top-down view",
     "size": {
-      "width": 144,
-      "height": 144
+      "width": 76,
+      "height": 76
     },
     "template_id": "mannequin",
     "directions": 8,
     "view": "low top-down",
-    "created_at": "2026-04-16T23:42:41.962476+00:00"
+    "created_at": "2026-04-17T01:36:02.490799+00:00"
   },
   "frames": {
     "rotations": {
@@ -26,5 +26,5 @@
     "animations": {}
   },
   "export_version": "2.0",
-  "export_date": "2026-04-17T01:41:40.991175"
+  "export_date": "2026-04-17T01:42:22.822367"
 }

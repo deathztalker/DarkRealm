@@ -223,31 +223,50 @@ export class Renderer {
         this.ctx.drawImage(img, x + jitterX - size / 2, y + jitterY - size / 2, size, size);
     }
 
-    // Draw frame from Spritesheet
+    // Draw frame from Spritesheet (Compatible with Pro 7x16 grid)
     drawAnim(spriteName, x, y, size, state, dir, time, filter = null, equipment = null, hitFlash = 0) {
         const img = Assets.get(spriteName);
-        if (!img || !img.complete || img.naturalWidth === 0 || img.width <= 64 || img.width === img.height) {
-            this.drawSprite(spriteName, x, y, size, state === 'idle', time, filter);
-            
-            // Dynamic Equipment Layering — Canvas-drawn overlays
-            if (equipment) {
-                const ctx = this.ctx;
-                ctx.save();
-                
-                // Multi-layered filters
-                let combinedFilter = filter || '';
-                if (hitFlash > 0) {
-                    combinedFilter += ' brightness(5)';
-                }
-                if (combinedFilter) ctx.filter = combinedFilter.trim();
-                
-                const anim = state === 'walk';
-                const bob = anim ? Math.sin(time * 0.005) * 2 : 0;
-                const drawY = y + bob;
+        if (!img || !img.complete || img.naturalWidth === 0) return;
 
-                // Helper: get color from armor type
-                const armorColor = (item) => {
-                    if (!item) return null;
+        // If it's a single image, use drawSprite
+        if (img.width === img.height || img.width <= 64) {
+            this.drawSprite(spriteName, x, y, size, state === 'idle', time, filter);
+            return;
+        }
+
+        // Pro Grid: 7 columns, 16 rows. Cell size is img.width / 7
+        const sw = img.width / 7;
+        const sh = img.height / 16;
+        
+        // Direction mapping for PixelLab (0: North, 1: West, 2: South, 3: East)
+        const dirMap = { 'up': 0, 'left': 1, 'down': 2, 'right': 3 };
+        const dIdx = dirMap[dir] !== undefined ? dirMap[dir] : 2; // Default South
+
+        // Row mapping (Idle: 0-3, Walk: 8-11, Attack: 12-15)
+        let row = dIdx; // Default Idle
+        if (state === 'walk') row = 8 + dIdx;
+        if (state === 'attack') row = 12 + dIdx;
+
+        // Column calculation (Animation Frame)
+        const frameCount = 6; // Most walk/attack have 6 frames
+        const animSpeed = state === 'attack' ? 0.015 : 0.008;
+        const col = Math.floor(time * animSpeed) % frameCount;
+
+        const sx = col * sw;
+        const sy = row * sh;
+
+        this.ctx.save();
+        if (filter) this.ctx.filter = filter;
+        if (hitFlash > 0) this.ctx.filter = (filter || '') + ' brightness(5)';
+
+        // Draw shadow
+        this.drawShadow(x, y + size * 0.4, size * 0.6);
+
+        // Draw character (Scale to requested size)
+        this.ctx.drawImage(img, sx, sy, sw, sh, x - size, y - size, size * 2, size * 2);
+        
+        this.ctx.restore();
+    }
                     const t = item.type || item.icon || '';
                     if (t.includes('plate') || t.includes('chain') || t.includes('gauntlet') || t.includes('war_boot')) return '#a0a0a8';
                     if (t.includes('robe') || t.includes('circlet')) return '#6040a0';
