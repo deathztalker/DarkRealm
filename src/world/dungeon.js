@@ -1,6 +1,7 @@
 /**
  * Dungeon Generator — BSP room-corridor procedural generation
  */
+import { Assets } from '../engine/renderer.js';
 
 export const TILE = { FLOOR: 0, WALL: 1, DOOR: 2, STAIRS_DOWN: 3, STAIRS_UP: 4, SPAWN: 5, GRASS: 6, PATH: 7, WATER: 8, TREE: 9, BRIDGE: 10, SAND: 11, CACTUS: 12, LAVA: 13, SNOW: 14, ICE: 15 };
 const TILE_ICONS = { 0: '·', 1: '█', 2: '+', 3: '▼', 4: '▲' };
