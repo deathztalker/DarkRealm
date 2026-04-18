@@ -2,6 +2,7 @@
  * Loot System — D2-style item generation with affixes, skill bonuses, sockets
  */
 import { ITEM_BASES, SOCKET_MAX } from '../data/items.js';
+import { RUNES } from '../data/runes.js';
 import { AFFIXES, getAffixPool, rollAffix } from '../data/affixes.js';
 import { bus } from '../engine/EventBus.js';
 

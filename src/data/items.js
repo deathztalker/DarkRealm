@@ -92,3 +92,20 @@ export const ITEM_BASES = {
     hellforge_hammer: { name: "Hellforge Hammer", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_war_hammer_hd', minDmg: 8, maxDmg: 20, atkSpd: 0.8, req: { str: 20 }, size: [1, 3], flavor: '"Only this hammer can shatter a Prime Evil\'s soulstone."', identified: true },
     hellfire_torch: { name: "Hellfire Torch", slot: 'charm', type: 'charm', icon: 'item_charm_grand', size: [1, 3], rarity: 'unique', identified: true, flavor: '"The ultimate prize for those who conquered Hell\'s fury."' },
 };
+
+export const SOCKET_MAX = {
+    axe: 4,
+    sword: 4,
+    mace: 4,
+    staff: 4,
+    wand: 2,
+    bow: 4,
+    dagger: 2,
+    club: 3,
+    armor: 4,
+    helm: 3,
+    shield: 3
+};
+
+export const items = ITEM_BASES;
+
