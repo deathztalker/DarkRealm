@@ -26,6 +26,7 @@ export const RUNES = {
     sol: { name: 'Sol', icon: 'item_amulet', tier: 3, dropLvl: 33, bonuses: { weapon: { flatMinDmg: 9, flatMaxDmg: 9 }, armor: { flatHP: 60 } } },
     shael: { name: 'Shael', icon: 'item_ring', tier: 3, dropLvl: 36, bonuses: { weapon: { pctIAS: 20 }, armor: { pctMoveSpeed: 10 } } },
     dol: { name: 'Dol', icon: 'item_ring', tier: 3, dropLvl: 39, bonuses: { weapon: { fearOnHit: true }, armor: { lifeRegenPerSec: 7 } } },
+    io: { name: 'Io', icon: 'item_amulet', tier: 3, dropLvl: 42, bonuses: { weapon: { flatVIT: 10 }, armor: { flatVIT: 10 } } },
 
     // Tier 4 — Elder (very rare, skill bonuses)
     lum: { name: 'Lum', icon: 'item_amulet', tier: 4, dropLvl: 45, bonuses: { weapon: { flatMP: 40 }, armor: { flatMP: 60 } } },
@@ -35,12 +36,18 @@ export const RUNES = {
     pul: { name: 'Pul', icon: 'item_amulet', tier: 4, dropLvl: 57, bonuses: { weapon: { pctDmg: 75 }, armor: { allRes: 10 } } },
     um: { name: 'Um', icon: 'item_amulet', tier: 4, dropLvl: 60, bonuses: { weapon: { allRes: 15 }, armor: { allRes: 22 } } },
     mal: { name: 'Mal', icon: 'item_ring', tier: 4, dropLvl: 63, bonuses: { weapon: { preventHealing: true }, armor: { flatHP: 80 } } },
+    ist: { name: 'Ist', icon: 'item_amulet', tier: 4, dropLvl: 66, bonuses: { weapon: { magicFind: 30 }, armor: { magicFind: 25 } } },
 
     // Tier 5 — Ancient (+skill bonuses, top tier)
-    ist: { name: 'Ist', icon: 'item_amulet', tier: 5, dropLvl: 70, bonuses: { weapon: { magicFind: 30 }, armor: { magicFind: 25 } } },
-    gul: { name: 'Gul', icon: 'item_amulet', tier: 5, dropLvl: 73, bonuses: { weapon: { flatMaxDmg: 20, pctDmg: 20 }, armor: { allSkillBonus: 1 } } },
-    vex: { name: 'Vex', icon: 'item_ring', tier: 5, dropLvl: 76, bonuses: { weapon: { manaStealPct: 7 }, armor: { allSkillBonus: 1 } } },
-    zod: { name: 'Zod', icon: 'item_ring', tier: 5, dropLvl: 80, bonuses: { weapon: { allSkillBonus: 1 }, armor: { allSkillBonus: 2 } } },
+    gul: { name: 'Gul', icon: 'item_amulet', tier: 5, dropLvl: 70, bonuses: { weapon: { flatMaxDmg: 20, pctDmg: 20 }, armor: { allSkillBonus: 1 } } },
+    vex: { name: 'Vex', icon: 'item_ring', tier: 5, dropLvl: 73, bonuses: { weapon: { manaStealPct: 7 }, armor: { allSkillBonus: 1 } } },
+    ohm: { name: 'Ohm', icon: 'item_ring', tier: 5, dropLvl: 76, bonuses: { weapon: { pctDmg: 50 }, armor: { pctMaxColdRes: 5 } } },
+    lo: { name: 'Lo', icon: 'item_ring', tier: 5, dropLvl: 79, bonuses: { weapon: { critChance: 20 }, armor: { pctMaxLightRes: 5 } } },
+    sur: { name: 'Sur', icon: 'item_ring', tier: 5, dropLvl: 82, bonuses: { weapon: { blindOnHit: true }, armor: { pctMaxMP: 5 } } },
+    ber: { name: 'Ber', icon: 'item_amulet', tier: 5, dropLvl: 85, bonuses: { weapon: { crushingBlow: 20 }, armor: { pctDmgRed: 8 } } },
+    jah: { name: 'Jah', icon: 'item_amulet', tier: 5, dropLvl: 88, bonuses: { weapon: { ignoreTargetDefense: true }, armor: { pctMaxHP: 5 } } },
+    cham: { name: 'Cham', icon: 'item_ring', tier: 5, dropLvl: 91, bonuses: { weapon: { freezeOnHit: true }, armor: { cannotBeFrozen: true } } },
+    zod: { name: 'Zod', icon: 'item_ring', tier: 5, dropLvl: 95, bonuses: { weapon: { indestructible: true }, armor: { allSkillBonus: 2 } } },
 };
 
 /**
@@ -61,6 +68,24 @@ export const RUNEWORDS = [
         flavor: 'Move unseen, strike without mercy.'
     },
     {
+        id: 'leaf', name: 'Leaf', runes: ['tir', 'ral'],
+        allowedTypes: ['staff'],
+        bonuses: { allSkillBonus: 1, pctFireDmg: 50, coldRes: 33, manaOnKill: 2 },
+        flavor: 'Burn the world to ashes.'
+    },
+    {
+        id: 'lore', name: 'Lore', runes: ['ort', 'sol'],
+        allowedTypes: ['head'],
+        bonuses: { allSkillBonus: 1, lightRes: 30, manaOnKill: 2, flatHP: 10 },
+        flavor: 'Knowledge is the greatest weapon.'
+    },
+    {
+        id: 'white', name: 'White', runes: ['dol', 'io'],
+        allowedTypes: ['wand'],
+        bonuses: { allSkillBonus: 2, pctMoveSpeed: 20, pctVIT: 10, pctFCR: 20 },
+        flavor: 'A bleached bone, whispering secrets of the void.'
+    },
+    {
         id: 'edge', name: 'Edge', runes: ['tir', 'tal', 'amn'],
         allowedTypes: ['bow'],
         bonuses: { fireRes: 35, lifeStealPct: 7, pctDmg: 35, manaOnKill: 2 },
@@ -68,8 +93,8 @@ export const RUNEWORDS = [
     },
     {
         id: 'spirit', name: 'Spirit', runes: ['tal', 'thul', 'ort', 'amn'],
-        allowedTypes: ['shield', 'source'],
-        bonuses: { allSkillBonus: 2, flatMP: 89, flatHP: 25, critChance: 3, allRes: 5 },
+        allowedTypes: ['shield', 'sword', 'source'],
+        bonuses: { allSkillBonus: 2, flatMP: 89, flatHP: 25, critChance: 3, allRes: 10 },
         flavor: 'Four runes bound with ancient will. Prized by all spellcasters.'
     },
     {
@@ -80,7 +105,7 @@ export const RUNEWORDS = [
     },
     {
         id: 'infinity', name: 'Infinity', runes: ['ber', 'mal', 'ber', 'ist'],
-        allowedTypes: ['weapon'],
+        allowedTypes: ['axe', 'sword', 'mace', 'spear', 'staff'],
         bonuses: { pctDmg: 255, critChance: 8, allRes: 55, pctArmor: 35, magicFind: 15 },
         flavor: 'A weapon of legend — coveted by those who command lightning.'
     },
@@ -91,22 +116,10 @@ export const RUNEWORDS = [
         flavor: 'The riddle of all power, woven into a cloak of darkness.'
     },
     {
-        id: 'wisdom', name: 'Wisdom', runes: ['pul', 'ith', 'eld'],
-        allowedTypes: ['helm'],
-        bonuses: { allSkillBonus: 1, lifeStealPct: 5, pctManaSteal: 5, pctDmg: 15 },
-        flavor: 'Clarity of mind purchased with rivers of blood.'
-    },
-    {
-        id: 'tempest', name: 'Tempest', runes: ['ort', 'shael', 'ko', 'vex'],
-        allowedTypes: ['totem', 'staff'],
-        bonuses: { allSkillBonus: 2, pctLightDmg: 40, pctIAS: 20, critChance: 5, flatMP: 50 },
-        flavor: "Channel the storm through the shaman's conduit."
-    },
-    {
-        id: 'bone', name: 'Bone', runes: ['sol', 'um', 'um'],
-        allowedTypes: ['armor'],
-        bonuses: { allSkillBonus: 1, flatHP: 100, allRes: 25, flatArmor: 50 },
-        flavor: 'Armor of the dead, comfort to the necromancer.'
+        id: 'fortitude', name: 'Fortitude', runes: ['el', 'sol', 'dol', 'lo'],
+        allowedTypes: ['armor', 'sword', 'axe', 'mace'],
+        bonuses: { pctDmg: 300, pctArmor: 200, allRes: 25, flatHP: 200 },
+        flavor: 'An immovable mountain, an unstoppable storm.'
     },
 ];
 
@@ -114,7 +127,8 @@ export function getRune(id) { return RUNES[id]; }
 
 export function findRuneword(insertedRunes, itemType) {
     return RUNEWORDS.find(rw => {
-        if (!rw.allowedTypes.some(t => itemType.includes(t))) return false;
+        const itemTypeLower = itemType.toLowerCase();
+        if (!rw.allowedTypes.some(t => itemTypeLower.includes(t))) return false;
         if (rw.runes.length !== insertedRunes.length) return false;
         return rw.runes.every((r, i) => r === insertedRunes[i]);
     }) || null;

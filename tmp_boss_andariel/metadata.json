@@ -23,8 +23,29 @@
       "west": "rotations/west.png",
       "south-west": "rotations/south-west.png"
     },
-    "animations": {}
+    "animations": {
+      "walking-219f60b9": {
+        "south": [
+          "animations/walking-219f60b9/south/frame_000.png",
+          "animations/walking-219f60b9/south/frame_001.png",
+          "animations/walking-219f60b9/south/frame_002.png",
+          "animations/walking-219f60b9/south/frame_003.png",
+          "animations/walking-219f60b9/south/frame_004.png",
+          "animations/walking-219f60b9/south/frame_005.png"
+        ]
+      },
+      "walking-32229da5": {
+        "south-west": [
+          "animations/walking-32229da5/south-west/frame_000.png",
+          "animations/walking-32229da5/south-west/frame_001.png",
+          "animations/walking-32229da5/south-west/frame_002.png",
+          "animations/walking-32229da5/south-west/frame_003.png",
+          "animations/walking-32229da5/south-west/frame_004.png",
+          "animations/walking-32229da5/south-west/frame_005.png"
+        ]
+      }
+    }
   },
   "export_version": "2.0",
-  "export_date": "2026-04-17T01:41:40.991175"
+  "export_date": "2026-04-18T02:19:57.873571"
 }

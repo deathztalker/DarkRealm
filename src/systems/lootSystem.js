@@ -657,6 +657,40 @@ export class LootSystem {
             return newItem;
         }
 
+        // Recipe: 3 Same Items -> Next Tier (Runes or Gems)
+        if (items.length === 3) {
+            const it1 = items[0];
+            const allSame = items.every(it => it.baseId === it1.baseId);
+            
+            if (allSame) {
+                if (it1.type === 'rune') {
+                    const runeKeys = ['el', 'eld', 'tir', 'nef', 'eth', 'ith', 'tal', 'ral', 'ort', 'thul', 'amn', 'sol', 'shael', 'dol', 'hel', 'io', 'lum', 'ko', 'fal', 'lem', 'pul', 'um', 'mal', 'ist', 'gul', 'vex', 'ohm', 'lo', 'sur', 'ber', 'jah', 'cham', 'zod'];
+                    const current = it1.baseId.replace('rune_', '');
+                    const idx = runeKeys.indexOf(current);
+                    if (idx !== -1 && idx < runeKeys.length - 1) {
+                        const nextId = 'rune_' + runeKeys[idx + 1];
+                        return { ...RUNES[runeKeys[idx+1]], id: nextId, baseId: nextId, type: 'rune', rarity: RARITY.UNIQUE };
+                    }
+                }
+                
+                if (it1.type === 'gem') {
+                    const gemTypes = ['ruby', 'sapphire', 'topaz', 'emerald', 'diamond', 'skull', 'amethyst'];
+                    const tiers = ['chipped', 'flawed', 'normal', 'flawless', 'perfect'];
+                    const currentBase = it1.baseId; 
+                    const gemType = gemTypes.find(t => currentBase.includes(t));
+                    const tier = tiers.find(t => currentBase.includes(t));
+                    
+                    if (gemType && tier) {
+                        const tierIdx = tiers.indexOf(tier);
+                        if (tierIdx < tiers.length - 1) {
+                            const nextBase = `${gemType}_${tiers[tierIdx + 1]}`;
+                            return this._buildItem(nextBase, ITEM_BASES[nextBase], RARITY.NORMAL, it1.level || 1);
+                        }
+                    }
+                }
+            }
+        }
+
         return null; // Invalid recipe
     }
 

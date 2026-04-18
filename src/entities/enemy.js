@@ -46,7 +46,7 @@ const BOSS_POOL = [
     { id: 'uber_mephisto', name: 'Uber Mephisto', hpMult: 60, dmgMult: 12, xpMult: 100, icon: 'boss_mephisto', isUber: true },
     { id: 'uber_diablo', name: 'Uber Diablo', hpMult: 80, dmgMult: 15, xpMult: 150, icon: 'boss_diablo', isUber: true },
     { id: 'uber_baal', name: 'Uber Baal', hpMult: 100, dmgMult: 14, xpMult: 200, icon: 'boss_baal', isUber: true },
-    { id: 'cow_king', name: 'The Cow King', hpMult: 25, dmgMult: 6, xpMult: 50, special: 'lightning_enchanted', icon: 'enemy_zombie' },
+    { id: 'cow_king', name: 'The Cow King', hpMult: 25, dmgMult: 6, xpMult: 50, special: 'lightning_enchanted', icon: 'boss_cow_king' },
     { id: 'angry_jano', name: 'Angry Jano', hpMult: 35, dmgMult: 8, xpMult: 100, icon: 'boss_angry_jano', special: 'berserker', deathSound: 'assets/death_jano.mp3' },
     { id: 'demon_wirt', name: 'Wirt the Fallen', hpMult: 15, dmgMult: 10, xpMult: 80, icon: 'boss_demon_wirt', special: 'extra_fast' },
 ];
@@ -132,7 +132,8 @@ export class Enemy {
         this.lostTargetTimer = 0; // Timer for losing LOS
 
         const scale = 1 + (this.level - 1) * 0.12;
-        const riftScale = (this.level >= 7 && window.riftLevel > 1) ? Math.pow(1.18, window.riftLevel - 1) : 1.0;
+        const currentRiftDepth = (this.level >= 7 && window.zoneLevel >= 7) ? (window.zoneLevel - 6) : 0;
+        const riftScale = currentRiftDepth > 0 ? Math.pow(1.25, currentRiftDepth) : 1.0;
         const diffMult = (window._difficulty !== undefined ? window.DIFFICULTY_MULT[window._difficulty] : 1.0) * riftScale;
 
         const eliteScale = this.type === 'boss' ? 2.2 : (this.type === 'elite' ? 1.4 : 1.0);
@@ -164,9 +165,13 @@ export class Enemy {
             const dmgm = spawn.dmgMult || bossSource.dmgMult || 3;
             const xpm = spawn.xpMult || bossSource.xpMult || 20;
 
-            this.maxHp = Math.round(base.hp * scale * hpm * diffMult);
-            this.dmg = Math.round(base.dmg * scale * dmgm * diffMult);
-            this.xpReward = Math.round(base.xp * scale * xpm * (1 + (window._difficulty || 0) * 0.5));
+            // Extra scaling for Rift Guardians
+            const guardianBonus = spawn.isRiftGuardian ? 1.5 : 1.0;
+
+            this.maxHp = Math.round(base.hp * scale * hpm * diffMult * guardianBonus);
+            this.dmg = Math.round(base.dmg * scale * dmgm * diffMult * guardianBonus);
+            this.xpReward = Math.round(base.xp * scale * xpm * (1 + (window._difficulty || 0) * 0.5) * riftScale);
+            this.isRiftGuardian = spawn.isRiftGuardian || false;
 
             // Set specific boss flags for special AI behaviors
             this.isAndariel = spawn.isAndariel || bossSource.id === 'andariel';
@@ -600,6 +605,59 @@ export class Enemy {
                 }
             }
 
+            // Butcher's Slam
+            if (this.isButcher && Math.random() < 0.03) {
+                 bus.emit('combat:log', { text: "FRESH MEAT! Butcher slams the ground!", type: 'log-crit' });
+                 if (fx) fx.emitShockwave(this.x, this.y, 100, '#ff0000');
+                 const dist = Math.hypot(player.x - this.x, player.y - this.y);
+                 if (dist < 100) bus.emit('combat:applyStatus', { target: player, effect: 'stun', duration: 1.5 });
+            }
+
+            // Cow King's Lightning Shockwave
+            if (this.name === "The Cow King" && Math.random() < 0.04) {
+                 bus.emit('combat:log', { text: "Moo! Lightning erupts!", type: 'log-crit' });
+                 if (fx) fx.emitShockwave(this.x, this.y, 120, '#ffff00');
+                 const dist = Math.hypot(player.x - this.x, player.y - this.y);
+                 if (dist < 120) bus.emit('combat:applyDamage', { attacker: this, target: player, dealt: this.dmg, type: 'lightning' });
+            }
+
+            // Shenk's Artillery Barrage
+            if (this.isShenk && Math.random() < 0.03) {
+                 bus.emit('combat:log', { text: "Shenk calls for artillery!", type: 'log-crit' });
+                 for(let i=0; i<3; i++) {
+                     setTimeout(() => {
+                         if (this.state === 'dead') return;
+                         bus.emit('combat:spawnAoE', { x: player.x, y: player.y, radius: 40, element: 'fire', dmg: this.dmg * 1.5, duration: 1 });
+                     }, i * 600);
+                 }
+            }
+
+            // Ancient's Leap Attack
+            if (this.isAncient && Math.random() < 0.02) {
+                 const dist = Math.hypot(player.x - this.x, player.y - this.y);
+                 if (dist > 60) {
+                     this.x = player.x; this.y = player.y;
+                     if (fx) fx.emitBurst(this.x, this.y, '#ffffff', 15, 2);
+                     bus.emit('combat:applyDamage', { attacker: this, target: player, dealt: this.dmg * 2, type: 'physical' });
+                     bus.emit('combat:log', { text: `${this.name} Leaps!`, type: 'log-dmg' });
+                 }
+            }
+
+            // Baal's Final Assault (Mana Burn & Summons)
+            if (this.isBaal && Math.random() < 0.04) {
+                 bus.emit('combat:log', { text: "Baal burns your mana!", type: 'log-dmg' });
+                 player.mp = Math.max(0, player.mp - 50);
+                 if (fx) fx.emitBurst(player.x, player.y, '#aa00ff', 10, 2);
+            }
+            if (this.isBaal && Math.random() < 0.02) {
+                 bus.emit('combat:log', { text: "Baal summons Festering Appendages!", type: 'log-crit' });
+                 for(let i=0; i<4; i++) {
+                     const ang = (Math.PI*2/4) * i;
+                     const tx = this.x + Math.cos(ang)*80, ty = this.y + Math.sin(ang)*80;
+                     bus.emit('combat:spawnEnemy', { type: 'tentacle', x: tx, y: ty, level: this.level });
+                 }
+            }
+
             // --- Phase 30 Mastery: Endgame Boss Skills ---
             if (this.isDiablo && Math.random() < 0.03) {
                 bus.emit('combat:log', { text: "Diablo unleashes Fire Nova!", type: 'log-crit' });
@@ -987,6 +1045,10 @@ export class Enemy {
         if (this.isIzual) {
             bus.emit('campaign:flag', { flag: 'izual_freed' });
             bus.emit('log:add', { text: "Izual's soul is freed! Return to Tyrael for your reward.", cls: 'log-level' });
+        }
+        if (this.isShenk) {
+            bus.emit('campaign:flag', { flag: 'shenk_slain' });
+            bus.emit('log:add', { text: "Shenk the Overseer is dead! Harrogath's siege is broken.", cls: 'log-level' });
         }
         if (this.isDenBoss) {
             bus.emit('campaign:flag', { flag: 'den_cleared' });

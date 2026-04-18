@@ -176,10 +176,10 @@ export class Dungeon {
 
                     // Act IV Unique Bosses
                     if (zoneLevel === 18 && i === this.rooms.length - 1) {
-                        spawn.name = "Izual"; spawn.icon = "enemy_ghost"; spawn.isIzual = true; spawn.hpMult = 6.0;
+                        spawn.name = "Izual"; spawn.icon = "boss_izual"; spawn.isIzual = true; spawn.hpMult = 8.0; spawn.dmgMult = 4.0;
                     }
                     if (zoneLevel === 19 && i === this.rooms.length - 1) {
-                        spawn.name = "Hephaisto"; spawn.icon = "enemy_demon"; spawn.isHephaisto = true; spawn.hpMult = 6.0;
+                        spawn.name = "Hephaisto"; spawn.icon = "boss_hephaisto"; spawn.isHephaisto = true; spawn.hpMult = 8.0; spawn.dmgMult = 5.0;
                         // Inject Hellforge Object nearby
                         this.objectSpawns.push({ id: 'hellforge', type: 'hellforge', name: 'The Hellforge', x: spawn.x + 60, y: spawn.y, icon: 'obj_altar' });
                     }
@@ -539,6 +539,11 @@ export class Dungeon {
                 const bx = (room.x + Math.floor(Math.random() * room.w)) * this.tileSize;
                 const by = (room.y + Math.floor(room.h / 2)) * this.tileSize;
                 this.objectSpawns.push({ type: 'breakable', x: bx, y: by, icon });
+            }
+        }
+    }
+}
+sh({ type: 'breakable', x: bx, y: by, icon });
             }
         }
     }

@@ -152,6 +152,13 @@ export class Mercenary {
     update(dt, player, enemies, dungeon) {
         if (this.hp <= 0) return;
 
+        // --- Wave 3 Mastery: Mercenary Auras ---
+        this._auraTimer = (this._auraTimer || 0) - dt;
+        if (this._auraTimer <= 0) {
+            this._auraTimer = 1.5;
+            this._applyAura(player, enemies);
+        }
+
         // Auto-level with player (if lower level)
         if (player && player.level > this.level) {
             this.level = player.level;
@@ -218,25 +225,33 @@ export class Mercenary {
     render(renderer, time) {
         if (this.hp <= 0) return;
 
+        // Shadow circle
+        renderer.ctx.save();
+        renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        renderer.ctx.beginPath();
+        renderer.ctx.ellipse(this.x, this.y, 8, 4, 0, 0, Math.PI*2);
+        renderer.ctx.fill();
+        renderer.ctx.restore();
+
         // Map facing direction
         const mx = (this.target ? this.target.x : 0) - this.x;
         const my = (this.target ? this.target.y : 0) - this.y;
-        let dir = 'down';
+        let dir = 'south';
         if (Math.abs(mx) > Math.abs(my)) {
-            dir = mx > 0 ? 'right' : 'left';
+            dir = mx > 0 ? 'east' : 'west';
         } else {
-            dir = my > 0 ? 'down' : 'up';
+            dir = my > 0 ? 'south' : 'north';
         }
         
-        // Use the Pro Animator with scale 16 and forced IDLE
+        // Render the 7x16 PixelLab spritesheet
         renderer.drawAnim(this.icon, this.x, this.y - 4, 16, 'idle', dir, time, null, this.equipment);
         
-        // Draw HP bar
+        // Clearer HP bar for friendly units
         const hpPct = this.hp / this.maxHp;
-        renderer.ctx.fillStyle = '#000';
-        renderer.ctx.fillRect(this.x - 10, this.y - 22, 20, 3);
-        renderer.ctx.fillStyle = '#40c040';
-        renderer.ctx.fillRect(this.x - 10, this.y - 22, 20 * hpPct, 3);
+        renderer.ctx.fillStyle = '#111';
+        renderer.ctx.fillRect(this.x - 12, this.y - 25, 24, 4);
+        renderer.ctx.fillStyle = '#40c040'; // Green for friendlies
+        renderer.ctx.fillRect(this.x - 12, this.y - 25, 24 * hpPct, 4);
     }
 
     pulseAura(player) {

@@ -460,7 +460,9 @@ export class Player {
     }
 
     effectiveSkillLevel(skillId) {
-        return this.talents.effectiveLevel(skillId, this.getSkillBonus(skillId));
+        const base = this.talents.baseLevel(skillId) || 0;
+        const gearBonus = this.allSkillBonus || 0;
+        return base > 0 ? (base + gearBonus) : 0; // Only bonus if skill is unlocked
     }
 
     // ─── Movement ───
@@ -1039,7 +1041,10 @@ export class Player {
         }
 
         this._setAnimState('cast');
-        this.attackCd = 0.5; // lock anim
+        // --- Wave 3 Mastery: Faster Cast Rate (FCR) ---
+        const fcr = this.pctFCR || 0;
+        const castLock = 0.5 * (1 - Math.min(0.75, fcr / 100)); // Cap at 75% FCR reduction
+        this.attackCd = castLock;
 
         // Face target
         const dx = targetX - this.x;
@@ -1629,7 +1634,11 @@ export class Player {
             permanentResists: this.permanentResists,
             hasLarzukReward: this.hasLarzukReward,
             hasAnyaReward: this.hasAnyaReward,
-            hasImbue: this.hasImbue
+            hasImbue: this.hasImbue,
+            magicFind: this.magicFind || 0,
+            goldFind: this.goldFind || 0,
+            crushingBlow: this.crushingBlow || 0,
+            allSkillBonus: this.allSkillBonus || 0
         };
     }
 
@@ -1657,6 +1666,10 @@ export class Player {
         p.hasLarzukReward = !!data.hasLarzukReward;
         p.hasAnyaReward = !!data.hasAnyaReward;
         p.hasImbue = !!data.hasImbue;
+        p.magicFind = data.magicFind || 0;
+        p.goldFind = data.goldFind || 0;
+        p.crushingBlow = data.crushingBlow || 0;
+        p.allSkillBonus = data.allSkillBonus || 0;
 
         p._recalcStats();
         return p;

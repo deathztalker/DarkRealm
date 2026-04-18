@@ -75,19 +75,22 @@ export class TalentTree {
         return total;
     }
 
-    /** Check if a skill's prerequisite is met (Reqs + Tier) */
+    /** Check if a skill's prerequisite is met (Level + Tier + Skill Reqs) */
     reqMet(skillId) {
         const skill = this.skillMap[skillId];
         if (!skill) return true;
 
-        // 1. Tier Requirement (5 points per row)
+        // 1. Character Level Requirement
+        if (skill.level && (window.player?.level || 1) < skill.level) return false;
+
+        // 2. Tier Requirement (5 points in tree per row)
         const row = skill.row || 0;
         if (row > 0) {
             const treeId = skill.treeId;
             if (this.pointsInTree(treeId) < (row * 5)) return false;
         }
 
-        // 2. Prerequisite Requirement
+        // 3. Prerequisite Skill Requirement
         if (!skill.req) return true;
         const [reqId, reqPts] = skill.req.split(':');
         return this.baseLevel(reqId) >= parseInt(reqPts, 10);

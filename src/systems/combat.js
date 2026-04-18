@@ -48,6 +48,15 @@ export function calcDamage(attacker, baseDmg, type, defender) {
     // --- Flat min damage bonus ---
     dmg += attacker.flatMinDmg || 0;
 
+    // --- Crushing Blow (D2 classic) ---
+    if (attacker.crushingBlow > 0 && Math.random() * 100 < attacker.crushingBlow) {
+        const reductionPct = defender.type === 'boss' ? 0.10 : 0.25;
+        const cbDmg = Math.round(defender.hp * reductionPct);
+        dmg += cbDmg;
+        bus.emit('combat:log', { text: `CRUSHING BLOW! (-${Math.round(reductionPct * 100)}% HP)`, cls: 'log-crit' });
+        if (fx) fx.emitHolyBurst(defender.x, defender.y);
+    }
+
     // --- Defender resistance (magic & holy bypass) ---
     if (defender[`${type}Immune`]) {
         dmg = 0;
@@ -196,16 +205,17 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
         attacker.hp = Math.max(0, attacker.hp - reflected);
         bus.emit('combat:damage', { attacker: target, target: attacker, dealt: reflected, isCrit: false, type: 'physical', worldX: attacker.x, worldY: attacker.y });
     }
-
-    // --- Durability loss ---
-    if (attacker.isPlayer && attacker.equipment?.mainhand) {
-        const item = attacker.equipment.mainhand;
-        if (item.maxDurability > 0 && item.durability > 0 && Math.random() < 0.1) {
-            item.durability--;
-            if (item.durability === 0) bus.emit('item:broken', { item, slot: 'mainhand' });
-        }
+// --- Durability loss ---
+if (attacker.isPlayer && attacker.equipment?.mainhand) {
+    const item = attacker.equipment.mainhand;
+    const isIndestructible = item.mods && item.mods.some(m => m.stat === 'indestructible');
+    if (!isIndestructible && item.maxDurability > 0 && item.durability > 0 && Math.random() < 0.1) {
+        item.durability--;
+        if (item.durability === 0) bus.emit('item:broken', { item, slot: 'mainhand' });
     }
-    if (target.isPlayer && target.equipment) {
+}
+
+// --- Defender resistance (magic & holy bypass) ---
         const slots = ['chest', 'head', 'offhand', 'gloves', 'boots'];
         const slot = slots[Math.floor(Math.random() * slots.length)];
         const item = target.equipment[slot];

@@ -25,22 +25,6 @@
     },
     "animations": {
       "walking-60712c95": {
-        "west": [
-          "animations/walking-60712c95/west/frame_000.png",
-          "animations/walking-60712c95/west/frame_001.png",
-          "animations/walking-60712c95/west/frame_002.png",
-          "animations/walking-60712c95/west/frame_003.png",
-          "animations/walking-60712c95/west/frame_004.png",
-          "animations/walking-60712c95/west/frame_005.png"
-        ],
-        "south-west": [
-          "animations/walking-60712c95/south-west/frame_000.png",
-          "animations/walking-60712c95/south-west/frame_001.png",
-          "animations/walking-60712c95/south-west/frame_002.png",
-          "animations/walking-60712c95/south-west/frame_003.png",
-          "animations/walking-60712c95/south-west/frame_004.png",
-          "animations/walking-60712c95/south-west/frame_005.png"
-        ],
         "south": [
           "animations/walking-60712c95/south/frame_000.png",
           "animations/walking-60712c95/south/frame_001.png",
@@ -56,6 +40,22 @@
           "animations/walking-60712c95/north/frame_003.png",
           "animations/walking-60712c95/north/frame_004.png",
           "animations/walking-60712c95/north/frame_005.png"
+        ],
+        "west": [
+          "animations/walking-60712c95/west/frame_000.png",
+          "animations/walking-60712c95/west/frame_001.png",
+          "animations/walking-60712c95/west/frame_002.png",
+          "animations/walking-60712c95/west/frame_003.png",
+          "animations/walking-60712c95/west/frame_004.png",
+          "animations/walking-60712c95/west/frame_005.png"
+        ],
+        "south-west": [
+          "animations/walking-60712c95/south-west/frame_000.png",
+          "animations/walking-60712c95/south-west/frame_001.png",
+          "animations/walking-60712c95/south-west/frame_002.png",
+          "animations/walking-60712c95/south-west/frame_003.png",
+          "animations/walking-60712c95/south-west/frame_004.png",
+          "animations/walking-60712c95/south-west/frame_005.png"
         ]
       },
       "walking-8bd72b87": {
@@ -91,9 +91,41 @@
           "animations/walking-8bd72b87/north-west/frame_004.png",
           "animations/walking-8bd72b87/north-west/frame_005.png"
         ]
+      },
+      "cross_punch_attack-168c9085": {
+        "south": [
+          "animations/cross_punch_attack-168c9085/south/frame_000.png",
+          "animations/cross_punch_attack-168c9085/south/frame_001.png",
+          "animations/cross_punch_attack-168c9085/south/frame_002.png",
+          "animations/cross_punch_attack-168c9085/south/frame_003.png",
+          "animations/cross_punch_attack-168c9085/south/frame_004.png",
+          "animations/cross_punch_attack-168c9085/south/frame_005.png"
+        ],
+        "south-west": [
+          "animations/cross_punch_attack-168c9085/south-west/frame_000.png",
+          "animations/cross_punch_attack-168c9085/south-west/frame_001.png",
+          "animations/cross_punch_attack-168c9085/south-west/frame_002.png",
+          "animations/cross_punch_attack-168c9085/south-west/frame_003.png",
+          "animations/cross_punch_attack-168c9085/south-west/frame_004.png",
+          "animations/cross_punch_attack-168c9085/south-west/frame_005.png"
+        ]
+      },
+      "animating-d660ea70": {
+        "south": [
+          "animations/animating-d660ea70/south/frame_000.png",
+          "animations/animating-d660ea70/south/frame_001.png",
+          "animations/animating-d660ea70/south/frame_002.png",
+          "animations/animating-d660ea70/south/frame_003.png"
+        ],
+        "south-west": [
+          "animations/animating-d660ea70/south-west/frame_000.png",
+          "animations/animating-d660ea70/south-west/frame_001.png",
+          "animations/animating-d660ea70/south-west/frame_002.png",
+          "animations/animating-d660ea70/south-west/frame_003.png"
+        ]
       }
     }
   },
   "export_version": "2.0",
-  "export_date": "2026-04-17T01:41:07.058505"
+  "export_date": "2026-04-18T02:19:08.222055"
 }

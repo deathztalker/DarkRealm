@@ -5,7 +5,7 @@ export const ASSET_NAMES = [
     'enemy_bat', 'enemy_cultist', 'enemy_demon', 'enemy_ghost', 'enemy_goblin', 
     'enemy_golem', 'enemy_skeleton', 'enemy_spider', 'enemy_zombie', 'enemy_wraith',
     'boss_diablo', 'boss_andariel', 'boss_duriel', 'boss_the_butcher', 'boss_mephisto', 
-    'boss_baal', 'boss_leoric', 'boss_angry_jano', 'boss_demon_wirt',
+    'boss_baal', 'boss_leoric', 'boss_angry_jano', 'boss_demon_wirt', 'boss_cow_king',
     'boss_radament', 'boss_beetleburst', 'boss_shenk', 'boss_hephaisto', 'boss_izual',
     'summon_skeleton', 'summon_skeleton_mage', 'summon_clay_golem', 'summon_blood_golem', 
     'summon_iron_golem', 'summon_spirit_wolf', 'summon_dire_wolf', 'summon_grizzly', 
@@ -25,5 +25,7 @@ export const ASSET_NAMES = [
     'obj_tent_leather', 'obj_house_sandstone', 'obj_hut_stilt', 'obj_longhouse_stone', 
     'obj_pillar_holy', 'obj_tree_palm', 'obj_wagon_merchant', 'obj_stall_bazaar', 
     'obj_tree_jungle', 'obj_tree_snowy_pine',
-    'item_amulet', 'item_armor_leather', 'item_armor_plate', 'item_potion_hp', 'item_potion_mp', 'item_ring'
+    'item_amulet', 'item_armor_leather', 'item_armor_plate', 'item_potion_hp', 'item_potion_mp', 'item_ring',
+    'item_axe_hd', 'item_book_skill_hd', 'item_great_helm_hd', 'item_shield_royal_hd',
+    'mercenary_warrior', 'mercenary_archer'
 ];

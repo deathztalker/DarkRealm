@@ -23,8 +23,55 @@
       "west": "rotations/west.png",
       "south-west": "rotations/south-west.png"
     },
-    "animations": {}
+    "animations": {
+      "walking-eb5d02f0": {
+        "south-west": [
+          "animations/walking-eb5d02f0/south-west/frame_000.png",
+          "animations/walking-eb5d02f0/south-west/frame_001.png",
+          "animations/walking-eb5d02f0/south-west/frame_002.png",
+          "animations/walking-eb5d02f0/south-west/frame_003.png",
+          "animations/walking-eb5d02f0/south-west/frame_004.png",
+          "animations/walking-eb5d02f0/south-west/frame_005.png"
+        ],
+        "south": [
+          "animations/walking-eb5d02f0/south/frame_000.png",
+          "animations/walking-eb5d02f0/south/frame_001.png",
+          "animations/walking-eb5d02f0/south/frame_002.png",
+          "animations/walking-eb5d02f0/south/frame_003.png",
+          "animations/walking-eb5d02f0/south/frame_004.png",
+          "animations/walking-eb5d02f0/south/frame_005.png"
+        ]
+      },
+      "cross_punch_attack-e950037a": {
+        "south": [
+          "animations/cross_punch_attack-e950037a/south/frame_000.png",
+          "animations/cross_punch_attack-e950037a/south/frame_001.png",
+          "animations/cross_punch_attack-e950037a/south/frame_002.png",
+          "animations/cross_punch_attack-e950037a/south/frame_003.png",
+          "animations/cross_punch_attack-e950037a/south/frame_004.png",
+          "animations/cross_punch_attack-e950037a/south/frame_005.png"
+        ]
+      },
+      "walking-844b08e7": {
+        "north-west": [
+          "animations/walking-844b08e7/north-west/frame_000.png",
+          "animations/walking-844b08e7/north-west/frame_001.png",
+          "animations/walking-844b08e7/north-west/frame_002.png",
+          "animations/walking-844b08e7/north-west/frame_003.png",
+          "animations/walking-844b08e7/north-west/frame_004.png",
+          "animations/walking-844b08e7/north-west/frame_005.png"
+        ],
+        "west": [
+          "animations/walking-844b08e7/west/frame_000.png",
+          "animations/walking-844b08e7/west/frame_001.png",
+          "animations/walking-844b08e7/west/frame_002.png",
+          "animations/walking-844b08e7/west/frame_003.png",
+          "animations/walking-844b08e7/west/frame_004.png",
+          "animations/walking-844b08e7/west/frame_005.png"
+        ]
+      }
+    }
   },
   "export_version": "2.0",
-  "export_date": "2026-04-17T03:43:51.048663"
+  "export_date": "2026-04-18T02:20:36.227993"
 }
