@@ -152,7 +152,7 @@ function updateRiftHud() {
 
 function spawnRiftGuardian() {
     window.riftGuardianSpawned = true;
-    
+
     // Guardian Pool
     const guardians = [
         { name: 'Andariel', icon: 'boss_andariel', hpMult: 1.5, dmgMult: 1.2 },
@@ -162,7 +162,7 @@ function spawnRiftGuardian() {
         { name: 'The Cow King', icon: 'boss_cow_king', hpMult: 2.2, dmgMult: 1.6 },
         { name: 'The Butcher', icon: 'boss_the_butcher', hpMult: 1.8, dmgMult: 1.8 }
     ];
-    
+
     const base = guardians[Math.floor(Math.random() * guardians.length)];
     const depth = zoneLevel - 6;
 
@@ -987,7 +987,7 @@ function gameLoop(timestamp) {
         renderer.ctx.beginPath();
         renderer.ctx.ellipse(mercenary.x, mercenary.y + 6, 6, 3, 0, 0, Math.PI * 2);
         renderer.ctx.fill();
-        renderer.drawSprite('class_rogue', mercenary.x, mercenary.y - 4, 16);
+        renderer.drawAnim('class_rogue', mercenary.x, mercenary.y - 4, 26, mercenary.hp > 0 ? 'idle' : 'walk', 'south', lastTime);
         // HP bar above head
         const bw = 18;
         renderer.ctx.fillStyle = '#333';
@@ -1574,7 +1574,7 @@ function checkDeaths() {
                     }
                 }, 2000);
 
-                const tp = new GameObject('portal', e.x, e.y - 40, 'env_water');
+                const tp = new GameObject('portal', e.x, e.y - 40, 'obj_portal');
                 // Act Transitions: 5->6 (Act 2 Town), 10->11 (Act 3), 15->16 (Act 4), 20->21 (Act 5), 25->0 (Back to Town)
                 const actTransitions = { 5: 6, 10: 11, 15: 16, 20: 21, 25: 0 };
                 tp.targetZone = actTransitions[zoneLevel] || zoneLevel + 1;
@@ -6866,7 +6866,7 @@ function handleBossDeath(boss) {
         campaign.completeAct(actNum);
         showActCleared(actName, actSubtitle);
 
-        const portal = new GameObject('portal', boss.x + 40, boss.y, 'env_stairs_up');
+        const portal = new GameObject('portal', boss.x + 40, boss.y, 'obj_portal');
         portal.targetZone = 0;
         portal.isActPortal = true;
         gameObjects.push(portal);

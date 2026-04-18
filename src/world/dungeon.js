@@ -220,6 +220,7 @@ export class Dungeon {
                 const bx = (room.x + 1 + Math.floor(Math.random() * (room.w - 2))) * this.tileSize;
                 const by = (room.y + 1 + Math.floor(Math.random() * (room.h - 2))) * this.tileSize;
                 this.objectSpawns.push({ type: 'breakable', x: bx, y: by, icon: 'obj_barrel' });
+
             }
         }
 
@@ -298,7 +299,7 @@ export class Dungeon {
             type: 'waypoint',
             x: cx * this.tileSize,
             y: cy * this.tileSize,
-            icon: 'env_stairs_up',
+            icon: 'obj_waypoint',
             zone: 0
         });
 
