@@ -310,7 +310,7 @@ export class Dungeon {
             type: "elder",
             x: (cx - 3) * this.tileSize,
             y: (cy - 4) * this.tileSize,
-            icon: "npc_female",
+            icon: "npc_akara",
             dialogue: "Greetings, traveler. I sense a great darkness rising."
         });
 
@@ -320,7 +320,7 @@ export class Dungeon {
             type: "merchant",
             x: (cx + 3) * this.tileSize,
             y: (cy - 4) * this.tileSize,
-            icon: "npc_merchant",
+            icon: "npc_ormus",
             dialogue: "Looking for a deal? My prices are mostly fair."
         });
 
@@ -328,9 +328,9 @@ export class Dungeon {
             id: "kashya",
             name: "Kashya",
             type: "mercenary_hire",
-            x: (cx - 4) * this.tileSize, y: (cy + 2) * this.tileSize, icon: "npc_female", dialogue: "Need a fighter?" });
-        this.npcSpawns.push({ id: "warriv", name: "Warriv", type: "waypoint", x: (cx + 4) * this.tileSize, y: (cy + 2) * this.tileSize, icon: "npc_merchant", dialogue: "To the East." });
-        this.npcSpawns.push({ id: "charsi", name: "Charsi", type: "merchant", x: (cx + 5) * this.tileSize, y: (cy - 3) * this.tileSize, icon: "npc_female", dialogue: "Need a new blade?" });
+            x: (cx - 4) * this.tileSize, y: (cy + 2) * this.tileSize, icon: "npc_akara", dialogue: "Need a fighter?" });
+        this.npcSpawns.push({ id: "warriv", name: "Warriv", type: "waypoint", x: (cx + 4) * this.tileSize, y: (cy + 2) * this.tileSize, icon: "npc_larzuk", dialogue: "To the East." });
+        this.npcSpawns.push({ id: "charsi", name: "Charsi", type: "merchant", x: (cx + 5) * this.tileSize, y: (cy - 3) * this.tileSize, icon: "npc_akara", dialogue: "Need a new blade?" });
 
         // Town Objects: Stash & Cube
         this.objectSpawns.push({ id: 'stash', type: 'stash', name: 'Alijo (Stash)', x: (cx - 6) * this.tileSize, y: cy * this.tileSize, icon: 'obj_chest' });

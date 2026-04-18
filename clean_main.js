@@ -1759,7 +1759,7 @@ function finishZoneLoad() {
 
         // If we came from a dungeon, spawn a portal back
         if (portalReturnZone > 0) {
-            const portal = new GameObject('portal', player.x + 40, player.y, 'env_water');
+            const portal = new GameObject('portal', player.x + 40, player.y, 'obj_portal');
             portal.targetZone = portalReturnZone;
             gameObjects.push(portal);
         }

@@ -6881,6 +6881,7 @@ function handleBossDeath(boss) {
         portal.targetZone = 0;
         portal.isActPortal = true;
         gameObjects.push(portal);
+
         fx.emitHolyBurst(portal.x, portal.y);
     }
 }
