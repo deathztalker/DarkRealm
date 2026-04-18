@@ -205,17 +205,17 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
         attacker.hp = Math.max(0, attacker.hp - reflected);
         bus.emit('combat:damage', { attacker: target, target: attacker, dealt: reflected, isCrit: false, type: 'physical', worldX: attacker.x, worldY: attacker.y });
     }
-// --- Durability loss ---
-if (attacker.isPlayer && attacker.equipment?.mainhand) {
-    const item = attacker.equipment.mainhand;
-    const isIndestructible = item.mods && item.mods.some(m => m.stat === 'indestructible');
-    if (!isIndestructible && item.maxDurability > 0 && item.durability > 0 && Math.random() < 0.1) {
-        item.durability--;
-        if (item.durability === 0) bus.emit('item:broken', { item, slot: 'mainhand' });
+    // --- Durability loss ---
+    if (attacker.isPlayer && attacker.equipment?.mainhand) {
+        const item = attacker.equipment.mainhand;
+        const isIndestructible = item.mods && item.mods.some(m => m.stat === 'indestructible');
+        if (!isIndestructible && item.maxDurability > 0 && item.durability > 0 && Math.random() < 0.1) {
+            item.durability--;
+            if (item.durability === 0) bus.emit('item:broken', { item, slot: 'mainhand' });
+        }
     }
-}
 
-// --- Defender resistance (magic & holy bypass) ---
+    if (target.isPlayer && target.equipment) {
         const slots = ['chest', 'head', 'offhand', 'gloves', 'boots'];
         const slot = slots[Math.floor(Math.random() * slots.length)];
         const item = target.equipment[slot];
