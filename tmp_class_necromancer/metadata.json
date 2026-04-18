@@ -40,6 +40,14 @@
           "animations/walking-b477b9f8/south-west/frame_003.png",
           "animations/walking-b477b9f8/south-west/frame_004.png",
           "animations/walking-b477b9f8/south-west/frame_005.png"
+        ],
+        "south-east": [
+          "animations/walking-b477b9f8/south-east/frame_000.png",
+          "animations/walking-b477b9f8/south-east/frame_001.png",
+          "animations/walking-b477b9f8/south-east/frame_002.png",
+          "animations/walking-b477b9f8/south-east/frame_003.png",
+          "animations/walking-b477b9f8/south-east/frame_004.png",
+          "animations/walking-b477b9f8/south-east/frame_005.png"
         ]
       },
       "casting_a_fireball-c50fc19d": {
@@ -58,6 +66,14 @@
           "animations/casting_a_fireball-c50fc19d/south/frame_003.png",
           "animations/casting_a_fireball-c50fc19d/south/frame_004.png",
           "animations/casting_a_fireball-c50fc19d/south/frame_005.png"
+        ],
+        "south-east": [
+          "animations/casting_a_fireball-c50fc19d/south-east/frame_000.png",
+          "animations/casting_a_fireball-c50fc19d/south-east/frame_001.png",
+          "animations/casting_a_fireball-c50fc19d/south-east/frame_002.png",
+          "animations/casting_a_fireball-c50fc19d/south-east/frame_003.png",
+          "animations/casting_a_fireball-c50fc19d/south-east/frame_004.png",
+          "animations/casting_a_fireball-c50fc19d/south-east/frame_005.png"
         ]
       },
       "walking-88bc8c94": {
@@ -76,6 +92,22 @@
           "animations/walking-88bc8c94/west/frame_003.png",
           "animations/walking-88bc8c94/west/frame_004.png",
           "animations/walking-88bc8c94/west/frame_005.png"
+        ],
+        "east": [
+          "animations/walking-88bc8c94/east/frame_000.png",
+          "animations/walking-88bc8c94/east/frame_001.png",
+          "animations/walking-88bc8c94/east/frame_002.png",
+          "animations/walking-88bc8c94/east/frame_003.png",
+          "animations/walking-88bc8c94/east/frame_004.png",
+          "animations/walking-88bc8c94/east/frame_005.png"
+        ],
+        "north-east": [
+          "animations/walking-88bc8c94/north-east/frame_000.png",
+          "animations/walking-88bc8c94/north-east/frame_001.png",
+          "animations/walking-88bc8c94/north-east/frame_002.png",
+          "animations/walking-88bc8c94/north-east/frame_003.png",
+          "animations/walking-88bc8c94/north-east/frame_004.png",
+          "animations/walking-88bc8c94/north-east/frame_005.png"
         ]
       },
       "walking-c3968e6d": {
@@ -110,10 +142,284 @@
           "animations/walking-c3968e6d/north/frame_003.png",
           "animations/walking-c3968e6d/north/frame_004.png",
           "animations/walking-c3968e6d/north/frame_005.png"
+        ],
+        "north-west": [
+          "animations/walking-c3968e6d/north-west/frame_000.png",
+          "animations/walking-c3968e6d/north-west/frame_001.png",
+          "animations/walking-c3968e6d/north-west/frame_002.png",
+          "animations/walking-c3968e6d/north-west/frame_003.png",
+          "animations/walking-c3968e6d/north-west/frame_004.png",
+          "animations/walking-c3968e6d/north-west/frame_005.png"
+        ],
+        "west": [
+          "animations/walking-c3968e6d/west/frame_000.png",
+          "animations/walking-c3968e6d/west/frame_001.png",
+          "animations/walking-c3968e6d/west/frame_002.png",
+          "animations/walking-c3968e6d/west/frame_003.png",
+          "animations/walking-c3968e6d/west/frame_004.png",
+          "animations/walking-c3968e6d/west/frame_005.png"
+        ],
+        "south-west": [
+          "animations/walking-c3968e6d/south-west/frame_000.png",
+          "animations/walking-c3968e6d/south-west/frame_001.png",
+          "animations/walking-c3968e6d/south-west/frame_002.png",
+          "animations/walking-c3968e6d/south-west/frame_003.png",
+          "animations/walking-c3968e6d/south-west/frame_004.png",
+          "animations/walking-c3968e6d/south-west/frame_005.png"
+        ],
+        "south": [
+          "animations/walking-c3968e6d/south/frame_000.png",
+          "animations/walking-c3968e6d/south/frame_001.png",
+          "animations/walking-c3968e6d/south/frame_002.png",
+          "animations/walking-c3968e6d/south/frame_003.png",
+          "animations/walking-c3968e6d/south/frame_004.png",
+          "animations/walking-c3968e6d/south/frame_005.png"
+        ]
+      },
+      "casting_a_fireball-d0124d2e": {
+        "west": [
+          "animations/casting_a_fireball-d0124d2e/west/frame_000.png",
+          "animations/casting_a_fireball-d0124d2e/west/frame_001.png",
+          "animations/casting_a_fireball-d0124d2e/west/frame_002.png",
+          "animations/casting_a_fireball-d0124d2e/west/frame_003.png",
+          "animations/casting_a_fireball-d0124d2e/west/frame_004.png",
+          "animations/casting_a_fireball-d0124d2e/west/frame_005.png"
+        ],
+        "east": [
+          "animations/casting_a_fireball-d0124d2e/east/frame_000.png",
+          "animations/casting_a_fireball-d0124d2e/east/frame_001.png",
+          "animations/casting_a_fireball-d0124d2e/east/frame_002.png",
+          "animations/casting_a_fireball-d0124d2e/east/frame_003.png",
+          "animations/casting_a_fireball-d0124d2e/east/frame_004.png",
+          "animations/casting_a_fireball-d0124d2e/east/frame_005.png"
+        ]
+      },
+      "animating-b7252d1c": {
+        "south-west": [
+          "animations/animating-b7252d1c/south-west/frame_000.png",
+          "animations/animating-b7252d1c/south-west/frame_001.png",
+          "animations/animating-b7252d1c/south-west/frame_002.png",
+          "animations/animating-b7252d1c/south-west/frame_003.png"
+        ],
+        "south": [
+          "animations/animating-b7252d1c/south/frame_000.png",
+          "animations/animating-b7252d1c/south/frame_001.png",
+          "animations/animating-b7252d1c/south/frame_002.png",
+          "animations/animating-b7252d1c/south/frame_003.png"
+        ],
+        "south-east": [
+          "animations/animating-b7252d1c/south-east/frame_000.png",
+          "animations/animating-b7252d1c/south-east/frame_001.png",
+          "animations/animating-b7252d1c/south-east/frame_002.png",
+          "animations/animating-b7252d1c/south-east/frame_003.png"
+        ]
+      },
+      "animating-f8b8115f": {
+        "west": [
+          "animations/animating-f8b8115f/west/frame_000.png",
+          "animations/animating-f8b8115f/west/frame_001.png",
+          "animations/animating-f8b8115f/west/frame_002.png",
+          "animations/animating-f8b8115f/west/frame_003.png"
+        ],
+        "east": [
+          "animations/animating-f8b8115f/east/frame_000.png",
+          "animations/animating-f8b8115f/east/frame_001.png",
+          "animations/animating-f8b8115f/east/frame_002.png",
+          "animations/animating-f8b8115f/east/frame_003.png"
+        ]
+      },
+      "casting_a_fireball-872bd4df": {
+        "north-west": [
+          "animations/casting_a_fireball-872bd4df/north-west/frame_000.png",
+          "animations/casting_a_fireball-872bd4df/north-west/frame_001.png",
+          "animations/casting_a_fireball-872bd4df/north-west/frame_002.png",
+          "animations/casting_a_fireball-872bd4df/north-west/frame_003.png",
+          "animations/casting_a_fireball-872bd4df/north-west/frame_004.png",
+          "animations/casting_a_fireball-872bd4df/north-west/frame_005.png"
+        ],
+        "north-east": [
+          "animations/casting_a_fireball-872bd4df/north-east/frame_000.png",
+          "animations/casting_a_fireball-872bd4df/north-east/frame_001.png",
+          "animations/casting_a_fireball-872bd4df/north-east/frame_002.png",
+          "animations/casting_a_fireball-872bd4df/north-east/frame_003.png",
+          "animations/casting_a_fireball-872bd4df/north-east/frame_004.png",
+          "animations/casting_a_fireball-872bd4df/north-east/frame_005.png"
+        ]
+      },
+      "casting_a_fireball-9c3556bb": {
+        "north-east": [
+          "animations/casting_a_fireball-9c3556bb/north-east/frame_000.png",
+          "animations/casting_a_fireball-9c3556bb/north-east/frame_001.png",
+          "animations/casting_a_fireball-9c3556bb/north-east/frame_002.png",
+          "animations/casting_a_fireball-9c3556bb/north-east/frame_003.png",
+          "animations/casting_a_fireball-9c3556bb/north-east/frame_004.png",
+          "animations/casting_a_fireball-9c3556bb/north-east/frame_005.png"
+        ],
+        "north": [
+          "animations/casting_a_fireball-9c3556bb/north/frame_000.png",
+          "animations/casting_a_fireball-9c3556bb/north/frame_001.png",
+          "animations/casting_a_fireball-9c3556bb/north/frame_002.png",
+          "animations/casting_a_fireball-9c3556bb/north/frame_003.png",
+          "animations/casting_a_fireball-9c3556bb/north/frame_004.png",
+          "animations/casting_a_fireball-9c3556bb/north/frame_005.png"
+        ],
+        "north-west": [
+          "animations/casting_a_fireball-9c3556bb/north-west/frame_000.png",
+          "animations/casting_a_fireball-9c3556bb/north-west/frame_001.png",
+          "animations/casting_a_fireball-9c3556bb/north-west/frame_002.png",
+          "animations/casting_a_fireball-9c3556bb/north-west/frame_003.png",
+          "animations/casting_a_fireball-9c3556bb/north-west/frame_004.png",
+          "animations/casting_a_fireball-9c3556bb/north-west/frame_005.png"
+        ]
+      },
+      "animating-fba8cb06": {
+        "north": [
+          "animations/animating-fba8cb06/north/frame_000.png",
+          "animations/animating-fba8cb06/north/frame_001.png",
+          "animations/animating-fba8cb06/north/frame_002.png",
+          "animations/animating-fba8cb06/north/frame_003.png"
+        ]
+      },
+      "animating-5aaf3d97": {
+        "south-east": [
+          "animations/animating-5aaf3d97/south-east/frame_000.png",
+          "animations/animating-5aaf3d97/south-east/frame_001.png",
+          "animations/animating-5aaf3d97/south-east/frame_002.png",
+          "animations/animating-5aaf3d97/south-east/frame_003.png"
+        ],
+        "east": [
+          "animations/animating-5aaf3d97/east/frame_000.png",
+          "animations/animating-5aaf3d97/east/frame_001.png",
+          "animations/animating-5aaf3d97/east/frame_002.png",
+          "animations/animating-5aaf3d97/east/frame_003.png"
+        ],
+        "north-east": [
+          "animations/animating-5aaf3d97/north-east/frame_000.png",
+          "animations/animating-5aaf3d97/north-east/frame_001.png",
+          "animations/animating-5aaf3d97/north-east/frame_002.png",
+          "animations/animating-5aaf3d97/north-east/frame_003.png"
+        ],
+        "north-west": [
+          "animations/animating-5aaf3d97/north-west/frame_000.png",
+          "animations/animating-5aaf3d97/north-west/frame_001.png",
+          "animations/animating-5aaf3d97/north-west/frame_002.png",
+          "animations/animating-5aaf3d97/north-west/frame_003.png"
+        ],
+        "south-west": [
+          "animations/animating-5aaf3d97/south-west/frame_000.png",
+          "animations/animating-5aaf3d97/south-west/frame_001.png",
+          "animations/animating-5aaf3d97/south-west/frame_002.png",
+          "animations/animating-5aaf3d97/south-west/frame_003.png"
+        ],
+        "west": [
+          "animations/animating-5aaf3d97/west/frame_000.png",
+          "animations/animating-5aaf3d97/west/frame_001.png",
+          "animations/animating-5aaf3d97/west/frame_002.png",
+          "animations/animating-5aaf3d97/west/frame_003.png"
+        ]
+      },
+      "casting_a_fireball-67844f5f": {
+        "east": [
+          "animations/casting_a_fireball-67844f5f/east/frame_000.png",
+          "animations/casting_a_fireball-67844f5f/east/frame_001.png",
+          "animations/casting_a_fireball-67844f5f/east/frame_002.png",
+          "animations/casting_a_fireball-67844f5f/east/frame_003.png",
+          "animations/casting_a_fireball-67844f5f/east/frame_004.png",
+          "animations/casting_a_fireball-67844f5f/east/frame_005.png"
+        ],
+        "south-east": [
+          "animations/casting_a_fireball-67844f5f/south-east/frame_000.png",
+          "animations/casting_a_fireball-67844f5f/south-east/frame_001.png",
+          "animations/casting_a_fireball-67844f5f/south-east/frame_002.png",
+          "animations/casting_a_fireball-67844f5f/south-east/frame_003.png",
+          "animations/casting_a_fireball-67844f5f/south-east/frame_004.png",
+          "animations/casting_a_fireball-67844f5f/south-east/frame_005.png"
+        ],
+        "west": [
+          "animations/casting_a_fireball-67844f5f/west/frame_000.png",
+          "animations/casting_a_fireball-67844f5f/west/frame_001.png",
+          "animations/casting_a_fireball-67844f5f/west/frame_002.png",
+          "animations/casting_a_fireball-67844f5f/west/frame_003.png",
+          "animations/casting_a_fireball-67844f5f/west/frame_004.png",
+          "animations/casting_a_fireball-67844f5f/west/frame_005.png"
+        ],
+        "south-west": [
+          "animations/casting_a_fireball-67844f5f/south-west/frame_000.png",
+          "animations/casting_a_fireball-67844f5f/south-west/frame_001.png",
+          "animations/casting_a_fireball-67844f5f/south-west/frame_002.png",
+          "animations/casting_a_fireball-67844f5f/south-west/frame_003.png",
+          "animations/casting_a_fireball-67844f5f/south-west/frame_004.png",
+          "animations/casting_a_fireball-67844f5f/south-west/frame_005.png"
+        ]
+      },
+      "running-1bbb092e": {
+        "north-west": [
+          "animations/running-1bbb092e/north-west/frame_000.png",
+          "animations/running-1bbb092e/north-west/frame_001.png",
+          "animations/running-1bbb092e/north-west/frame_002.png",
+          "animations/running-1bbb092e/north-west/frame_003.png",
+          "animations/running-1bbb092e/north-west/frame_004.png",
+          "animations/running-1bbb092e/north-west/frame_005.png"
+        ],
+        "south": [
+          "animations/running-1bbb092e/south/frame_000.png",
+          "animations/running-1bbb092e/south/frame_001.png",
+          "animations/running-1bbb092e/south/frame_002.png",
+          "animations/running-1bbb092e/south/frame_003.png",
+          "animations/running-1bbb092e/south/frame_004.png",
+          "animations/running-1bbb092e/south/frame_005.png"
+        ],
+        "north": [
+          "animations/running-1bbb092e/north/frame_000.png",
+          "animations/running-1bbb092e/north/frame_001.png",
+          "animations/running-1bbb092e/north/frame_002.png",
+          "animations/running-1bbb092e/north/frame_003.png",
+          "animations/running-1bbb092e/north/frame_004.png",
+          "animations/running-1bbb092e/north/frame_005.png"
+        ],
+        "south-east": [
+          "animations/running-1bbb092e/south-east/frame_000.png",
+          "animations/running-1bbb092e/south-east/frame_001.png",
+          "animations/running-1bbb092e/south-east/frame_002.png",
+          "animations/running-1bbb092e/south-east/frame_003.png",
+          "animations/running-1bbb092e/south-east/frame_004.png",
+          "animations/running-1bbb092e/south-east/frame_005.png"
+        ],
+        "west": [
+          "animations/running-1bbb092e/west/frame_000.png",
+          "animations/running-1bbb092e/west/frame_001.png",
+          "animations/running-1bbb092e/west/frame_002.png",
+          "animations/running-1bbb092e/west/frame_003.png",
+          "animations/running-1bbb092e/west/frame_004.png",
+          "animations/running-1bbb092e/west/frame_005.png"
+        ],
+        "north-east": [
+          "animations/running-1bbb092e/north-east/frame_000.png",
+          "animations/running-1bbb092e/north-east/frame_001.png",
+          "animations/running-1bbb092e/north-east/frame_002.png",
+          "animations/running-1bbb092e/north-east/frame_003.png",
+          "animations/running-1bbb092e/north-east/frame_004.png",
+          "animations/running-1bbb092e/north-east/frame_005.png"
+        ],
+        "east": [
+          "animations/running-1bbb092e/east/frame_000.png",
+          "animations/running-1bbb092e/east/frame_001.png",
+          "animations/running-1bbb092e/east/frame_002.png",
+          "animations/running-1bbb092e/east/frame_003.png",
+          "animations/running-1bbb092e/east/frame_004.png",
+          "animations/running-1bbb092e/east/frame_005.png"
+        ],
+        "south-west": [
+          "animations/running-1bbb092e/south-west/frame_000.png",
+          "animations/running-1bbb092e/south-west/frame_001.png",
+          "animations/running-1bbb092e/south-west/frame_002.png",
+          "animations/running-1bbb092e/south-west/frame_003.png",
+          "animations/running-1bbb092e/south-west/frame_004.png",
+          "animations/running-1bbb092e/south-west/frame_005.png"
         ]
       }
     }
   },
   "export_version": "2.0",
-  "export_date": "2026-04-18T02:19:20.187751"
+  "export_date": "2026-04-18T22:27:05.587463"
 }

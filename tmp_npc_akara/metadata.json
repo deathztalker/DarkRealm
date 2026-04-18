@@ -37,9 +37,49 @@
           "animations/animating-0614faa2/south/frame_002.png",
           "animations/animating-0614faa2/south/frame_003.png"
         ]
+      },
+      "animating-f8c204a5": {
+        "west": [
+          "animations/animating-f8c204a5/west/frame_000.png",
+          "animations/animating-f8c204a5/west/frame_001.png",
+          "animations/animating-f8c204a5/west/frame_002.png",
+          "animations/animating-f8c204a5/west/frame_003.png"
+        ],
+        "north-west": [
+          "animations/animating-f8c204a5/north-west/frame_000.png",
+          "animations/animating-f8c204a5/north-west/frame_001.png",
+          "animations/animating-f8c204a5/north-west/frame_002.png",
+          "animations/animating-f8c204a5/north-west/frame_003.png"
+        ]
+      },
+      "animating-e8ae9834": {
+        "north-east": [
+          "animations/animating-e8ae9834/north-east/frame_000.png",
+          "animations/animating-e8ae9834/north-east/frame_001.png",
+          "animations/animating-e8ae9834/north-east/frame_002.png",
+          "animations/animating-e8ae9834/north-east/frame_003.png"
+        ],
+        "south-east": [
+          "animations/animating-e8ae9834/south-east/frame_000.png",
+          "animations/animating-e8ae9834/south-east/frame_001.png",
+          "animations/animating-e8ae9834/south-east/frame_002.png",
+          "animations/animating-e8ae9834/south-east/frame_003.png"
+        ],
+        "north": [
+          "animations/animating-e8ae9834/north/frame_000.png",
+          "animations/animating-e8ae9834/north/frame_001.png",
+          "animations/animating-e8ae9834/north/frame_002.png",
+          "animations/animating-e8ae9834/north/frame_003.png"
+        ],
+        "east": [
+          "animations/animating-e8ae9834/east/frame_000.png",
+          "animations/animating-e8ae9834/east/frame_001.png",
+          "animations/animating-e8ae9834/east/frame_002.png",
+          "animations/animating-e8ae9834/east/frame_003.png"
+        ]
       }
     }
   },
   "export_version": "2.0",
-  "export_date": "2026-04-18T02:20:48.587098"
+  "export_date": "2026-04-18T22:28:30.852902"
 }

@@ -37,9 +37,51 @@
           "animations/animating-5bde75cb/south/frame_002.png",
           "animations/animating-5bde75cb/south/frame_003.png"
         ]
+      },
+      "animating-cdddfe72": {
+        "north-west": [
+          "animations/animating-cdddfe72/north-west/frame_000.png",
+          "animations/animating-cdddfe72/north-west/frame_001.png",
+          "animations/animating-cdddfe72/north-west/frame_002.png",
+          "animations/animating-cdddfe72/north-west/frame_003.png"
+        ],
+        "north": [
+          "animations/animating-cdddfe72/north/frame_000.png",
+          "animations/animating-cdddfe72/north/frame_001.png",
+          "animations/animating-cdddfe72/north/frame_002.png",
+          "animations/animating-cdddfe72/north/frame_003.png"
+        ],
+        "west": [
+          "animations/animating-cdddfe72/west/frame_000.png",
+          "animations/animating-cdddfe72/west/frame_001.png",
+          "animations/animating-cdddfe72/west/frame_002.png",
+          "animations/animating-cdddfe72/west/frame_003.png"
+        ]
+      },
+      "animating-beac6ec9": {
+        "east": [
+          "animations/animating-beac6ec9/east/frame_000.png",
+          "animations/animating-beac6ec9/east/frame_001.png",
+          "animations/animating-beac6ec9/east/frame_002.png",
+          "animations/animating-beac6ec9/east/frame_003.png"
+        ],
+        "south-east": [
+          "animations/animating-beac6ec9/south-east/frame_000.png",
+          "animations/animating-beac6ec9/south-east/frame_001.png",
+          "animations/animating-beac6ec9/south-east/frame_002.png",
+          "animations/animating-beac6ec9/south-east/frame_003.png"
+        ]
+      },
+      "animating-ab4be7fd": {
+        "north-east": [
+          "animations/animating-ab4be7fd/north-east/frame_000.png",
+          "animations/animating-ab4be7fd/north-east/frame_001.png",
+          "animations/animating-ab4be7fd/north-east/frame_002.png",
+          "animations/animating-ab4be7fd/north-east/frame_003.png"
+        ]
       }
     }
   },
   "export_version": "2.0",
-  "export_date": "2026-04-18T02:20:42.960232"
+  "export_date": "2026-04-18T22:28:37.429697"
 }

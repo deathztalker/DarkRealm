@@ -5,7 +5,7 @@ import glob
 import shutil
 from PIL import Image
 
-# Character & NPC Mapping (PixelLab IDs — Verified 2026-04-17)
+# Character & NPC Mapping (PixelLab IDs — Verified 2026-04-18)
 characters = {
     'class_shaman': 'ae37eab8-b1f5-4c5b-b207-65a6148f0b4f',
     'class_druid': '3a7a04c0-dec4-4b08-b40d-73cc5e31af23',
@@ -27,7 +27,6 @@ characters = {
     'boss_angry_jano': 'cc623854-af52-4a8e-a6d8-6f5e83971234',
     'boss_demon_wirt': 'd25e6e35-6e41-4a98-a2d2-e86659215835',
     'boss_cow_king': 'd33759f6-cf40-45bc-850d-297270013d01',
-    
     'boss_radament': 'd8b9e2b5-079a-4744-9aaf-91c76680fa05',
     'boss_beetleburst': '5a673fdd-8de1-4a96-a515-fdae34348e1a',
     'boss_shenk': '42987da7-5548-4516-9cca-da91cdcb333f',
@@ -39,10 +38,16 @@ characters = {
     'npc_akara': 'a5bd1da6-719b-414b-833c-60f701126dfd',
     'npc_ormus': '3de70304-27fd-433d-9510-560edea4b1c3',
     'npc_larzuk': '6403ccb8-07c6-4e71-8431-d67608da3a09',
+
+    'enemy_cultist': '297a5aeb-0b6b-4201-8dd2-6f479530eb90',
+    'enemy_spider': '2559b8d0-16e8-4b18-9558-81ee3c056342',
+    'enemy_zombie': 'd248621b-f7f1-4071-b44f-189f13e984e7',
+    'enemy_wraith': '3ccc656a-afb6-4702-b5fe-4cf668af9dd5',
+    'enemy_energy_elemental': '990a9ad3-49de-4a63-9ca2-f1dc3ec92e7a'
 }
 
-cols, rows = 7, 16
-dirs = {'north': 0, 'west': 1, 'south': 2, 'east': 3}
+cols, rows = 8, 32  # Ampliado para soportar 8 direcciones y mas estados
+dirs_order = ['south', 'south-west', 'west', 'north-west', 'north', 'north-east', 'east', 'south-east']
 
 def find_anim_folder(base_path, anim_keywords):
     search_path = os.path.join(base_path, "animations")
@@ -53,33 +58,15 @@ def find_anim_folder(base_path, anim_keywords):
                 return os.path.join(search_path, folder)
     return None
 
-if not os.path.exists("tmp_zips"): os.makedirs("tmp_zips")
 if not os.path.exists("assets"): os.makedirs("assets")
-
-# Clean assets before mass update to avoid stale files
-# for f in glob.glob("assets/*.png"): os.remove(f)
 
 for name, char_id in characters.items():
     tmp_dir = f"tmp_{name}"
-    zip_path = f"tmp_zips/{name}.zip"
-    
-    # Force re-download to get latest animations
-    print(f"📥 Bajando {name} (ID: {char_id})...")
-    try:
-        url = f"https://api.pixellab.ai/mcp/characters/{char_id}/download"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req) as response, open(zip_path, 'wb') as out_file:
-            out_file.write(response.read())
-        
-        if os.path.exists(tmp_dir): shutil.rmtree(tmp_dir)
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(tmp_dir)
-    except Exception as e:
-        print(f"⚠️ Error bajando {name}: {e}. Usando local si existe.")
+    if not os.path.exists(tmp_dir): 
+        print(f"⚠️ Saltando {name}, no existe carpeta local.")
+        continue
 
-    if not os.path.exists(tmp_dir): continue
-
-    # Detect dimensions
+    # Detectar dimensiones reales del sprite
     c_sw, c_sh = 48, 48
     base_frame = None
     first_frame_path = os.path.join(tmp_dir, "rotations", "south.png")
@@ -89,44 +76,50 @@ for name, char_id in characters.items():
 
     img_out = Image.new('RGBA', (c_sw * cols, c_sh * rows), (0,0,0,0))
     
-    # Priority keywords
-    walk_path = find_anim_folder(tmp_dir, ["walking", "walk", "run"])
-    attack_path = find_anim_folder(tmp_dir, ["fireball", "punch", "slash", "attack", "strike", "jab", "cast"])
+    # Mapeo de rutas de animaciones
+    walk_path = find_anim_folder(tmp_dir, ["walking", "walk", "walk-1"])
+    run_path = find_anim_folder(tmp_dir, ["running", "run"])
+    attack_path = find_anim_folder(tmp_dir, ["fireball", "punch", "slash", "attack", "strike", "jab", "cast", "cross-punch"])
     idle_path = find_anim_folder(tmp_dir, ["breathing", "idle", "stance"])
     
-    for d_name, d_idx in dirs.items():
+    for d_idx, d_name in enumerate(dirs_order):
         base_d_path = os.path.join(tmp_dir, "rotations", f"{d_name}.png")
-        if not os.path.exists(base_d_path) and base_frame:
-            base_d_path = first_frame_path
+        if not os.path.exists(base_d_path): base_d_path = first_frame_path
             
         def get_frames(p):
             if p and os.path.exists(os.path.join(p, d_name)):
                 frames = sorted(glob.glob(os.path.join(p, d_name, "*.png")))
                 if frames: return frames
-            if p and os.path.exists(os.path.join(p, 'south')):
-                frames = sorted(glob.glob(os.path.join(p, 'south', "*.png")))
+            # Fallback a la primera dirección si falta la diagonal
+            if p and os.listdir(p):
+                first_d = os.listdir(p)[0]
+                frames = sorted(glob.glob(os.path.join(p, first_d, "*.png")))
                 if frames: return frames
             return []
             
-        walk_frames = get_frames(walk_path)
-        attack_frames = get_frames(attack_path)
         idle_frames = get_frames(idle_path)
+        walk_frames = get_frames(walk_path)
+        run_frames = get_frames(run_path)
+        attack_frames = get_frames(attack_path)
         
-        # Build Grid
         for i in range(cols):
-            # Idle (Row 0-3)
-            f_idle = idle_frames[i % len(idle_frames)] if idle_frames else base_d_path
-            if os.path.exists(f_idle): img_out.paste(Image.open(f_idle).convert('RGBA'), (i * c_sw, (0 + d_idx) * c_sh))
+            # Row 0-7: IDLE
+            f = idle_frames[i % len(idle_frames)] if idle_frames else base_d_path
+            img_out.paste(Image.open(f).convert('RGBA'), (i * c_sw, (0 + d_idx) * c_sh))
             
-            # Walk (Row 8-11)
-            f_walk = walk_frames[i % len(walk_frames)] if walk_frames else base_d_path
-            if os.path.exists(f_walk): img_out.paste(Image.open(f_walk).convert('RGBA'), (i * c_sw, (8 + d_idx) * c_sh))
+            # Row 8-15: WALK
+            f = walk_frames[i % len(walk_frames)] if walk_frames else base_d_path
+            img_out.paste(Image.open(f).convert('RGBA'), (i * c_sw, (8 + d_idx) * c_sh))
+
+            # Row 16-23: RUN
+            f = run_frames[i % len(run_frames)] if run_frames else base_d_path
+            img_out.paste(Image.open(f).convert('RGBA'), (i * c_sw, (16 + d_idx) * c_sh))
             
-            # Attack (Row 12-15)
-            f_attack = attack_frames[i % len(attack_frames)] if attack_frames else base_d_path
-            if os.path.exists(f_attack): img_out.paste(Image.open(f_attack).convert('RGBA'), (i * c_sw, (12 + d_idx) * c_sh))
+            # Row 24-31: ATTACK
+            f = attack_frames[i % len(attack_frames)] if attack_frames else base_d_path
+            img_out.paste(Image.open(f).convert('RGBA'), (i * c_sw, (24 + d_idx) * c_sh))
     
     img_out.save(f"assets/{name}.png")
-    print(f"✅ OK: assets/{name}.png ({c_sw}x{c_sh})")
+    print(f"✅ Hojas de sprites actualizada: assets/{name}.png ({c_sw}x{c_sh})")
 
-print("🚀 ¡Sincronización masiva completada!")
+print("🚀 ¡Actualización de spritesheets completada!")
