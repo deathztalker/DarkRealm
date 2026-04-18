@@ -208,7 +208,7 @@ export class Player {
             const slvl = this._auraSlvl || 1;
             switch(this.activeAura) {
                 case 'might_aura':
-                    this.pctDmg = (this.pctDmg || 0) + (20 + slvl * 2);
+                    s.pctDmg = (s.pctDmg || 0) + (20 + slvl * 2);
                     break;
                 case 'resist_all':
                     const resBonus = (5 + slvl * 1.5);
@@ -218,10 +218,16 @@ export class Player {
                     this.moveSpeed *= (1 + (20 + slvl * 1.5) / 100);
                     break;
                 case 'fanaticism':
-                    this.pctIAS = (this.pctIAS || 0) + (30 + slvl * 1.5);
-                    this.pctDmg = (this.pctDmg || 0) + (30 + slvl * 2);
+                    s.pctIAS = (s.pctIAS || 0) + (30 + slvl * 1.5);
+                    s.pctDmg = (s.pctDmg || 0) + (30 + slvl * 2);
                     break;
             }
+        }
+
+        // --- Status Bonuses (e.g. from Mercenary) ---
+        const mightStatus = this._statuses?.find(st => st.type === 'might');
+        if (mightStatus) {
+            s.pctDmg = (s.pctDmg || 0) + (mightStatus.value - 1) * 100;
         }
 
         // Resistances

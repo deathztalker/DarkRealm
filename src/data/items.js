@@ -35,7 +35,7 @@ export const ITEM_BASES = {
     helm_great: { name: 'Great Helm', slot: SLOT.HEAD, type: 'helm', icon: 'item_great_helm_hd', armor: 15, req: { str: 25 }, size: [2, 2], price: 120 },
     shield_buckler: { name: 'Buckler', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield', armor: 5, block: 15, size: [2, 2], price: 25 },
     shield_kite: { name: 'Kite Shield', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield_kite', armor: 20, block: 25, req: { str: 30 }, size: [2, 2], price: 150 },
-    shield_royal: { name: 'Royal Shield', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield_royal_hd', armor: 40, block: 40, req: { str: 60 }, size: [2, 3], price: 500 },
+    shield_royal: { name: 'Royal Shield', slot: SLOT.OFFHAND, type: 'shield', icon: 'item_shield_hd', armor: 40, block: 40, req: { str: 60 }, size: [2, 3], price: 500 },
 
     boots_leather: { name: 'Leather Boots', slot: SLOT.BOOTS, type: 'boots', icon: 'item_boots', armor: 2, size: [2, 2], price: 15 },
     gloves_leather: { name: 'Leather Gloves', slot: SLOT.GLOVES, type: 'gloves', icon: 'item_gloves', armor: 2, size: [2, 2], price: 15 },

@@ -34,7 +34,7 @@ export class Mercenary {
         };
         
         this._atkCd = 0;
-        this._auraCd = 0;
+        this._auraTimer = 0;
         this.atkSpeed = 1.2;
         
         this.resists = { fire: 0, cold: 0, light: 0, pois: 0 };
@@ -155,8 +155,8 @@ export class Mercenary {
         // --- Wave 3 Mastery: Mercenary Auras ---
         this._auraTimer = (this._auraTimer || 0) - dt;
         if (this._auraTimer <= 0) {
-            this._auraTimer = 1.5;
-            this._applyAura(player, enemies);
+            this._auraTimer = 3.0; // Pulse every 3s
+            this._applyAura(player);
         }
 
         // Auto-level with player (if lower level)
@@ -178,15 +178,6 @@ export class Mercenary {
             this.y = player.y + (Math.random() - 0.5) * 40;
             fx.emitBurst(this.x, this.y, '#ffffff', 15, 2);
             return;
-        }
-
-        // --- Phase 28: Auras (Act 2 Desert Warrior) ---
-        if (this.className === 'Desert Warrior') {
-            this._auraCd -= dt;
-            if (this._auraCd <= 0) {
-                this._auraCd = 3.0; // Pulse every 3s
-                this.pulseAura(player);
-            }
         }
 
         const isFar = md > 250;
@@ -222,6 +213,20 @@ export class Mercenary {
         this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.008 * dt);
     }
 
+    _applyAura(player) {
+        if (this.className !== 'Desert Warrior') return;
+
+        fx.emitShockwave(this.x, this.y, 120, 'rgba(255, 215, 0, 0.3)');
+        const dist = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
+        if (dist < 200) {
+            // Might Aura: +25% Dmg for 4s
+            import('../systems/combat.js').then(c => {
+                c.applyStatus(player, 'might', 4, 1.25);
+                bus.emit('log:add', { text: `${this.name}'s Might Aura empowers you!`, type: 'log-info' });
+            });
+        }
+    }
+
     render(renderer, time) {
         if (this.hp <= 0) return;
 
@@ -252,18 +257,6 @@ export class Mercenary {
         renderer.ctx.fillRect(this.x - 12, this.y - 25, 24, 4);
         renderer.ctx.fillStyle = '#40c040'; // Green for friendlies
         renderer.ctx.fillRect(this.x - 12, this.y - 25, 24 * hpPct, 4);
-    }
-
-    pulseAura(player) {
-        fx.emitShockwave(this.x, this.y, 120, 'rgba(255, 215, 0, 0.3)');
-        const dist = Math.sqrt((player.x - this.x)**2 + (player.y - this.y)**2);
-        if (dist < 200) {
-            // Might Aura: +20% Dmg for 4s
-            import('../systems/combat.js').then(c => {
-                c.applyStatus(player, 'might', 4, 1.25);
-                bus.emit('log:add', { text: `${this.name}'s Might Aura empowers you!`, type: 'log-info' });
-            });
-        }
     }
 
     attack(target) {
