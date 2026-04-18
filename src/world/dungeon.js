@@ -543,8 +543,3 @@ export class Dungeon {
         }
     }
 }
-sh({ type: 'breakable', x: bx, y: by, icon });
-            }
-        }
-    }
-}
