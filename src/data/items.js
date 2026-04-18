@@ -2,7 +2,20 @@
  * ITEM BASES - Base templates for all items in the game.
  * Stats here are for the 'Normal' version.
  */
-import { SLOT } from '../systems/lootSystem.js';
+
+export const RARITY = { NORMAL: 'normal', MAGIC: 'magic', RARE: 'rare', SET: 'set', UNIQUE: 'unique' };
+
+export const SLOT = {
+    HEAD: 'head',
+    CHEST: 'chest',
+    MAINHAND: 'mainhand',
+    OFFHAND: 'offhand',
+    GLOVES: 'gloves',
+    BOOTS: 'boots',
+    BELT: 'belt',
+    RING: 'ring',
+    AMULET: 'amulet'
+};
 
 export const ITEM_BASES = {
     // === WEAPONS ===
