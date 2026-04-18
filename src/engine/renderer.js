@@ -128,12 +128,22 @@ export class Renderer {
         if (animate) drawY += Math.sin(time * 0.005) * 2;
         if (img && img.complete && img.naturalWidth > 0) {
             if (filter) this.ctx.filter = filter;
+            
+            const aspect = img.naturalWidth / img.naturalHeight;
             const drawSize = size * 2;
+            let dw = drawSize;
+            let dh = drawSize;
+            
+            if (aspect > 1) {
+                dh = drawSize / aspect;
+            } else {
+                dw = drawSize * aspect;
+            }
             
             this.ctx.save();
             // Critical for items and objects to remain crisp pixel art
             this.ctx.imageSmoothingEnabled = false;
-            this.ctx.drawImage(img, x - drawSize / 2, (drawY - 4) - drawSize / 2, drawSize, drawSize);
+            this.ctx.drawImage(img, x - dw / 2, (drawY - 4) - dh / 2, dw, dh);
             this.ctx.restore();
             
             if (filter) this.ctx.filter = 'none';

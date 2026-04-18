@@ -55,7 +55,7 @@ export class NPC {
 
     render(renderer, time) {
         // Sprite with LPC animation - always idle or default walk
-        renderer.drawAnim(this.icon, this.x, this.y - 4, 16, 'idle', 'down', time);
+        renderer.drawAnim(this.icon, this.x, this.y - 4, 26, 'idle', 'south', time);
 
         // Name tag
         const ctx = renderer.ctx;
