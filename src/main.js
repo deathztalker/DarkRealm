@@ -43,7 +43,7 @@ window.addCombatLog = addCombatLog;
 import { RUNEWORDS } from './data/runes.js';
 
 // ——— GLOBALS ———
-let renderer, camera, input, dungeon, player, network;
+let renderer, camera, input, dungeon, player;
 let enemies = [], npcs = [], gameObjects = [];
 let projectiles = [], aoeZones = [];
 let droppedItems = [], droppedGold = [];
@@ -349,420 +349,1025 @@ function selectClass(classId) {
     selectedClass = classId;
     document.querySelectorAll('.class-card').forEach(c => c.classList.toggle('selected', c.dataset.classId === classId));
     $('btn-new-game').disabled = false;
+    showClassInfo(classId);
 }
 
 function showClassInfo(classId) {
     const cls = getClass(classId);
-    if (!cls) return;
-    const nameEl = document.getElementById('class-name');
-    const descEl = document.getElementById('class-desc');
-    const statsEl = document.getElementById('class-stats');
-    if (nameEl) nameEl.textContent = cls.name;
-    if (descEl) descEl.textContent = cls.description;
-    if (statsEl) {
-        const statsHtml = Object.entries(cls.stats).map(([stat, val]) => 
-            `<div class="class-stat-row"><span>${stat.toUpperCase()}</span><span>${val}</span></div>`
-        ).join('');
-        statsEl.innerHTML = statsHtml;
-    }
+    $('class-name').innerHTML = `<i class="ra ${getIconForClass(cls.id)}" style="font-size:24px;vertical-align:middle;color:var(--gold);"></i> ${cls.name}`;
+    $('class-desc').textContent = cls.desc;
+    const statsHtml = ['str', 'dex', 'vit', 'int'].map(s =>
+        `<div class="class-stat-bar"><span>${s.toUpperCase()}</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${cls.statBars[s]}%"></div></div></div>`
+    ).join('');
+    $('class-stats').innerHTML = statsHtml;
 }
 
-async function renderSaveSlots() {
-    const listContainer = document.getElementById('char-selection-list');
-    const screenSelect = document.getElementById('screen-char-select');
-    const screenCreate = document.getElementById('screen-char-create');
-    const btnEnter = document.getElementById('btn-enter-world');
-    if (!listContainer) return;
-    let cloudSlots = [];
-    if (DB.isLoggedIn()) {
-        cloudSlots = await DB.getSaves();
-        cloudSlots.forEach(s => s._isCloud = true);
-    }
-    const localSlots = SaveSystem.listSlots();
-    localSlots.forEach(s => s._isCloud = false);
-    const allSlots = [...cloudSlots, ...localSlots];
-    if (allSlots.length === 0) {
-        screenSelect.classList.add('hidden');
-        screenCreate.classList.remove('hidden');
-        return;
-    }
-    screenSelect.classList.remove('hidden');
-    screenCreate.classList.add('hidden');
-    listContainer.innerHTML = '';
-    allSlots.forEach(slot => {
-        const card = document.createElement('div');
-        card.className = 'char-entry';
-        if (selectedCharSlot && selectedCharSlot.id === slot.id) card.classList.add('selected');
-        const typeTag = slot._isCloud ? '<span style="color:var(--cyan); font-size:9px;">[CLOUD]</span>' : '<span style="color:#888; font-size:9px;">[LOCAL]</span>';
-        card.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                <div>
-                    <div class="char-entry-name">${slot.name} ${typeTag}</div>
-                    <div class="char-entry-details">Lvl ${slot.level} ${slot.className}</div>
-                </div>
-                ${(!slot._isCloud && DB.isLoggedIn()) ? `<button class="btn-migrate" title="Migrate to Cloud">☁️</button>` : ''}
-            </div>
-        `;
-        const migrateBtn = card.querySelector('.btn-migrate');
-        if (migrateBtn) {
-            migrateBtn.onclick = async (e) => {
-                e.stopPropagation();
-                if (confirm(`Migrate ${slot.name} to Cloud?`)) {
-                    const localData = SaveSystem.loadSlot(slot.id);
-                    if (localData && await DB.upsertSave(slot.id, localData)) {
-                        addCombatLog(`${slot.name} migrated!`, 'log-crit');
-                        renderSaveSlots();
-                    }
-                }
-            };
-        }
-        card.onclick = () => {
-            document.querySelectorAll('.char-entry').forEach(e => e.classList.remove('selected'));
-            card.classList.add('selected');
-            selectedCharSlot = slot;
-            btnEnter.disabled = false;
-            updateCharPreview(slot);
-        };
-        listContainer.appendChild(card);
-    });
-    if (!selectedCharSlot && allSlots.length > 0) listContainer.firstChild.click();
-}
-
-function updateCharPreview(slot) {
-    const nameEl = document.getElementById('preview-name');
-    const detailsEl = document.getElementById('preview-details');
-    if (nameEl) nameEl.innerText = slot.name;
-    if (detailsEl) detailsEl.innerText = `Level ${slot.level} ${slot.className}`;
-    const renderDiv = document.getElementById('char-preview-render');
-    if (renderDiv) {
-        renderDiv.innerHTML = `<img src="assets/class_${slot.classId}.png" style="height:200px; filter: drop-shadow(0 0 20px rgba(216,176,104,0.4));">`;
-    }
-}
-
-async function startGame(slotId = null, loadPlayerData = null, charName = null) {
+// ——— START GAME ———
+function startGame(slotId = null, loadPlayerData = null, charName = null) {
     if (!selectedClass && !loadPlayerData) return;
+
     if (loadPlayerData) {
-        selectedClass = loadPlayerData.classId || (loadPlayerData.player?.classId);
+        // Loading existing character
+        selectedClass = loadPlayerData.classId;
         zoneLevel = loadPlayerData.zoneLevel || 0;
-        activeSlotId = slotId || loadPlayerData.slotId;
-        if (loadPlayerData.campaign) campaign.deserialize(loadPlayerData.campaign);
+        activeSlotId = loadPlayerData.slotId;
+        campaign.deserialize(loadPlayerData.campaign);
     } else {
-        zoneLevel = 0;
+        // New character
+        zoneLevel = 0; // Start in Town
         activeSlotId = slotId || SaveSystem.newSlotId();
         campaign.reset();
-        player = new Player(selectedClass);
-        window.player = player;
-        Vendor.init(loot, player);
-        if (charName) player.charName = charName;
-        player.addToInventory({ ...items.tome_identify, charges: 20, identified: true });
-        player.addToInventory({ ...items.tome_tp, charges: 20, identified: true });
-        if ($('hardcore-mode')?.checked) player.isHardcore = true;
+
+        // Starting Gear for new characters
+        if (!loadPlayerData) {
+            player = new Player(selectedClass);
+            window.player = player;
+            Vendor.init(loot, player);
+            if (charName) player.charName = charName;
+
+            const idTome = { ...items.tome_identify, charges: 20, identified: true };
+            const tpTome = { ...items.tome_tp, charges: 20, identified: true };
+            player.addToInventory(idTome);
+            player.addToInventory(tpTome);
+
+            if ($('hardcore-mode') && $('hardcore-mode').checked) {
+                player.isHardcore = true;
+            }
+        }
     }
     window._activeSlotId = activeSlotId;
+
+    // Switch screens
     $('main-menu').classList.remove('active');
     $('game-screen').classList.add('active');
     state = 'GAME';
+
+    // Init canvas
     const canvas = $('game-canvas');
-    renderer = new Renderer(canvas);
-    camera = new Camera(renderer.width, renderer.height, 2.0);
+
+    // Determine zoom level based on screen width
     const adjustZoom = () => {
-        const w = window.innerWidth, h = window.innerHeight;
-        camera.zoom = w >= 1024 ? 2.0 : (w > h ? 1.3 : 1.1);
+        if (!camera) return;
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        if (width >= 1024) {
+            camera.zoom = 2.0; // Desktop
+        } else if (width > height) {
+            camera.zoom = 1.3; // Mobile Landscape (Cinema / Wide view)
+        } else {
+            camera.zoom = 1.1; // Mobile Portrait (Panoramic view)
+        }
     };
-    adjustZoom();
+
+    renderer = new Renderer(canvas);
+    camera = new Camera(renderer.width, renderer.height, 2.0); // Default to 2.0 initially
+    adjustZoom(); // Apply correct zoom immediately
+
     window.addEventListener('resize', adjustZoom);
+
     input = new Input(canvas);
     window.mobileControls = new MobileControls(input);
-    network = new NetworkManager({
-        get player() { return player; }, get enemies() { return enemies; },
-        onChatMessage: (msg) => {
-            const chatBox = document.getElementById('chat-messages');
-            if (chatBox) {
-                const msgEl = document.createElement('div');
-                msgEl.className = 'chat-msg' + (msg.isSystem ? ' system-msg' : '');
-                msgEl.innerHTML = `<span class="chat-msg-time">[${msg.time}]</span><span class="chat-msg-sender">${msg.sender}:</span><span class="chat-msg-text">${msg.text}</span>`;
-                chatBox.appendChild(msgEl);
-                chatBox.scrollTop = chatBox.scrollHeight;
-                while (chatBox.children.length > 50) chatBox.removeChild(chatBox.firstChild);
-            }
-        },
-        onWhisper: (msg) => {
-            const chatBox = document.getElementById('chat-messages');
-            if (chatBox) {
-                const prefix = msg.sender === player.charName ? `To ${msg.target}` : `From ${msg.sender}`;
-                const msgEl = document.createElement('div');
-                msgEl.className = 'chat-msg whisper-msg';
-                msgEl.innerHTML = `<span class="chat-msg-time">[${msg.time}]</span><span class="chat-msg-sender">${prefix}:</span><span class="chat-msg-text">${msg.text}</span>`;
-                chatBox.appendChild(msgEl);
-                chatBox.scrollTop = chatBox.scrollHeight;
-            }
-        },
-        onInspectData: (data) => {
-            const panel = document.getElementById('panel-inspect');
-            const paperdoll = document.getElementById('inspect-paperdoll');
-            if (!panel || !paperdoll) return;
-            document.getElementById('inspect-title').innerText = `Inspecting: ${data.charName} (Lvl ${data.level} ${data.classId})`;
-            paperdoll.innerHTML = '';
-            ['head', 'amulet', 'chest', 'mainhand', 'offhand', 'gloves', 'belt', 'boots', 'ring1', 'ring2'].forEach(slot => {
-                const item = data.equipment[slot];
-                const slotEl = document.createElement('div');
-                slotEl.className = 'inspect-slot'; slotEl.style.gridArea = slot;
-                if (item) {
-                    const img = document.createElement('img'); img.src = renderer.getIconPath(item.baseId); img.style.width = '32px';
-                    slotEl.appendChild(img); slotEl.title = item.name;
-                } else { slotEl.style.opacity = '0.3'; slotEl.innerText = slot[0].toUpperCase(); }
-                paperdoll.appendChild(slotEl);
-            });
-            panel.classList.remove('hidden');
-        },
-        onTradeStart: (partner) => {
-            document.getElementById('trade-partner-name').innerText = `${partner}'s Offer`;
-            document.getElementById('trade-my-slots').innerHTML = '';
-            document.getElementById('trade-their-slots').innerHTML = '';
-            myOffer = []; document.getElementById('panel-trade').classList.remove('hidden');
-        },
-        onTradePartnerUpdate: (offer) => {
-            const container = document.getElementById('trade-their-slots'); container.innerHTML = '';
-            offer.forEach(item => {
-                const el = document.createElement('div'); el.className = 'trade-slot';
-                if (item) { const img = document.createElement('img'); img.src = renderer.getIconPath(item.baseId); img.style.width = '32px'; el.appendChild(img); }
-                container.appendChild(el);
-            });
-        },
-        onTradeStatusUpdate: (status) => {
-            const myStatus = document.getElementById('trade-my-status'), theirStatus = document.getElementById('trade-their-status'), acceptBtn = document.getElementById('trade-btn-accept');
-            myStatus.innerText = status.lock1 ? 'LOCKED' : 'Offering...'; myStatus.style.color = status.lock1 ? '#00ff00' : '#888';
-            theirStatus.innerText = status.lock2 ? 'LOCKED' : 'Offering...'; theirStatus.style.color = status.lock2 ? '#00ff00' : '#888';
-            if (status.lock1 && status.lock2) acceptBtn.classList.remove('disabled'); else acceptBtn.classList.add('disabled');
-        },
-        onTradeExecute: (receive, give) => {
-            give.forEach(item => { const idx = player.inventory.findIndex(i => i && i.name === item.name); if (idx !== -1) player.inventory[idx] = null; });
-            receive.forEach(item => player.addToInventory(item));
-            bus.emit('combat:log', { text: "Trade Successful!", cls: 'log-level' });
-            document.getElementById('panel-trade').classList.add('hidden'); saveGame();
-        },
-        onDuelStart: (opp) => { addCombatLog(`DUEL STARTED: vs ${opp}!`, 'log-crit'); fx.shake(500, 10); },
-        onDuelEnd: (winner) => { addCombatLog(`DUEL ENDED! Winner: ${winner || 'Draw'}`, 'log-level'); }
-    });
-    window.network = network; network.init();
-    if (!$('act-splash-container')) { const s = document.createElement('div'); s.id = 'act-splash-container'; s.className = 'act-cleared-splash'; document.body.appendChild(s); }
-    let curHighestZone = loadPlayerData?.highestZone || 0;
-    const getTheme = (z, hz) => {
-        if (z === 0) { if (hz >= 21) return 'snow'; if (hz >= 16) return 'hell'; if (hz >= 11) return 'jungle'; if (hz >= 6) return 'desert'; return 'town'; }
-        if (z >= 21) return 'snow'; if (z >= 16) return 'hell'; if (z >= 11) return 'jungle'; if (z >= 6) return 'desert'; return 'cathedral';
-    };
+
+    // Create Act Cleared Splash Container if missing
+    if (!$('act-splash-container')) {
+        const splash = document.createElement('div');
+        splash.id = 'act-splash-container';
+        splash.className = 'act-cleared-splash';
+        document.body.appendChild(splash);
+    }
+
+    // Extract early fields for generation theming
+    let curHighestZone = 0;
+    if (loadPlayerData && loadPlayerData.highestZone) {
+        curHighestZone = loadPlayerData.highestZone;
+    }
+
+    // Set initial theme
+    function getTheme(z, hz) {
+        if (z === 0) {
+            if (hz >= 21) return 'snow';
+            if (hz >= 16) return 'hell';
+            if (hz >= 11) return 'jungle';
+            if (hz >= 6) return 'desert';
+            return 'town';
+        } else {
+            if (z >= 21) return 'snow';
+            if (z >= 16) return 'hell';
+            if (z >= 11) return 'jungle';
+            if (z >= 6) return 'desert';
+            return 'cathedral';
+        }
+    }
     window.currentTheme = getTheme(zoneLevel, curHighestZone);
-    dungeon = new Dungeon(80, 60, 16); dungeon.generate(zoneLevel, window.currentTheme);
+
+    // Generate dungeon
+    dungeon = new Dungeon(80, 60, 16);
+    dungeon.generate(zoneLevel, window.currentTheme);
+
+    // Create player
     if (loadPlayerData && loadPlayerData.player) {
-        player = Player.deserialize(loadPlayerData.player); player.x = dungeon.playerStart.x; player.y = dungeon.playerStart.y;
+        player = Player.deserialize(loadPlayerData.player);
+        player.x = dungeon.playerStart.x;
+        player.y = dungeon.playerStart.y;
         player.highestZone = loadPlayerData.highestZone || 0;
-        if (loadPlayerData.stash) stash = loadPlayerData.stash;
-        if (typeof loadPlayerData.difficulty === 'number') difficulty = loadPlayerData.difficulty;
-        if (loadPlayerData.waypoints) discoveredWaypoints = new Set(loadPlayerData.waypoints);
-        if (loadPlayerData.mercenary) mercenary = Mercenary.deserialize(loadPlayerData.mercenary);
-    } else { player.x = dungeon.playerStart.x; player.y = dungeon.playerStart.y; }
-    camera.follow(player); window.player = player;
+        // Restore stash
+        if (loadPlayerData.stash && Array.isArray(loadPlayerData.stash)) {
+            stash = loadPlayerData.stash;
+            while (stash.length < 20) stash.push(null);
+        }
+        // Restore difficulty and waypoints
+        if (typeof loadPlayerData.difficulty === 'number') {
+            difficulty = loadPlayerData.difficulty;
+        }
+        if (Array.isArray(loadPlayerData.waypoints)) {
+            discoveredWaypoints = new Set(loadPlayerData.waypoints);
+            discoveredWaypoints.add(0); // Always have town
+        }
+        // Restore mercenary
+        if (loadPlayerData.mercenary) {
+            mercenary = Mercenary.deserialize(loadPlayerData.mercenary);
+        }
+    } else {
+        player = new Player(selectedClass);
+        if (charName) player.charName = charName;
+        if ($('hardcore-mode') && $('hardcore-mode').checked) {
+            player.isHardcore = true;
+        }
+        player.x = dungeon.playerStart.x;
+        player.y = dungeon.playerStart.y;
+
+        const cls = getClass(selectedClass);
+        if (cls?.trees[0]?.nodes[0]) {
+            const firstSkill = cls.trees[0].nodes[0].id;
+            player.hotbar[0] = firstSkill;
+            player.talents.points[firstSkill] = 1;
+            player.talents.unspent = 0;
+        }
+    }
+
+    window._difficulty = difficulty;
+
+    // Potion Belt
+    for (let i = 0; i < 4; i++) {
+        const slotEl = $(`pi-${i}`);
+        const potion = player.belt[i];
+        if (potion) {
+            slotEl.style.backgroundImage = `url('assets/${potion.icon}.png')`;
+            slotEl.title = potion.name;
+        } else {
+            slotEl.style.backgroundImage = 'none';
+            slotEl.title = '';
+        }
+    }
+
+    camera.follow(player);
+    window.player = player;
+    window.aoeZones = aoeZones;
+    window._difficulty = window._difficulty || 0; // Ensure it exists
     npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
     gameObjects = dungeon.objectSpawns.map(s => new GameObject(s.type, s.x, s.y, s.icon));
     enemies = dungeon.enemySpawns.map(s => new Enemy(s));
+
+    // Apply difficulty & Rift scaling to enemies
+    const diffMult = window.DIFFICULTY_MULT[window._difficulty] || 1;
+    let riftMult = 1.0;
+    if (zoneLevel >= 7) {
+        riftMult = Math.pow(1.15, zoneLevel - 6); // 15% more power per depth
+    }
+
+    for (const e of enemies) {
+        let hpM = diffMult * riftMult;
+        let dmgM = diffMult * riftMult;
+
+        // Modifiers
+        activeRiftMods.forEach(mod => {
+            if (mod.hp) hpM *= mod.hp;
+            if (mod.dmg) dmgM *= mod.dmg;
+            if (mod.speed) e.moveSpeed *= mod.speed;
+        });
+
+        e.maxHp = Math.round(e.maxHp * hpM);
+        e.hp = e.maxHp;
+        e.dmg = Math.round(e.dmg * dmgM);
+        e.xpReward = Math.round(e.xpReward * hpM);
+    }
+
     player.setRefs(dungeon, camera, enemies);
+    updateSkillBar();
+
+    droppedItems = [];
+    droppedGold = [];
+    dialogue = null;
+
     updateHud();
-    isBossZone = zoneLevel === 5 || zoneLevel === 10 || zoneLevel === 15 || zoneLevel === 20 || (zoneLevel > 21 && zoneLevel % 5 === 0);
-    const bossBar = $('boss-hp-bar'); if (bossBar && !isBossZone) bossBar.classList.add('hidden');
-    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty: window._difficulty, waypoints: [...discoveredWaypoints], mercenary: mercenary ? mercenary.serialize() : null, cube, campaign: campaign.serialize(), achievements: Array.from(unlockedAchievements) });
-    if (isBossZone) startAmbientBoss(); else if (zoneLevel > 0) startAmbientDungeon(); else stopAmbient();
+    updateRiftHud();
+
+    // Ensure boss bar hidden unless zone 5 or rift boss
+    const isBossZone = zoneLevel === 5 || zoneLevel === 10 || zoneLevel === 15 || zoneLevel === 20 || (zoneLevel > 21 && zoneLevel % 5 === 0);
+    const bossBar = $('boss-hp-bar');
+    if (bossBar && !isBossZone) bossBar.classList.add('hidden');
+
+    // Initial save
+    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
+        difficulty: window._difficulty,
+        waypoints: [...discoveredWaypoints],
+        mercenary: mercenary ? mercenary.serialize() : null,
+        cube,
+        campaign: campaign.serialize(),
+        achievements: Array.from(unlockedAchievements)
+    });
+
+    // Initial ambient audio
+    if (isBossZone) {
+        startAmbientBoss();
+    } else if (zoneLevel > 0) {
+        startAmbientDungeon();
+    } else {
+        stopAmbient(); // Town is quiet for now
+    }
+
+    // Init explored for minimap
     explored = Array.from({ length: dungeon.height }, () => Array(dungeon.width).fill(false));
-    lastTime = performance.now(); requestAnimationFrame(gameLoop);
+
+    lastTime = performance.now();
+    requestAnimationFrame(gameLoop);
 }
 
-let enemySyncTimer = 0; let renderList = [];
+// ——— GAME LOOP ———
 function gameLoop(timestamp) {
     if (state !== 'GAME') return;
-    const rawDt = Math.min(0.1, (timestamp - lastTime) / 1000); const dt = rawDt * timeScale; lastTime = timestamp;
-    if (!renderList.length || (Math.floor(timestamp) % 5 === 0)) { renderList = [...(enemies || []), player].filter(e => e); }
-    if (timeScale < 1.0) timeScale = Math.min(1.0, timeScale + rawDt * 0.8);
-    let closestBoss = null, minDist = 400;
-    for (const e of enemies) { if (e.type === 'boss' && e.hp > 0) { const d = Math.hypot(e.x - player.x, e.y - player.y); if (d < minDist) { minDist = d; closestBoss = e; } fx.emitBossAura(e.x, e.y, e.color || '#f0f'); } }
+    const rawDt = Math.min(0.1, (timestamp - lastTime) / 1000);
+    const dt = rawDt * timeScale;
+    lastTime = timestamp;
+
+    // TimeScale Recovery (Lerp back to 1.0)
+    if (timeScale < 1.0) {
+        timeScale = Math.min(1.0, timeScale + rawDt * 0.8);
+    }
+
+    // Boss Proximity Logic
+    let closestBoss = null;
+    let minDist = 400; // Activation range
+    for (const e of enemies) {
+        if (e.type === 'boss' && e.hp > 0) {
+            const d = Math.hypot(e.x - player.x, e.y - player.y);
+            if (d < minDist) {
+                minDist = d;
+                closestBoss = e;
+            }
+            // Emit aura
+            fx.emitBossAura(e.x, e.y, e.color || '#f0f');
+        }
+    }
     uiActiveBoss = closestBoss;
-    worldTime = (worldTime + dt * 10) % 1440; const hour = worldTime / 60; window.isNight = (hour >= 20 || hour < 6);
-    if (input) input.update(); if (window.mobileControls) window.mobileControls.update(player);
+
+    // Update
+    // --- Phase 29: World Time Tick (1 sec real = 10 game mins) ---
+    worldTime = (worldTime + dt * 10) % 1440;
+    const hour = worldTime / 60;
+    window.isNight = (hour >= 20 || hour < 6);
+
+    if (input) input.update();
+    if (window.mobileControls) window.mobileControls.update(player);
+
+    // --- Phase 3.1: Atmospheric Weather System ---
     if (window.fx && player) {
         const theme = window.currentTheme;
-        if (theme === 'snow') window.fx.emitBlizzard(renderer.width, renderer.height);
-        else if (theme === 'desert') window.fx.emitSand(renderer.width, renderer.height);
-        else if (theme === 'hell') window.fx.emitEmbers(renderer.width, renderer.height);
-        else if (theme === 'jungle' || theme === 'temple') window.fx.emitRain(renderer.width, renderer.height);
-        else if (theme === 'wilderness') window.fx.emitMist(renderer.width, renderer.height);
+        if (theme === 'snow') {
+            window.fx.emitBlizzard(renderer.width, renderer.height);
+        } else if (theme === 'desert') {
+            window.fx.emitSand(renderer.width, renderer.height);
+        } else if (theme === 'hell') {
+            window.fx.emitEmbers(renderer.width, renderer.height);
+        } else if (theme === 'jungle' || theme === 'temple') {
+            window.fx.emitRain(renderer.width, renderer.height);
+        } else if (theme === 'wilderness') {
+            window.fx.emitMist(renderer.width, renderer.height);
+        }
     }
+
     if (player) {
-        let targetEnemies = enemies;
-        if (network?.duelOpponentId) {
-            const opp = Array.from(network.otherPlayers.values()).find(p => p.id === network.duelOpponentId);
-            if (opp) { opp.hp = opp.hp || 100; opp.maxHp = opp.maxHp || 100; opp.isPlayer = true; targetEnemies = [...enemies, opp]; }
-        }
-        player.update(dt, input, targetEnemies, dungeon, (aoe) => aoeZones.push(aoe));
-        if (network?.isConnected) {
-            network.sendMovement(player.x, player.y, player.animState, player.facingDir);
-            if (network.isHost && enemies.length > 0) {
-                enemySyncTimer += dt; if (enemySyncTimer > 0.1) {
-                    enemySyncTimer = 0; const enemyData = enemies.filter(e => e.hp > 0).map(e => ({ id: e.syncId, x: e.x, y: e.y, hp: e.hp, anim: e.animState, dir: e.facingDir }));
-                    network.sendEnemySync(enemyData);
-                }
-            }
-        }
-        fx.update(dt * 1000);
+        player.update(dt, input, enemies, dungeon, (aoe) => aoeZones.push(aoe));
+        fx.update(dt * 1000); // Particle update expects ms
+
+        // HP Regen out of combat (passive) + gear-based regen (always active)
         if (player.hp > 0 && player.hp < player.maxHp) {
-            let hpRegen = (player.lifeRegenPerSec || 0) * dt; if (performance.now() - lastHitTime > 5000) hpRegen += player.maxHp * 0.005 * dt;
+            let hpRegen = (player.lifeRegenPerSec || 0) * dt;
+
+            // Rift Mod: Cursed (Armor/Res reduction)
+            const cursedMod = activeRiftMods.find(m => m.id === 'cursed');
+            if (cursedMod) {
+                // Apply invisible debuff or handle in calcDamage
+            }
+
+            if (performance.now() - lastHitTime > 5000) {
+                hpRegen += player.maxHp * 0.005 * dt; // Passive OOC regen
+            }
             if (hpRegen > 0) player.hp = Math.min(player.maxHp, player.hp + hpRegen);
         }
+        // MP Regen (always, slower) + gear-based regen
         if (player.mp < player.maxMp && player.hp > 0) {
             const mpRegen = player.maxMp * 0.003 * dt + (player.manaRegenPerSec || 0) * dt;
             player.mp = Math.min(player.maxMp, player.mp + mpRegen);
         }
+
+        // Moved to centralized Atmospheric Weather System block above
     }
-    if (camera) { camera.w = renderer.width; camera.h = renderer.height; camera.update(dt); }
+    if (camera) {
+        camera.w = renderer.width;
+        camera.h = renderer.height;
+        camera.update(dt);
+    }
+
+    // Update entities — pass dungeon for collision checks
     for (const e of (enemies || [])) e.update(dt, player, dungeon, enemies);
     for (const n of npcs) n.update(dt);
     if (activePet) activePet.update(dt, player, droppedGold);
     if (player) player.updateMinions(dt, enemies, dungeon);
-    projectiles.forEach(p => { if (p?.update) p.update(dt, enemies, player, dungeon, (aoe) => { if (aoe) aoeZones.push(aoe); }); });
-    projectiles = projectiles.filter(p => p?.active);
-    aoeZones.forEach(a => { if (a?.update) a.update(dt, enemies, player); });
+
+    // Update Projectiles & AoEs
+    projectiles.forEach(p => {
+        if (p && p.update) p.update(dt, enemies, player, dungeon, (aoe) => { if (aoe) aoeZones.push(aoe); });
+    });
+    projectiles = projectiles.filter(p => p && p.active);
+
+    aoeZones.forEach(a => {
+        if (a && a.update) a.update(dt, enemies, player);
+    });
     aoeZones = aoeZones.filter(a => a && a.active);
-    const st = [player, ...enemies, ...npcs]; if (mercenary) st.push(mercenary); updateStatuses(st, dt);
-    for (const drop of droppedItems) { if ((drop.rarity === 'unique' || drop.rarity === 'set') && fx && Math.random() < 0.1) fx.emitLootBeam(drop.x, drop.y, drop.rarity === 'unique' ? '#bf642f' : '#00ff00'); }
-    for (let i = floatingTexts.length - 1; i >= 0; i--) { const ft = floatingTexts[i]; ft.y -= 30 * dt; ft.life -= dt; if (ft.life <= 0) floatingTexts.splice(i, 1); }
-    if (dialogue) { dialogue.timer -= dt; if (dialogue.timer <= 0) dialogue = null; }
-    if (input.click) { checkInteractions(input.click); input.click = null; }
+
+    // Update Statuses, DoTs, and physics (knockback)
+    const statusTargets = [player, ...enemies, ...npcs];
+    if (mercenary) statusTargets.push(mercenary);
+    updateStatuses(statusTargets, dt);
+
+    // Update Loot Beams (Tick the particle system for persistence)
+    for (const drop of droppedItems) {
+        if (drop.rarity === 'unique' || drop.rarity === 'set') {
+            const color = drop.rarity === 'unique' ? '#bf642f' : '#00ff00';
+            if (fx && Math.random() < 0.1) fx.emitLootBeam(drop.x, drop.y, color);
+        }
+    }
+
+    // Phase 15: Update Floating Text
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.y -= 30 * dt; // Float up
+        ft.life -= dt;
+        if (ft.life <= 0) {
+            floatingTexts.splice(i, 1);
+        }
+    }
+
+    if (dialogue) {
+        dialogue.timer -= dt;
+        if (dialogue.timer <= 0) dialogue = null;
+    }
+
+    if (input.click) {
+        checkInteractions(input.click);
+        input.click = null;
+    }
+
+    // Gold Auto-Pickup (radius 45px)
     if (player && droppedGold.length > 0) {
         for (let i = droppedGold.length - 1; i >= 0; i--) {
-            const dg = droppedGold[i]; if (Math.hypot(player.x - dg.x, player.y - dg.y) < 45) {
-                player.gold += dg.amount; addCombatLog(`Auto-picked ${dg.amount} Gold`, 'log-heal');
-                bus.emit('gold:pickup', { amount: dg.amount }); droppedGold.splice(i, 1); updateHud(); renderInventory();
+            const dg = droppedGold[i];
+            const dist = Math.sqrt((player.x - dg.x) ** 2 + (player.y - dg.y) ** 2);
+            if (dist < 45) {
+                player.gold += dg.amount;
+                addCombatLog(`Auto-picked ${dg.amount} Gold`, 'log-heal');
+                bus.emit('gold:pickup', { amount: dg.amount });
+                droppedGold.splice(i, 1);
+                updateHud();
+                renderInventory();
             }
         }
     }
-    const b = enemies.find(e => e.type === 'boss'), hb = $('boss-hp-bar');
-    if (b && b.hp > 0 && state === 'GAME') {
-        hb.classList.remove('hidden'); const p = Math.max(0, (b.hp / b.maxHp) * 100);
-        $('boss-hp-fill').style.width = `${p}%`; $('boss-hp-text').textContent = `${Math.ceil(p)}%`; $('boss-name').textContent = b.name || 'Act Boss';
-        if (p < 50 && !b._phase2Triggered) { b._phase2Triggered = true; b.moveSpeed *= 1.4; b.atkSpeed *= 1.3; fx.shake(1000, 10); fx.emitBurst(b.x, b.y, '#ff0000', 40, 4); addCombatLog(`${b.name} enters a FURY!`, 'log-crit'); b.isEnraged = true; }
-    } else if (hb) hb.classList.add('hidden');
-    checkDeaths(); checkAchievements();
-    for (const o of gameObjects) { if ((o.type === 'portal' || o.type === 'uber_portal' || o.type === 'rift_exit') && Math.hypot(player.x - o.x, player.y - o.y) < 20) { addCombatLog('Entering Portal...', 'log-level'); nextZone(o.type === 'portal' ? o.interact(player)?.targetZone : o.targetZone); break; } }
-    if (player.hp <= 0 && state === 'GAME') { checkDeaths(); return; }
-    if (Math.hypot(player.x - dungeon.exitPos.x, player.y - dungeon.exitPos.y) < 20) { if (isZoneLocked) { if (player.path) player.path = []; player.x -= (dungeon.exitPos.x - player.x) * 0.1; player.y -= (dungeon.exitPos.y - player.y) * 0.1; bus.emit('combat:log', { text: "Evil blocks your path!", type: 'log-dmg' }); } else nextZone(); }
-    renderer.clear(); dungeon.render(renderer, camera); camera.apply(renderer.ctx);
-    if (player.path?.length > 0) { renderer.ctx.save(); renderer.ctx.globalAlpha = 0.4; renderer.ctx.fillStyle = '#ffff00'; for (let i = 0; i < player.path.length; i++) { const p = player.path[i]; renderer.ctx.beginPath(); renderer.ctx.arc(p.x, p.y, Math.max(0.5, 2 - (i / player.path.length)), 0, Math.PI * 2); renderer.ctx.fill(); } renderer.ctx.restore(); }
-    for (const di of droppedItems) {
-        if (lootFilter >= 1 && (!di.rarity || di.rarity === 'normal')) continue; if (lootFilter >= 2 && di.rarity === 'magic') continue;
-        if (di.rarity === 'unique' || di.rarity === 'rare' || di.rarity === 'set') {
-            const ctx = renderer.ctx; ctx.save(); ctx.globalCompositeOperation = 'screen';
-            const color = di.rarity === 'unique' ? 'rgba(232, 160, 32, 0.6)' : di.rarity === 'set' ? 'rgba(0, 255, 0, 0.5)' : 'rgba(240, 208, 48, 0.5)';
-            const radial = ctx.createRadialGradient(di.x, di.y, 2, di.x, di.y, 12); radial.addColorStop(0, color); radial.addColorStop(1, 'transparent');
-            ctx.fillStyle = radial; ctx.beginPath(); ctx.arc(di.x, di.y, 12, 0, Math.PI * 2); ctx.fill();
-            ctx.globalAlpha = 0.6 + Math.sin(lastTime * 0.005) * 0.3;
-            const g = ctx.createLinearGradient(0, di.y, 0, di.y - 120); g.addColorStop(0, color); g.addColorStop(1, 'transparent');
-            ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(di.x - 4, di.y); ctx.lineTo(di.x + 4, di.y); ctx.lineTo(di.x + 1, di.y - 120); ctx.lineTo(di.x - 1, di.y - 120); ctx.closePath(); ctx.fill(); ctx.restore();
+
+    // Update Floating Dialogue Position
+    const currentMenuFocus = activeDialogueNpc || activeWaypointObj;
+    if (currentMenuFocus) {
+        const picker = document.getElementById('dialogue-picker');
+        if (picker) {
+            const screen = camera.toScreen(currentMenuFocus.x, currentMenuFocus.y);
+            picker.style.left = `${screen.x - 110}px`;
+            picker.style.top = `${screen.y - 180}px`;
+
+            // Auto-close if too far
+            const d = Math.sqrt((player.x - currentMenuFocus.x) ** 2 + (player.y - currentMenuFocus.y) ** 2);
+            if (d > 120) {
+                picker.remove();
+                activeDialogueNpc = null;
+                activeWaypointObj = null;
+            }
+        } else {
+            activeDialogueNpc = null;
+            activeWaypointObj = null;
         }
-        renderer.drawSprite(di.icon, di.x, di.y, 14); renderer.ctx.font = '4px Cinzel, serif'; renderer.ctx.textAlign = 'center';
+    }
+
+    // Boss check
+    // Boss check
+    const boss = enemies.find(e => e.type === 'boss');
+    const hpBar = $('boss-hp-bar');
+    if (boss && boss.hp > 0 && state === 'GAME') {
+        hpBar.classList.remove('hidden');
+        const pct = Math.max(0, (boss.hp / boss.maxHp) * 100);
+        $('boss-hp-fill').style.width = `${pct}%`;
+        $('boss-hp-text').textContent = `${Math.ceil(pct)}%`;
+        $('boss-name').textContent = boss.name || 'Act Boss';
+
+        // --- Phase 3.1: Boss Phase Triggers ---
+        if (pct < 50 && !boss._phase2Triggered) {
+            boss._phase2Triggered = true;
+            boss.moveSpeed *= 1.4;
+            boss.atkSpeed *= 1.3;
+            fx.shake(1000, 10);
+            fx.emitBurst(boss.x, boss.y, '#ff0000', 40, 4);
+            addCombatLog(`${boss.name} enters a FURY!`, 'log-crit');
+            // Subtle visual change (flag for renderer)
+            boss.isEnraged = true;
+        }
+    } else {
+        if (hpBar) hpBar.classList.add('hidden');
+    }
+
+    // Mercenary follow & attack AI
+    if (mercenary) {
+        if (mercenary.hp > 0) {
+            mercenary.update(dt, player, enemies, dungeon);
+            mercenary._deadNotified = false;
+        } else if (!mercenary._deadNotified) {
+            addCombatLog(`Your companion ${mercenary.name} has fallen!`, 'log-dmg');
+            playDeathSfx();
+            mercenary._deadNotified = true;
+            updateHud();
+        }
+    }
+
+    checkDeaths();
+
+    // Achievement checker (every frame is fine, checks are cheap)
+    checkAchievements();
+
+    // Check portal walk-over collisions
+    for (const o of gameObjects) {
+        if (o.type === 'portal' || o.type === 'uber_portal' || o.type === 'rift_exit') {
+            const dist = Math.sqrt((player.x - o.x) ** 2 + (player.y - o.y) ** 2);
+            if (dist < 20) {
+                if (o.type === 'portal') {
+                    const res = o.interact(player);
+                    if (res && res.type === 'PORTAL') {
+                        addCombatLog('Entering Portal...', 'log-level');
+                        nextZone(res.targetZone);
+                        break;
+                    }
+                } else {
+                    // Direct targetZone objects
+                    addCombatLog('Entering Portal...', 'log-level');
+                    nextZone(o.targetZone);
+                    break;
+                }
+            }
+        }
+    }
+    // Update Pets
+    if (activePet) {
+        activePet.update(dt, player, droppedGold, droppedItems);
+    }
+    // Secondary cleanup for items picked by pet
+    for (let i = droppedGold.length - 1; i >= 0; i--) {
+        if (droppedGold[i]._pickedByPet) {
+            droppedGold.splice(i, 1);
+            updateHud();
+        }
+    }
+
+    if (player.hp <= 0 && state === 'GAME') {
+        checkDeaths(); // Triggers final sequence
+        return;
+    }
+
+    const distToExit = Math.sqrt((player.x - dungeon.exitPos.x) ** 2 + (player.y - dungeon.exitPos.y) ** 2);
+    if (distToExit < 20) {
+        if (isZoneLocked) {
+            if (player.path) player.path = []; // stop moving
+            // Move player back slightly to prevent spam
+            player.x -= (dungeon.exitPos.x - player.x) * 0.1;
+            player.y -= (dungeon.exitPos.y - player.y) * 0.1;
+            bus.emit('combat:log', { text: "The ancient evil blocks your path forward!", type: 'log-dmg' });
+        } else {
+            nextZone();
+        }
+    }
+
+    // Render
+    renderer.clear();
+    dungeon.render(renderer, camera);
+
+    camera.apply(renderer.ctx);
+
+    // Path Breadcrumbs (Phase 31 Mastery)
+    if (player.path && player.path.length > 0) {
+        renderer.ctx.save();
+        renderer.ctx.globalAlpha = 0.4;
+        renderer.ctx.fillStyle = '#ffff00';
+        for (let i = 0; i < player.path.length; i++) {
+            const p = player.path[i];
+            const size = 2 - (i / player.path.length); // Tapering trail
+            renderer.ctx.beginPath();
+            renderer.ctx.arc(p.x, p.y, Math.max(0.5, size), 0, Math.PI * 2);
+            renderer.ctx.fill();
+        }
+        renderer.ctx.restore();
+    }
+
+    // Dropped items (with loot filter)
+    for (const di of droppedItems) {
+        if (lootFilter >= 1 && (!di.rarity || di.rarity === 'normal')) continue;
+        if (lootFilter >= 2 && di.rarity === 'magic') continue;
+
+        // Loot Beam & Ground Glow
+        if (di.rarity === 'unique' || di.rarity === 'rare' || di.rarity === 'set') {
+            const ctx = renderer.ctx;
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            const color = di.rarity === 'unique' ? 'rgba(232, 160, 32, 0.6)' : di.rarity === 'set' ? 'rgba(0, 255, 0, 0.5)' : 'rgba(240, 208, 48, 0.5)';
+
+            // Ground Glow
+            const radial = ctx.createRadialGradient(di.x, di.y, 2, di.x, di.y, 12);
+            radial.addColorStop(0, color);
+            radial.addColorStop(1, 'transparent');
+            ctx.fillStyle = radial;
+            ctx.beginPath(); ctx.arc(di.x, di.y, 12, 0, Math.PI * 2); ctx.fill();
+
+            // Rhythmic Shimmer
+            const shimmer = 0.6 + Math.sin(lastTime * 0.005) * 0.3;
+            ctx.globalAlpha = shimmer;
+
+            const g = ctx.createLinearGradient(0, di.y, 0, di.y - 120);
+            g.addColorStop(0, color);
+            g.addColorStop(1, 'transparent');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(di.x - 4, di.y);
+            ctx.lineTo(di.x + 4, di.y);
+            ctx.lineTo(di.x + 1, di.y - 120);
+            ctx.lineTo(di.x - 1, di.y - 120);
+            ctx.closePath();
+            ctx.fill();
+
+            // Core beam
+            const g2 = ctx.createLinearGradient(0, di.y, 0, di.y - 100);
+            g2.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+            g2.addColorStop(1, 'transparent');
+            ctx.fillStyle = g2;
+            ctx.fillRect(di.x - 0.5, di.y - 100, 1, 100);
+            ctx.restore();
+        }
+
+        renderer.drawSprite(di.icon, di.x, di.y, 14);
+        renderer.ctx.font = '4px Cinzel, serif';
+        renderer.ctx.textAlign = 'center';
         renderer.ctx.fillStyle = di.rarity === 'unique' ? '#e8a020' : di.rarity === 'set' ? '#00ff00' : di.rarity === 'rare' ? '#f0d030' : di.rarity === 'magic' ? '#4080ff' : '#aaa';
         renderer.ctx.fillText(di.name, di.x, di.y + 10);
     }
+
+    // --- Phase 29: World Time Overlay (Post-Objects) ---
     renderWorldOverlay(renderer.ctx, renderer.width, renderer.height);
-    for (const g of droppedGold) { renderer.fillCircle(g.x, g.y, 4, '#ffd700'); renderer.strokeCircle(g.x, g.y, 4, '#c8972a', 1); renderer.ctx.font = '4px Cinzel, serif'; renderer.ctx.textAlign = 'center'; renderer.ctx.fillStyle = '#fff'; renderer.ctx.fillText(g.amount, g.x, g.y + 7); }
-    renderList.sort((a, b) => a.y - b.y);
-    for (const e of renderList) {
+
+    // Old vignette system (Removed to prevent over-darkening in favor of primary Narrative Vision pass)
+
+    for (const g of droppedGold) {
+        renderer.fillCircle(g.x, g.y, 4, '#ffd700');
+        renderer.strokeCircle(g.x, g.y, 4, '#c8972a', 1);
+        renderer.ctx.font = '4px Cinzel, serif';
+        renderer.ctx.textAlign = 'center';
+        renderer.ctx.fillStyle = '#fff';
+        renderer.ctx.fillText(g.amount, g.x, g.y + 7);
+    }
+
+    const entities = [...(enemies || []), player].filter(e => e).sort((a, b) => a.y - b.y);
+    for (const e of entities) {
         if (e.isPlayer) {
-            renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)'; renderer.ctx.beginPath(); renderer.ctx.ellipse(e.x, e.y + 6, 8, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
+            renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            renderer.ctx.beginPath(); renderer.ctx.ellipse(e.x, e.y + 6, 8, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
+
+            // Draw aura ring if active
             if (e.activeAura) {
-                const auraColor = { might_aura: '#ffd700', prayer_aura: '#40c040', holy_fire_aura: '#ff4000', resist_all: '#4080ff', vigor: '#ffffff', fanaticism: '#ffa000', conviction: '#a040ff' }[e.activeAura] || '#ffe880';
-                const pulse = 0.3 + Math.sin(lastTime * 0.004) * 0.15; const auraRadius = 25 + Math.sin(lastTime * 0.003) * 3;
-                renderer.ctx.save(); renderer.ctx.globalAlpha = pulse; renderer.ctx.strokeStyle = auraColor; renderer.ctx.lineWidth = 1.5; renderer.ctx.shadowColor = auraColor; renderer.ctx.shadowBlur = 8;
-                renderer.ctx.beginPath(); renderer.ctx.ellipse(e.x, e.y + 2, auraRadius, auraRadius * 0.4, 0, 0, Math.PI * 2); renderer.ctx.stroke(); renderer.ctx.restore();
+                const auraColors = {
+                    might_aura: '#ffd700', prayer_aura: '#40c040', holy_fire_aura: '#ff4000',
+                    resist_all: '#4080ff', vigor: '#ffffff', fanaticism: '#ffa000', conviction: '#a040ff'
+                };
+                const auraColor = auraColors[e.activeAura] || '#ffe880';
+                const pulse = 0.3 + Math.sin(lastTime * 0.004) * 0.15;
+                const auraRadius = 25 + Math.sin(lastTime * 0.003) * 3;
+                renderer.ctx.save();
+                renderer.ctx.globalAlpha = pulse;
+                renderer.ctx.strokeStyle = auraColor;
+                renderer.ctx.lineWidth = 1.5;
+                renderer.ctx.shadowColor = auraColor;
+                renderer.ctx.shadowBlur = 8;
+                renderer.ctx.beginPath();
+                renderer.ctx.ellipse(e.x, e.y + 2, auraRadius, auraRadius * 0.4, 0, 0, Math.PI * 2);
+                renderer.ctx.stroke();
+                renderer.ctx.restore();
             }
-            renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 18, e.animState, e.facingDir, lastTime, null, e.equipment, e.hitFlashTimer); e.renderMinions(renderer, lastTime);
-        } else e.render(renderer, lastTime);
-    }
-    if (network?.isConnected) {
-        network.otherPlayers.forEach(p => {
-            renderer.ctx.fillStyle = 'rgba(0,0,0,0.2)'; renderer.ctx.beginPath(); renderer.ctx.ellipse(p.x, p.y + 6, 8, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
-            renderer.drawAnim(`class_${p.classId}`, p.x, p.y - 4, 18, p.animState, p.facingDir, lastTime);
-            renderer.ctx.font = '6px Cinzel, serif'; renderer.ctx.textAlign = 'center'; renderer.ctx.fillStyle = '#00ffcc'; renderer.ctx.fillText(p.name || 'Hero', p.x, p.y - 20);
-        });
-    }
-    if (mercenary?.hp > 0) {
-        renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)'; renderer.ctx.beginPath(); renderer.ctx.ellipse(mercenary.x, mercenary.y + 6, 6, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
-        renderer.drawAnim('class_rogue', mercenary.x, mercenary.y - 4, 26, 'idle', 'south', lastTime);
-        const bw = 18; renderer.ctx.fillStyle = '#333'; renderer.ctx.fillRect(mercenary.x - bw / 2, mercenary.y - 14, bw, 2); renderer.ctx.fillStyle = '#4caf50'; renderer.ctx.fillRect(mercenary.x - bw / 2, mercenary.y - 14, bw * (mercenary.hp / mercenary.maxHp), 2);
-    }
-    for (const n of npcs) n.render(renderer, lastTime);
-    for (const obj of gameObjects) {
-        if (['shrine', 'waypoint', 'altar'].includes(obj.type)) {
-            const pulse = 0.4 + Math.sin(lastTime * 0.004) * 0.2; const color = obj.type === 'shrine' ? 'rgba(0, 255, 255,' : 'rgba(255, 215, 0,';
-            renderer.ctx.save(); renderer.ctx.globalCompositeOperation = 'screen';
-            const radial = renderer.ctx.createRadialGradient(obj.x, obj.y, 4, obj.x, obj.y, 25); radial.addColorStop(0, `${color} ${pulse})`); radial.addColorStop(1, 'transparent');
-            renderer.ctx.fillStyle = radial; renderer.ctx.beginPath(); renderer.ctx.arc(obj.x, obj.y, 25, 0, Math.PI * 2); renderer.ctx.fill(); renderer.ctx.restore();
+
+            renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 18, e.animState, e.facingDir, lastTime, null, e.equipment, e.hitFlashTimer);
+            e.renderMinions(renderer, lastTime);
+        } else {
+            e.render(renderer, lastTime);
         }
-        obj.render(renderer, lastTime);
     }
-    projectiles.forEach(p => p.render(renderer, lastTime)); aoeZones.forEach(a => a.render(renderer, lastTime));
-    renderer.ctx.restore(); renderer.ctx.save(); renderer.ctx.setTransform(1, 0, 0, 1, 0, 0); if (fx?.renderScreen) fx.renderScreen(renderer.ctx, camera); renderer.ctx.restore();
+
+    // Render mercenary
+    if (mercenary && mercenary.hp > 0) {
+        renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        renderer.ctx.beginPath();
+        renderer.ctx.ellipse(mercenary.x, mercenary.y + 6, 6, 3, 0, 0, Math.PI * 2);
+        renderer.ctx.fill();
+        renderer.drawAnim('class_rogue', mercenary.x, mercenary.y - 4, 26, mercenary.hp > 0 ? 'idle' : 'walk', 'south', lastTime);
+        // HP bar above head
+        const bw = 18;
+        renderer.ctx.fillStyle = '#333';
+        renderer.ctx.fillRect(mercenary.x - bw / 2, mercenary.y - 14, bw, 2);
+        renderer.ctx.fillStyle = '#4caf50';
+        renderer.ctx.fillRect(mercenary.x - bw / 2, mercenary.y - 14, bw * (mercenary.hp / mercenary.maxHp), 2);
+        renderer.ctx.font = '5px Cinzel, serif';
+        renderer.ctx.textAlign = 'center';
+        renderer.ctx.fillStyle = '#4caf50';
+        renderer.ctx.fillText(mercenary.name, mercenary.x, mercenary.y - 18);
+    }
+
+    for (const n of npcs) {
+        // Subtle glow for town NPCs
+        if (zoneLevel === 0) {
+            const pulse = 0.5 + Math.sin(lastTime * 0.005) * 0.3;
+            renderer.ctx.fillStyle = `rgba(216, 176, 104, ${pulse * 0.2})`;
+            renderer.ctx.beginPath();
+            renderer.ctx.ellipse(n.x, n.y + 4, 12, 5, 0, 0, Math.PI * 2);
+            renderer.ctx.fill();
+        }
+        n.render(renderer, lastTime);
+    }
+
+    // --- Phase 3.1: Pulsing Interactive Objects ---
+    for (const obj of gameObjects) {
+        if (obj.type === 'shrine' || obj.type === 'waypoint' || obj.type === 'altar') {
+            const pulse = 0.4 + Math.sin(lastTime * 0.004) * 0.2;
+            const color = obj.type === 'shrine' ? 'rgba(0, 255, 255,' : 'rgba(255, 215, 0,';
+            renderer.ctx.save();
+            renderer.ctx.globalCompositeOperation = 'screen';
+            const radial = renderer.ctx.createRadialGradient(obj.x, obj.y, 4, obj.x, obj.y, 25);
+            radial.addColorStop(0, `${color} ${pulse})`);
+            radial.addColorStop(1, 'transparent');
+            renderer.ctx.fillStyle = radial;
+            renderer.ctx.beginPath();
+            renderer.ctx.arc(obj.x, obj.y, 25, 0, Math.PI * 2);
+            renderer.ctx.fill();
+            renderer.ctx.restore();
+        }
+    }
+    for (const obj of gameObjects) obj.render(renderer, lastTime);
+
+    projectiles.forEach(p => p.render(renderer, lastTime));
+    aoeZones.forEach(a => a.render(renderer, lastTime));
+
+    renderer.ctx.restore(); // END CAMERA TRANSLATION (Switching to Screen Space for UI)
+
+    // Phase 15 & 16: Unified FX & Combat Text Layer
+    // We use fx.renderScreen to handle all particles and floating text in a single pass
+    // that correctly accounts for camera coordinates and mobile scaling.
+    renderer.ctx.save();
+    renderer.ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    if (fx && fx.renderScreen) {
+        fx.renderScreen(renderer.ctx, camera);
+    }
+
+    renderer.ctx.restore();
+
     bus.emit('render:effects', { renderer, lastTime });
+
+    // --- Phase 20: Narrative Vision: Atmospheric Lighting Pass ---
     if (player && renderer && camera) {
-        const s = camera.toScreen(player.x, player.y - 15); const r = (150 + (player.lightRadius || 0)); const f = Math.sin(Date.now() / 150) * 8;
-        renderer.applyLighting(s.x, s.y, (r + f) * camera.zoom, zoneLevel === 0 ? 'rgba(0, 0, 4, 0.15)' : zoneLevel <= 3 ? 'rgba(8, 12, 18, 0.70)' : 'rgba(0, 0, 0, 0.85)');
+        // Use the camera's source of truth for screen positioning
+        const screen = camera.toScreen(player.x, player.y - 15);
+        const sx = screen.x;
+        const sy = screen.y;
+
+        // Base radius and flicker (Tightened for a distinct circle effect)
+        const baseRadius = (150 + (player.lightRadius || 0));
+        const flicker = Math.sin(Date.now() / 150) * 8;
+
+        let ambient = 'rgba(0, 0, 0, 0.85)'; // Default
+
+        if (zoneLevel === 0) {
+            // Very subtle ambient in town to let the "player light" still show a bit
+            ambient = 'rgba(0, 0, 4, 0.15)';
+        } else if (zoneLevel <= 3) {
+            ambient = 'rgba(8, 12, 18, 0.70)'; // Blood Moor
+        } else if (zoneLevel === 4) {
+            ambient = 'rgba(10, 20, 10, 0.85)'; // Catacombs
+        } else if (zoneLevel >= 5 && zoneLevel <= 25) {
+            ambient = 'rgba(20, 4, 4, 0.90)'; // Hell
+        } else if (zoneLevel === 100) {
+            ambient = 'rgba(60, 0, 0, 0.95)'; // Uber
+        }
+
+        renderer.applyLighting(sx, sy, (baseRadius + flicker) * camera.zoom, ambient);
     }
-    camera.reset(renderer.ctx); if (dialogue) renderer.text(dialogue.text, renderer.width / 2, renderer.height - 120, { size: 16, align: 'center', color: '#ffd700' });
+
+    camera.reset(renderer.ctx);
+
+    if (dialogue) {
+        renderer.text(dialogue.text, renderer.width / 2, renderer.height - 120, { size: 16, align: 'center', color: '#ffd700' });
+    }
+
     updateHud();
+
+    // Auto-save every 30 seconds
     if (timestamp - lastSaveTime > 30000 && activeSlotId) {
-        lastSaveTime = timestamp; SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty: window._difficulty, waypoints: [...discoveredWaypoints], mercenary: mercenary ? mercenary.serialize() : null, cube, achievements: Array.from(unlockedAchievements) }); addCombatLog('Progress Saved.', 'log-info');
+        lastSaveTime = timestamp;
+        SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
+            difficulty: window._difficulty,
+            waypoints: [...discoveredWaypoints],
+            mercenary: mercenary ? mercenary.serialize() : null,
+            cube,
+            achievements: Array.from(unlockedAchievements)
+        });
+        addCombatLog('Progress Saved.', 'log-info');
     }
-    renderer.text(`FPS: ${Math.round(1000 / dt)}`, renderer.width - 20, renderer.height - 20, { size: 10, align: 'right', color: '#555' }); renderMinimap();
+
+    renderer.text(`FPS: ${Math.round(1000 / dt)}`, renderer.width - 20, renderer.height - 20, { size: 10, align: 'right', color: '#555' });
+
+    // Premium Ambient Lighting Mask (affecting everything)
+    const cx = renderer.width / 2;
+    const cy = renderer.height / 2;
+
+    // Dynamic pulsing and gear-based light radius
+    const baseRadius = 450 + (player.lightRadius || 0) * 50;
+    const pulse = Math.sin(lastTime * 0.002) * 15;
+    const radius = Math.max(100, baseRadius + pulse);
+
+    const grd = renderer.ctx.createRadialGradient(cx, cy, 50, cx, cy, radius);
+
+    // In town or boss room, make it slightly brighter overall
+    const minAlpha = (zoneLevel === 0) ? 0.6 : (isBossZone ? 0.8 : 0.95);
+
+    grd.addColorStop(0, 'rgba(0, 0, 0, 0)');      // Full visibility at center
+    grd.addColorStop(0.3, 'rgba(0, 0, 0, 0)');    // Wider clear area
+    grd.addColorStop(0.7, `rgba(0, 0, 0, ${minAlpha * 0.5})`);  // Atmospheric penumbra
+    grd.addColorStop(1, `rgba(0, 0, 0, ${minAlpha})`);   // Outer darkness
+
+    renderer.ctx.fillStyle = grd;
+    renderer.ctx.fillRect(0, 0, renderer.width, renderer.height);
+
+    // ——— MINIMAP ———
+    // Render minimap (top right)
+    renderMinimap();
+
+    // Render Full Map (TAB)
     if (showFullMap && explored) {
-        const mw = renderer.width, mh = renderer.height, ts = dungeon.tileSize, scale = Math.min(mw / (dungeon.width * ts), mh / (dungeon.height * ts)) * 0.8;
-        const ox = (mw - (dungeon.width * ts) * scale) / 2, oy = (mh - (dungeon.height * ts) * scale) / 2;
-        renderer.ctx.fillStyle = 'rgba(0,0,0,0.7)'; renderer.ctx.fillRect(0, 0, mw, mh);
-        for (let r = 0; r < dungeon.height; r++) { for (let c = 0; c < dungeon.width; c++) { if (!explored[r][c]) continue; const t = dungeon.grid[r][c]; if (t === 1) continue; renderer.ctx.fillStyle = t === 0 ? '#444' : t === 3 ? '#ffd700' : t === 6 ? '#2d5a27' : t === 8 ? '#1e4b85' : '#555'; renderer.ctx.fillRect(ox + c * ts * scale, oy + r * ts * scale, ts * scale + 1, ts * scale + 1); } }
-        renderer.ctx.fillStyle = '#0f0'; renderer.ctx.fillRect(ox + player.x * scale - 2, oy + player.y * scale - 2, 4, 4);
+        const mw = renderer.width, mh = renderer.height;
+        const ts = dungeon.tileSize;
+        const cw = dungeon.width * ts;
+        const ch = dungeon.height * ts;
+        const scale = Math.min(mw / cw, mh / ch) * 0.8;
+        const ox = (mw - cw * scale) / 2;
+        const oy = (mh - ch * scale) / 2;
+
+        renderer.ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        renderer.ctx.fillRect(0, 0, mw, mh);
+
+        for (let r = 0; r < dungeon.height; r++) {
+            for (let c = 0; c < dungeon.width; c++) {
+                if (!explored[r][c]) continue;
+                const t = dungeon.grid[r][c];
+                if (t === 1) continue;
+                renderer.ctx.fillStyle = t === 0 ? '#444' : t === 3 ? '#ffd700' : t === 6 ? '#2d5a27' : t === 8 ? '#1e4b85' : '#555';
+                renderer.ctx.fillRect(ox + c * ts * scale, oy + r * ts * scale, ts * scale + 1, ts * scale + 1);
+            }
+        }
+
+        // Objects (Shrines, Chests, Portals)
+        for (const obj of gameObjects) {
+            const or = Math.floor(obj.y / ts);
+            const oc = Math.floor(obj.x / ts);
+            if (explored[or] && explored[or][oc]) {
+                renderer.ctx.fillStyle = obj.type === 'portal' ? '#30ccff' : (obj.type === 'shrine' ? '#ffd700' : '#8b4513');
+                renderer.ctx.fillRect(ox + obj.x * scale - 1.5, oy + obj.y * scale - 1.5, 3, 3);
+            }
+        }
+
+        renderer.ctx.fillStyle = '#0f0'; // Player
+        renderer.ctx.fillRect(ox + player.x * scale - 2, oy + player.y * scale - 2, 4, 4);
     }
+
+
+
     requestAnimationFrame(gameLoop);
 }
 
-function checkInteractions(click) {
-    const worldPos = camera.toWorld(click.x, click.y);
-    for (const n of npcs) { if (Math.hypot(n.x - worldPos.x, n.y - worldPos.y) < 50) { renderDialogueMenu(n); return; } }
+function checkInteractions(pos) {
+    const worldPos = camera.toWorld(pos.x, pos.y);
+
+    // Check NPCs
+    for (const n of npcs) {
+        const d = Math.sqrt((n.x - worldPos.x) ** 2 + (n.y - worldPos.y) ** 2);
+        if (d < 50) {
+            renderDialoguePicker(n);
+            return;
+        }
+    }
+
+    // Check Objects
     for (const o of gameObjects) {
-        if (Math.hypot(o.x - worldPos.x, o.y - worldPos.y) < 20) {
+        const d = Math.sqrt((o.x - worldPos.x) ** 2 + (o.y - worldPos.y) ** 2);
+        if (d < 20) {
+            if (o.type === 'pantheon_monument') {
+                renderDialoguePicker({ id: 'pantheon_monument', name: o.name, x: o.x, y: o.y });
+                return;
+            }
             const res = o.interact(player);
-            if (res?.type === 'STASH') togglePanel('stash');
-            else if (res?.type === 'CUBE') togglePanel('cube');
-            else if (res?.type === 'BREAKABLE') {
-                const goldAmt = 5 + Math.floor(Math.random() * 15) * (1 + difficulty * 0.5); droppedGold.push({ x: o.x, y: o.y, amount: Math.round(goldAmt) });
-                if (Math.random() < 0.15) { const itm = loot.generate(zoneLevel, 'normal'); droppedItems.push({ ...itm, x: o.x, y: o.y }); }
-                addCombatLog('You smashed a barrel!', 'log-info'); fx.emitBurst(o.x, o.y, '#8b4513', 10, 1.5);
-            } else if (res?.type === 'PORTAL') { addCombatLog('Entering Portal...', 'log-level'); nextZone(res.targetZone); }
-            else if (res?.type === 'WAYPOINT') { if (!discoveredWaypoints.has(res.zone)) { discoveredWaypoints.add(res.zone); addCombatLog('Waypoint Discovered!', 'log-crit'); saveGame(); if (fx) fx.emitBurst(o.x, o.y, '#ffd700', 30, 2.5); } else renderWaypointMenu(o); }
-            else if (res?.type === 'SHRINE') {
-                const sType = res.shrineType; let buffData = { type: '', id: '', value: 0, duration: 60 };
-                if (sType === 'experience') buffData = { type: 'exp', id: 'shrine_exp', value: 50, duration: 120 };
-                else if (sType === 'armor') buffData = { type: 'armor', id: 'shrine_armor', value: 100 };
-                else if (sType === 'combat') buffData = { type: 'damage', id: 'shrine_damage', value: 50 };
-                else if (sType === 'mana') { buffData = { type: 'mana', id: 'shrine_mana', value: 500 }; player.mp = player.maxMp; }
-                else if (sType === 'resist') buffData = { type: 'resist', id: 'shrine_resist', value: 75 };
-                else if (sType === 'speed') buffData = { type: 'speed', id: 'shrine_speed', value: 30 };
-                player._buffs.push({ ...buffData }); player._statsDirty = true; player._recalcStats(); addCombatLog('Touched Shrine', 'log-heal'); fx.emitBurst(o.x, o.y, '#4080ff', 30, 2);
+            if (res && res.type === 'LOOT') {
+                // Persist the state in the dungeon spawn data so it doesn't reset
+                if (o.id && dungeon.objectSpawns) {
+                    const spawn = dungeon.objectSpawns.find(s => s.id === o.id);
+                    if (spawn) {
+                        spawn.isOpen = true;
+                        spawn.icon = 'obj_chest_open';
+                        o.icon = 'obj_chest_open'; // Update live instance icon
+                    }
+                }
+                for (let i = 0; i < res.count; i++) {
+                    const itm = loot.generate(zoneLevel);
+                    droppedItems.push({ ...itm, x: o.x + (Math.random() - 0.5) * 20, y: o.y + (Math.random() - 0.5) * 20 });
+                }
+                addCombatLog(`You opened a chest!`, 'log-info');
+            } else if (res && res.type === 'BREAKABLE') {
+                // Drop gold or trash
+                const goldAmt = 5 + Math.floor(Math.random() * 15) * (1 + difficulty * 0.5);
+                droppedGold.push({ x: o.x, y: o.y, amount: Math.round(goldAmt) });
+                if (Math.random() < 0.15) {
+                    const itm = loot.generate(zoneLevel, 'normal');
+                    droppedItems.push({ ...itm, x: o.x, y: o.y });
+                }
+                addCombatLog(`You smashed a barrel!`, 'log-info');
+                fx.emitBurst(o.x, o.y, '#8b4513', 10, 1.5);
+            } else if (res && res.type === 'PORTAL') {
+                addCombatLog('Entering Portal...', 'log-level');
+                nextZone(res.targetZone);
+            } else if (res && res.type === 'WAYPOINT') {
+                if (!discoveredWaypoints.has(res.zone)) {
+                    discoveredWaypoints.add(res.zone);
+                    addCombatLog(`Waypoint Discovered: ${ZONE_NAMES[res.zone] || 'Area'}`, 'log-crit');
+                    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: Array.from(discoveredWaypoints) });
+                    if (fx) fx.emitBurst(o.x, o.y, '#ffd700', 30, 2.5);
+                } else {
+                    renderWaypointMenu(o);
+                }
+            } else if (res && res.type === 'SHRINE') {
+                const sType = res.shrineType;
+                let buffName = '';
+                const buffData = { type: '', id: '', value: 0, duration: 60 };
+
+                if (sType === 'experience') {
+                    buffName = 'Experience Shrine (+50% XP)';
+                    buffData.type = 'exp'; buffData.id = 'shrine_exp'; buffData.value = 50; buffData.duration = 120;
+                } else if (sType === 'armor') {
+                    buffName = 'Armor Shrine (+100% Defense)';
+                    buffData.type = 'armor'; buffData.id = 'shrine_armor'; buffData.value = 100;
+                } else if (sType === 'combat') {
+                    buffName = 'Combat Shrine (+50% Damage)';
+                    buffData.type = 'damage'; buffData.id = 'shrine_damage'; buffData.value = 50;
+                } else if (sType === 'mana') {
+                    buffName = 'Mana Shrine (+500% Mana Regen)';
+                    buffData.type = 'mana'; buffData.id = 'shrine_mana'; buffData.value = 500;
+                    player.mp = player.maxMp;
+                    if (mercenary) mercenary.mp = mercenary.maxMp;
+                } else if (sType === 'resist') {
+                    buffName = 'Resist Shrine (+75 All Resists)';
+                    buffData.type = 'resist'; buffData.id = 'shrine_resist'; buffData.value = 75;
+                } else if (sType === 'speed') {
+                    buffName = 'Stamina Shrine (+30% Move Speed)';
+                    buffData.type = 'speed'; buffData.id = 'shrine_speed'; buffData.value = 30;
+                }
+
+                player._buffs.push({ ...buffData });
+                player._recalcStats();
+                if (mercenary && mercenary.hp > 0) {
+                    mercenary._buffs.push({ ...buffData });
+                    mercenary._recalcStats();
+                }
+
+                addCombatLog(`Touched ${buffName}`, 'log-heal');
+                fx.emitBurst(o.x, o.y, '#4080ff', 30, 2);
+            } else if (res && res.type === 'HELLFORGE') {
+                const hasStone = player.inventory.some(it => it && it.baseId === 'mephisto_soulstone');
+                const hasHammer = player.inventory.some(it => it && it.baseId === 'hellforge_hammer');
+
+                if (hasStone && hasHammer) {
+                    o.isOpen = true;
+                    o.icon = 'obj_altar_on';
+                    const idx1 = player.inventory.findIndex(it => it && it.baseId === 'mephisto_soulstone');
+                    player.inventory[idx1] = null;
+                    const idx2 = player.inventory.findIndex(it => it && it.baseId === 'hellforge_hammer');
+                    player.inventory[idx2] = null;
+
+                    const count = 1 + Math.floor(Math.random() * 3);
+                    for (let i = 0; i < count; i++) {
+                        const shard = loot.generate(zoneLevel, 'rare');
+                        shard.name = "Horadric Shard";
+                        shard.icon = 'item_shard';
+                        shard.isShard = true;
+                        droppedItems.push({ ...shard, x: o.x + (Math.random() - 0.5) * 20, y: o.y + (Math.random() - 0.5) * 20 });
+                    }
+                    addCombatLog("The Soulstone is destroyed! The Forge erupts with power!", 'log-unique');
+                    updateHud();
+                } else {
+                    addCombatLog("The Hellforge requires Mephisto's Soulstone and the Hellforge Hammer.", 'log-info');
+                }
+            } else if (res && res.type === 'ALTIAR_OF_HEAVENS') {
+                if (window._ancientsKilled >= 3) {
+                    o.isOpen = true;
+                    o.icon = 'obj_altar_on';
+                    player.grantExp(player.xpToNext - player.xp); // Instant level up
+                    player.statPoints += 5;
+                    addCombatLog("You have passed the Rite of Passage! (+1 Level, +5 Stats)", 'log-unique');
+                    updateHud();
+                } else {
+                    addCombatLog("The Ancients must be defeated first.", 'log-info');
+                }
             }
             return;
         }
     }
+
+    // Manual Pickup: Items
     for (let i = droppedItems.length - 1; i >= 0; i--) {
-        const di = droppedItems[i]; if (Math.hypot(di.x - worldPos.x, di.y - worldPos.y) < 22) {
-            if (Math.hypot(di.x - player.x, di.y - player.y) < 45) { if (player.addToInventory(di)) { addCombatLog('Picked up ' + di.name, 'log-item'); bus.emit('item:pickup', { item: di }); droppedItems.splice(i, 1); playLoot(); renderInventory(); } else addCombatLog('Inventory full!', 'log-dmg'); } else addCombatLog('Too far to pick up', 'log-dmg');
+        const di = droppedItems[i];
+        const dist = Math.sqrt((di.x - worldPos.x) ** 2 + (di.y - worldPos.y) ** 2);
+        if (dist < 22) { // Increased pickup radius for comfort
+            const distToPlayer = Math.sqrt((di.x - player.x) ** 2 + (di.y - player.y) ** 2);
+            if (distToPlayer < 45) {
+                // Quest Item logic
+                if (di.isQuestItem) {
+                    const qId = di.qId;
+                    const quest = activeQuests.find(q => q.id === qId);
+                    if (quest) {
+                        quest.progress = Math.min(quest.target, quest.progress + 1);
+                        addCombatLog(`Recovered ${di.name}!`, 'log-crit');
+                        if (quest.progress === quest.target) {
+                            addCombatLog(`Quest Objective Complete: ${quest.name}`, 'log-unique');
+                        }
+                        updateHud();
+                        // Proceed to inventory check (don't return yet)
+                    }
+                }
+
+                if (player.addToInventory(di)) {
+                    addCombatLog(`Picked up ${di.name}`, 'log-item');
+                    bus.emit('item:pickup', { item: di });
+                    droppedItems.splice(i, 1);
+                    playLoot();
+                    renderInventory();
+                } else {
+                    addCombatLog('Inventory full!', 'log-dmg');
+                }
+            } else {
+                addCombatLog('Too far to pick up', 'log-dmg');
+            }
+            return;
+        }
+    }
+
+    // Manual Pickup: Gold
+    for (let i = droppedGold.length - 1; i >= 0; i--) {
+        const dg = droppedGold[i];
+        const dist = Math.sqrt((dg.x - worldPos.x) ** 2 + (dg.y - worldPos.y) ** 2);
+        if (dist < 22) { // Increased pickup radius for comfort
+            const distToPlayer = Math.sqrt((dg.x - player.x) ** 2 + (dg.y - player.y) ** 2);
+            if (distToPlayer < 45) {
+                player.gold += dg.amount;
+                totalGoldCollected += dg.amount;
+                addCombatLog(`Picked up ${dg.amount} Gold`, 'log-heal');
+                bus.emit('gold:pickup', { amount: dg.amount });
+                droppedGold.splice(i, 1);
+                updateHud();
+                renderInventory();
+            } else {
+                addCombatLog('Too far to pick up gold', 'log-dmg');
+            }
             return;
         }
     }
 }
+
+function checkDeaths() {
     for (const e of enemies) {
         if (e.hp <= 0 && e.state !== 'dead') {
             e.state = 'dead';
