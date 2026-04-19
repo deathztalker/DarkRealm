@@ -38,8 +38,15 @@ export class NetworkManager {
             
             // Cargar mensajes recientes al iniciar
             try {
-                const recent = await DB.getRecentMessages();
-                recent.forEach(msg => this.handleIncomingDbMessage(msg, true));
+                const { data: recent, error } = await DB.client
+                    .from('messages')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+                
+                if (recent) {
+                    recent.reverse().forEach(msg => this.handleIncomingDbMessage(msg, true));
+                }
             } catch (e) {
                 console.error('Error loading recent messages:', e);
             }

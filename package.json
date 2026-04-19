@@ -1,7 +1,6 @@
 {
-  "name": "dark-realm-mmo",
+  "name": "dark-realm-server",
   "version": "1.0.0",
-  "description": "Dark Realm MMO Server",
   "main": "server/server.js",
   "dependencies": {
     "cors": "^2.8.5",
@@ -10,8 +9,5 @@
   },
   "scripts": {
     "start": "node server/server.js"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
