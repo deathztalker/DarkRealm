@@ -19,7 +19,7 @@ export class NetworkManager {
         // --- Socket.io for High-Speed Movement Sync ---
         if (typeof io !== 'undefined') {
             const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            const serverUrl = isLocal ? 'http://localhost:3000' : 'https://darkrealm.up.railway.app'; 
+            const serverUrl = isLocal ? 'http://localhost:3000' : 'https://darkrealm-production.up.railway.app'; 
             
             console.log(`Connecting to socket server at: ${serverUrl}`);
             this.socket = io(serverUrl);
