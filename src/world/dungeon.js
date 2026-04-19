@@ -417,6 +417,50 @@ export class Dungeon {
         }
         return [...this._bsp(left, depth + 1, maxDepth), ...this._bsp(right, depth + 1, maxDepth)];
     }
+
+    _generateAutomata() {
+        // Initial random fill
+        let grid = Array.from({ length: this.height }, () => 
+            Array.from({ length: this.width }, () => Math.random() < 0.45 ? TILE.WALL : TILE.FLOOR)
+        );
+
+        // Run iterations
+        for (let i = 0; i < 5; i++) {
+            let nextGrid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
+            for (let r = 0; r < this.height; r++) {
+                for (let c = 0; c < this.width; c++) {
+                    let walls = 0;
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            if (dr === 0 && dc === 0) continue;
+                            const nr = r + dr, nc = c + dc;
+                            if (nr < 0 || nr >= this.height || nc < 0 || nc >= this.width) walls++;
+                            else if (grid[nr][nc] === TILE.WALL) walls++;
+                        }
+                    }
+                    if (walls > 4) nextGrid[r][c] = TILE.WALL;
+                    else nextGrid[r][c] = TILE.FLOOR;
+                }
+            }
+            grid = nextGrid;
+        }
+
+        // Ensure boundaries are walls
+        for (let r = 0; r < this.height; r++) {
+            grid[r][0] = TILE.WALL;
+            grid[r][this.width - 1] = TILE.WALL;
+        }
+        for (let c = 0; c < this.width; c++) {
+            grid[0][c] = TILE.WALL;
+            grid[this.height - 1][c] = TILE.WALL;
+        }
+
+        this.grid = grid;
+
+        // Fake a "room" for spawning logic
+        this.rooms = [{ x: 5, y: 5, w: this.width - 10, h: this.height - 10 }];
+    }
+
     _carveRoom(leaf) {
         const margin = 2;
         const maxW = leaf.w - margin * 2;
