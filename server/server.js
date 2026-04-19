@@ -2,27 +2,40 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// Enable CORS for Express and Socket.io
-app.use(cors());
+// 1. CORS CONFIGURATION (MUST BE FIRST)
+app.use(cors({
+    origin: "*",
+    methods: ["GET", "POST"],
+    credentials: true
+}));
 
 const server = http.createServer(app);
+
+// 2. SOCKET.IO CONFIGURATION
 const io = new Server(server, {
     cors: {
         origin: "*",
-        methods: ["GET", "POST"]
-    }
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    transports: ['websocket', 'polling']
 });
 
-// Health check route
+const PORT = process.env.PORT || 3000;
+
+// 3. HEALTH CHECK & STATIC FILES
 app.get('/', (req, res) => {
     res.send('MMO Server is running and healthy!');
 });
 
-// --- GLOBAL STATE (Volatile) ---
+// Optional: serves files if accessed directly via Railway URL
+app.use(express.static(path.join(__dirname, '..')));
+
+// --- GLOBAL STATE ---
 const players = {};
 const friends = {}; // socketId -> Set(names)
 const activeTrades = {}; // tradeId -> tradeData
@@ -56,11 +69,7 @@ io.on('connection', (socket) => {
         };
         
         if (!currentHostId) electNewHost();
-
-        // Tell the new player about existing players
         socket.emit('current_players', players);
-        
-        // Tell others about the new player
         socket.broadcast.emit('player_joined', players[socket.id]);
     });
 
@@ -71,8 +80,6 @@ io.on('connection', (socket) => {
             players[socket.id].y = data.y;
             players[socket.id].animState = data.animState;
             players[socket.id].facingDir = data.facingDir;
-            
-            // Broadcast to everyone else
             socket.broadcast.emit('player_moved', players[socket.id]);
         }
     });
@@ -135,17 +142,9 @@ io.on('connection', (socket) => {
 
     socket.on('trade_accept', (fromId) => {
         if (!players[fromId] || !players[socket.id]) return;
-        
-        // Correct way to generate unique ID for two strings
         const ids = [socket.id, fromId].sort();
         const tradeId = `trade_${ids[0]}_${ids[1]}`;
-
-        activeTrades[tradeId] = {
-            p1: fromId, p2: socket.id,
-            offer1: [], offer2: [],
-            lock1: false, lock2: false,
-            accept1: false, accept2: false
-        };
+        activeTrades[tradeId] = { p1: fromId, p2: socket.id, offer1: [], offer2: [], lock1: false, lock2: false, accept1: false, accept2: false };
         io.to(fromId).emit('trade_start', { tradeId, partner: players[socket.id].name });
         io.to(socket.id).emit('trade_start', { tradeId, partner: players[fromId].name });
     });
@@ -154,13 +153,9 @@ io.on('connection', (socket) => {
         if (!data || !data.tradeId) return;
         const trade = activeTrades[data.tradeId];
         if (!trade) return;
-
         const isP1 = socket.id === trade.p1;
         if (isP1) { trade.offer1 = data.offer; } else { trade.offer2 = data.offer; }
-        
-        // Reset locks and accepts on update
         trade.lock1 = trade.lock2 = trade.accept1 = trade.accept2 = false;
-        
         const partnerId = isP1 ? trade.p2 : trade.p1;
         io.to(partnerId).emit('trade_update', { offer: data.offer });
         io.to(trade.p1).emit('trade_status', { lock1: trade.lock1, lock2: trade.lock2 });
@@ -171,9 +166,7 @@ io.on('connection', (socket) => {
         if (!data || !data.tradeId) return;
         const trade = activeTrades[data.tradeId];
         if (!trade) return;
-
         if (socket.id === trade.p1) trade.lock1 = true; else trade.lock2 = true;
-        
         io.to(trade.p1).emit('trade_status', { lock1: trade.lock1, lock2: trade.lock2 });
         io.to(trade.p2).emit('trade_status', { lock1: trade.lock1, lock2: trade.lock2 });
     });
@@ -182,9 +175,7 @@ io.on('connection', (socket) => {
         if (!data || !data.tradeId) return;
         const trade = activeTrades[data.tradeId];
         if (!trade || !trade.lock1 || !trade.lock2) return;
-
         if (socket.id === trade.p1) trade.accept1 = true; else trade.accept2 = true;
-
         if (trade.accept1 && trade.accept2) {
             io.to(trade.p1).emit('trade_execute', { receive: trade.offer2, give: trade.offer1 });
             io.to(trade.p2).emit('trade_execute', { receive: trade.offer1, give: trade.offer2 });
@@ -215,16 +206,17 @@ io.on('connection', (socket) => {
         console.log(`User disconnected: ${socket.id}`);
         delete players[socket.id];
         delete friends[socket.id];
-        
-        if (socket.id === currentHostId) {
-            electNewHost();
-        }
-
+        if (socket.id === currentHostId) electNewHost();
         io.emit('player_left', socket.id);
     });
 });
 
-// CRITICAL: Bind to 0.0.0.0 for Railway
+// 4. PREVENT CRASHES
+process.on('uncaughtException', (err) => {
+    console.error('Server Error:', err);
+});
+
+// 5. START SERVER
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`>>> MMO Server is LIVE on port ${PORT}`);
+    console.log(`>>> MMO Server LIVE on port ${PORT}`);
 });
