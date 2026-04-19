@@ -6224,18 +6224,19 @@ function updateCharPreview(slot) {
     const nameEl = document.getElementById('preview-name'), detailsEl = document.getElementById('preview-details'), renderDiv = document.getElementById('char-preview-render');
     if (nameEl) nameEl.innerText = slot.name; if (detailsEl) detailsEl.innerText = `Level ${slot.level} ${slot.className}`;
     if (renderDiv) {
+        renderDiv.innerHTML = '';
         const spriteUrl = `assets/class_${slot.classId}.png`;
         const tempImg = new Image();
-        const render = () => {
+        tempImg.onload = () => {
             const sw = tempImg.width / 7;
             const sh = tempImg.height / 16;
             renderDiv.innerHTML = `
                 <div style="width:${sw}px; height:${sh}px; overflow:hidden; position:relative; margin:0 auto; transform:scale(3); transform-origin:top; image-rendering:pixelated; filter: drop-shadow(0 0 20px rgba(216,176,104,0.4));">
-                    <img src="${spriteUrl}" style="position:absolute; left:0; top:-${2 * sh}px; width:${tempImg.width}px; height:${tempImg.height}px;">
+                    <img src="${spriteUrl}" style="position:absolute; left:0; top:-${2 * sh}px; width:${tempImg.width}px; height:${tempImg.height}px; display:block;">
                 </div>
             `;
         };
-        if (tempImg.complete) render(); else tempImg.onload = render;
+        tempImg.onerror = () => { renderDiv.innerHTML = `<div style="color:#666; font-size:10px; margin-top:20px;">Image not found</div>`; };
         tempImg.src = spriteUrl;
     }
 }
