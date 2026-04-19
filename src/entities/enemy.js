@@ -79,6 +79,7 @@ const UNIQUE_ENEMIES = [
 
 export class Enemy {
     constructor(spawn) {
+        this.syncId = spawn.syncId || `enemy_${Math.random().toString(36).substr(2, 9)}`;
         let types = Object.keys(ENEMY_TYPES);
         const zone = spawn.level || 1;
 
@@ -419,6 +420,12 @@ export class Enemy {
         // Lightning Enchanted reaction & Hit Flash
         if (this.hp < this._prevHp) {
             this.hitFlashTimer = 0.1; // Flash for 100ms
+            
+            // Sync Damage to Server (MMO)
+            if (window.network && window.network.isConnected) {
+                window.network.sendEnemyDamaged(this.id, this._prevHp - this.hp);
+            }
+
             if (this.isLightningEnchanted && Math.random() < 0.25) {
                 for (let i = 0; i < 4; i++) {
                     const angle = (Math.PI / 2) * i + Math.random();
@@ -465,6 +472,17 @@ export class Enemy {
 
         // Standard AI
         this._updateStatus(dt);
+        
+        // --- MMO Sync: Only Host runs AI ---
+        const isOnline = window.network && window.network.isConnected;
+        const isHost = isOnline ? window.network.isHost : true;
+
+        if (!isHost) {
+            // Non-hosts just accept state from network (handled by NetworkManager -> dungeon)
+            // But we still need to update animations based on what was synced
+            return;
+        }
+
         if (isCCd(this)) return;
 
         // Fear Logic

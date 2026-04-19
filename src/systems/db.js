@@ -153,5 +153,188 @@ export const DB = {
             return false;
         }
         return true;
+    },
+
+    // --- Social & Chat System ---
+    
+    async findUserByName(charName) {
+        // Buscamos en la tabla de saves donde el jsonb 'player' tiene el nombre
+        const { data, error } = await this.client
+            .from('saves')
+            .select('user_id, player')
+            .eq('player->>charName', charName)
+            .maybeSingle();
+        
+        if (error) console.error('Error finding user:', error);
+        return data;
+    },
+
+    async sendMessage(content, receiverId = null, isWhisper = false) {
+        if (!this.isLoggedIn()) return false;
+        const { error } = await this.client
+            .from('messages')
+            .insert({
+                sender_id: this.session.user.id,
+                receiver_id: receiverId,
+                content: content,
+                is_whisper: isWhisper
+            });
+        return !error;
+    },
+
+    async getRecentMessages() {
+        // Obtenemos los últimos 50 mensajes (globales o dirigidos a mí)
+        const { data, error } = await this.client
+            .from('messages')
+            .select('*, sender:sender_id(id)') // En un sistema real usaríamos el username del perfil
+            .or(`receiver_id.is.null,receiver_id.eq.${this.session.user.id},sender_id.eq.${this.session.user.id}`)
+            .order('created_at', { ascending: false })
+            .limit(50);
+        
+        return data ? data.reverse() : [];
+    },
+
+    async addFriend(friendId) {
+        if (!this.isLoggedIn()) return false;
+        const { error } = await this.client
+            .from('friends')
+            .upsert({
+                user_id: this.session.user.id,
+                friend_id: friendId,
+                status: 'pending'
+            });
+        return !error;
+    },
+
+    async getFriends() {
+        if (!this.isLoggedIn()) return [];
+        const { data, error } = await this.client
+            .from('friends')
+            .select('*')
+            .or(`user_id.eq.${this.session.user.id},friend_id.eq.${this.session.user.id}`);
+        return data || [];
+    },
+
+    // Suscripción en tiempo real a mensajes
+    subscribeToChat(callback) {
+        return this.client
+            .channel('public:messages')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+                callback(payload.new);
+            })
+            .subscribe();
+    },
+
+    // --- Presence & Online Status ---
+    
+    trackPresence(charName, zoneLevel) {
+        if (!this.isLoggedIn()) return null;
+        
+        const channel = this.client.channel('online-users', {
+            config: { presence: { key: this.session.user.id } }
+        });
+
+        channel
+            .on('presence', { event: 'sync' }, () => {
+                const state = channel.presenceState();
+                bus.emit('social:presenceSync', state);
+            })
+            .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+                bus.emit('social:playerOnline', newPresences[0]);
+            })
+            .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+                bus.emit('social:playerOffline', leftPresences[0]);
+            })
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    await channel.track({
+                        charName,
+                        zoneLevel,
+                        online_at: new Date().toISOString()
+                    });
+                }
+            });
+
+        return channel;
+    },
+
+    // --- Party System ---
+
+    async createParty() {
+        if (!this.isLoggedIn()) return null;
+        const { data: party, error: pError } = await this.client
+            .from('parties')
+            .insert({ leader_id: this.session.user.id })
+            .select()
+            .single();
+        
+        if (pError) return null;
+
+        await this.client
+            .from('party_members')
+            .insert({ party_id: party.id, user_id: this.session.user.id });
+        
+        return party;
+    },
+
+    async joinParty(partyId) {
+        if (!this.isLoggedIn()) return false;
+        const { error } = await this.client
+            .from('party_members')
+            .insert({ party_id: partyId, user_id: this.session.user.id });
+        return !error;
+    },
+
+    async leaveParty() {
+        if (!this.isLoggedIn()) return false;
+        const { error } = await this.client
+            .from('party_members')
+            .delete()
+            .eq('user_id', this.session.user.id);
+        return !error;
+    },
+
+    async getPartyMembers(partyId) {
+        const { data, error } = await this.client
+            .from('party_members')
+            .select('user_id, joined_at')
+            .eq('party_id', partyId);
+        return data || [];
+    },
+
+    // --- Auction House ---
+
+    async getAuctions() {
+        const { data, error } = await this.client
+            .from('auctions')
+            .select('*')
+            .eq('status', 'active')
+            .order('created_at', { ascending: false });
+        return data || [];
+    },
+
+    async postAuction(item, price, charName) {
+        if (!this.isLoggedIn()) return false;
+        const { error } = await this.client
+            .from('auctions')
+            .insert({
+                seller_id: this.session.user.id,
+                seller_name: charName,
+                item_data: item,
+                price: price
+            });
+        return !error;
+    },
+
+    async buyAuction(auctionId, price) {
+        if (!this.isLoggedIn()) return false;
+        // En una app real, esto sería una transacción RPC de Postgres para evitar race conditions
+        const { error } = await this.client
+            .from('auctions')
+            .update({ status: 'sold' })
+            .eq('id', auctionId)
+            .eq('status', 'active'); // Evitar doble compra
+        
+        return !error;
     }
 };

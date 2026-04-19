@@ -1,0 +1,362 @@
+import { DB } from '../systems/db.js';
+import { bus } from '../engine/EventBus.js';
+
+/**
+ * NetworkManager — Handles Socket.io communication, state sync, and relay events.
+ */
+export class NetworkManager {
+    constructor(game) {
+        this.game = game;
+        this.socket = null;
+        this.otherPlayers = new Map(); // socketId -> { x, y, animState, facingDir, classId, name }
+        this.isConnected = false;
+        this.isHost = false; // Is this client the 'Host' responsible for enemy AI sync?
+        this.chatSubscription = null;
+        this.currentParty = null; // { id, leader_id, members: [] }
+    }
+
+    async init() {
+        // --- Socket.io for High-Speed Movement Sync ---
+        if (typeof io !== 'undefined') {
+            this.socket = io();
+            this.setupSocketHandlers();
+            this.setupTradeHandlers();
+            this.setupDuelHandlers();
+        } else {
+            console.warn('Socket.io client not found. Running movement in offline mode.');
+        }
+
+        // --- Supabase for Persistent Chat & Social ---
+        if (DB.isLoggedIn()) {
+            this.chatSubscription = DB.subscribeToChat((payload) => {
+                this.handleIncomingDbMessage(payload);
+            });
+            
+            // Cargar mensajes recientes al iniciar
+            try {
+                const recent = await DB.getRecentMessages();
+                recent.forEach(msg => this.handleIncomingDbMessage(msg, true));
+            } catch (e) {
+                console.error('Error loading recent messages:', e);
+            }
+
+            // Party Realtime Subscription
+            this.setupPartyRealtime();
+        }
+    }
+
+    setupSocketHandlers() {
+        this.socket.on('connect', () => {
+            console.log('Connected to game server. ID:', this.socket.id);
+            this.isConnected = true;
+            if (this.game.player) {
+                this.socket.emit('join', {
+                    x: this.game.player.x,
+                    y: this.game.player.y,
+                    classId: this.game.player.classId,
+                    name: this.game.player.charName
+                });
+            }
+        });
+
+        this.socket.on('current_players', (players) => {
+            for (const id in players) {
+                if (id !== this.socket.id) this.otherPlayers.set(id, players[id]);
+            }
+            if (this.otherPlayers.size === 0) {
+                this.isHost = true;
+                console.log('No other players. You are now the Zone Host.');
+            }
+        });
+
+        this.socket.on('player_joined', (player) => {
+            this.otherPlayers.set(player.id, player);
+        });
+
+        this.socket.on('player_moved', (data) => {
+            const player = this.otherPlayers.get(data.id);
+            if (player) {
+                player.x = data.x;
+                player.y = data.y;
+                player.animState = data.animState;
+                player.facingDir = data.facingDir;
+                
+                // If in party, update HUD stats
+                if (this.currentParty && this.currentParty.members.some(m => m.name === player.name)) {
+                    const member = this.currentParty.members.find(m => m.name === player.name);
+                    member.x = data.x;
+                    member.y = data.y;
+                    // In a real system, we'd also sync HP/MP via Socket.io for low latency
+                    window.updatePartyHUD?.(this.currentParty.members);
+                }
+            }
+        });
+
+        this.socket.on('player_left', (id) => {
+            this.otherPlayers.delete(id);
+        });
+
+        this.socket.on('enemy_damaged', (data) => {
+            const enemy = this.game.enemies?.find(e => e.syncId === data.enemyId);
+            if (enemy) enemy.hp -= data.damage;
+        });
+
+        this.socket.on('enemy_death', (enemyId) => {
+            const enemy = this.game.enemies?.find(e => e.syncId === enemyId);
+            if (enemy) enemy.hp = 0;
+        });
+
+        this.socket.on('enemy_sync', (enemiesData) => {
+            if (!this.isHost) {
+                enemiesData.forEach(data => {
+                    const enemy = this.game.enemies?.find(e => e.syncId === data.id);
+                    if (enemy) {
+                        enemy.x = data.x; enemy.y = data.y;
+                        enemy.hp = data.hp; enemy.animState = data.anim;
+                        enemy.facingDir = data.dir;
+                    }
+                });
+            }
+        });
+
+        this.socket.on('disconnect', () => {
+            this.isConnected = false;
+            this.otherPlayers.clear();
+        });
+    }
+
+    setupPartyRealtime() {
+        // Subscribe to party_members changes for the current user
+        DB.client
+            .channel('party-sync')
+            .on('postgres_changes', { 
+                event: '*', 
+                schema: 'public', 
+                table: 'party_members' 
+            }, async (payload) => {
+                const userId = DB.session?.user.id;
+                if (payload.new.user_id === userId || payload.old?.user_id === userId) {
+                    await this.refreshPartyState();
+                }
+            })
+            .subscribe();
+    }
+
+    async refreshPartyState() {
+        const userId = DB.session?.user.id;
+        const { data: memberRecord } = await DB.client
+            .from('party_members')
+            .select('party_id')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+        if (memberRecord) {
+            const { data: party } = await DB.client
+                .from('parties')
+                .select('*, party_members(user_id)')
+                .eq('id', memberRecord.party_id)
+                .single();
+            
+            this.currentParty = party;
+            // Fetch names for members (simplified: in real app use profiles table)
+            this.currentParty.members = party.party_members.map(m => ({
+                id: m.user_id,
+                name: m.user_id === userId ? this.game.player.charName : 'Party Member',
+                hp: 100, maxHp: 100, mp: 80, maxMp: 80 // Placeholders
+            }));
+        } else {
+            this.currentParty = null;
+        }
+        window.updatePartyHUD?.(this.currentParty?.members || []);
+    }
+
+    async handleIncomingDbMessage(msg, isHistory = false) {
+        const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        const isMe = msg.sender_id === DB.session?.user.id;
+        const senderName = isMe ? this.game.player.charName : 'Other Player'; 
+
+        if (msg.is_whisper) {
+            if (isMe || msg.receiver_id === DB.session?.user.id) {
+                this.game.onWhisper?.({
+                    sender: isMe ? this.game.player.charName : 'Player',
+                    target: isMe ? 'Recipient' : this.game.player.charName,
+                    text: msg.content,
+                    time: time
+                });
+            }
+        } else {
+            this.game.onChatMessage?.({
+                sender: senderName,
+                text: msg.content,
+                time: time
+            });
+        }
+    }
+
+    sendMovement(x, y, animState, facingDir) {
+        if (this.isConnected) this.socket.emit('move', { x, y, animState, facingDir });
+    }
+
+    sendEnemyDamaged(enemyId, damage) {
+        if (this.isConnected) this.socket.emit('enemy_damaged', { enemyId, damage, dealerId: this.socket.id });
+    }
+
+    sendEnemyDeath(enemyId) {
+        if (this.isConnected) this.socket.emit('enemy_death', enemyId);
+    }
+
+    sendEnemySync(enemyData) {
+        if (this.isConnected && this.isHost) this.socket.emit('enemy_sync', enemyData);
+    }
+
+    async sendChat(text) {
+        await DB.sendMessage(text);
+    }
+
+    async sendWhisper(targetName, text) {
+        const target = await DB.findUserByName(targetName);
+        if (target) {
+            await DB.sendMessage(text, target.user_id, true);
+        } else {
+            this.game.onChatMessage?.({ 
+                sender: 'System', text: `Player "${targetName}" not found.`, 
+                time: new Date().toLocaleTimeString(), isSystem: true 
+            });
+        }
+    }
+
+    async addFriend(name) {
+        const target = await DB.findUserByName(name);
+        if (target) {
+            await DB.addFriend(target.user_id);
+            this.game.onChatMessage?.({ 
+                sender: 'System', text: `Friend request sent to ${name}.`, 
+                time: new Date().toLocaleTimeString(), isSystem: true 
+            });
+        }
+    }
+
+    async inviteToParty(name) {
+        const target = await DB.findUserByName(name);
+        if (target) {
+            if (!this.currentParty) {
+                const newParty = await DB.createParty();
+                if (newParty) await DB.joinParty(target.user_id);
+            } else {
+                await DB.joinParty(target.user_id);
+            }
+            this.game.onChatMessage?.({ 
+                sender: 'System', text: `Invited ${name} to party.`, 
+                time: new Date().toLocaleTimeString(), isSystem: true 
+            });
+        }
+    }
+
+    // --- Inspect Logic ---
+    async inspectPlayer(name) {
+        const data = await DB.findUserByName(name);
+        if (data && data.player) {
+            this.game.onInspectData?.(data.player);
+        } else {
+            this.game.onChatMessage?.({ 
+                sender: 'System', text: `Player "${name}" not found.`, 
+                time: new Date().toLocaleTimeString(), isSystem: true 
+            });
+        }
+    }
+
+    // --- Trade Socket Handlers ---
+    setupTradeHandlers() {
+        this.socket.on('trade_invite', (data) => {
+            this.game.onChatMessage?.({
+                sender: 'System',
+                text: `${data.from} wants to trade. Type "/trade accept" to begin.`,
+                time: new Date().toLocaleTimeString(),
+                isSystem: true,
+                onSelect: () => this.socket.emit('trade_accept', data.fromId)
+            });
+            this.pendingTradeFrom = data.fromId;
+        });
+
+        this.socket.on('trade_start', (data) => {
+            this.currentTradeId = data.tradeId;
+            this.game.onTradeStart?.(data.partner);
+        });
+
+        this.socket.on('trade_update', (data) => {
+            this.game.onTradePartnerUpdate?.(data.offer);
+        });
+
+        this.socket.on('trade_status', (data) => {
+            this.game.onTradeStatusUpdate?.(data);
+        });
+
+        this.socket.on('trade_execute', (data) => {
+            this.game.onTradeExecute?.(data.receive, data.give);
+            this.currentTradeId = null;
+        });
+    }
+
+    setupDuelHandlers() {
+        this.socket.on('duel_invite', (data) => {
+            this.game.onChatMessage?.({
+                sender: 'System',
+                text: `${data.from} challenges you to a duel! Type "/duel accept" to fight.`,
+                time: new Date().toLocaleTimeString(),
+                isSystem: true
+            });
+            this.pendingDuelFrom = data.fromId;
+        });
+
+        this.socket.on('duel_start', (data) => {
+            this.duelOpponentId = data.opponentId;
+            this.game.onDuelStart?.(data.opponentName);
+        });
+
+        this.socket.on('duel_end', (data) => {
+            this.duelOpponentId = null;
+            this.game.onDuelEnd?.(data.winner);
+        });
+    }
+
+    sendDuelInvite(name) {
+        if (this.isConnected) this.socket.emit('duel_invite', name);
+    }
+
+    acceptDuel() {
+        if (this.isConnected && this.pendingDuelFrom) {
+            this.socket.emit('duel_accept', this.pendingDuelFrom);
+            this.pendingDuelFrom = null;
+        }
+    }
+
+    sendTradeInvite(name) {
+        if (this.isConnected) this.socket.emit('trade_invite', name);
+    }
+
+    acceptTrade() {
+        if (this.isConnected && this.pendingTradeFrom) {
+            this.socket.emit('trade_accept', this.pendingTradeFrom);
+            this.pendingTradeFrom = null;
+        }
+    }
+
+    updateTradeOffer(offer) {
+        if (this.isConnected && this.currentTradeId) {
+            this.socket.emit('trade_update', { tradeId: this.currentTradeId, offer });
+        }
+    }
+
+    lockTrade() {
+        if (this.isConnected && this.currentTradeId) {
+            this.socket.emit('trade_lock', { tradeId: this.currentTradeId });
+        }
+    }
+
+    confirmTrade() {
+        if (this.isConnected && this.currentTradeId) {
+            this.socket.emit('trade_confirm', { tradeId: this.currentTradeId });
+        }
+    }
+}

@@ -3012,3 +3012,379 @@ body.socketing-mode .inv-item:not(.unidentified) {
 }
 .item-quantity-badge { position: absolute; bottom: 2px; right: 2px; background: rgba(0, 0, 0, 0.85); border: 1px solid #777; color: #fff; font-size: 10px; padding: 0 4px; border-radius: 2px; font-family: 'Inter', sans-serif; pointer-events: none; z-index: 10; font-weight: bold; text-shadow: 1px 1px #000; }
 `n.points-pending { animation: pulse-gold 1.5s infinite; border-color: #ffd700 !important; box-shadow: 0 0 15px #ffd700 !important; } @keyframes pulse-gold { 0% { filter: brightness(1); } 50% { filter: brightness(1.8); } 100% { filter: brightness(1); } }
+
+/* =============================================
+   MMO CHAT UI
+   ============================================= */
+#mmo-chat-container {
+    position: fixed;
+    bottom: 80px;
+    left: 20px;
+    width: 320px;
+    height: 180px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(107, 90, 69, 0.3);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    pointer-events: auto;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+#mmo-chat-container:hover,
+#mmo-chat-container:focus-within {
+    background: rgba(0, 0, 0, 0.7);
+    border-color: rgba(107, 90, 69, 0.6);
+}
+
+#chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    font-family: 'Cinzel', serif;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold) transparent;
+}
+
+#chat-messages::-webkit-scrollbar {
+    width: 4px;
+}
+
+#chat-messages::-webkit-scrollbar-thumb {
+    background: var(--gold);
+}
+
+.chat-msg {
+    word-wrap: break-word;
+}
+
+.chat-msg-time {
+    color: #666;
+    font-size: 9px;
+    margin-right: 5px;
+}
+
+.chat-msg-sender {
+    color: var(--gold);
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.chat-msg-text {
+    color: #eee;
+}
+
+#chat-input {
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    border-top: 1px solid rgba(107, 90, 69, 0.2);
+    padding: 8px;
+    color: #fff;
+    font-size: 12px;
+    font-family: 'Cinzel', serif;
+    outline: none;
+}
+
+
+/* =============================================
+   SOCIAL & PARTY SYSTEM UI
+   ============================================= */
+#panel-social {
+    width: 300px;
+    height: 400px;
+}
+
+.social-tabs {
+    display: flex;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid #4a3520;
+}
+
+.social-tab {
+    flex: 1;
+    padding: 10px;
+    background: transparent;
+    border: none;
+    color: #888;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s;
+}
+
+.social-tab.active {
+    color: var(--gold);
+    background: rgba(212, 175, 55, 0.1);
+}
+
+#social-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.social-row {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    margin-bottom: 5px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+}
+
+.social-row:hover {
+    border-color: rgba(212, 175, 55, 0.3);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.status-online { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
+.status-offline { background: #666; }
+
+.social-name {
+    flex: 1;
+    font-size: 12px;
+    color: #eee;
+}
+
+.social-zone {
+    font-size: 9px;
+    color: #888;
+}
+
+#party-hud {
+    position: absolute;
+    top: 60px;
+    left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.party-member-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 6px 10px;
+    border: 1px solid rgba(107, 90, 69, 0.5);
+    border-radius: 4px;
+}
+
+.party-member-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.party-member-name {
+    font-size: 10px;
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+}
+
+.party-bar {
+    width: 80px;
+    height: 4px;
+    background: #111;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.party-hp-fill { background: linear-gradient(to right, #600, #c00); height: 100%; transition: width 0.3s; }
+.party-mp-fill { background: linear-gradient(to right, #004, #00c); height: 100%; transition: width 0.3s; }
+
+/* =============================================
+   INSPECT & TRADE UI
+   ============================================= */
+#panel-inspect {
+    width: 320px;
+    height: 480px;
+}
+
+.inspect-container {
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    gap: 15px;
+}
+
+.inspect-paperdoll {
+    display: grid;
+    grid-template-areas: 
+        ". head ."
+        "mainhand chest offhand"
+        "gloves belt boots"
+        "ring1 amulet ring2";
+    gap: 10px;
+    justify-content: center;
+}
+
+.inspect-slot {
+    width: 44px;
+    height: 44px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid #4a3520;
+    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+#panel-trade {
+    width: 500px;
+    height: 450px;
+}
+
+.trade-window {
+    display: flex;
+    flex: 1;
+    gap: 20px;
+    padding: 15px;
+}
+
+.trade-side {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(107, 90, 69, 0.3);
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.trade-side-header {
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    color: var(--gold);
+    border-bottom: 1px solid rgba(107, 90, 69, 0.2);
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+}
+
+.trade-slots {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+    flex: 1;
+}
+
+.trade-slot {
+    width: 44px;
+    height: 44px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid #333;
+    border-radius: 2px;
+}
+
+.trade-status {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 11px;
+    color: #888;
+}
+
+.trade-footer {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    padding: 15px;
+    border-top: 1px solid #333;
+}
+
+.trade-btn {
+    padding: 8px 24px;
+    font-family: 'Cinzel', serif;
+    background: #4a3520;
+    color: #fff;
+    border: 1px solid var(--gold);
+    cursor: pointer;
+}
+
+.trade-btn.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.trade-btn.active {
+    background: #006000;
+    border-color: #00ff00;
+}
+
+/* =============================================
+   AUCTION HOUSE UI
+   ============================================= */
+#panel-auction {
+    width: 450px;
+    height: 500px;
+}
+
+.ah-tab-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.auction-row {
+    display: grid;
+    grid-template-columns: 44px 1fr 80px 80px;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(107, 90, 69, 0.2);
+    padding: 6px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+}
+
+.auction-item-icon {
+    width: 32px;
+    height: 32px;
+}
+
+.auction-info {
+    font-size: 11px;
+}
+
+.auction-name {
+    color: #eee;
+    font-weight: bold;
+}
+
+.auction-seller {
+    color: #888;
+    font-size: 9px;
+}
+
+.auction-price {
+    color: #ffd700;
+    font-weight: bold;
+    text-align: right;
+}
+
+.btn-buy-ah {
+    background: #4a3520;
+    border: 1px solid var(--gold);
+    color: #fff;
+    font-size: 10px;
+    padding: 4px;
+    cursor: pointer;
+}
+
+
+
+

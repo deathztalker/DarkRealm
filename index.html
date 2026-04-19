@@ -506,8 +506,102 @@
     </div>
   </div>
 
+  <!-- Party HUD -->
+  <div id="party-hud" class="hidden">
+    <!-- Party members health/mana bars will be injected here -->
+  </div>
+
+  <!-- Social Panel -->
+  <div id="panel-social" class="panel hidden">
+    <div class="panel-header">
+      <span>Social (P)</span>
+      <button class="panel-close" data-panel="social">✕</button>
+    </div>
+    <div class="social-tabs">
+      <button class="social-tab active" data-tab="friends">Friends</button>
+      <button class="social-tab" data-tab="party">Party</button>
+    </div>
+    <div id="social-content">
+      <div id="social-friends-list" class="social-tab-content">
+        <!-- Friends list with status -->
+      </div>
+      <div id="social-party-list" class="social-tab-content hidden">
+        <!-- Party members -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Inspect Panel -->
+  <div id="panel-inspect" class="panel hidden">
+    <div class="panel-header">
+      <span id="inspect-title">Inspect</span>
+      <button class="panel-close" data-panel="inspect">✕</button>
+    </div>
+    <div class="inspect-container">
+      <div class="inspect-paperdoll" id="inspect-paperdoll">
+        <!-- Gear slots filled via JS -->
+      </div>
+      <div class="inspect-stats" id="inspect-stats"></div>
+    </div>
+  </div>
+
+  <!-- Trade Panel -->
+  <div id="panel-trade" class="panel hidden">
+    <div class="panel-header">
+      <span>Trade</span>
+      <button class="panel-close" data-panel="trade">✕</button>
+    </div>
+    <div class="trade-window">
+      <div class="trade-side" id="trade-my-side">
+        <div class="trade-side-header">My Offer</div>
+        <div class="trade-slots" id="trade-my-slots"></div>
+        <div class="trade-status" id="trade-my-status">Waiting...</div>
+      </div>
+      <div class="trade-side" id="trade-their-side">
+        <div class="trade-side-header" id="trade-partner-name">Their Offer</div>
+        <div class="trade-slots" id="trade-their-slots"></div>
+        <div class="trade-status" id="trade-their-status">Waiting...</div>
+      </div>
+    </div>
+    <div class="trade-footer">
+      <button id="trade-btn-lock" class="trade-btn">Lock</button>
+      <button id="trade-btn-accept" class="trade-btn disabled">Accept</button>
+    </div>
+  </div>
+
+  <!-- Auction House Panel -->
+  <div id="panel-auction" class="panel hidden">
+    <div class="panel-header">
+      <span>Auction House</span>
+      <button class="panel-close" data-panel="auction">✕</button>
+    </div>
+    <div class="social-tabs">
+      <button class="ah-tab active" data-tab="browse">Browse</button>
+      <button class="ah-tab" data-tab="post">Post Item</button>
+    </div>
+    <div id="ah-content">
+      <div id="ah-browse-list" class="ah-tab-content">
+        <!-- Auctions list -->
+      </div>
+      <div id="ah-post-form" class="ah-tab-content hidden">
+        <div style="padding:20px; text-align:center;">
+          <div id="ah-selected-item-box" class="trade-slot" style="margin: 0 auto 15px;"></div>
+          <input type="number" id="ah-price-input" placeholder="Price (Gold)" style="background:#000; border:1px solid #4a3520; color:#fff; padding:8px; width:120px;">
+          <button id="ah-btn-post" class="trade-btn" style="margin-top:15px; display:block; width:100%;">Post Auction</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
   <script type="module" src="src/main.js"></script>
   <div id="custom-tooltip"></div>
+
+  <!-- MMO Chat UI -->
+  <div id="mmo-chat-container" class="hidden">
+    <div id="chat-messages"></div>
+    <input type="text" id="chat-input" placeholder="Press Enter to chat..." maxlength="100">
+  </div>
 </body>
 
 </html>

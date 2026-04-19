@@ -26,6 +26,7 @@ import { fx } from './engine/ParticleSystem.js';
 import { Vendor } from './vendorSystem.js';
 import { VendorUI } from './ui/vendorUI.js';
 import { campaign } from './systems/campaignSystem.js';
+import { NetworkManager } from './network/NetworkManager.js';
 
 // Expose globals for external modules
 window.loot = loot;
@@ -42,7 +43,7 @@ window.addCombatLog = addCombatLog;
 import { RUNEWORDS } from './data/runes.js';
 
 // ——— GLOBALS ———
-let renderer, camera, input, dungeon, player;
+let renderer, camera, input, dungeon, player, network;
 let enemies = [], npcs = [], gameObjects = [];
 let projectiles = [], aoeZones = [];
 let droppedItems = [], droppedGold = [];
@@ -427,6 +428,300 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     input = new Input(canvas);
     window.mobileControls = new MobileControls(input);
 
+    // Initialize Network (MMO)
+    network = new NetworkManager({ 
+        get player() { return player; }, 
+        get enemies() { return enemies; },
+        onChatMessage: (msg) => {
+            const chatBox = document.getElementById('chat-messages');
+            if (chatBox) {
+                const msgEl = document.createElement('div');
+                msgEl.className = 'chat-msg' + (msg.isSystem ? ' system-msg' : '');
+                msgEl.innerHTML = `
+                    <span class="chat-msg-time">[${msg.time}]</span>
+                    <span class="chat-msg-sender">${msg.sender}:</span>
+                    <span class="chat-msg-text">${msg.text}</span>
+                `;
+                chatBox.appendChild(msgEl);
+                chatBox.scrollTop = chatBox.scrollHeight;
+                while (chatBox.children.length > 50) chatBox.removeChild(chatBox.firstChild);
+            }
+        },
+        onWhisper: (msg) => {
+            const chatBox = document.getElementById('chat-messages');
+            if (chatBox) {
+                const isSent = msg.sender === player.charName;
+                const displayPartner = isSent ? msg.target : msg.sender;
+                const prefix = isSent ? `To ${displayPartner}` : `From ${displayPartner}`;
+                
+                const msgEl = document.createElement('div');
+                msgEl.className = 'chat-msg whisper-msg';
+                msgEl.innerHTML = `
+                    <span class="chat-msg-time">[${msg.time}]</span>
+                    <span class="chat-msg-sender">${prefix}:</span>
+                    <span class="chat-msg-text">${msg.text}</span>
+                `;
+                chatBox.appendChild(msgEl);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        },
+        onFriendsListUpdate: (friends) => {
+            console.log("Friends list updated:", friends);
+            // Optionally update a friends UI panel here
+        }
+    });
+    window.network = network;
+    network.init();
+
+    // MMO Chat Input with Commands
+    const chatInput = document.getElementById('chat-input');
+    const chatContainer = document.getElementById('mmo-chat-container');
+    if (chatInput && chatContainer) {
+        chatContainer.classList.remove('hidden');
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const text = chatInput.value.trim();
+                if (text) {
+                    if (text.startsWith('/w ')) {
+                        const parts = text.split(' ');
+                        const target = parts[1];
+                        const message = parts.slice(2).join(' ');
+                        if (target && message) network.sendWhisper(target, message);
+                    } else if (text.startsWith('/f add ')) {
+                        const name = text.replace('/f add ', '').trim();
+                        if (name) network.addFriend(name);
+                    } else if (text.startsWith('/p invite ')) {
+                        const name = text.replace('/p invite ', '').trim();
+                        network.inviteToParty?.(name);
+                    } else if (text.startsWith('/inspect ')) {
+                        const name = text.replace('/inspect ', '').trim();
+                        network.inspectPlayer?.(name);
+                    } else if (text.startsWith('/trade invite ')) {
+                        const name = text.replace('/trade invite ', '').trim();
+                        network.sendTradeInvite?.(name);
+                    } else if (text === '/trade accept') {
+                        network.acceptTrade?.();
+                    } else if (text.startsWith('/duel ')) {
+                        const name = text.replace('/duel ', '').trim();
+                        network.sendDuelInvite?.(name);
+                    } else if (text === '/duel accept') {
+                        network.acceptDuel?.();
+                    } else if (text === '/ah') {
+                        togglePanel('auction');
+                        refreshAuctions();
+                    } else {
+                        network.sendChat(text);
+                    }
+                    chatInput.value = '';
+                }
+                chatInput.blur();
+                e.stopPropagation();
+            }
+        });
+        
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && document.activeElement !== chatInput && state === 'GAME') {
+                chatInput.focus();
+                e.preventDefault();
+            }
+            if (e.key.toLowerCase() === 'p' && state === 'GAME' && document.activeElement !== chatInput) {
+                togglePanel('social');
+            }
+        });
+    }
+
+    // --- Inspect Handler ---
+    network.game.onInspectData = (data) => {
+        const panel = document.getElementById('panel-inspect');
+        const paperdoll = document.getElementById('inspect-paperdoll');
+        const title = document.getElementById('inspect-title');
+        if (!panel || !paperdoll) return;
+
+        title.innerText = `Inspecting: ${data.charName} (Lvl ${data.level} ${data.classId})`;
+        paperdoll.innerHTML = '';
+        
+        const slots = ['head', 'amulet', 'chest', 'mainhand', 'offhand', 'gloves', 'belt', 'boots', 'ring1', 'ring2'];
+        slots.forEach(slot => {
+            const item = data.equipment[slot];
+            const slotEl = document.createElement('div');
+            slotEl.className = 'inspect-slot';
+            slotEl.style.gridArea = slot;
+            if (item) {
+                const img = document.createElement('img');
+                img.src = renderer.getIconPath(item.baseId);
+                img.style.width = '32px';
+                slotEl.appendChild(img);
+                slotEl.title = item.name;
+            } else {
+                slotEl.style.opacity = '0.3';
+                slotEl.innerText = slot[0].toUpperCase();
+            }
+            paperdoll.appendChild(slotEl);
+        });
+        
+        panel.classList.remove('hidden');
+    };
+
+    // --- Trade Handler ---
+    let myOffer = [];
+    network.game.onTradeStart = (partnerName) => {
+        const panel = document.getElementById('panel-trade');
+        document.getElementById('trade-partner-name').innerText = `${partnerName}'s Offer`;
+        document.getElementById('trade-my-slots').innerHTML = '';
+        document.getElementById('trade-their-slots').innerHTML = '';
+        myOffer = [];
+        panel.classList.remove('hidden');
+    };
+
+    network.game.onTradePartnerUpdate = (offer) => {
+        const container = document.getElementById('trade-their-slots');
+        container.innerHTML = '';
+        offer.forEach(item => {
+            const el = document.createElement('div');
+            el.className = 'trade-slot';
+            if (item) {
+                const img = document.createElement('img');
+                img.src = renderer.getIconPath(item.baseId);
+                img.style.width = '32px';
+                el.appendChild(img);
+            }
+            container.appendChild(el);
+        });
+    };
+
+    network.game.onTradeStatusUpdate = (status) => {
+        const myStatus = document.getElementById('trade-my-status');
+        const theirStatus = document.getElementById('trade-their-status');
+        const lockBtn = document.getElementById('trade-btn-lock');
+        const acceptBtn = document.getElementById('trade-btn-accept');
+
+        myStatus.innerText = status.lock1 ? 'LOCKED' : 'Offering...';
+        myStatus.style.color = status.lock1 ? '#00ff00' : '#888';
+        theirStatus.innerText = status.lock2 ? 'LOCKED' : 'Offering...';
+        theirStatus.style.color = status.lock2 ? '#00ff00' : '#888';
+
+        if (status.lock1 && status.lock2) {
+            acceptBtn.classList.remove('disabled');
+        } else {
+            acceptBtn.classList.add('disabled');
+        }
+    };
+
+    network.game.onTradeExecute = (receive, give) => {
+        // Finalize trade: remove given, add received
+        give.forEach(item => {
+            const idx = player.inventory.findIndex(i => i && i.name === item.name);
+            if (idx !== -1) player.inventory[idx] = null;
+        });
+        receive.forEach(item => {
+            player.addToInventory(item);
+        });
+        
+        bus.emit('combat:log', { text: "Trade Successful!", cls: 'log-level' });
+        document.getElementById('panel-trade').classList.add('hidden');
+        saveGame();
+    };
+
+    document.getElementById('trade-btn-lock').addEventListener('click', () => {
+        network.lockTrade();
+    });
+
+    document.getElementById('trade-btn-accept').addEventListener('click', () => {
+        network.confirmTrade();
+    });
+
+    // Helper for adding items to trade (simplified click from inventory)
+    bus.on('inventory:click', (idx) => {
+        const panel = document.getElementById('panel-trade');
+        if (!panel.classList.contains('hidden')) {
+            const item = player.inventory[idx];
+            if (item && myOffer.length < 9) {
+                myOffer.push(item);
+                network.updateTradeOffer(myOffer);
+                // Update local offer UI
+                const container = document.getElementById('trade-my-slots');
+                const el = document.createElement('div');
+                el.className = 'trade-slot';
+                const img = document.createElement('img');
+                img.src = renderer.getIconPath(item.baseId);
+                img.style.width = '32px';
+                el.appendChild(img);
+                container.appendChild(el);
+            }
+        }
+    });
+
+    // Social Panel Tabs
+    document.querySelectorAll('.social-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.social-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.social-tab-content').forEach(c => c.classList.add('hidden'));
+            tab.classList.add('active');
+            const target = tab.getAttribute('data-tab');
+            document.getElementById(`social-${target}-list`).classList.remove('hidden');
+        });
+    });
+
+    // Start Presence Tracking
+    if (player && DB.isLoggedIn()) {
+        DB.trackPresence(player.charName, dungeon?.zoneLevel || 0);
+    }
+
+    bus.on('social:presenceSync', (onlineUsers) => {
+        renderFriendsList(onlineUsers);
+    });
+}
+
+function renderFriendsList(onlineUsers = {}) {
+    const list = document.getElementById('social-friends-list');
+    if (!list) return;
+    
+    DB.getFriends().then(friends => {
+        list.innerHTML = friends.length === 0 ? '<div style="padding:10px; color:#666;">No friends added. Use /f add Name</div>' : '';
+        
+        friends.forEach(f => {
+            const isOnline = onlineUsers[f.friend_id] || onlineUsers[f.user_id];
+            const name = isOnline ? isOnline[0].charName : 'Friend';
+            const zone = isOnline ? `Zone ${isOnline[0].zoneLevel}` : 'Offline';
+            
+            const el = document.createElement('div');
+            el.className = 'social-row';
+            el.innerHTML = `
+                <div class="status-dot ${isOnline ? 'status-online' : 'status-offline'}"></div>
+                <div class="social-name">${name}</div>
+                <div class="social-zone">${zone}</div>
+            `;
+            list.appendChild(el);
+        });
+    });
+}
+
+function updatePartyHUD(members) {
+    const hud = document.getElementById('party-hud');
+    if (!hud) return;
+    
+    if (!members || members.length <= 1) {
+        hud.classList.add('hidden');
+        return;
+    }
+
+    hud.classList.remove('hidden');
+    hud.innerHTML = '';
+    members.forEach(m => {
+        if (m.id === DB.session?.user.id) return; // Don't show self in side bars
+        const el = document.createElement('div');
+        el.className = 'party-member-card';
+        el.innerHTML = `
+            <div class="party-member-stats">
+                <div class="party-member-name">${m.name}</div>
+                <div class="party-bar"><div class="party-hp-fill" style="width:${(m.hp/m.maxHp)*100}%"></div></div>
+                <div class="party-bar"><div class="party-mp-fill" style="width:${(m.mp/m.maxMp)*100}%"></div></div>
+            </div>
+        `;
+        hud.appendChild(el);
+    });
+}
+
     // Create Act Cleared Splash Container if missing
     if (!$('act-splash-container')) {
         const splash = document.createElement('div');
@@ -593,6 +888,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
 }
 
 // ——— GAME LOOP ———
+let enemySyncTimer = 0;
 function gameLoop(timestamp) {
     if (state !== 'GAME') return;
     const rawDt = Math.min(0.1, (timestamp - lastTime) / 1000);
@@ -646,7 +942,39 @@ function gameLoop(timestamp) {
     }
 
     if (player) {
-        player.update(dt, input, enemies, dungeon, (aoe) => aoeZones.push(aoe));
+        // --- PvP Duel Target Injection ---
+        let targetEnemies = enemies;
+        if (network && network.duelOpponentId) {
+            const opp = Array.from(network.otherPlayers.values()).find(p => p.id === network.duelOpponentId);
+            if (opp) {
+                // Ensure opponent has necessary properties for combat logic
+                opp.hp = opp.hp || 100;
+                opp.maxHp = opp.maxHp || 100;
+                opp.isPlayer = true;
+                targetEnemies = [...enemies, opp];
+            }
+        }
+        
+        player.update(dt, input, targetEnemies, dungeon, (aoe) => aoeZones.push(aoe));
+        
+        // Sync to Server (MMO)
+        if (network && network.isConnected) {
+            network.sendMovement(player.x, player.y, player.animState, player.facingDir);
+            
+            // If Host, sync enemies
+            if (network.isHost && enemies.length > 0) {
+                enemySyncTimer += dt;
+                if (enemySyncTimer > 0.1) { // 10hz sync for enemies
+                    enemySyncTimer = 0;
+                    const enemyData = enemies.filter(e => e.hp > 0).map(e => ({
+                        id: e.syncId, x: e.x, y: e.y, hp: e.hp, 
+                        anim: e.animState, dir: e.facingDir
+                    }));
+                    network.sendEnemySync(enemyData);
+                }
+            }
+        }
+        
         fx.update(dt * 1000); // Particle update expects ms
 
         // HP Regen out of combat (passive) + gear-based regen (always active)
@@ -979,6 +1307,21 @@ function gameLoop(timestamp) {
         } else {
             e.render(renderer, lastTime);
         }
+    }
+
+    // Render Other Players (MMO)
+    if (network && network.isConnected) {
+        network.otherPlayers.forEach(p => {
+            renderer.ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            renderer.ctx.beginPath(); renderer.ctx.ellipse(p.x, p.y + 6, 8, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
+            renderer.drawAnim(`class_${p.classId}`, p.x, p.y - 4, 18, p.animState, p.facingDir, lastTime);
+            
+            // Name Tag
+            renderer.ctx.font = '6px Cinzel, serif';
+            renderer.ctx.textAlign = 'center';
+            renderer.ctx.fillStyle = '#00ffcc';
+            renderer.ctx.fillText(p.name || 'Hero', p.x, p.y - 20);
+        });
     }
 
     // Render mercenary
@@ -6889,3 +7232,98 @@ function showActCleared(name, subtitle) {
 
     setTimeout(() => { splash.classList.remove('show'); }, 5000);
 }
+
+// --- Auction House Logic ---
+async function refreshAuctions() {
+    const list = document.getElementById('ah-browse-list');
+    if (!list) return;
+    list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Fetching auctions...</div>';
+    
+    const auctions = await DB.getAuctions();
+    list.innerHTML = auctions.length === 0 ? '<div style="text-align:center; padding:20px; color:#666;">No items listed.</div>' : '';
+    
+    auctions.forEach(a => {
+        const item = a.item_data;
+        const row = document.createElement('div');
+        row.className = 'auction-row';
+        row.innerHTML = `
+            <div class="trade-slot">${getItemHtml(item)}</div>
+            <div class="auction-info">
+                <div class="auction-name" style="color:${getItemColor(item.rarity)}">${item.name}</div>
+                <div class="auction-seller">By: ${a.seller_name}</div>
+            </div>
+            <div class="auction-price">${a.price} G</div>
+            <button class="btn-buy-ah" data-id="${a.id}" data-price="${a.price}">BUY</button>
+        `;
+        
+        row.querySelector('.btn-buy-ah').onclick = async () => {
+            if (player.gold >= a.price) {
+                const ok = await DB.buyAuction(a.id, a.price);
+                if (ok) {
+                    player.gold -= a.price;
+                    player.addToInventory(item);
+                    addCombatLog(`Bought ${item.name} for ${a.price} G!`, 'log-crit');
+                    refreshAuctions();
+                    saveGame();
+                }
+            } else {
+                addCombatLog("Not enough gold!", 'log-dmg');
+            }
+        };
+        list.appendChild(row);
+    });
+}
+
+function getItemColor(rarity) {
+    const colors = { normal: '#fff', magic: '#4850b8', rare: '#ffff00', set: '#00ff00', unique: '#bf642f' };
+    return colors[rarity] || '#fff';
+}
+
+// --- PvP Duel Interaction ---
+network.game.onDuelStart = (opponentName) => {
+    addCombatLog(`DUEL STARTED: vs ${opponentName}!`, 'log-crit');
+    fx.shake(500, 10);
+    // Visual countdown?
+};
+
+network.game.onDuelEnd = (winnerName) => {
+    addCombatLog(`DUEL ENDED! Winner: ${winnerName || 'Draw'}`, 'log-level');
+};
+
+// Wire AH Tabs
+document.querySelectorAll('.ah-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.ah-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.ah-tab-content').forEach(c => c.classList.add('hidden'));
+        tab.classList.add('active');
+        document.getElementById(`ah-${tab.dataset.tab}-list` || `ah-${tab.dataset.tab}-form`).classList.remove('hidden');
+    });
+});
+
+let ahSelectedItem = null;
+bus.on('inventory:click', (idx) => {
+    const ahPanel = document.getElementById('panel-auction');
+    if (!ahPanel.classList.contains('hidden')) {
+        const item = player.inventory[idx];
+        if (item) {
+            ahSelectedItem = { item, idx };
+            document.getElementById('ah-selected-item-box').innerHTML = getItemHtml(item);
+        }
+    }
+});
+
+document.getElementById('ah-btn-post')?.addEventListener('click', async () => {
+    const price = parseInt(document.getElementById('ah-price-input').value);
+    if (ahSelectedItem && price > 0) {
+        const ok = await DB.postAuction(ahSelectedItem.item, price, player.charName);
+        if (ok) {
+            player.inventory[ahSelectedItem.idx] = null;
+            addCombatLog(`Listed ${ahSelectedItem.item.name} for ${price} Gold.`, 'log-info');
+            document.getElementById('ah-selected-item-box').innerHTML = '';
+            document.getElementById('ah-price-input').value = '';
+            ahSelectedItem = null;
+            renderInventory();
+            saveGame();
+        }
+    }
+});

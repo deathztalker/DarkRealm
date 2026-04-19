@@ -165,6 +165,15 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
     }
 
     target.hp = Math.max(0, target.hp - finalDealt);
+    
+    // --- PvP Friendly Duel Protection ---
+    const isDuel = window.network?.duelOpponentId && (target.id === window.network.duelOpponentId || target.syncId === window.network.duelOpponentId);
+    if (isDuel && target.hp < 1) {
+        target.hp = 1;
+        bus.emit('combat:log', { text: "DUEL FINISHED!", cls: 'log-level' });
+        if (window.network) window.network.socket.emit('duel_end', { winner: attacker.charName });
+    }
+
     if (finalDealt > 0) {
         target.lastAttacker = attacker.name || attacker.charName || 'Unknown';
     }
