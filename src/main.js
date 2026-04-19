@@ -7187,3 +7187,28 @@ function updateRespawns() {
         }
     }
 }
+
+function addChatMessage(sender, text, type = 'global') {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+    
+    const div = document.createElement('div');
+    div.className = `chat-msg chat-msg-${type}`;
+    
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    let html = `<span class="chat-msg-time">[${time}]</span>`;
+    
+    if (sender) {
+        html += `<span class="chat-msg-sender">${sender}:</span>`;
+    }
+    
+    html += `<span class="chat-msg-text">${text}</span>`;
+    div.innerHTML = html;
+    
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    
+    // Show chat container if it was hidden
+    const chatUI = document.getElementById('mmo-chat-container');
+    if (chatUI) chatUI.classList.remove('hidden');
+}
