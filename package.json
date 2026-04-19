@@ -1,16 +1,16 @@
 {
+  "name": "dark-realm-mmo",
+  "version": "1.0.0",
+  "description": "Dark Realm MMO Server",
+  "main": "server/server.js",
   "dependencies": {
-    "build": "^0.1.4",
     "express": "^4.21.2",
-    "npm": "^11.12.1",
-    "run": "^1.5.0",
     "socket.io": "^4.8.1"
   },
   "scripts": {
     "start": "node server/server.js"
   },
-  "devDependencies": {
-    "express": "^5.2.1",
-    "socket.io": "^4.8.3"
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
