@@ -405,6 +405,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     // Switch screens
     $('main-menu').classList.remove('active');
     $('game-screen').classList.add('active');
+    $('mmo-chat-container')?.classList.remove('hidden');
     state = 'GAME';
 
     // Init canvas
@@ -6464,8 +6465,8 @@ function updateCharPreview(slot) {
             const sw = tempImg.width / 7;
             const sh = tempImg.height / 16;
             renderDiv.innerHTML = `
-                <div style="width:${sw}px; height:${sh}px; overflow:hidden; position:relative; margin:0 auto; transform:scale(3); transform-origin:top; image-rendering:pixelated; filter: drop-shadow(0 0 20px rgba(216,176,104,0.4));">
-                    <img src="${spriteUrl}" style="position:absolute; left:0; top:-${2 * sh}px; width:${tempImg.width}px; height:${tempImg.height}px; display:block;">
+                <div style="width:${sw}px; height:${sh}px; overflow:hidden; position:relative; margin:0 auto; transform:scale(3); transform-origin:top; image-rendering:pixelated; filter: drop-shadow(0 0 20px rgba(216,176,104,0.4)); pointer-events:none;">
+                    <img src="${spriteUrl}" style="position:absolute; left:0; top:-${2 * sh}px; width:${tempImg.width}px; height:${tempImg.height}px; display:block; pointer-events:none;">
                 </div>
             `;
         };
@@ -6897,6 +6898,7 @@ function returnToMainMenu() {
     state = 'MENU';
     $('game-screen').classList.remove('active');
     $('main-menu').classList.add('active');
+    $('mmo-chat-container')?.classList.add('hidden');
 
     // Refresh the character slots in the menu
     renderSaveSlots();

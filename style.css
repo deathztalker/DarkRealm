@@ -3289,6 +3289,7 @@ body.socketing-mode .inv-item:not(.unidentified) {
   border-radius: 4px;
   font-family: 'Crimson Text', serif;
   transition: background 0.3s, border 0.3s;
+  pointer-events: none;
 }
 
 .chat-container:focus-within,
@@ -3301,6 +3302,7 @@ body.socketing-mode .inv-item:not(.unidentified) {
   border: 2px dashed rgba(191, 100, 47, 0.8) !important;
   cursor: move;
   box-shadow: 0 0 15px rgba(191, 100, 47, 0.4);
+  pointer-events: auto;
 }
 
 .chat-container.unlocked::before {
