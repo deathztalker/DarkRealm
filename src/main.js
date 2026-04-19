@@ -354,12 +354,16 @@ function selectClass(classId) {
 
 function showClassInfo(classId) {
     const cls = getClass(classId);
-    $('class-name').innerHTML = `<i class="ra ${getIconForClass(cls.id)}" style="font-size:24px;vertical-align:middle;color:var(--gold);"></i> ${cls.name}`;
-    $('class-desc').textContent = cls.desc;
+    if (!cls) return;
+    const nameEl = $('class-name');
+    const descEl = $('class-desc');
+    const statsEl = $('class-stats');
+    if (nameEl) nameEl.innerHTML = `<i class="ra ${getIconForClass(cls.id)}" style="font-size:24px;vertical-align:middle;color:var(--gold);"></i> ${cls.name}`;
+    if (descEl) descEl.textContent = cls.desc;
     const statsHtml = ['str', 'dex', 'vit', 'int'].map(s =>
         `<div class="class-stat-bar"><span>${s.toUpperCase()}</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${cls.statBars[s]}%"></div></div></div>`
     ).join('');
-    $('class-stats').innerHTML = statsHtml;
+    if (statsEl) statsEl.innerHTML = statsHtml;
 }
 
 // ——— START GAME ———
@@ -428,6 +432,89 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
 
     input = new Input(canvas);
     window.mobileControls = new MobileControls(input);
+
+    // --- MMO Network Layer ---
+    network = new NetworkManager({
+        get player() { return player; }, get enemies() { return enemies; },
+        onChatMessage: (msg) => {
+            const chatBox = document.getElementById('chat-messages');
+            if (chatBox) {
+                const msgEl = document.createElement('div');
+                msgEl.className = 'chat-msg' + (msg.isSystem ? ' system-msg' : '');
+                msgEl.innerHTML = `<span class="chat-msg-time">[${msg.time}]</span><span class="chat-msg-sender">${msg.sender}:</span><span class="chat-msg-text">${msg.text}</span>`;
+                chatBox.appendChild(msgEl);
+                chatBox.scrollTop = chatBox.scrollHeight;
+                while (chatBox.children.length > 50) chatBox.removeChild(chatBox.firstChild);
+            }
+        },
+        onWhisper: (msg) => {
+            const chatBox = document.getElementById('chat-messages');
+            if (chatBox) {
+                const prefix = msg.sender === player.charName ? `To ${msg.target}` : `From ${msg.sender}`;
+                const msgEl = document.createElement('div');
+                msgEl.className = 'chat-msg whisper-msg';
+                msgEl.innerHTML = `<span class="chat-msg-time">[${msg.time}]</span><span class="chat-msg-sender">${prefix}:</span><span class="chat-msg-text">${msg.text}</span>`;
+                chatBox.appendChild(msgEl);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        },
+        onInspectData: (data) => {
+            const panel = document.getElementById('panel-inspect');
+            const paperdoll = document.getElementById('inspect-paperdoll');
+            if (!panel || !paperdoll) return;
+            document.getElementById('inspect-title').innerText = `Inspecting: ${data.charName} (Lvl ${data.level} ${data.classId})`;
+            paperdoll.innerHTML = '';
+            ['head', 'amulet', 'chest', 'mainhand', 'offhand', 'gloves', 'belt', 'boots', 'ring1', 'ring2'].forEach(slot => {
+                const item = data.equipment[slot];
+                const slotEl = document.createElement('div');
+                slotEl.className = 'inspect-slot'; slotEl.style.gridArea = slot;
+                if (item) {
+                    const img = document.createElement('img'); img.src = renderer.getIconPath(item.baseId); img.style.width = '32px';
+                    slotEl.appendChild(img); slotEl.title = item.name;
+                } else { slotEl.style.opacity = '0.3'; slotEl.innerText = slot[0].toUpperCase(); }
+                paperdoll.appendChild(slotEl);
+            });
+            panel.classList.remove('hidden');
+        },
+        onTradeStart: (partner) => {
+            document.getElementById('trade-partner-name').innerText = `${partner}'s Offer`;
+            document.getElementById('trade-my-slots').innerHTML = '';
+            document.getElementById('trade-their-slots').innerHTML = '';
+            myOffer = []; document.getElementById('panel-trade').classList.remove('hidden');
+        },
+        onTradePartnerUpdate: (offer) => {
+            const container = document.getElementById('trade-their-slots'); container.innerHTML = '';
+            offer.forEach(item => {
+                const el = document.createElement('div'); el.className = 'trade-slot';
+                if (item) { const img = document.createElement('img'); img.src = renderer.getIconPath(item.baseId); img.style.width = '32px'; el.appendChild(img); }
+                container.appendChild(el);
+            });
+        },
+        onTradeStatusUpdate: (status) => {
+            const myStatus = document.getElementById('trade-my-status'), theirStatus = document.getElementById('trade-their-status'), acceptBtn = document.getElementById('trade-btn-accept');
+            myStatus.innerText = status.lock1 ? 'LOCKED' : 'Offering...'; myStatus.style.color = status.lock1 ? '#00ff00' : '#888';
+            theirStatus.innerText = status.lock2 ? 'LOCKED' : 'Offering...'; theirStatus.style.color = status.lock2 ? '#00ff00' : '#888';
+            if (status.lock1 && status.lock2) acceptBtn.classList.remove('disabled'); else acceptBtn.classList.add('disabled');
+        },
+        onTradeExecute: (receive, give) => {
+            give.forEach(item => { const idx = player.inventory.findIndex(i => i && i.name === item.name); if (idx !== -1) player.inventory[idx] = null; });
+            receive.forEach(item => player.addToInventory(item));
+            bus.emit('combat:log', { text: "Trade Successful!", cls: 'log-level' });
+            document.getElementById('panel-trade').classList.add('hidden'); saveGame();
+        },
+        onDuelStart: (opp) => { addCombatLog(`DUEL STARTED: vs ${opp}!`, 'log-crit'); fx.shake(500, 10); },
+        onDuelEnd: (winner) => { addCombatLog(`DUEL ENDED! Winner: ${winner || 'Draw'}`, 'log-level'); }
+    });
+    window.network = network; network.init();
+
+    // Start Presence Tracking
+    if (player && DB.isLoggedIn()) {
+        DB.trackPresence(player.charName, zoneLevel);
+    }
+
+    bus.on('social:presenceSync', (onlineUsers) => {
+        if (typeof renderFriendsList === 'function') renderFriendsList(onlineUsers);
+    });
 
     // Create Act Cleared Splash Container if missing
     if (!$('act-splash-container')) {
@@ -648,7 +735,36 @@ function gameLoop(timestamp) {
     }
 
     if (player) {
-        player.update(dt, input, enemies, dungeon, (aoe) => aoeZones.push(aoe));
+        // --- PvP Duel Target Injection ---
+        let targetEnemies = enemies;
+        if (typeof network !== 'undefined' && network?.duelOpponentId) {
+            const opp = Array.from(network.otherPlayers.values()).find(p => p.id === network.duelOpponentId);
+            if (opp) {
+                opp.hp = opp.hp || 100; opp.maxHp = opp.maxHp || 100; opp.isPlayer = true;
+                targetEnemies = [...enemies, opp];
+            }
+        }
+
+        player.update(dt, input, targetEnemies, dungeon, (aoe) => aoeZones.push(aoe));
+        
+        // Sync to Server (MMO)
+        if (typeof network !== 'undefined' && network?.isConnected) {
+            network.sendMovement(player.x, player.y, player.animState, player.facingDir);
+            
+            // If Host, sync enemies
+            if (network.isHost && enemies.length > 0) {
+                enemySyncTimer += dt;
+                if (enemySyncTimer > 0.1) {
+                    enemySyncTimer = 0;
+                    const enemyData = enemies.filter(e => e.hp > 0).map(e => ({
+                        id: e.syncId, x: e.x, y: e.y, hp: e.hp, 
+                        anim: e.animState, dir: e.facingDir
+                    }));
+                    network.sendEnemySync(enemyData);
+                }
+            }
+        }
+        
         fx.update(dt * 1000); // Particle update expects ms
 
         // HP Regen out of combat (passive) + gear-based regen (always active)
@@ -6820,85 +6936,145 @@ function openSkillPicker(slotIdx, x, y) {
         };
 
         grid.appendChild(node);
+// --- MMO Chat & Commands ---
+function updatePartyHUD(members) {
+    const hud = document.getElementById('party-hud');
+    if (!hud) return;
+    if (!members || members.length <= 1) { hud.classList.add('hidden'); return; }
+    hud.classList.remove('hidden'); hud.innerHTML = '';
+    members.forEach(m => {
+        if (m.id === DB.session?.user.id) return;
+        const el = document.createElement('div'); el.className = 'party-member-card';
+        el.innerHTML = `
+            <div class="party-member-stats">
+                <div class="party-member-name">${m.name}</div>
+                <div class="party-bar"><div class="party-hp-fill" style="width:${(m.hp/m.maxHp)*100}%"></div></div>
+                <div class="party-bar"><div class="party-mp-fill" style="width:${(m.mp/m.maxMp)*100}%"></div></div>
+            </div>
+        `;
+        hud.appendChild(el);
     });
+}
 
-    menu.appendChild(grid);
-    menu.appendChild(grid);
+async function refreshAuctions() {
+    const list = document.getElementById('ah-browse-list'); if (!list) return;
+    list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Fetching auctions...</div>';
+    const auctions = await DB.getAuctions();
+    list.innerHTML = auctions.length === 0 ? '<div style="text-align:center; padding:20px; color:#666;">No items listed.</div>' : '';
+    auctions.forEach(a => {
+        const item = a.item_data; const row = document.createElement('div'); row.className = 'auction-row';
+        row.innerHTML = `
+            <div class="trade-slot">${getItemHtml(item)}</div>
+            <div class="auction-info">
+                <div class="auction-name" style="color:${getItemColor(item.rarity)}">${item.name}</div>
+                <div class="auction-seller">By: ${a.seller_name}</div>
+            </div>
+            <div class="auction-price">${a.price} G</div>
+            <button class="btn-buy-ah">BUY</button>
+        `;
+        row.querySelector('.btn-buy-ah').onclick = async () => {
+            if (player.gold >= a.price) {
+                const res = await DB.buyAuction(a.id, a.price);
+                if (res) { player.gold -= a.price; player.addToInventory(item); addCombatLog(`Bought ${item.name}!`, "log-crit"); refreshAuctions(); saveGame(); }
+            } else addCombatLog("Not enough gold!", "log-dmg");
+        };
+        list.appendChild(row);
+    });
+}
 
-    const footer = document.createElement('div');
-    footer.className = 'skill-picker-footer';
-    footer.textContent = "Right-click slot to clear";
-    menu.appendChild(footer);
+function getItemColor(rarity) { return { normal: '#fff', magic: '#4850b8', rare: '#ffff00', set: '#00ff00', unique: '#bf642f' }[rarity] || '#fff'; }
 
-    // Close when clicking outside
-    const closeHandler = (e) => {
-        if (!menu.contains(e.target)) {
-            menu.remove();
-            window.removeEventListener('mousedown', closeHandler);
+function checkInteractions(click) {
+    const worldPos = camera.toWorld(click.x, click.y);
+    for (const n of npcs) { if (Math.hypot(n.x - worldPos.x, n.y - worldPos.y) < 50) { renderDialoguePicker(n); return; } }
+    for (const o of gameObjects) {
+        if (Math.hypot(o.x - worldPos.x, o.y - worldPos.y) < 20) {
+            const res = o.interact(player);
+            if (res?.type === 'STASH' || res?.type === 'CUBE') toggleTownPanels();
+            else if (res?.type === 'BREAKABLE') {
+                const goldAmt = 5 + Math.floor(Math.random() * 15) * (1 + difficulty * 0.5); droppedGold.push({ x: o.x, y: o.y, amount: Math.round(goldAmt) });
+                if (Math.random() < 0.15) { const itm = loot.generate(zoneLevel, 'normal'); droppedItems.push({ ...itm, x: o.x, y: o.y }); }
+                addCombatLog('You smashed a barrel!', 'log-info'); fx.emitBurst(o.x, o.y, '#8b4513', 10, 1.5);
+            } else if (res?.type === 'PORTAL') { addCombatLog('Entering Portal...', 'log-level'); nextZone(res.targetZone); }
+            else if (res?.type === 'WAYPOINT') { if (!discoveredWaypoints.has(res.zone)) { discoveredWaypoints.add(res.zone); addCombatLog('Waypoint Discovered!', 'log-crit'); saveGame(); if (fx) fx.emitBurst(o.x, o.y, '#ffd700', 30, 2.5); } else renderWaypointMenu(o); }
+            return;
         }
-    };
-    setTimeout(() => window.addEventListener('mousedown', closeHandler), 10);
-
-    document.body.appendChild(menu);
+    }
+    for (let i = droppedItems.length - 1; i >= 0; i--) {
+        const di = droppedItems[i]; if (Math.hypot(di.x - worldPos.x, di.y - worldPos.y) < 22) {
+            if (Math.hypot(di.x - player.x, di.y - player.y) < 45) { if (player.addToInventory(di)) { addCombatLog('Picked up ' + di.name, 'log-item'); droppedItems.splice(i, 1); playLoot(); renderInventory(); } else addCombatLog('Inventory full!', 'log-dmg'); }
+            return;
+        }
+    }
 }
 
-window.addEventListener('mousemove', (e) => {
-    if (dragGhost) {
-        dragGhost.style.left = `${e.clientX - 16}px`;
-        dragGhost.style.top = `${e.clientY - 16}px`;
+function saveGame() { if (player && activeSlotId) SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty: window._difficulty, waypoints: [...discoveredWaypoints], mercenary: mercenary ? mercenary.serialize() : null, cube }); }
+
+window.addEventListener('DOMContentLoaded', () => {
+    DB.init(); initParticles(); initClassGrid();
+    for (const name of ASSET_NAMES) {
+        Assets.load(name, `assets/${name}.png`);
     }
-    if (dragSkillGhost) {
-        dragSkillGhost.style.left = `${e.clientX - 24}px`;
-        dragSkillGhost.style.top = `${e.clientY - 24}px`;
+    renderSaveSlots();
+    
+    // Auth UI
+    if (document.getElementById('btn-open-auth')) document.getElementById('btn-open-auth').onclick = () => document.getElementById('auth-modal').classList.remove('hidden');
+    if (document.getElementById('btn-auth-login')) document.getElementById('btn-auth-login').onclick = async () => { const e = document.getElementById('auth-email').value, p = document.getElementById('auth-password').value; const res = await DB.signIn(e, p); if (res.success) { document.getElementById('auth-modal').classList.add('hidden'); renderSaveSlots(); } };
+    if (document.getElementById('btn-auth-register')) document.getElementById('btn-auth-register').onclick = async () => { const e = document.getElementById('auth-email').value, p = document.getElementById('auth-password').value; const res = await DB.signUp(e, p); if (res.success) { document.getElementById('auth-modal').classList.add('hidden'); renderSaveSlots(); } };
+    if (document.getElementById('btn-logout')) document.getElementById('btn-logout').onclick = async () => { await DB.signOut(); renderSaveSlots(); };
+    
+    // Commands
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const text = chatInput.value.trim();
+                if (text) {
+                    if (text.startsWith('/w ')) { const p = text.split(' '); network.sendWhisper(p[1], p.slice(2).join(' ')); }
+                    else if (text.startsWith('/f add ')) network.addFriend(text.replace('/f add ', '').trim());
+                    else if (text.startsWith('/p invite ')) network.inviteToParty(text.replace('/p invite ', '').trim());
+                    else if (text === '/p leave') network.leaveParty();
+                    else if (text.startsWith('/inspect ')) network.inspectPlayer(text.replace('/inspect ', '').trim());
+                    else if (text.startsWith('/trade invite ')) network.sendTradeInvite(text.replace('/trade invite ', '').trim());
+                    else if (text === '/trade accept') network.acceptTrade();
+                    else if (text.startsWith('/duel ')) network.sendDuelInvite(text.replace('/duel ', '').trim());
+                    else if (text === '/duel accept') network.acceptDuel();
+                    else if (text === '/ah') { togglePanel('auction'); refreshAuctions(); }
+                    else network.sendChat(text);
+                }
+                chatInput.value = ''; chatInput.blur(); e.stopPropagation();
+            }
+        });
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && document.activeElement !== chatInput && state === 'GAME') { chatInput.focus(); e.preventDefault(); }
+            if (e.key.toLowerCase() === 'p' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('social');
+        });
     }
+
+    // AH & Social Tabs
+    document.querySelectorAll('.ah-tab').forEach(t => t.onclick = () => {
+        document.querySelectorAll('.ah-tab').forEach(b => b.classList.remove('active'));
+        t.classList.add('active');
+        document.querySelectorAll('.ah-tab-content').forEach(c => c.classList.add('hidden'));
+        const target = document.getElementById(`ah-${t.dataset.tab}-list`) || document.getElementById(`ah-${t.dataset.tab}-form`);
+        if (target) target.classList.remove('hidden');
+    });
+    document.querySelectorAll('.social-tab').forEach(t => t.onclick = () => {
+        document.querySelectorAll('.social-tab').forEach(b => b.classList.remove('active'));
+        t.classList.add('active');
+        document.querySelectorAll('.social-tab-content').forEach(c => c.classList.add('hidden'));
+        const target = document.getElementById(`social-${t.dataset.tab}-list`);
+        if (target) target.classList.remove('hidden');
+    });
+    
+    const btnNew = document.getElementById('btn-new-game');
+    if (btnNew) btnNew.onclick = () => { if (!selectedClass) return; const nameIn = document.getElementById('character-name'); const name = nameIn ? nameIn.value.trim() : null; if (!name) return; initAudio(); startGame(SaveSystem.newSlotId(), null, name); saveGame(); };
+    const btnExp = document.getElementById('btn-export-save');
+    if (btnExp) btnExp.onclick = () => { const data = SaveSystem.exportData(); if (data) { const blob = new Blob([data], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'save.json'; a.click(); } };
+    const btnImp = document.getElementById('btn-import-save');
+    if (btnImp) btnImp.onclick = () => document.getElementById('import-file').click();
+    const impFile = document.getElementById('import-file');
+    if (impFile) impFile.onchange = (e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => { if (SaveSystem.importData(ev.target.result)) renderSaveSlots(); }; r.readAsText(f); } };
+    const btnEnter = document.getElementById('btn-enter-world');
+    if (btnEnter) btnEnter.onclick = async () => { if (!selectedCharSlot) return; let saveData = null; if (selectedCharSlot._isCloud) { const cloud = await DB.getSaves(); saveData = cloud.find(s => s.id === selectedCharSlot.id); } else { saveData = SaveSystem.loadSlot(selectedCharSlot.id); } if (saveData) { initAudio(); startGame(selectedCharSlot.id, saveData); } };
 });
-
-function clearSkillDrag() {
-    draggedSkill = null;
-    if (dragSkillGhost) { dragSkillGhost.remove(); dragSkillGhost = null; }
-    document.querySelectorAll('.skill-slot').forEach(el => el.classList.remove('dragging'));
-}
-
-function handleBossDeath(boss) {
-    let actNum = 0;
-    let actName = 'I';
-    let actSubtitle = 'The Sightless Eye';
-
-    // Quest Flags
-    if (boss.isRadament) campaign.setFlag('radament_slain', true);
-    if (boss.id === 'anya') campaign.setFlag('anya_rescued', true);
-
-    if (boss.isAndariel || zoneLevel === 5) { actNum = 1; actName = 'I'; actSubtitle = 'The Sightless Eye Cleared'; }
-    else if (boss.isDuriel || zoneLevel === 10) { actNum = 2; actName = 'II'; actSubtitle = 'The Secret of the Vizjerei Cleared'; }
-    else if (boss.isMephisto || zoneLevel === 15) { actNum = 3; actName = 'III'; actSubtitle = 'The Infernal Gate Cleared'; }
-    else if (boss.isDiablo || zoneLevel === 20) { actNum = 4; actName = 'IV'; actSubtitle = 'The Chaos Sanctuary Cleared'; }
-    else if (boss.isBaal || zoneLevel === 25) { actNum = 5; actName = 'V'; actSubtitle = 'The Lord of Destruction Slain'; }
-
-    if (actNum > 0) {
-        campaign.completeAct(actNum);
-        showActCleared(actName, actSubtitle);
-
-        const portal = new GameObject('portal', boss.x + 40, boss.y, 'obj_portal');
-        portal.targetZone = 0;
-        portal.isActPortal = true;
-        gameObjects.push(portal);
-
-        fx.emitHolyBurst(portal.x, portal.y);
-    }
-}
-
-function showActCleared(name, subtitle) {
-    const splash = document.getElementById('act-splash-container');
-    if (!splash) return;
-
-    splash.innerHTML = `
-        <div class="act-cleared-subtitle">Act Cleared</div>
-        <h1 class="act-cleared-title">Act ${name}</h1>
-        <div class="act-cleared-ornament"></div>
-        <div class="act-cleared-subtitle">${subtitle}</div>
-    `;
-    splash.classList.add('show');
-    if (typeof playZoneTransition === 'function') playZoneTransition();
-
-    setTimeout(() => { splash.classList.remove('show'); }, 5000);
-}
