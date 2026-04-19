@@ -6,15 +6,20 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Log de arranque inmediato
-console.log('>>> Inicianzando Dark Realm Server en puerto:', PORT);
+// Log de arranque para debug en Railway
+console.log('>>> SYSTEM STARTING...');
 
-// 1. CORS CONFIGURATION (Muy permisivo para evitar bloqueos)
+// Middleware de CORS
 app.use(cors());
+
+// Health check para Railway
+app.get('/', (req, res) => {
+    res.status(200).send('SERVER_OK');
+});
 
 const server = http.createServer(app);
 
-// 2. SOCKET.IO SETUP
+// Socket.io con configuración de producción
 const io = new Server(server, {
     cors: {
         origin: "*",
@@ -24,13 +29,8 @@ const io = new Server(server, {
     transports: ['websocket', 'polling']
 });
 
-// Health check para Railway (Vital)
-app.get('/', (req, res) => res.status(200).send('SERVER_OK'));
-
-// --- GLOBAL STATE ---
+// --- ESTADO DEL JUEGO (VOLÁTIL) ---
 const players = {};
-const friends = {}; 
-const activeTrades = {}; 
 let currentHostId = null;
 
 function electNewHost() {
@@ -44,7 +44,7 @@ function electNewHost() {
 }
 
 io.on('connection', (socket) => {
-    console.log(`+ Conectado: ${socket.id}`);
+    console.log(`+ Player: ${socket.id}`);
 
     socket.on('join', (data) => {
         if (!data) return;
@@ -64,10 +64,7 @@ io.on('connection', (socket) => {
 
     socket.on('move', (data) => {
         if (data && players[socket.id]) {
-            players[socket.id].x = data.x;
-            players[socket.id].y = data.y;
-            players[socket.id].animState = data.animState;
-            players[socket.id].facingDir = data.facingDir;
+            Object.assign(players[socket.id], data);
             socket.broadcast.emit('player_moved', players[socket.id]);
         }
     });
@@ -88,51 +85,16 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('whisper', (data) => {
-        if (!data || !data.targetName) return;
-        const sender = players[socket.id];
-        const targetSocketId = Object.keys(players).find(id => players[id].name === data.targetName);
-        if (sender && targetSocketId) {
-            const whisper = {
-                id: Date.now(),
-                sender: sender.name,
-                target: data.targetName,
-                text: data.text,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            };
-            socket.emit('whisper', whisper);
-            io.to(targetSocketId).emit('whisper', whisper);
-        }
-    });
-
-    socket.on('trade_invite', (name) => {
-        const tid = Object.keys(players).find(id => players[id].name === name);
-        if (tid && tid !== socket.id) {
-            io.to(tid).emit('trade_invite', { from: players[socket.id].name, fromId: socket.id });
-        }
-    });
-
-    socket.on('trade_accept', (fromId) => {
-        if (!players[fromId] || !players[socket.id]) return;
-        const ids = [socket.id, fromId].sort();
-        const tradeId = `trade_${ids[0]}_${ids[1]}`;
-        activeTrades[tradeId] = { p1: fromId, p2: socket.id, offer1: [], offer2: [], lock1: false, lock2: false, accept1: false, accept2: false };
-        io.to(fromId).emit('trade_start', { tradeId, partner: players[socket.id].name });
-        io.to(socket.id).emit('trade_start', { tradeId, partner: players[fromId].name });
-    });
-
     socket.on('disconnect', () => {
-        console.log(`- Desconectado: ${socket.id}`);
+        console.log(`- Player: ${socket.id}`);
         delete players[socket.id];
         if (socket.id === currentHostId) electNewHost();
         io.emit('player_left', socket.id);
     });
 });
 
-// Captura de errores para estabilidad
-process.on('uncaughtException', (err) => console.error('ERROR:', err));
+process.on('uncaughtException', (err) => console.error('CRITICAL:', err));
 
-// ESCUCHA EN 0.0.0.0
 server.listen(PORT, '0.0.0.0', () => {
-    console.log('>>> SERVER IS LIVE <<<');
+    console.log(`>>> MMO SERVER LIVE ON PORT ${PORT} <<<`);
 });
