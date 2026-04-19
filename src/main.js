@@ -3387,18 +3387,41 @@ bus.on('ui:closeAll', () => {
     syncInteractionStates();
 });
 
+function tryCastTownPortal() {
+    if (state !== 'GAME' && state !== 'INVENTORY') return;
+    if (zoneLevel === 0) {
+        addCombatLog('Cannot cast Town Portal in Town!', 'log-dmg');
+        return;
+    }
+
+    // Check for scrolls or tomes in inventory
+    const scrollIdx = player.inventory.findIndex(it => it && it.baseId === 'scroll_town_portal');
+    const tomeIdx = player.inventory.findIndex(it => it && it.baseId === 'tome_tp' && (it.charges || 0) > 0);
+
+    if (scrollIdx === -1 && tomeIdx === -1) {
+        addCombatLog('You have no Scrolls of Town Portal!', 'log-dmg');
+        return;
+    }
+
+    // Consume scroll or charge
+    if (tomeIdx !== -1) {
+        player.inventory[tomeIdx].charges--;
+    } else {
+        player.inventory[scrollIdx] = null;
+    }
+
+    portalReturnZone = zoneLevel;
+    const tp = new GameObject('portal', player.x, player.y - 40, 'obj_portal');
+    tp.targetZone = 0; // Go to town
+    gameObjects.push(tp);
+    if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 50, 4);
+    addCombatLog('Town Portal Opened!', 'log-level');
+    renderInventory();
+}
+
 // Town Portal
 bus.on('action:town_portal', () => {
-    if (state !== 'GAME' && state !== 'INVENTORY') return;
-    if (zoneLevel > 0) {
-        portalReturnZone = zoneLevel;
-        addCombatLog('Town Portal Opened!', 'log-level');
-        const tp = new GameObject('portal', player.x, player.y, 'env_water');
-        tp.targetZone = 0; // Go to town
-        gameObjects.push(tp);
-    } else {
-        addCombatLog('You are already in town.', 'log-dmg');
-    }
+    tryCastTownPortal();
 });
 
 // Interaction
@@ -6913,7 +6936,9 @@ window.addEventListener('DOMContentLoaded', () => {
         });
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && document.activeElement !== chatInput && state === 'GAME') { chatInput.focus(); e.preventDefault(); }
-            if (e.key.toLowerCase() === 'p' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('social');
+            if (e.key.toLowerCase() === 'o' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('social');
+            if (e.key.toLowerCase() === 'p' && state === 'GAME' && document.activeElement !== chatInput) bus.emit('action:town_portal');
+            if (e.key.toLowerCase() === 'm' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('mercenary');
         });
     }
 
