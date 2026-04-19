@@ -17,7 +17,7 @@ export const TILE_COLORS = {
 };
 
 export class Dungeon {
-    constructor(width = 80, height = 60, tileSize = 16) {
+    constructor(width = 150, height = 120, tileSize = 16) {
         this.width = width; this.height = height; this.tileSize = tileSize;
         this.grid = [];
         this.rooms = [];

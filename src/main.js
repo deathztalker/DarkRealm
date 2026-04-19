@@ -48,6 +48,7 @@ let selectedCharSlot = null;
 let enemies = [], npcs = [], gameObjects = [];
 let projectiles = [], aoeZones = [];
 let droppedItems = [], droppedGold = [];
+let worldZones = {}; // Persistent state for each zone: { level: { dungeon, enemies, npcs, objects, items, gold, respawnQueue } }
 let floatingTexts = []; // Phase 15: Damage Numbers
 let state = 'MENU', selectedClass = null;
 let lastTime = 0, lastSaveTime = 0;
@@ -811,6 +812,7 @@ function gameLoop(timestamp) {
     }
 
     checkDeaths();
+    updateRespawns();
 
     // Achievement checker (every frame is fine, checks are cheap)
     checkAchievements();
@@ -1371,9 +1373,19 @@ function checkInteractions(pos) {
 }
 
 function checkDeaths() {
+    const now = Date.now();
     for (const e of enemies) {
         if (e.hp <= 0 && e.state !== 'dead') {
             e.state = 'dead';
+
+            // --- MMO Respawn Queue ---
+            if (worldZones[zoneLevel]) {
+                const respawnDelay = (e.type === 'boss' || e.isBoss) ? 300000 : 60000;
+                worldZones[zoneLevel].respawnQueue.push({
+                    spawn: { x: e.homeX, y: e.homeY, level: e.level, type: e.type, icon: e.icon, name: e.name, isBoss: e.isBoss },
+                    respawnAt: now + respawnDelay
+                });
+            }
 
             // Death VFX — blood burst
             fx.emitBurst(e.x, e.y, '#a01010', e.type === 'boss' ? 40 : 15, 3);
@@ -1613,6 +1625,9 @@ function checkDeaths() {
         }
     }
 
+    // --- MMO: Filter out dead enemies and push to respawn queue logic already handled inside the loop ---
+    enemies = enemies.filter(e => e.state !== 'dead');
+
     // Auto-pickup items and gold within radius
     droppedItems = droppedItems.filter(i => {
         const dx = i.x - player.x, dy = i.y - player.y;
@@ -1696,6 +1711,19 @@ function nextZone(targetZone = null) {
     }
 
     setTimeout(() => {
+        // --- PERSISTENCE: Save current zone state ---
+        if (dungeon) {
+            worldZones[zoneLevel] = {
+                dungeon,
+                enemies: [...enemies],
+                npcs: [...npcs],
+                gameObjects: [...gameObjects],
+                droppedItems: [...droppedItems],
+                droppedGold: [...droppedGold],
+                respawnQueue: worldZones[zoneLevel]?.respawnQueue || []
+            };
+        }
+
         if (targetZone !== null) {
             const targetAct = campaign.getActForZone(targetZone);
             if (!campaign.isActUnlocked(targetAct) && targetZone !== 0) {
@@ -1720,25 +1748,53 @@ function nextZone(targetZone = null) {
             generateRiftMods();
         }
 
-        window.currentTheme = 'cathedral';
-        if (zoneLevel === 0) window.currentTheme = 'town';
-        else if (zoneLevel <= 2) window.currentTheme = 'wilderness';
-        else if (zoneLevel <= 10) window.currentTheme = (zoneLevel >= 6) ? 'desert' : 'cathedral';
-        else if (zoneLevel <= 13) window.currentTheme = 'jungle';
-        else if (zoneLevel <= 15) window.currentTheme = 'temple';
-        else if (zoneLevel <= 20) window.currentTheme = 'hell';
-        else if (zoneLevel <= 25) window.currentTheme = 'snow';
-        else if (zoneLevel === 100) window.currentTheme = 'hell'; // Uber Tristram
-        else {
-            // Infinite Rifts: Random theme
-            const themes = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow'];
-            window.currentTheme = themes[Math.floor(Math.random() * themes.length)];
+        // --- PERSISTENCE: Load or Generate ---
+        if (worldZones[zoneLevel]) {
+            const state = worldZones[zoneLevel];
+            dungeon = state.dungeon;
+            enemies = state.enemies;
+            npcs = state.npcs;
+            gameObjects = state.gameObjects;
+            droppedItems = state.droppedItems;
+            droppedGold = state.droppedGold;
+        } else {
+            window.currentTheme = 'cathedral';
+            if (zoneLevel === 0) window.currentTheme = 'town';
+            else if (zoneLevel <= 2) window.currentTheme = 'wilderness';
+            else if (zoneLevel <= 10) window.currentTheme = (zoneLevel >= 6) ? 'desert' : 'cathedral';
+            else if (zoneLevel <= 13) window.currentTheme = 'jungle';
+            else if (zoneLevel <= 15) window.currentTheme = 'temple';
+            else if (zoneLevel <= 20) window.currentTheme = 'hell';
+            else if (zoneLevel <= 25) window.currentTheme = 'snow';
+            else if (zoneLevel === 100) window.currentTheme = 'hell'; // Uber Tristram
+            else {
+                // Infinite Rifts: Random theme
+                const themes = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow'];
+                window.currentTheme = themes[Math.floor(Math.random() * themes.length)];
+            }
+
+            dungeon = new Dungeon(150, 120, 16);
+            dungeon.generate(zoneLevel, window.currentTheme);
+            
+            // finishZoneLoad will populate enemies/npcs/objects
+            finishZoneLoad();
+
+            // Initial save
+            worldZones[zoneLevel] = {
+                dungeon,
+                enemies: [...enemies],
+                npcs: [...npcs],
+                gameObjects: [...gameObjects],
+                droppedItems: [...droppedItems],
+                droppedGold: [...droppedGold],
+                respawnQueue: []
+            };
         }
 
-        dungeon = new Dungeon(80, 60, 16);
-        dungeon.generate(zoneLevel, window.currentTheme);
+        player.x = dungeon.playerStart.x;
+        player.y = dungeon.playerStart.y;
+        player.path = [];
 
-        finishZoneLoad();
         isTransitioning = false;
 
         if (overlay) {
@@ -6963,4 +7019,31 @@ window.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('btn-import-save')) document.getElementById('btn-import-save').onclick = () => document.getElementById('import-file').click();
     if (document.getElementById('import-file')) document.getElementById('import-file').onchange = (e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => { if (SaveSystem.importData(ev.target.result)) renderSaveSlots(); }; r.readAsText(f); } };
     if (document.getElementById('btn-enter-world')) document.getElementById('btn-enter-world').onclick = async () => { if (!selectedCharSlot) return; let saveData = null; if (selectedCharSlot._isCloud) { const cloud = await DB.getSaves(); saveData = cloud.find(s => s.id === selectedCharSlot.id); } else { saveData = SaveSystem.loadSlot(selectedCharSlot.id); } if (saveData) { initAudio(); startGame(selectedCharSlot.id, saveData); } };
+
+    // MMO HUD Listeners
+    if (document.getElementById('btn-inventory')) document.getElementById('btn-inventory').onclick = () => togglePanel('inventory');
+    if (document.getElementById('btn-talents')) document.getElementById('btn-talents').onclick = () => togglePanel('talents');
+    if (document.getElementById('btn-character')) document.getElementById('btn-character').onclick = () => togglePanel('character');
+    if (document.getElementById('btn-mercenary')) document.getElementById('btn-mercenary').onclick = () => togglePanel('mercenary');
+    if (document.getElementById('btn-social')) document.getElementById('btn-social').onclick = () => togglePanel('social');
+    if (document.getElementById('btn-portal')) document.getElementById('btn-portal').onclick = () => bus.emit('action:town_portal');
+    if (document.getElementById('btn-stash')) document.getElementById('btn-stash').onclick = toggleTownPanels;
+    if (document.getElementById('btn-cube')) document.getElementById('btn-cube').onclick = toggleTownPanels;
+    if (document.getElementById('btn-quests')) document.getElementById('btn-quests').onclick = () => togglePanel('quest');
 });
+
+function updateRespawns() {
+    if (!worldZones[zoneLevel]) return;
+    const now = Date.now();
+    const queue = worldZones[zoneLevel].respawnQueue;
+    if (!queue) return;
+    
+    for (let i = queue.length - 1; i >= 0; i--) {
+        if (now >= queue[i].respawnAt) {
+            const spawnData = queue[i].spawn;
+            const newEnemy = new Enemy(spawnData);
+            enemies.push(newEnemy);
+            queue.splice(i, 1);
+        }
+    }
+}
