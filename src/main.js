@@ -6809,29 +6809,48 @@ function showActCleared(name, subtitle) {
 function updatePartyHUD(members) {
     const hud = document.getElementById('party-hud');
     if (!hud) return;
-    if (!members || members.length <= 1) { hud.classList.add('hidden'); return; }
-    hud.classList.remove('hidden'); hud.innerHTML = '';
+    if (!members || members.length <= 1) {
+        hud.classList.add('hidden');
+        return;
+    }
+    hud.classList.remove('hidden');
+    hud.innerHTML = '';
     members.forEach(m => {
-        if (m.id === DB.session?.user.id) return;
-        const el = document.createElement('div'); el.className = 'party-member-card';
-        el.innerHTML = \<div class='party-member-stats'><div class='party-member-name'>\</div><div class='party-bar'><div class='party-hp-fill' style='width:\%'></div></div><div class='party-bar'><div class='party-mp-fill' style='width:\%'></div></div></div>\;
+        if (m.id === (DB.session?.user?.id || null)) return;
+        const el = document.createElement('div');
+        el.className = 'party-member-card';
+        const hpPct = (m.hp / m.maxHp) * 100;
+        const mpPct = (m.mp / m.maxMp) * 100;
+        el.innerHTML = '<div class="party-member-stats">' +
+            '<div class="party-member-name">' + m.name + '</div>' +
+            '<div class="party-bar"><div class="party-hp-fill" style="width:' + hpPct + '%"></div></div>' +
+            '<div class="party-bar"><div class="party-mp-fill" style="width:' + mpPct + '%"></div></div>' +
+            '</div>';
         hud.appendChild(el);
     });
 }
 
 async function refreshAuctions() {
     const list = document.getElementById('ah-browse-list'); if (!list) return;
-    list.innerHTML = '<div style=\"text-align:center; padding:20px; color:#888;\">Fetching auctions...</div>';
+    list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Fetching auctions...</div>';
     const auctions = await DB.getAuctions();
-    list.innerHTML = auctions.length === 0 ? '<div style=\"text-align:center; padding:20px; color:#666;\">No items listed.</div>' : '';
+    list.innerHTML = auctions.length === 0 ? '<div style="text-align:center; padding:20px; color:#666;">No items listed.</div>' : '';
     auctions.forEach(a => {
         const item = a.item_data; const row = document.createElement('div'); row.className = 'auction-row';
-        row.innerHTML = \<div class='trade-slot'>\</div><div class='auction-info'><div class='auction-name' style='color:\'>\</div><div class='auction-seller'>By: \</div></div><div class='auction-price'>\ G</div><button class='btn-buy-ah'>BUY</button>\;
+        row.innerHTML = `
+            <div class="trade-slot">${window.getItemHtml(item)}</div>
+            <div class="auction-info">
+                <div class="auction-name" style="color:${getItemColor(item.rarity)}">${item.name}</div>
+                <div class="auction-seller">By: ${a.seller_name}</div>
+            </div>
+            <div class="auction-price">${a.price} G</div>
+            <button class="btn-buy-ah">BUY</button>
+        `;
         row.querySelector('.btn-buy-ah').onclick = async () => {
             if (player.gold >= a.price) {
                 const res = await DB.buyAuction(a.id, a.price);
-                if (res) { player.gold -= a.price; player.addToInventory(item); addCombatLog(\"Bought item!\", \"log-crit\"); refreshAuctions(); saveGame(); }
-            } else addCombatLog(\"Not enough gold!\", \"log-dmg\");
+                if (res) { player.gold -= a.price; player.addToInventory(item); addCombatLog("Bought item!", "log-crit"); refreshAuctions(); saveGame(); }
+            } else addCombatLog("Not enough gold!", "log-dmg");
         };
         list.appendChild(row);
     });
@@ -6842,7 +6861,7 @@ window.getItemColor = function(rarity) { return { normal: '#fff', magic: '#4850b
 window.addEventListener('DOMContentLoaded', () => {
     DB.init(); initParticles(); initClassGrid();
     for (const name of ASSET_NAMES) {
-        let path = \ssets/\.png\;
+        let path = `assets/${name}.png`;
         if (name === 'obj_portal') path = 'assets/map_objects/town_portal.png';
         if (name === 'obj_waypoint') path = 'assets/map_objects/warp_point.png';
         Assets.load(name, path);
@@ -6888,14 +6907,14 @@ window.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.ah-tab').forEach(b => b.classList.remove('active'));
         t.classList.add('active');
         document.querySelectorAll('.ah-tab-content').forEach(c => c.classList.add('hidden'));
-        const target = document.getElementById(\h-\-list\) || document.getElementById(\h-\-form\);
+        const target = document.getElementById(`ah-${t.dataset.tab}-list`) || document.getElementById(`ah-${t.dataset.tab}-form`);
         if (target) target.classList.remove('hidden');
     });
     document.querySelectorAll('.social-tab').forEach(t => t.onclick = () => {
         document.querySelectorAll('.social-tab').forEach(b => b.classList.remove('active'));
         t.classList.add('active');
         document.querySelectorAll('.social-tab-content').forEach(c => c.classList.add('hidden'));
-        const target = document.getElementById(\social-\-list\);
+        const target = document.getElementById(`social-${t.dataset.tab}-list`);
         if (target) target.classList.remove('hidden');
     });
     
