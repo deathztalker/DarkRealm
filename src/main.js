@@ -26,6 +26,7 @@ import { fx } from './engine/ParticleSystem.js';
 import { Vendor } from './vendorSystem.js';
 import { VendorUI } from './ui/vendorUI.js';
 import { campaign } from './systems/campaignSystem.js';
+import { saveGame } from './systems/saveSystem.js';
 import { NetworkManager } from './network/NetworkManager.js';
 
 
@@ -5486,17 +5487,240 @@ function checkAchievements() {
             if (banner) {
                 $('ach-name').textContent = ach.name;
                 banner.classList.remove('hidden');
-                setTimeout(() => banner.classList.add('hidden'), 4000);
-            }
-            fx.emitBurst(renderer.width / 2, 100, '#00ccff', 20, 3);
 
-            if (ach.reward > 0 && player) {
-                player.gold += ach.reward;
-                addCombatLog(`    Reward: ${ach.reward} gold`, 'log-item');
-                updateHud();
-            }
-        }
-    }
-}
+                // --- MMO Chat & Commands ---
+                function updatePartyHUD(members) {
+                    const hud = document.getElementById('party-hud');
+                    if (!hud) return;
+                    if (!members || members.length <= 1) { hud.classList.add('hidden'); return; }
+                    hud.classList.remove('hidden'); hud.innerHTML = '';
+                    members.forEach(m => {
+                        if (m.id === DB.session?.user.id) return;
+                        const el = document.createElement('div'); el.className = 'party-member-card';
+                        el.innerHTML = `
+            <div class="party-member-stats">
+                <div class="party-member-name">${m.name}</div>
+                <div class="party-bar"><div class="party-hp-fill" style="width:${(m.hp / m.maxHp) * 100}%"></div></div>
+                <div class="party-bar"><div class="party-mp-fill" style="width:${(m.mp / m.maxMp) * 100}%"></div></div>
+            </div>
+        `;
+                        hud.appendChild(el);
+                    });
+                }
 
-// ——— INIT ———
+                async function refreshAuctions() {
+                    const list = document.getElementById('ah-browse-list'); if (!list) return;
+                    list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Fetching auctions...</div>';
+                    const auctions = await DB.getAuctions();
+                    list.innerHTML = auctions.length === 0 ? '<div style="text-align:center; padding:20px; color:#666;">No items listed.</div>' : '';
+                    auctions.forEach(a => {
+                        const item = a.item_data; const row = document.createElement('div'); row.className = 'auction-row';
+                        row.innerHTML = `
+            <div class="trade-slot">${window.getItemHtml(item)}</div>
+            <div class="auction-info">
+                <div class="auction-name" style="color:${getItemColor(item.rarity)}">${item.name}</div>
+                <div class="auction-seller">By: ${a.seller_name}</div>
+            </div>
+            <div class="auction-price">${a.price} G</div>
+            <button class="btn-buy-ah">BUY</button>
+        `;
+                        row.querySelector('.btn-buy-ah').onclick = async () => {
+                            if (player.gold >= a.price) {
+                                const res = await DB.buyAuction(a.id, a.price);
+                                if (res) {
+                                    player.gold -= a.price;
+                                    player.addToInventory(item);
+                                    addCombatLog(`Bought ${item.name}!`, "log-crit");
+                                    refreshAuctions();
+                                    saveGame();
+                                }
+                            } else addCombatLog("Not enough gold!", "log-dmg");
+                        };
+                        list.appendChild(row);
+                    });
+                }
+
+                function getItemColor(rarity) {
+                    const colors = { normal: '#fff', magic: '#4850b8', rare: '#ffff00', set: '#00ff00', unique: '#bf642f' };
+                    return colors[rarity] || '#fff';
+                }
+
+                function checkInteractions(click) {
+                    const worldPos = camera.toWorld(click.x, click.y);
+                    for (const n of npcs) {
+                        if (Math.hypot(n.x - worldPos.x, n.y - worldPos.y) < 50) {
+                            renderDialoguePicker(n);
+                            return;
+                        }
+                    }
+                    for (const o of gameObjects) {
+                        if (Math.hypot(o.x - worldPos.x, o.y - worldPos.y) < 20) {
+                            const res = o.interact(player);
+                            if (res?.type === 'STASH' || res?.type === 'CUBE') toggleTownPanels();
+                            else if (res?.type === 'BREAKABLE') {
+                                const goldAmt = 5 + Math.floor(Math.random() * 15) * (1 + (window._difficulty || 0) * 0.5);
+                                droppedGold.push({ x: o.x, y: o.y, amount: Math.round(goldAmt) });
+                                if (Math.random() < 0.15) {
+                                    const itm = loot.generate(zoneLevel, 'normal');
+                                    droppedItems.push({ ...itm, x: o.x, y: o.y });
+                                }
+                                addCombatLog('You smashed a barrel!', 'log-info');
+                                fx.emitBurst(o.x, o.y, '#8b4513', 10, 1.5);
+                            } else if (res?.type === 'PORTAL') {
+                                addCombatLog('Entering Portal...', 'log-level');
+                                nextZone(res.targetZone);
+                            } else if (res?.type === 'WAYPOINT') {
+                                if (!discoveredWaypoints.has(res.zone)) {
+                                    discoveredWaypoints.add(res.zone);
+                                    addCombatLog('Waypoint Discovered!', 'log-crit');
+                                    saveGame();
+                                    if (fx) fx.emitBurst(o.x, o.y, '#ffd700', 30, 2.5);
+                                } else {
+                                    renderWaypointMenu(o);
+                                }
+                            }
+                            return;
+                        }
+                    }
+                    for (let i = droppedItems.length - 1; i >= 0; i--) {
+                        const di = droppedItems[i];
+                        if (Math.hypot(di.x - worldPos.x, di.y - worldPos.y) < 22) {
+                            if (Math.hypot(di.x - player.x, di.y - player.y) < 45) {
+                                if (player.addToInventory(di)) {
+                                    addCombatLog('Picked up ' + di.name, 'log-item');
+                                    droppedItems.splice(i, 1);
+                                    playLoot(); renderInventory();
+                                } else addCombatLog('Inventory full!', 'log-dmg');
+                            } else addCombatLog('Too far to pick up', 'log-dmg');
+                            return;
+                        }
+                    }
+                }
+
+                function saveGame() {
+                    if (player && activeSlotId) {
+                        SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
+                            difficulty: window._difficulty,
+                            waypoints: [...discoveredWaypoints],
+                            mercenary: mercenary ? mercenary.serialize() : null,
+                            cube,
+                            campaign: campaign.serialize(),
+                            achievements: Array.from(unlockedAchievements)
+                        });
+                    }
+                }
+
+                window.addEventListener('DOMContentLoaded', () => {
+                    DB.init(); initParticles(); initClassGrid();
+                    for (const name of ASSET_NAMES) {
+                        let path = `assets/${name}.png`;
+                        if (name === 'obj_portal') path = 'assets/map_objects/town_portal.png';
+                        if (name === 'obj_waypoint') path = 'assets/map_objects/warp_point.png';
+                        Assets.load(name, path);
+                    }
+                    renderSaveSlots();
+
+                    // Auth UI
+                    if (document.getElementById('btn-open-auth')) document.getElementById('btn-open-auth').onclick = () => document.getElementById('auth-modal').classList.remove('hidden');
+                    if (document.getElementById('btn-auth-login')) document.getElementById('btn-auth-login').onclick = async () => {
+                        const e = document.getElementById('auth-email').value, p = document.getElementById('auth-password').value;
+                        const res = await DB.signIn(e, p);
+                        if (res.success) { document.getElementById('auth-modal').classList.add('hidden'); renderSaveSlots(); }
+                    };
+                    if (document.getElementById('btn-auth-register')) document.getElementById('btn-auth-register').onclick = async () => {
+                        const e = document.getElementById('auth-email').value, p = document.getElementById('auth-password').value;
+                        const res = await DB.signUp(e, p);
+                        if (res.success) { document.getElementById('auth-modal').classList.add('hidden'); renderSaveSlots(); }
+                    };
+                    if (document.getElementById('btn-logout')) document.getElementById('btn-logout').onclick = async () => { await DB.signOut(); renderSaveSlots(); };
+
+                    // Commands
+                    const chatInput = document.getElementById('chat-input');
+                    if (chatInput) {
+                        chatInput.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') {
+                                const text = chatInput.value.trim();
+                                if (text) {
+                                    if (text.startsWith('/w ')) { const p = text.split(' '); network.sendWhisper(p[1], p.slice(2).join(' ')); }
+                                    else if (text.startsWith('/f add ')) network.addFriend(text.replace('/f add ', '').trim());
+                                    else if (text.startsWith('/p invite ')) network.inviteToParty(text.replace('/p invite ', '').trim());
+                                    else if (text === '/p leave') network.leaveParty();
+                                    else if (text.startsWith('/inspect ')) network.inspectPlayer(text.replace('/inspect ', '').trim());
+                                    else if (text.startsWith('/trade invite ')) network.sendTradeInvite(text.replace('/trade invite ', '').trim());
+                                    else if (text === '/trade accept') network.acceptTrade();
+                                    else if (text.startsWith('/duel ')) network.sendDuelInvite(text.replace('/duel ', '').trim());
+                                    else if (text === '/duel accept') network.acceptDuel();
+                                    else if (text === '/ah') { togglePanel('auction'); refreshAuctions(); }
+                                    else network.sendChat(text);
+                                }
+                                chatInput.value = ''; chatInput.blur(); e.stopPropagation();
+                            }
+                        });
+                        window.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter' && document.activeElement !== chatInput && state === 'GAME') { chatInput.focus(); e.preventDefault(); }
+                            if (e.key.toLowerCase() === 'p' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('social');
+                        });
+                    }
+
+                    // AH & Social Tabs
+                    document.querySelectorAll('.ah-tab').forEach(t => t.onclick = () => {
+                        document.querySelectorAll('.ah-tab').forEach(b => b.classList.remove('active'));
+                        t.classList.add('active');
+                        document.querySelectorAll('.ah-tab-content').forEach(c => c.classList.add('hidden'));
+                        const target = document.getElementById(`ah-${t.dataset.tab}-list`) || document.getElementById(`ah-${t.dataset.tab}-form`);
+                        if (target) target.classList.remove('hidden');
+                    });
+                    document.querySelectorAll('.social-tab').forEach(t => t.onclick = () => {
+                        document.querySelectorAll('.social-tab').forEach(b => b.classList.remove('active'));
+                        t.classList.add('active');
+                        document.querySelectorAll('.social-tab-content').forEach(c => c.classList.add('hidden'));
+                        const target = document.getElementById(`social-${t.dataset.tab}-list`);
+                        if (target) target.classList.remove('hidden');
+                    });
+
+                    if (document.getElementById('btn-new-game')) document.getElementById('btn-new-game').onclick = () => {
+                        if (!selectedClass) return;
+                        const nameIn = document.getElementById('character-name');
+                        const name = nameIn ? nameIn.value.trim() : null;
+                        if (!name) return;
+                        initAudio();
+                        startGame(SaveSystem.newSlotId(), null, name);
+                        saveGame();
+                    };
+                    if (document.getElementById('btn-export-save')) document.getElementById('btn-export-save').onclick = () => {
+                        const data = SaveSystem.exportData();
+                        if (data) {
+                            const blob = new Blob([data], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'save.json';
+                            a.click();
+                        }
+                    };
+                    if (document.getElementById('btn-import-save')) document.getElementById('btn-import-save').onclick = () => document.getElementById('import-file').click();
+                    if (document.getElementById('import-file')) document.getElementById('import-file').onchange = (e) => {
+                        const f = e.target.files[0];
+                        if (f) {
+                            const r = new FileReader();
+                            r.onload = (ev) => {
+                                if (SaveSystem.importData(ev.target.result)) renderSaveSlots();
+                            };
+                            r.readAsText(f);
+                        }
+                    };
+                    if (document.getElementById('btn-enter-world')) document.getElementById('btn-enter-world').onclick = async () => {
+                        if (!selectedCharSlot) return;
+                        let saveData = null;
+                        if (selectedCharSlot._isCloud) {
+                            const cloud = await DB.getSaves();
+                            saveData = cloud.find(s => s.id === selectedCharSlot.id);
+                        } else {
+                            saveData = SaveSystem.loadSlot(selectedCharSlot.id);
+                        }
+                        if (saveData) {
+                            initAudio();
+                            startGame(selectedCharSlot.id, saveData);
+                        }
+                    };
+                });
