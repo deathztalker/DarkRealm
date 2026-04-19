@@ -2,20 +2,35 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const cors = require('cors');
 
 const app = express();
+
+// Enable CORS for Express
+app.use(cors({
+    origin: ["https://deathztalker.github.io", "http://localhost:3000", "http://127.0.0.1:3000"],
+    credentials: true
+}));
+
 const server = http.createServer(app);
+
+// Enable CORS for Socket.io
 const io = new Server(server, {
     cors: {
         origin: ["https://deathztalker.github.io", "http://localhost:3000", "http://127.0.0.1:3000"],
         methods: ["GET", "POST"],
         credentials: true
-    }
+    },
+    allowEIO3: true
 });
 
 const PORT = process.env.PORT || 3000;
 
-// Serve static files from the project root
+// Health check route
+app.get('/', (req, res) => {
+    res.send('MMO Server is running and healthy!');
+});
+
 app.use(express.static(path.join(__dirname, '..')));
 
 // Player states: { socketId: { x, y, animState, facingDir, classId, name } }
@@ -72,7 +87,6 @@ io.on('connection', (socket) => {
 
     // Combat Relay: Enemy Damaged
     socket.on('enemy_damaged', (data) => {
-        // data: { enemyId, damage, dealerId }
         socket.broadcast.emit('enemy_damaged', data);
     });
 
@@ -97,7 +111,6 @@ io.on('connection', (socket) => {
 
     // Whisper System
     socket.on('whisper', (data) => {
-        // data: { targetName, text }
         const sender = players[socket.id];
         const targetSocketId = Object.keys(players).find(id => players[id].name === data.targetName);
         
@@ -109,7 +122,6 @@ io.on('connection', (socket) => {
                 text: data.text,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
-            // Send to both sender and target
             socket.emit('whisper', whisper);
             io.to(targetSocketId).emit('whisper', whisper);
         } else {
@@ -117,7 +129,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Friends System (Minimal for now, using volatile server state)
+    // Friends System
     const friends = {}; // socketId -> Set(names)
     socket.on('add_friend', (name) => {
         if (!friends[socket.id]) friends[socket.id] = new Set();
@@ -153,7 +165,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('trade_update', (data) => {
-        // data: { tradeId, offer }
         const trade = activeTrades[data.tradeId];
         if (!trade) return;
         const isP1 = socket.id === trade.p1;
@@ -192,7 +203,6 @@ io.on('connection', (socket) => {
 
     // Enemy Sync (Host broadcasts)
     socket.on('enemy_sync', (enemies) => {
-        // Only the host should send this
         socket.broadcast.emit('enemy_sync', enemies);
     });
 
@@ -221,7 +231,6 @@ io.on('connection', (socket) => {
         delete players[socket.id];
         
         if (socket.id === currentHostId) {
-            console.log('Host disconnected, migrating...');
             electNewHost();
         }
 
@@ -229,6 +238,7 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(PORT, () => {
-    console.log(`MMO Server running on http://localhost:${PORT}`);
+// CRITICAL: Bind to 0.0.0.0 for Railway
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`MMO Server running on port ${PORT}`);
 });
