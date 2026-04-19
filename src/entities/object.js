@@ -54,12 +54,12 @@ export class GameObject {
 
         // Custom properties per object type
         if (this.icon === 'obj_portal') {
-            drawSize = 22;
+            drawSize = 32; // Increased from 22
             scale = 1 + Math.sin(time * 0.003) * 0.05; // Gentle breathing scale
             glowColor = '#00aaff';
             glowBlur = 20 + Math.sin(time * 0.005) * 5;
         } else if (this.icon === 'obj_waypoint') {
-            drawSize = 22;
+            drawSize = 42; // Increased from 22 (waypoint is 64x32, now it will be roughly 84x42)
             glowColor = '#4080ff';
             glowBlur = 15 + Math.sin(time * 0.002) * 10; // Slow pulse
         } else if (this.icon === 'obj_shrine' && !this.isOpen) {
