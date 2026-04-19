@@ -14,16 +14,23 @@ skills-lock.json
 node_modules/
 .npm/
 
-# Large binaries & extracted assets
+# Assets & Large Binaries (Hosted on GitHub Pages)
+assets/
 *.zip
 *.rar
 *.7z
-*.md
-*.ps1
-*.sh
-*.yaml
+*.png
+*.jpg
+*.mp3
+*.ogg
+favicon.ico
+
+# Development / Extracted
 rpg_beings_extracted/
 kemono_extracted/
+tmp_*/
+__pycache__/
+*.py
 
 # System files
 .DS_Store
@@ -39,9 +46,3 @@ Thumbs.db
 *.tmp
 *.bak
 *.swp
-
-# Python
-.venv/
-venv/
-__pycache__/
-*.pyc
