@@ -42,7 +42,8 @@ window.addCombatLog = addCombatLog;
 import { RUNEWORDS } from './data/runes.js';
 
 // ——— GLOBALS ———
-let renderer, camera, input, dungeon, player;
+let renderer, camera, input, dungeon, player, network;
+let selectedCharSlot = null;
 let enemies = [], npcs = [], gameObjects = [];
 let projectiles = [], aoeZones = [];
 let droppedItems = [], droppedGold = [];
