@@ -1436,6 +1436,16 @@ function showDialogue(npc) {
     box.classList.remove('hidden');
 }
 
+function updateWorldClockUI() {
+    const clock = document.getElementById('world-clock');
+    if (!clock) return;
+    const hour = Math.floor(worldTime / 60);
+    const min = Math.floor(worldTime % 60);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const h12 = hour % 12 || 12;
+    clock.textContent = `${h12}:${min < 10 ? '0' : ''}${min} ${ampm} ${window.isNight ? '🌙' : '☀️'}`;
+}
+
 function updateHud() {
     if (!player) return;
     updateWorldClockUI();
