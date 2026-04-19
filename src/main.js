@@ -5724,3 +5724,7 @@ function checkAchievements() {
                         }
                     };
                 });
+            }
+        }
+    }
+}
