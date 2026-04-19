@@ -7,9 +7,8 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1. CORS CONFIGURATION - FIXED: Explicit origins are required when credentials: true
+// 1. CORS CONFIGURATION (Crucial para producción)
 const allowedOrigins = ["https://deathztalker.github.io", "http://localhost:3000", "http://127.0.0.1:3000"];
-
 app.use(cors({
     origin: function(origin, callback) {
         if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.includes('github.io')) {
@@ -23,7 +22,7 @@ app.use(cors({
 
 const server = http.createServer(app);
 
-// 2. SOCKET.IO CONFIGURATION
+// 2. SOCKET.IO SETUP
 const io = new Server(server, {
     cors: {
         origin: allowedOrigins,
@@ -33,14 +32,13 @@ const io = new Server(server, {
     transports: ['websocket', 'polling']
 });
 
-// 3. HEALTH CHECK
-app.get('/', (req, res) => {
-    res.status(200).send('MMO Server is running and healthy!');
-});
+// Health check para Railway
+app.get('/', (req, res) => res.send('MMO Server is LIVE and Healthy!'));
+app.use(express.static(path.join(__dirname, '..')));
 
-// --- GLOBAL STATE ---
+// --- GLOBAL STATE (Persistencia volátil en el servidor) ---
 const players = {};
-const friends = {}; 
+const friends = {}; // socketId -> Set
 const activeTrades = {}; 
 let currentHostId = null;
 
@@ -58,6 +56,7 @@ function electNewHost() {
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
 
+    // Join Game
     socket.on('join', (data) => {
         if (!data) return;
         players[socket.id] = {
@@ -74,6 +73,7 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('player_joined', players[socket.id]);
     });
 
+    // Movement Relay
     socket.on('move', (data) => {
         if (data && players[socket.id]) {
             players[socket.id].x = data.x;
@@ -84,10 +84,12 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Combat Relay
     socket.on('enemy_damaged', (data) => socket.broadcast.emit('enemy_damaged', data));
     socket.on('enemy_death', (enemyId) => socket.broadcast.emit('enemy_death', enemyId));
     socket.on('enemy_sync', (enemies) => socket.broadcast.emit('enemy_sync', enemies));
 
+    // Chat System
     socket.on('chat_message', (text) => {
         const player = players[socket.id];
         if (player && text) {
@@ -100,6 +102,7 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Whisper System
     socket.on('whisper', (data) => {
         if (!data) return;
         const sender = players[socket.id];
@@ -114,13 +117,28 @@ io.on('connection', (socket) => {
             };
             socket.emit('whisper', whisper);
             io.to(targetSocketId).emit('whisper', whisper);
+        } else {
+            socket.emit('system_message', `Player "${data.targetName}" not found or offline.`);
         }
     });
 
+    // Friends System
+    socket.on('add_friend', (name) => {
+        if (!name) return;
+        if (!friends[socket.id]) friends[socket.id] = new Set();
+        friends[socket.id].add(name);
+        socket.emit('system_message', `${name} added to your friends list.`);
+        socket.emit('friends_list', Array.from(friends[socket.id]));
+    });
+
+    // --- Trade System ---
     socket.on('trade_invite', (targetName) => {
-        const tid = Object.keys(players).find(id => players[id].name === targetName);
-        if (tid && tid !== socket.id) {
-            io.to(tid).emit('trade_invite', { from: players[socket.id].name, fromId: socket.id });
+        const targetId = Object.keys(players).find(id => players[id].name === targetName);
+        if (targetId && targetId !== socket.id) {
+            io.to(targetId).emit('trade_invite', { from: players[socket.id].name, fromId: socket.id });
+            socket.emit('system_message', `Trade invitation sent to ${targetName}.`);
+        } else {
+            socket.emit('system_message', `Player "${targetName}" not found or busy.`);
         }
     });
 
@@ -128,25 +146,84 @@ io.on('connection', (socket) => {
         if (!players[fromId] || !players[socket.id]) return;
         const ids = [socket.id, fromId].sort();
         const tradeId = `trade_${ids[0]}_${ids[1]}`;
-        activeTrades[tradeId] = { p1: fromId, p2: socket.id, offer1: [], offer2: [], lock1: false, lock2: false, accept1: false, accept2: false };
+        activeTrades[tradeId] = {
+            p1: fromId, p2: socket.id,
+            offer1: [], offer2: [],
+            lock1: false, lock2: false,
+            accept1: false, accept2: false
+        };
         io.to(fromId).emit('trade_start', { tradeId, partner: players[socket.id].name });
         io.to(socket.id).emit('trade_start', { tradeId, partner: players[fromId].name });
     });
 
+    socket.on('trade_update', (data) => {
+        if (!data || !data.tradeId) return;
+        const trade = activeTrades[data.tradeId];
+        if (!trade) return;
+        const isP1 = socket.id === trade.p1;
+        if (isP1) { trade.offer1 = data.offer; trade.lock1 = trade.lock2 = false; }
+        else { trade.offer2 = data.offer; trade.lock1 = trade.lock2 = false; }
+        trade.accept1 = trade.accept2 = false;
+        const partnerId = isP1 ? trade.p2 : trade.p1;
+        io.to(partnerId).emit('trade_update', { offer: data.offer });
+        io.to(trade.p1).emit('trade_status', { lock1: trade.lock1, lock2: trade.lock2 });
+        io.to(trade.p2).emit('trade_status', { lock1: trade.lock1, lock2: trade.lock2 });
+    });
+
+    socket.on('trade_lock', (data) => {
+        if (!data || !data.tradeId) return;
+        const trade = activeTrades[data.tradeId];
+        if (!trade) return;
+        if (socket.id === trade.p1) trade.lock1 = true; else trade.lock2 = true;
+        io.to(trade.p1).emit('trade_status', { lock1: trade.lock1, lock2: trade.lock2 });
+        io.to(trade.p2).emit('trade_status', { lock1: trade.lock1, lock2: trade.lock2 });
+    });
+
+    socket.on('trade_confirm', (data) => {
+        if (!data || !data.tradeId) return;
+        const trade = activeTrades[data.tradeId];
+        if (!trade || !trade.lock1 || !trade.lock2) return;
+        if (socket.id === trade.p1) trade.accept1 = true; else trade.accept2 = true;
+        if (trade.accept1 && trade.accept2) {
+            io.to(trade.p1).emit('trade_execute', { receive: trade.offer2, give: trade.offer1 });
+            io.to(trade.p2).emit('trade_execute', { receive: trade.offer1, give: trade.offer2 });
+            delete activeTrades[data.tradeId];
+        }
+    });
+
+    // --- PvP Duel System ---
+    socket.on('duel_invite', (targetName) => {
+        const targetId = Object.keys(players).find(id => players[id].name === targetName);
+        if (targetId && targetId !== socket.id) {
+            io.to(targetId).emit('duel_invite', { from: players[socket.id].name, fromId: socket.id });
+            socket.emit('system_message', `Duel challenge sent to ${targetName}.`);
+        }
+    });
+
+    socket.on('duel_accept', (fromId) => {
+        if (!players[fromId] || !players[socket.id]) return;
+        io.to(fromId).emit('duel_start', { opponentId: socket.id, opponentName: players[socket.id].name });
+        io.to(socket.id).emit('duel_start', { opponentId: fromId, opponentName: players[fromId].name });
+    });
+
+    socket.on('duel_cancel', (targetId) => {
+        if (targetId) io.to(targetId).emit('duel_end', { reason: 'cancelled' });
+    });
+
+    // Disconnect
     socket.on('disconnect', () => {
         console.log(`User disconnected: ${socket.id}`);
         delete players[socket.id];
+        delete friends[socket.id];
         if (socket.id === currentHostId) electNewHost();
         io.emit('player_left', socket.id);
     });
 });
 
-// 4. ERROR HANDLING
-process.on('uncaughtException', (err) => {
-    console.error('CRITICAL ERROR:', err);
-});
+// Captura de errores globales
+process.on('uncaughtException', (err) => console.error('CRITICAL ERROR:', err));
 
-// 5. START SERVER - Explicitly bind to 0.0.0.0
+// Inicio del servidor
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`>>> MMO SERVER IS LIVE ON PORT ${PORT} <<<`);
+    console.log(`>>> MMO SERVER LIVE ON PORT ${PORT} <<<`);
 });
