@@ -4,6 +4,7 @@
  */
 import { bus } from '../engine/EventBus.js';
 import { fx } from '../engine/ParticleSystem.js';
+import { evaluateSynergies } from './synergyEngine.js';
 
 // Damage types
 export const DMG_TYPE = {
@@ -305,35 +306,81 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
         if (weapon && weapon.onHit) {
             const proc = weapon.onHit;
 
-            // ----- SOUL STACK (Shadowmourne) -----
+            // ── SYNERGY ENGINE: boost proc based on talents & charms ──────────
+            const { mult: synMult, chanceBonus: synChance, bonusEffects: synFX, labels: synLabels }
+                = evaluateSynergies(attacker, proc, weapon.id || '');
+
+            // If any synergies are active, announce the first one (once per 30s)
+            if (synLabels.length > 0) {
+                const now = Date.now();
+                if (!attacker._lastSynLog || now - attacker._lastSynLog > 30000) {
+                    attacker._lastSynLog = now;
+                    bus.emit('combat:log', {
+                        text: `✦ Synergy: ${synLabels[0].label} (+${Math.round((synMult - 1) * 100)}% proc power)`,
+                        cls: 'log-level'
+                    });
+                }
+            }
+
+            // Effective proc chance = base + synergy bonus
+            const effectiveProcChance = (proc.chance || 0) + synChance;
+
+            // ----- SOUL STACK (Shadowmourne / Bonereaver's Edge) -----
             if (proc.effect === 'soul_stack') {
+                // Faster Stacks synergy reduces max stacks needed
+                const stackMax = synFX.includes('faster_stacks')
+                    ? Math.max(4, Math.floor((proc.maxStacks || 10) * 0.7))
+                    : (proc.maxStacks || 10);
                 if (!attacker._shadowmourneStacks) attacker._shadowmourneStacks = 0;
                 attacker._shadowmourneStacks++;
-                if (attacker._shadowmourneStacks >= (proc.maxStacks || 10)) {
+
+                // Armor shred (Bonereaver's Edge synergy)
+                if (proc.armorShred && target._statuses) {
+                    const stackCount = synFX.includes('armor_shred_stack')
+                        ? 999 : 3;
+                    const shreds = target._statuses.filter(s => s.type === 'armor_shred').length;
+                    if (shreds < stackCount) {
+                        target._statuses.push({ type: 'armor_shred', duration: 12, value: proc.armorShredAmt || -80 });
+                        target.armorDebuff = (target.armorDebuff || 0) + Math.abs(proc.armorShredAmt || 80);
+                    }
+                }
+
+                if (attacker._shadowmourneStacks >= stackMax) {
                     attacker._shadowmourneStacks = 0;
-                    // AoE shadow explosion on all nearby enemies
+                    const explodeDmg = Math.round((proc.explodeDmg || 500) * synMult);
+                    // AoE explosion
                     if (window.enemies) {
                         window.enemies.forEach(e => {
                             if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < 200) {
-                                e.hp = Math.max(0, e.hp - (proc.explodeDmg || 500));
+                                e.hp = Math.max(0, e.hp - explodeDmg);
+                                // Soul drain AoE heals player (Warlock synergy)
+                                if (synFX.includes('soul_drain_aoe')) {
+                                    attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.round(explodeDmg * 0.20));
+                                }
                             }
                         });
                     }
                     if (fx) { fx.emitBurst(target.x, target.y, '#8800cc', 80, 6); fx.shake(600, 12); }
-                    bus.emit('combat:log', { text: '★ SHADOWMOURNE: Soul Rend!', cls: 'log-crit' });
+                    // Spawn Bone Revenant (Necromancer synergy)
+                    if (synFX.includes('spawn_revenant')) {
+                        bus.emit('proc:army_of_dead', { x: attacker.x, y: attacker.y, count: 2, duration: 15 });
+                    }
+                    bus.emit('combat:log', { text: '★ SHADOWMOURNE / BONEREAVER: Soul Rend!', cls: 'log-crit' });
                 } else {
                     if (fx) fx.emitBurst(target.x, target.y, '#660088', 6, 2);
                 }
 
-            } else if (Math.random() < (proc.chance || 0)) {
+            } else if (Math.random() < effectiveProcChance) {
 
-                // ----- CHAIN LIGHTNING (Thunderfury) -----
+                // ----- CHAIN LIGHTNING (Thunderfury / Doomhammer) -----
                 if (proc.effect === 'chain_lightning') {
-                    bus.emit('combat:log', { text: '⚡ Thunderfury: Chain Lightning!', cls: 'log-crit' });
+                    bus.emit('combat:log', { text: '⚡ Chain Lightning proc!', cls: 'log-crit' });
                     let lastPos = { x: target.x, y: target.y };
                     let bounced = 0;
-                    const maxBounces = proc.targets || 3;
+                    // Extra bounce synergy (Storm Caller / Doomhammer)
+                    const maxBounces = (proc.targets || 3) + (synFX.includes('extra_bounce') ? 2 : 0);
                     const hitTargets = new Set([target]);
+                    const chainDmg = Math.round((proc.damage || 80) * synMult);
                     if (window.enemies) {
                         const sorted = window.enemies
                             .filter(e => e.hp > 0 && !hitTargets.has(e))
@@ -341,74 +388,160 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
                         for (const e of sorted) {
                             if (bounced >= maxBounces) break;
                             const dist = Math.hypot(e.x - lastPos.x, e.y - lastPos.y);
-                            if (dist < 250) {
-                                e.hp = Math.max(0, e.hp - (proc.damage || 80));
+                            if (dist < 280) {
+                                e.hp = Math.max(0, e.hp - chainDmg);
                                 if (fx) fx.emitLightning?.(lastPos.x, lastPos.y, e.x, e.y, 3);
                                 lastPos = { x: e.x, y: e.y };
                                 hitTargets.add(e);
                                 bounced++;
+                                // Paralysis stun (Lightning Mastery synergy)
+                                if (synFX.includes('paralysis') && e._statuses) {
+                                    e._statuses.push({ type: 'stun', duration: 1.0, value: 0 });
+                                }
+                                // Chain overload stun (Thunder Talisman)
+                                if (synFX.includes('chain_overload') && e._statuses) {
+                                    e._statuses.push({ type: 'stun', duration: 0.5, value: 0 });
+                                }
                             }
                         }
                     }
-                    // Also reduce enemy attack speed (debuff)
+                    // Attack speed slow
                     if (target._statuses) {
                         const existing = target._statuses.find(s => s.type === 'attackSlowed');
                         if (!existing) target._statuses.push({ type: 'attackSlowed', duration: 6, value: 0.25 });
                     }
 
-                // ----- METEOR DROP (Sulfuras) -----
+                // ----- METEOR DROP (Sulfuras / Draconic Edge / Dragonbreath Cannon) -----
                 } else if (proc.effect === 'meteor_drop') {
-                    bus.emit('combat:log', { text: '🔥 Sulfuras: Meteor Strike!', cls: 'log-crit' });
+                    bus.emit('combat:log', { text: '🔥 Meteor Strike proc!', cls: 'log-crit' });
                     const mx = target.x, my = target.y;
                     if (fx) { fx.emitBurst(mx, my, '#ff4400', 60, 5); fx.shake(800, 15); }
+                    const meteorDmg = Math.round((proc.damage || 350) * synMult);
+                    const meteorRadius = (proc.radius || 120) * (synFX.includes('aoe_expand') ? 1.5 : 1);
                     if (window.enemies) {
                         window.enemies.forEach(e => {
-                            if (e.hp > 0 && Math.hypot(e.x - mx, e.y - my) < (proc.radius || 120)) {
-                                e.hp = Math.max(0, e.hp - (proc.damage || 350));
-                                if (e._statuses) e._statuses.push({ type: 'burn', duration: 4, value: 30 });
+                            if (e.hp > 0 && Math.hypot(e.x - mx, e.y - my) < meteorRadius) {
+                                e.hp = Math.max(0, e.hp - meteorDmg);
+                                // Burn DoT (Fire Mastery synergy / base)
+                                const burnDps = synFX.includes('burn_dot') ? 150 : 30;
+                                const burnDur = synFX.includes('burn_dot') ? 5  : 4;
+                                if (e._statuses) e._statuses.push({ type: 'burn', duration: burnDur, value: burnDps });
                             }
                         });
                     }
+                    // Split meteor (Cinders Heart)
+                    if (synFX.includes('split_meteor') && window.enemies) {
+                        const offset = 80;
+                        [{ ox: offset, oy: 0 }, { ox: -offset, oy: 0 }].forEach(o => {
+                            window.enemies.forEach(e => {
+                                if (e.hp > 0 && Math.hypot(e.x - (mx + o.ox), e.y - (my + o.oy)) < 60) {
+                                    e.hp = Math.max(0, e.hp - Math.round(meteorDmg * 0.5));
+                                }
+                            });
+                        });
+                    }
 
-                // ----- DIVINE SHIELD (Val'anyr) -----
+                // ----- DIVINE SHIELD (Val'anyr / Quel'Serrar) -----
                 } else if (proc.effect === 'divine_shield') {
-                    bus.emit('combat:log', { text: "💛 Val'anyr: Divine Shield!", cls: 'log-crit' });
-                    attacker.divineShield = (attacker.divineShield || 0) + (proc.shieldHp || 800);
+                    bus.emit('combat:log', { text: "💛 Divine Shield proc!", cls: 'log-crit' });
+                    const shieldBase = Math.round((proc.shieldHp || 800) * synMult);
+                    attacker.divineShield = (attacker.divineShield || 0) + shieldBase;
                     attacker._divineShieldTimer = proc.duration || 8;
+                    // Reflect damage synergy (Paladin — Divine Shield talent)
+                    if (synFX.includes('reflect_dmg')) {
+                        attacker._divineShieldReflect = 0.30;
+                    }
+                    // Heal party (Holy Light synergy)
+                    if (synFX.includes('heal_party')) {
+                        bus.emit('proc:heal_party', { x: attacker.x, y: attacker.y, amount: 200, radius: 150 });
+                    }
                     if (fx) fx.emitHolyBurst?.(attacker.x, attacker.y);
 
-                // ----- ARCANE BURST (Atiesh) -----
+                // ----- ARCANE BURST (Atiesh / Voidreaper) -----
                 } else if (proc.effect === 'arcane_burst') {
-                    bus.emit('combat:log', { text: '✨ Atiesh: Arcane Burst!', cls: 'log-crit' });
+                    bus.emit('combat:log', { text: '✨ Arcane Burst proc!', cls: 'log-crit' });
                     if (fx) fx.emitBurst(target.x, target.y, '#aa44ff', 40, 4);
+                    const arcDmg  = Math.round((proc.damage  || 200) * synMult);
+                    const arcRad  = (proc.radius || 80) * (synFX.includes('aoe_expand') ? 1.5 : 1);
+                    const burstColor = proc.type === 'shadow' ? '#7711cc' : '#aa44ff';
                     if (window.enemies) {
                         window.enemies.forEach(e => {
-                            if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < (proc.radius || 80)) {
-                                e.hp = Math.max(0, e.hp - (proc.damage || 200));
+                            if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < arcRad) {
+                                e.hp = Math.max(0, e.hp - arcDmg);
+                                // Mana shred (Voidreaper)
+                                if (proc.manaShred && e.mp !== undefined) {
+                                    e.mp = Math.max(0, (e.mp || 0) - (proc.manaShredAmt || 120));
+                                }
                             }
                         });
                     }
+                    // Mana restore on proc (Atiesh + lightning mastery)
+                    if (synFX.includes('mana_storm')) {
+                        attacker.mp = Math.min(attacker.maxMp, (attacker.mp || 0) + Math.round(attacker.maxMp * 0.15));
+                    }
+                    // Double burst (Arcane Focus charm)
+                    if (synFX.includes('double_burst')) {
+                        setTimeout(() => {
+                            if (fx) fx.emitBurst(target.x, target.y, burstColor, 20, 2);
+                            if (window.enemies) window.enemies.forEach(e => {
+                                if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < arcRad * 0.6) {
+                                    e.hp = Math.max(0, e.hp - Math.round(arcDmg * 0.5));
+                                }
+                            });
+                        }, 300);
+                    }
 
-                // ----- SOUL RIP (Frostmourne) -----
+                // ----- SOUL RIP (Frostmourne / Staff of Eternal Winter) -----
                 } else if (proc.effect === 'soul_rip') {
-                    bus.emit('combat:log', { text: '❄️ Frostmourne: Soul Rip!', cls: 'log-crit' });
-                    target.hp = Math.max(0, target.hp - (proc.damage || 150));
-                    // Steal HP
-                    attacker.hp = Math.min(attacker.maxHp, attacker.hp + (proc.damage || 150) * 0.5);
+                    bus.emit('combat:log', { text: '❄️ Soul Rip proc!', cls: 'log-crit' });
+                    const ripDmg = Math.round((proc.damage || 150) * synMult);
+                    // AoE version (Staff of Eternal Winter)
+                    if (proc.aoe && window.enemies) {
+                        window.enemies.forEach(e => {
+                            if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < (proc.aoeRadius || 100)) {
+                                e.hp = Math.max(0, e.hp - Math.round(ripDmg * 0.6));
+                            }
+                        });
+                    }
+                    target.hp = Math.max(0, target.hp - ripDmg);
+                    attacker.hp = Math.min(attacker.maxHp, attacker.hp + ripDmg * 0.5);
+                    const freezeDur = (proc.freezeDuration || 3) + (synFX.includes('deep_freeze') ? 3 : 0);
                     if (proc.freeze && target._statuses) {
-                        target._statuses.push({ type: 'frozen', duration: proc.freezeDuration || 3, value: 0 });
+                        target._statuses.push({ type: 'frozen', duration: freezeDur, value: 0 });
+                    }
+                    // Mana drain (Frost Rune charm)
+                    if (synFX.includes('mana_drain') && target.mp !== undefined) {
+                        target.mp = Math.max(0, (target.mp || 0) - 150);
+                    }
+                    // Shatter on kill (Cold Mastery synergy) — mark for main loop
+                    if (synFX.includes('shatter')) {
+                        target._willShatter = ripDmg * 2;
                     }
                     if (fx) { fx.emitBurst(target.x, target.y, '#44eeff', 30, 3); }
 
-                // ----- BLADE DANCE (Warglaive of Azzinoth) -----
+                // ----- BLADE DANCE (Warglaive / Dirge) -----
                 } else if (proc.effect === 'blade_dance') {
-                    bus.emit('combat:log', { text: '🌀 Warglaive: Blade Dance!', cls: 'log-crit' });
-                    const hits = proc.hits || 3;
+                    bus.emit('combat:log', { text: '🌀 Blade Dance proc!', cls: 'log-crit' });
+                    const extraHit = synFX.includes('extra_hit') ? 1 : 0;
+                    const hits = (proc.hits || 3) + extraHit;
+                    const hitDmg = Math.round((proc.damage || 60) * synMult);
                     for (let i = 0; i < hits; i++) {
                         setTimeout(() => {
                             if (target.hp > 0) {
-                                target.hp = Math.max(0, target.hp - (proc.damage || 60));
+                                target.hp = Math.max(0, target.hp - hitDmg);
                                 if (fx) fx.emitSlash?.(target.x, target.y, Math.random() * Math.PI * 2, '#00ff88', 30);
+                                // Poison on hit (Dirge)
+                                if (proc.poisonOnHit && target._statuses) {
+                                    target._statuses.push({
+                                        type: 'poison', duration: proc.poisonDuration || 6,
+                                        value: Math.round((proc.poisonDps || 50) * synMult)
+                                    });
+                                }
+                                // Death Mark reset vanish CD on kill (Shadow Dance)
+                                if (synFX.includes('stealth_reset') && target.hp <= 0 && attacker.cooldowns) {
+                                    const vIdx = attacker.cooldowns.findIndex?.((_, idx) => idx === 2);
+                                    if (vIdx >= 0) attacker.cooldowns[vIdx] = 0;
+                                }
                             }
                         }, i * 80);
                     }
@@ -433,17 +566,27 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
                         });
                     }
 
-                // ----- CONSECRATION (Corrupted Ashbringer) -----
+                // ----- CONSECRATION (Ashbringer / Hammer of the Naaru) -----
                 } else if (proc.effect === 'consecration') {
-                    bus.emit('combat:log', { text: '✝️ Ashbringer: Consecration!', cls: 'log-crit' });
+                    bus.emit('combat:log', { text: '✝️ Consecration proc!', cls: 'log-crit' });
+                    const conseDmg = Math.round((proc.damage || 100) * synMult);
+                    const conseRad = (proc.radius || 90) * (synFX.includes('aoe_expand') ? 1.5 : 1);
                     if (window.enemies) {
                         window.enemies.forEach(e => {
-                            if (e.hp > 0 && Math.hypot(e.x - attacker.x, e.y - attacker.y) < (proc.radius || 90)) {
-                                e.hp = Math.max(0, e.hp - (proc.damage || 100));
+                            if (e.hp > 0 && Math.hypot(e.x - attacker.x, e.y - attacker.y) < conseRad) {
+                                e.hp = Math.max(0, e.hp - conseDmg);
+                                // Holy Fire (Consecration + Fire Mastery)
+                                if (synFX.includes('holy_fire') && e._statuses) {
+                                    e._statuses.push({ type: 'burn', duration: 6, value: Math.round(conseDmg * 0.4) });
+                                }
+                                // Judgment mark (amplifies holy dmg taken)
+                                if (synFX.includes('judgment_mark') && e._statuses) {
+                                    e._statuses.push({ type: 'judgment', duration: 10, value: 0.25 });
+                                }
                             }
                         });
                     }
-                    attacker.hp = Math.min(attacker.maxHp, attacker.hp + (proc.healPlayer || 50));
+                    attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.round((proc.healPlayer || 50) * synMult));
                     if (fx) { fx.emitHolyBurst?.(attacker.x, attacker.y); }
 
                 // ----- ARMY OF THE DEAD (Glaive of the Fallen Prince) -----

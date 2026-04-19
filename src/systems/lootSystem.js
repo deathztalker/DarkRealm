@@ -441,8 +441,320 @@ const UNIQUES = [
         onHit: { chance: 0.08, effect: 'army_of_the_dead', count: 3, duration: 12, type: 'shadow' },
         flavor: '"The Lich King\'s will made blade. Three souls are bound to serve it."',
         isLegendary: true, legendaryColor: '#88aaff'
-    }
+    },
+
+    // ═══════════════════════════════════════════════════════
+    // ★★★ NUEVOS LEGENDARIOS CON SINERGIAS ★★★
+    // synergies: ver synergyEngine.js – LEGENDARY_SYNERGIES[id]
+    // ═══════════════════════════════════════════════════════
+
+    {   // ── DOOMHAMMER — Shaman legendary (melee lightning, Windfury synergy)
+        id: 'doomhammer', name: "Doomhammer",
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 68,
+        mods: [
+            { stat: 'pctDmg', value: 175 },
+            { stat: 'flatLightDmg', value: 70 },
+            { stat: 'flatSTR', value: 30 },
+            { stat: 'pctIAS', value: 20 },
+            { stat: 'allRes', value: 20 },
+        ],
+        onHit: { chance: 0.18, effect: 'chain_lightning', damage: 120, targets: 4, type: 'lightning',
+                 extraEffect: 'lightning_overload' },
+        flavor: '"Forged by Grim Batol dwarves, consecrated by a dying shaman. Earth and storm obey it."',
+        isLegendary: true, legendaryColor: '#33aaff'
+    },
+    {   // ── RHOK'DELAR — Ranger/Druid (nature arrow, hunter's mark synergy)
+        id: 'rhokdelar', name: "Rhok'delar, Longbow of the Ancient Keepers",
+        base: 'long_bow', rarity: RARITY.UNIQUE, icon: 'item_long_bow', dropLvl: 60,
+        mods: [
+            { stat: 'pctDmg', value: 190 },
+            { stat: 'pctIAS', value: 35 },
+            { stat: 'flatDEX', value: 40 },
+            { stat: 'critChance', value: 18 },
+            { stat: 'critMulti', value: 40 },
+        ],
+        onHit: { chance: 0.22, effect: 'stellar_arrow', damage: 140, natureExplosion: true, type: 'magic',
+                 extraEffect: 'nature_burst' },
+        passive: { effect: 'mana_aura', manaRegen: 4 },
+        flavor: '"The Ancients of Kalimdor still whisper through its wood."',
+        isLegendary: true, legendaryColor: '#44ff88'
+    },
+    {   // ── DRACONIC EDGE — Warrior (dragon breath, berserk synergy)
+        id: 'draconic_edge', name: "Draconic Edge",
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 65,
+        mods: [
+            { stat: 'pctDmg', value: 185 },
+            { stat: 'flatFireDmg', value: 55 },
+            { stat: 'flatSTR', value: 35 },
+            { stat: 'critChance', value: 12 },
+            { stat: 'fireRes', value: 50 },
+        ],
+        onHit: { chance: 0.16, effect: 'meteor_drop', damage: 220, radius: 90, type: 'fire',
+                 extraEffect: 'dragon_breath' },
+        flavor: '"Carved from the spine-ridge of Onyxia herself. It still breathes."',
+        isLegendary: true, legendaryColor: '#ff6600'
+    },
+    {   // ── STAFF OF ETERNAL WINTER — Sorceress (blizzard veil, cold synergy)
+        id: 'staff_eternal_winter', name: "Staff of Eternal Winter",
+        base: 'war_staff', rarity: RARITY.UNIQUE, icon: 'item_war_staff', dropLvl: 70,
+        mods: [
+            { stat: '+allSkills', value: 3 },
+            { stat: 'flatColdDmg', value: 80 },
+            { stat: 'flatMP', value: 400 },
+            { stat: 'manaRegenPerSec', value: 20 },
+            { stat: 'critChance', value: 8 },
+            { stat: 'coldRes', value: 60 },
+        ],
+        onHit: { chance: 0.20, effect: 'soul_rip', damage: 180, freeze: true, freezeDuration: 4,
+                 aoe: true, aoeRadius: 100, type: 'cold', extraEffect: 'blizzard_veil' },
+        passive: { effect: 'cold_aura', coldResBoost: 25 },
+        flavor: '"From the Icecrown Citadel\'s deepest vault. Time itself freezes at its touch."',
+        isLegendary: true, legendaryColor: '#aaeeff'
+    },
+    {   // ── VOIDREAPER — Warlock (void wound, soul fire synergy)
+        id: 'voidreaper', name: "Voidreaper",
+        base: 'zweihander', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 75,
+        mods: [
+            { stat: 'pctDmg', value: 220 },
+            { stat: 'flatHP', value: 250 },
+            { stat: 'lifeStealPct', value: 8 },
+            { stat: 'manaStealPct', value: 10 },
+            { stat: '+allSkills', value: 1 },
+        ],
+        onHit: { chance: 0.18, effect: 'arcane_burst', damage: 250, radius: 85, type: 'shadow',
+                 manaShred: true, manaShredAmt: 120, extraEffect: 'void_wound' },
+        flavor: '"It doesn\'t cut through flesh. It cuts through existence."',
+        isLegendary: true, legendaryColor: '#7711cc'
+    },
+    {   // ── BONEREAVER'S EDGE — Necromancer (armor shatter, amplify damage synergy)
+        id: 'bonereaver_edge', name: "Bonereaver's Edge",
+        base: 'zweihander', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 72,
+        mods: [
+            { stat: 'pctDmg', value: 200 },
+            { stat: 'flatSTR', value: 45 },
+            { stat: 'flatHP', value: 300 },
+            { stat: 'pctIAS', value: 15 },
+        ],
+        onHit: { chance: 1.0, effect: 'soul_stack', maxStacks: 6, explodeDmg: 380, type: 'physical',
+                 armorShred: true, armorShredAmt: -120, extraEffect: 'bone_shatter' },
+        flavor: '"Each strike strips away another layer of defense. And dignity."',
+        isLegendary: true, legendaryColor: '#ccaa55'
+    },
+    {   // ── DIRGE — Rogue (shadow poison, pandemic synergy)
+        id: 'dirge', name: "Dirge",
+        base: 'rune_blade', rarity: RARITY.UNIQUE, icon: 'item_rune_blade', dropLvl: 66,
+        mods: [
+            { stat: 'pctDmg', value: 160 },
+            { stat: 'flatDEX', value: 35 },
+            { stat: 'critChance', value: 22 },
+            { stat: 'critMulti', value: 60 },
+            { stat: 'pctIAS', value: 30 },
+        ],
+        onHit: { chance: 0.25, effect: 'blade_dance', hits: 4, damage: 80, type: 'shadow',
+                 poisonOnHit: true, poisonDps: 50, poisonDuration: 6, extraEffect: 'dirge_echo' },
+        flavor: '"A song played only for the dying. Each note is a cut."',
+        isLegendary: true, legendaryColor: '#88ff44'
+    },
+    {   // ── HAMMER OF THE NAARU — Paladin (holy storm, consecration synergy)
+        id: 'hammer_naaru', name: "Hammer of the Naaru",
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 70,
+        mods: [
+            { stat: '+allSkills', value: 2 },
+            { stat: 'flatHP', value: 450 },
+            { stat: 'lifeRegenPerSec', value: 20 },
+            { stat: 'allRes', value: 30 },
+            { stat: 'pctDmg', value: 120 },
+        ],
+        onHit: { chance: 0.14, effect: 'consecration', damage: 200, radius: 110, type: 'holy',
+                 healPlayer: 100, extraEffect: 'naaru_blessing' },
+        passive: { effect: 'holy_aura', holyResist: 30 },
+        flavor: '"A gift from the Naaru. It hums with a thousand prayers."',
+        isLegendary: true, legendaryColor: '#ffeeaa'
+    },
+    {   // ── QUEL'SERRAR — Warrior/Paladin (precision strike, shield synergy)
+        id: 'quelserrar', name: "Quel'Serrar",
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 58,
+        mods: [
+            { stat: 'pctDmg', value: 140 },
+            { stat: 'flatArmor', value: 200 },
+            { stat: 'blockChance', value: 15 },
+            { stat: 'flatSTR', value: 25 },
+            { stat: 'allRes', value: 15 },
+        ],
+        onHit: { chance: 0.20, effect: 'divine_shield', shieldHp: 600, duration: 6,
+                 swordAuraActive: true, extraEffect: 'quel_cleave' },
+        flavor: '"Tempered in the Sunken Temple\'s fires. Ancient elven rune-work sings in battle."',
+        isLegendary: true, legendaryColor: '#ddcc33'
+    },
+    {   // ── DRAGONBREATH HAND CANNON — Ranger/Warrior (fire cone, dragon synergy)
+        id: 'dragonbreath_cannon', name: "Dragonbreath Hand Cannon",
+        base: 'rune_blade', rarity: RARITY.UNIQUE, icon: 'item_rune_blade', dropLvl: 74,
+        mods: [
+            { stat: 'pctDmg', value: 195 },
+            { stat: 'flatFireDmg', value: 65 },
+            { stat: 'critChance', value: 16 },
+            { stat: 'critMulti', value: 45 },
+            { stat: 'pctIAS', value: 25 },
+        ],
+        onHit: { chance: 0.15, effect: 'meteor_drop', damage: 280, radius: 80, type: 'fire',
+                 coneFire: true, coneAngle: 60, extraEffect: 'fire_cone' },
+        flavor: '"The gnomes built it. A dragon tested it. Both regretted it."',
+        isLegendary: true, legendaryColor: '#ff8800'
+    },
+
+    // ═══════════════════════════════════════════════════════
+    // ★★★ LEGENDARY SYNERGY CHARMS ★★★
+    // Estos charms no son ítems normales — son pequeñas piedras
+    // que se equipan en el "charm bag" y mejoran procs de legendarios.
+    // ═══════════════════════════════════════════════════════
+
+    {
+        id: 'charm_storm_heart', name: "Storm Heart",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 55,
+        mods: [{ stat: 'flatLightDmg', value: 15 }, { stat: 'allRes', value: 10 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['thunderfury'],
+        flavor: '"A spark of the windseeker\'s soul, crystallized in amber."',
+        isLegendary: true, legendaryColor: '#00ccff'
+    },
+    {
+        id: 'charm_soul_shard', name: "Soul Shard",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 65,
+        mods: [{ stat: 'lifeStealPct', value: 4 }, { stat: 'flatHP', value: 80 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['shadowmourne'],
+        flavor: '"A fragment of one of the thousand souls consumed. It hungers."',
+        isLegendary: true, legendaryColor: '#8800cc'
+    },
+    {
+        id: 'charm_cinders_heart', name: "Cinder's Heart",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 58,
+        mods: [{ stat: 'fireRes', value: 20 }, { stat: 'flatFireDmg', value: 20 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['sulfuras', 'draconic_edge', 'dragonbreath_cannon'],
+        flavor: '"Never fully extinguished. Even in water it smolders."',
+        isLegendary: true, legendaryColor: '#ff4400'
+    },
+    {
+        id: 'charm_amber_seal', name: "Amber Seal of Kings",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 62,
+        mods: [{ stat: 'flatHP', value: 120 }, { stat: 'allRes', value: 12 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['valanyr', 'quelserrar', 'hammer_naaru'],
+        flavor: '"Blessed by seven paladins during the Second War. Their faith endures."',
+        isLegendary: true, legendaryColor: '#ffdd44'
+    },
+    {
+        id: 'charm_arcane_focus', name: "Arcane Focus Crystal",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 60,
+        mods: [{ stat: 'flatMP', value: 100 }, { stat: 'manaRegenPerSec', value: 8 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['atiesh', 'voidreaper'],
+        flavor: '"Used by Medivh to focus the energies of a dying star."',
+        isLegendary: true, legendaryColor: '#aa44ff'
+    },
+    {
+        id: 'charm_frost_rune', name: "Frost Rune Fragment",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 70,
+        mods: [{ stat: 'coldRes', value: 25 }, { stat: 'flatColdDmg', value: 18 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['frostmourne', 'staff_eternal_winter'],
+        flavor: '"A chip of Icecrown itself. Still cold after ten thousand years."',
+        isLegendary: true, legendaryColor: '#44eeff'
+    },
+    {
+        id: 'charm_shadow_wisp', name: "Shadow Wisp",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 56,
+        mods: [{ stat: 'critChance', value: 6 }, { stat: 'pctIAS', value: 10 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['warglaive_azzinoth', 'dirge'],
+        flavor: '"The last echo of a night elf hunter, bound to serve forever."',
+        isLegendary: true, legendaryColor: '#00ff88'
+    },
+    {
+        id: 'charm_sunfire_quiver', name: "Sunfire Quiver",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 60,
+        mods: [{ stat: 'pctDmg', value: 20 }, { stat: 'critChance', value: 5 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['thoridal', 'rhokdelar'],
+        flavor: '"Arrows that never run dry. Each one burns with sunwell light."',
+        isLegendary: true, legendaryColor: '#ffffaa'
+    },
+    {
+        id: 'charm_holy_relic', name: "Holy Relic of the Silver Hand",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 60,
+        mods: [{ stat: 'lifeRegenPerSec', value: 10 }, { stat: 'allRes', value: 10 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['ashbringer', 'hammer_naaru'],
+        flavor: '"A symbol of the Silver Hand order. It protects those who protect others."',
+        isLegendary: true, legendaryColor: '#ffffff'
+    },
+    {
+        id: 'charm_bone_marrow', name: "Bone Marrow Talisman",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 65,
+        mods: [{ stat: 'flatHP', value: 100 }, { stat: 'pctArmor', value: 15 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['glaive_fallen_prince', 'bonereaver_edge'],
+        flavor: '"Made from the marrow of a Lich. It radiates cold malevolence."',
+        isLegendary: true, legendaryColor: '#88aaff'
+    },
+    {
+        id: 'charm_thunder_talisman', name: "Thunder Talisman",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 55,
+        mods: [{ stat: 'flatLightDmg', value: 22 }, { stat: 'pctIAS', value: 8 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['doomhammer', 'thunderfury'],
+        flavor: '"Carved by the first Farseer from a lightning-struck sapphire."',
+        isLegendary: true, legendaryColor: '#33aaff'
+    },
+    {
+        id: 'charm_void_fragment', name: "Void Fragment",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 68,
+        mods: [{ stat: 'manaStealPct', value: 5 }, { stat: 'lifeStealPct', value: 3 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['voidreaper', 'frostmourne'],
+        flavor: '"A crack in reality, held within glass. It hums with nothing."',
+        isLegendary: true, legendaryColor: '#7711cc'
+    },
+    {
+        id: 'charm_glacial_shard', name: "Glacial Shard",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 65,
+        mods: [{ stat: 'coldRes', value: 30 }, { stat: 'flatColdDmg', value: 25 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['staff_eternal_winter'],
+        flavor: '"A needle of pure Northrend ice that never melts."',
+        isLegendary: true, legendaryColor: '#aaeeff'
+    },
+    {
+        id: 'charm_bone_dust', name: "Bone Dust",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 62,
+        mods: [{ stat: 'pctDmg', value: 12 }, { stat: 'critMulti', value: 25 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['bonereaver_edge'],
+        flavor: '"Ground from the bones of a titan. Breathe it in and see the void."',
+        isLegendary: true, legendaryColor: '#ccaa55'
+    },
+    {
+        id: 'charm_ancients_call', name: "Call of the Ancients",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 58,
+        mods: [{ stat: '+allSkills', value: 1 }, { stat: 'flatDEX', value: 15 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['rhokdelar', 'thoridal'],
+        flavor: '"Three ancient keepers answer its call. Their names are lost to time."',
+        isLegendary: true, legendaryColor: '#44ff88'
+    },
+    {
+        id: 'charm_dragon_scale', name: "Dragon Scale Fragment",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 60,
+        mods: [{ stat: 'fireRes', value: 30 }, { stat: 'flatArmor', value: 80 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['draconic_edge', 'dragonbreath_cannon', 'sulfuras'],
+        flavor: '"A single scale from Deathwing himself. Still warm."',
+        isLegendary: true, legendaryColor: '#ff6600'
+    },
 ];
+
+
 
 export class LootSystem {
     /**

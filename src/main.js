@@ -41,6 +41,7 @@ window.updateHud = updateHud;
 window.addCombatLog = addCombatLog;
 
 import { RUNEWORDS } from './data/runes.js';
+import { getSynergyTooltipHtml } from './systems/synergyEngine.js';
 
 // ——— GLOBALS ———
 let renderer, camera, input, dungeon, player, network;
@@ -4108,6 +4109,7 @@ function renderInventory() {
                     document.body.style.cursor = 'default';
                     addCombatLog(`Identified: ${item.name}!`, 'log-level');
                     playLoot();
+                    player.invalidateStats();
                     renderInventory();
                     renderCharacterPanel();
                     return;
@@ -4285,6 +4287,7 @@ function renderInventory() {
                     document.body.style.cursor = 'default';
                     addCombatLog(`Identified: ${item.name}!`, 'log-level');
                     playLoot();
+                    player.invalidateStats();
                     renderInventory();
                     renderCharacterPanel();
                     return;
@@ -4799,6 +4802,12 @@ function itemTooltipText(item, isComparison = false) {
     }
     if (item.cursed) {
         t += `<div style="color:#ff4444; font-size:10px; margin-top:4px;">☠ CURSED — Impossible to remove</div>`;
+    }
+
+    // ★ Synergy display — show which talents/charms boost this legendary
+    if (item.isLegendary && !isComparison && player) {
+        const synHtml = getSynergyTooltipHtml(player, item.id, item.legendaryColor);
+        if (synHtml) t += synHtml;
     }
 
 
@@ -6719,7 +6728,7 @@ function handleDrop(target, idx) {
         if (dragSource === 'stash' && currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
         if (target === 'stash' && currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
 
-        player._recalcStats();
+        player.invalidateStats();
         addCombatLog(`Moved ${draggedItem.name}`, 'log-info');
     }
 

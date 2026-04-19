@@ -124,6 +124,11 @@ export class Player {
         bus.on('player:gainXp', d => this.gainXp(d.amount));
     }
 
+    invalidateStats() {
+        this._statsDirty = true;
+        this._recalcStats();
+    }
+
     // ─── Stats ───
     _recalcStats() {
         if (!this._statsDirty) return;
@@ -146,25 +151,9 @@ export class Player {
             if (b.id === 'shrine_mana') s.manaRegenPerSec = (s.manaRegenPerSec||0) + (this.maxMp * (b.value / 100));
             if (b.id === 'shrine_resist') s.allRes = (s.allRes||0) + b.value;
             if (b.id === 'shrine_speed') s.pctMoveSpeed = (s.pctMoveSpeed||0) + b.value;
-            // shrine_exp is handled locally in the kill loop where XP is awarded
         }
 
-        // --- Charms Logic (Wave 6) ---
-        // Scan inventory for items that provide stats while carried.
-        // Requires identification to work.
-        const activeUniques = new Set();
-        if (this.inventory && Array.isArray(this.inventory)) {
-            for (const item of this.inventory) {
-                if (item && item.type === 'charm' && item.identified !== false) {
-                    // Unique check: Only one of each unique charm ID counts
-                    if (item.rarity === 'unique') {
-                        if (activeUniques.has(item.id)) continue;
-                        activeUniques.add(item.id);
-                    }
-                    this._addItemStats(item, s);
-                }
-            }
-        }
+        // NOTE: Charms are now handled centrally in _gearStats() to avoid double counting
 
         // --- Phase 23: Paragon Stats ---
         const ps = this._paragonStats();
@@ -474,8 +463,9 @@ export class Player {
 
     effectiveSkillLevel(skillId) {
         const base = this.talents.baseLevel(skillId) || 0;
-        const gearBonus = this.allSkillBonus || 0;
-        return base > 0 ? (base + gearBonus) : 0; // Only bonus if skill is unlocked
+        if (base <= 0) return 0;
+        const gearBonus = this.getSkillBonus(skillId);
+        return base + gearBonus;
     }
 
     // ─── Movement ───
@@ -1480,9 +1470,9 @@ export class Player {
         if (invIdx !== -1) {
             this.belt[slot] = this.inventory[invIdx];
             this.inventory[invIdx] = null;
-            // No extra log to avoid spam, just seamless refill
         }
 
+        this._statsDirty = true;
         this._recalcStats();
     }
     addToInventory(item) {
@@ -1525,6 +1515,7 @@ export class Player {
         this.inventory[idx] = item;
         if (!this.inventory[idx].quantity) this.inventory[idx].quantity = 1;
         
+        this._statsDirty = true;
         this._recalcStats(); // Recalculate stats for charms
         return true;
     }

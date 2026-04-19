@@ -104,6 +104,11 @@ export const ITEM_BASES = {
     horadric_staff: { name: "Horadric Staff", slot: SLOT.MAINHAND, type: 'staff', icon: 'item_staff_kings_hd', minDmg: 12, maxDmg: 30, atkSpd: 0.7, req: { str: 25 }, size: [1, 4], mods: [{ stat: 'allRes', value: 10 }, { stat: 'flatMP', value: 50 }], flavor: '"The powerful Horadric Staff, restored at last."', identified: true },
     hellforge_hammer: { name: "Hellforge Hammer", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_war_hammer_hd', minDmg: 8, maxDmg: 20, atkSpd: 0.8, req: { str: 20 }, size: [1, 3], flavor: '"Only this hammer can shatter a Prime Evil\'s soulstone."', identified: true },
     hellfire_torch: { name: "Hellfire Torch", slot: 'charm', type: 'charm', icon: 'item_charm_grand', size: [1, 3], rarity: 'unique', identified: true, flavor: '"The ultimate prize for those who conquered Hell\'s fury."' },
+
+    // === CHARMS ===
+    small_charm: { name: 'Small Charm', slot: 'none', type: 'charm', icon: 'item_charm_small', size: [1, 1], price: 100 },
+    large_charm: { name: 'Large Charm', slot: 'none', type: 'charm', icon: 'item_charm_large', size: [1, 2], price: 200 },
+    grand_charm: { name: 'Grand Charm', slot: 'none', type: 'charm', icon: 'item_charm_grand', size: [1, 3], price: 300 },
 };
 
 export const SOCKET_MAX = {
