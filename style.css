@@ -3297,10 +3297,35 @@ body.socketing-mode .inv-item:not(.unidentified) {
   border: 1px solid rgba(191, 100, 47, 0.5);
 }
 
+.chat-container.unlocked {
+  border: 2px dashed rgba(191, 100, 47, 0.8) !important;
+  cursor: move;
+  box-shadow: 0 0 15px rgba(191, 100, 47, 0.4);
+}
+
+.chat-container.unlocked::before {
+  content: 'DRAG TO MOVE';
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  color: var(--gold);
+  text-shadow: 0 0 5px #000;
+  pointer-events: none;
+}
+
+#btn-chat-lock:hover {
+  color: var(--gold) !important;
+  transform: scale(1.1);
+}
+
 .chat-tabs {
   display: flex;
   background: rgba(20, 20, 20, 0.8);
   border-bottom: 1px solid #333;
+  user-select: none; /* Prevent text selection while dragging */
 }
 
 .chat-tab {

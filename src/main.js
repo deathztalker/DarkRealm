@@ -2954,17 +2954,7 @@ function skillTooltipText(skillId) {
 }
 
 function addCombatLog(text, cls = '') {
-    // Original floating log
-    const log = $('combat-log');
-    if (log) {
-        const entry = document.createElement('div');
-        entry.className = `log-entry ${cls}`;
-        entry.textContent = text;
-        log.prepend(entry);
-        while (log.children.length > 15) log.removeChild(log.lastChild);
-    }
-
-    // New WoW-Style Chat redirection
+    // Migrated entirely to WoW-Style Chat redirection
     let channel = 'combat';
     if (cls === 'log-item' || cls === 'log-unique' || cls === 'log-crit') channel = 'loot';
     if (cls === 'log-level' || cls === 'log-info') channel = 'system';
@@ -7202,6 +7192,8 @@ window.addEventListener('DOMContentLoaded', () => {
             setChatChannel(tab.dataset.channel);
         };
     });
+
+    initDraggableChat();
 });
 
 function updateRespawns() {
@@ -7221,6 +7213,67 @@ function updateRespawns() {
 }
 
 let currentChatChannel = 'all';
+let chatLocked = true;
+
+function initDraggableChat() {
+    const container = document.getElementById('mmo-chat-container');
+    const lockBtn = document.getElementById('btn-chat-lock');
+    if (!container || !lockBtn) return;
+
+    // Load saved position
+    const savedPos = JSON.parse(localStorage.getItem('chat_position'));
+    if (savedPos) {
+        container.style.left = savedPos.x + 'px';
+        container.style.bottom = savedPos.y + 'px';
+        container.style.top = 'auto'; // Ensure bottom remains anchor
+    }
+
+    lockBtn.onclick = (e) => {
+        e.stopPropagation();
+        chatLocked = !chatLocked;
+        lockBtn.innerText = chatLocked ? '🔒' : '🔓';
+        container.classList.toggle('unlocked', !chatLocked);
+        if (chatLocked) {
+            // Save position when locking
+            const rect = container.getBoundingClientRect();
+            localStorage.setItem('chat_position', JSON.stringify({
+                x: rect.left,
+                y: window.innerHeight - rect.bottom
+            }));
+        }
+    };
+
+    // Drag logic
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+
+    container.onmousedown = (e) => {
+        if (chatLocked) return;
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+        
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = container.getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+        
+        document.onmousemove = (ev) => {
+            if (!isDragging) return;
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            container.style.left = (initialX + dx) + 'px';
+            container.style.top = (initialY + dy) + 'px';
+            container.style.bottom = 'auto';
+        };
+
+        document.onmouseup = () => {
+            isDragging = false;
+            document.onmousemove = null;
+            document.onmouseup = null;
+        };
+    };
+}
 
 function addChatMessage(sender, text, type = 'general') {
     const container = document.getElementById('chat-messages');
