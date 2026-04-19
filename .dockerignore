@@ -1,0 +1,10 @@
+node_modules
+assets
+tmp_*
+*.zip
+*.rar
+*.7z
+rpg_beings_extracted
+kemono_extracted
+.git
+.gemini
