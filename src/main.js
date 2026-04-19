@@ -417,6 +417,97 @@ async function startGame(slotId = null, loadPlayerData = null, charName = null) 
                 chatBox.scrollTop = chatBox.scrollHeight;
                 while (chatBox.children.length > 50) chatBox.removeChild(chatBox.firstChild);
             }
+        },
+        onWhisper: (msg) => {
+            const chatBox = document.getElementById('chat-messages');
+            if (chatBox) {
+                const isSent = msg.sender === player.charName;
+                const displayPartner = isSent ? msg.target : msg.sender;
+                const prefix = isSent ? `To ${displayPartner}` : `From ${displayPartner}`;
+                const msgEl = document.createElement('div');
+                msgEl.className = 'chat-msg whisper-msg';
+                msgEl.innerHTML = `<span class="chat-msg-time">[${msg.time}]</span><span class="chat-msg-sender">${prefix}:</span><span class="chat-msg-text">${msg.text}</span>`;
+                chatBox.appendChild(msgEl);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        },
+        onInspectData: (data) => {
+            const panel = document.getElementById('panel-inspect');
+            const paperdoll = document.getElementById('inspect-paperdoll');
+            const title = document.getElementById('inspect-title');
+            if (!panel || !paperdoll) return;
+            title.innerText = `Inspecting: ${data.charName} (Lvl ${data.level} ${data.classId})`;
+            paperdoll.innerHTML = '';
+            const slots = ['head', 'amulet', 'chest', 'mainhand', 'offhand', 'gloves', 'belt', 'boots', 'ring1', 'ring2'];
+            slots.forEach(slot => {
+                const item = data.equipment[slot];
+                const slotEl = document.createElement('div');
+                slotEl.className = 'inspect-slot';
+                slotEl.style.gridArea = slot;
+                if (item) {
+                    const img = document.createElement('img');
+                    img.src = renderer.getIconPath(item.baseId);
+                    img.style.width = '32px';
+                    slotEl.appendChild(img);
+                    slotEl.title = item.name;
+                } else {
+                    slotEl.style.opacity = '0.3';
+                    slotEl.innerText = slot[0].toUpperCase();
+                }
+                paperdoll.appendChild(slotEl);
+            });
+            panel.classList.remove('hidden');
+        },
+        onTradeStart: (partnerName) => {
+            const panel = document.getElementById('panel-trade');
+            document.getElementById('trade-partner-name').innerText = `${partnerName}'s Offer`;
+            document.getElementById('trade-my-slots').innerHTML = '';
+            document.getElementById('trade-their-slots').innerHTML = '';
+            myOffer = [];
+            panel.classList.remove('hidden');
+        },
+        onTradePartnerUpdate: (offer) => {
+            const container = document.getElementById('trade-their-slots');
+            container.innerHTML = '';
+            offer.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'trade-slot';
+                if (item) {
+                    const img = document.createElement('img');
+                    img.src = renderer.getIconPath(item.baseId);
+                    img.style.width = '32px';
+                    el.appendChild(img);
+                }
+                container.appendChild(el);
+            });
+        },
+        onTradeStatusUpdate: (status) => {
+            const myStatus = document.getElementById('trade-my-status');
+            const theirStatus = document.getElementById('trade-their-status');
+            const acceptBtn = document.getElementById('trade-btn-accept');
+            myStatus.innerText = status.lock1 ? 'LOCKED' : 'Offering...';
+            myStatus.style.color = status.lock1 ? '#00ff00' : '#888';
+            theirStatus.innerText = status.lock2 ? 'LOCKED' : 'Offering...';
+            theirStatus.style.color = status.lock2 ? '#00ff00' : '#888';
+            if (status.lock1 && status.lock2) acceptBtn.classList.remove('disabled');
+            else acceptBtn.classList.add('disabled');
+        },
+        onTradeExecute: (receive, give) => {
+            give.forEach(item => {
+                const idx = player.inventory.findIndex(i => i && i.name === item.name);
+                if (idx !== -1) player.inventory[idx] = null;
+            });
+            receive.forEach(item => player.addToInventory(item));
+            bus.emit('combat:log', { text: "Trade Successful!", cls: 'log-level' });
+            document.getElementById('panel-trade').classList.add('hidden');
+            saveGame();
+        },
+        onDuelStart: (opponentName) => {
+            addCombatLog(`DUEL STARTED: vs ${opponentName}!`, 'log-crit');
+            fx.shake(500, 10);
+        },
+        onDuelEnd: (winnerName) => {
+            addCombatLog(`DUEL ENDED! Winner: ${winnerName || 'Draw'}`, 'log-level');
         }
     });
     window.network = network;
@@ -778,6 +869,84 @@ function gameLoop(timestamp) {
         renderer.ctx.font = '4px Cinzel, serif'; renderer.ctx.textAlign = 'center'; renderer.ctx.fillStyle = '#fff'; renderer.ctx.fillText(g.amount, g.x, g.y + 7);
     }
 
+function checkInteractions(click) {
+    const worldPos = camera.toWorld(click.x, click.y);
+
+    // NPCs
+    for (const n of npcs) {
+        const d = Math.hypot(n.x - worldPos.x, n.y - worldPos.y);
+        if (d < 50) {
+            renderDialogueMenu(n);
+            return;
+        }
+    }
+
+    // Objects
+    for (const o of gameObjects) {
+        const d = Math.hypot(o.x - worldPos.x, o.y - worldPos.y);
+        if (d < 20) {
+            const res = o.interact(player);
+            if (res && res.type === 'STASH') {
+                togglePanel('stash');
+            } else if (res && res.type === 'CUBE') {
+                togglePanel('cube');
+            } else if (res && res.type === 'BREAKABLE') {
+                const goldAmt = 5 + Math.floor(Math.random() * 15) * (1 + difficulty * 0.5);
+                droppedGold.push({ x: o.x, y: o.y, amount: Math.round(goldAmt) });
+                if (Math.random() < 0.15) {
+                    const itm = loot.generate(zoneLevel, 'normal');
+                    droppedItems.push({ ...itm, x: o.x, y: o.y });
+                }
+                addCombatLog('You smashed a barrel!', 'log-info');
+                fx.emitBurst(o.x, o.y, '#8b4513', 10, 1.5);
+            } else if (res && res.type === 'PORTAL') {
+                addCombatLog('Entering Portal...', 'log-level');
+                nextZone(res.targetZone);
+            } else if (res && res.type === 'WAYPOINT') {
+                if (!discoveredWaypoints.has(res.zone)) {
+                    discoveredWaypoints.add(res.zone);
+                    addCombatLog('Waypoint Discovered: ' + (ZONE_NAMES[res.zone] || 'Area'), 'log-crit');
+                    saveGame();
+                    if (fx) fx.emitBurst(o.x, o.y, '#ffd700', 30, 2.5);
+                } else {
+                    renderWaypointMenu(o);
+                }
+            } else if (res && res.type === 'SHRINE') {
+                const sType = res.shrineType;
+                let buffName = '';
+                const buffData = { type: '', id: '', value: 0, duration: 60 };
+                if (sType === 'experience') { buffName = 'Experience Shrine (+50% XP)'; buffData.type = 'exp'; buffData.id = 'shrine_exp'; buffData.value = 50; buffData.duration = 120; }
+                else if (sType === 'armor') { buffName = 'Armor Shrine (+100% Defense)'; buffData.type = 'armor'; buffData.id = 'shrine_armor'; buffData.value = 100; }
+                else if (sType === 'combat') { buffName = 'Combat Shrine (+50% Damage)'; buffData.type = 'damage'; buffData.id = 'shrine_damage'; buffData.value = 50; }
+                else if (sType === 'mana') { buffName = 'Mana Shrine (+500% Mana Regen)'; buffData.type = 'mana'; buffData.id = 'shrine_mana'; buffData.value = 500; player.mp = player.maxMp; }
+                else if (sType === 'resist') { buffName = 'Resist Shrine (+75 All Resists)'; buffData.type = 'resist'; buffData.id = 'shrine_resist'; buffData.value = 75; }
+                else if (sType === 'speed') { buffName = 'Stamina Shrine (+30% Move Speed)'; buffData.type = 'speed'; buffData.id = 'shrine_speed'; buffData.value = 30; }
+                player._buffs.push({ ...buffData });
+                player._statsDirty = true;
+                player._recalcStats();
+                addCombatLog('Touched ' + buffName, 'log-heal');
+                fx.emitBurst(o.x, o.y, '#4080ff', 30, 2);
+            }
+            return;
+        }
+    }
+
+    // Manual Pickup
+    for (let i = droppedItems.length - 1; i >= 0; i--) {
+        const di = droppedItems[i];
+        if (Math.hypot(di.x - worldPos.x, di.y - worldPos.y) < 22) {
+            if (Math.hypot(di.x - player.x, di.y - player.y) < 45) {
+                if (player.addToInventory(di)) {
+                    addCombatLog('Picked up ' + di.name, 'log-item');
+                    bus.emit('item:pickup', { item: di });
+                    droppedItems.splice(i, 1);
+                    playLoot(); renderInventory();
+                } else addCombatLog('Inventory full!', 'log-dmg');
+            } else addCombatLog('Too far to pick up', 'log-dmg');
+            return;
+        }
+    }
+}
     renderList.sort((a, b) => a.y - b.y);
     for (const e of renderList) {
         if (e.isPlayer) {
@@ -6454,16 +6623,6 @@ function getItemColor(rarity) {
     return colors[rarity] || '#fff';
 }
 
-// --- PvP Duel Interaction ---
-network.game.onDuelStart = (opponentName) => {
-    addCombatLog(`DUEL STARTED: vs ${opponentName}!`, 'log-crit');
-    fx.shake(500, 10);
-    // Visual countdown?
-};
-
-network.game.onDuelEnd = (winnerName) => {
-    addCombatLog(`DUEL ENDED! Winner: ${winnerName || 'Draw'}`, 'log-level');
-};
 
 // Wire AH Tabs
 document.querySelectorAll('.ah-tab').forEach(tab => {
