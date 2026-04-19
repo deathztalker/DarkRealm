@@ -545,17 +545,11 @@ function gameLoop(timestamp) {
     // --- Phase 3.1: Atmospheric Weather System ---
     if (window.fx && player) {
         const theme = window.currentTheme;
-        if (theme === 'snow') {
-            window.fx.emitBlizzard(renderer.width, renderer.height);
-        } else if (theme === 'desert') {
-            window.fx.emitSand(renderer.width, renderer.height);
-        } else if (theme === 'hell') {
-            window.fx.emitEmbers(renderer.width, renderer.height);
-        } else if (theme === 'jungle' || theme === 'temple') {
-            window.fx.emitRain(renderer.width, renderer.height);
-        } else if (theme === 'wilderness') {
-            window.fx.emitMist(renderer.width, renderer.height);
-        }
+        if (theme === 'snow') window.fx.emitBlizzard(renderer.width, renderer.height);
+        else if (theme === 'desert') window.fx.emitSand(renderer.width, renderer.height);
+        else if (theme === 'hell') window.fx.emitEmbers(renderer.width, renderer.height);
+        else if (theme === 'jungle' || theme === 'temple') window.fx.emitRain(renderer.width, renderer.height);
+        else if (theme === 'wilderness') window.fx.emitMist(renderer.width, renderer.height);
     }
 
     if (player) {
@@ -571,53 +565,42 @@ function gameLoop(timestamp) {
                 targetEnemies = [...enemies, opp];
             }
         }
-        
+
         player.update(dt, input, targetEnemies, dungeon, (aoe) => aoeZones.push(aoe));
-        
         // Sync to Server (MMO)
+
         if (network && network.isConnected) {
             network.sendMovement(player.x, player.y, player.animState, player.facingDir);
-            
             // If Host, sync enemies
             if (network.isHost && enemies.length > 0) {
                 enemySyncTimer += dt;
-                if (enemySyncTimer > 0.1) { // 10hz sync for enemies
+                if (enemySyncTimer > 0.1) {
                     enemySyncTimer = 0;
                     const enemyData = enemies.filter(e => e.hp > 0).map(e => ({
-                        id: e.syncId, x: e.x, y: e.y, hp: e.hp, 
-                        anim: e.animState, dir: e.facingDir
+                        id: e.syncId, x: e.x, y: e.y, hp: e.hp, anim: e.animState, dir: e.facingDir
                     }));
                     network.sendEnemySync(enemyData);
                 }
             }
         }
-        
-        fx.update(dt * 1000); // Particle update expects ms
 
         // HP Regen out of combat (passive) + gear-based regen (always active)
+        fx.update(dt * 1000);
+
         if (player.hp > 0 && player.hp < player.maxHp) {
             let hpRegen = (player.lifeRegenPerSec || 0) * dt;
-
             // Rift Mod: Cursed (Armor/Res reduction)
-            const cursedMod = activeRiftMods.find(m => m.id === 'cursed');
-            if (cursedMod) {
-                // Apply invisible debuff or handle in calcDamage
-            }
-
-            if (performance.now() - lastHitTime > 5000) {
-                hpRegen += player.maxHp * 0.005 * dt; // Passive OOC regen
-            }
+            if (performance.now() - lastHitTime > 5000) hpRegen += player.maxHp * 0.005 * dt;
             if (hpRegen > 0) player.hp = Math.min(player.maxHp, player.hp + hpRegen);
         }
-        // MP Regen (always, slower) + gear-based regen
         if (player.mp < player.maxMp && player.hp > 0) {
             const mpRegen = player.maxMp * 0.003 * dt + (player.manaRegenPerSec || 0) * dt;
             player.mp = Math.min(player.maxMp, player.mp + mpRegen);
         }
     }
+
     if (camera) {
-        camera.w = renderer.width;
-        camera.h = renderer.height;
+        camera.w = renderer.width; camera.h = renderer.height;
         camera.update(dt);
     }
 
@@ -628,14 +611,9 @@ function gameLoop(timestamp) {
     if (player) player.updateMinions(dt, enemies, dungeon);
 
     // Update Projectiles & AoEs
-    projectiles.forEach(p => {
-        if (p && p.update) p.update(dt, enemies, player, dungeon, (aoe) => { if (aoe) aoeZones.push(aoe); });
-    });
+    projectiles.forEach(p => { if (p && p.update) p.update(dt, enemies, player, dungeon, (aoe) => { if (aoe) aoeZones.push(aoe); }); });
     projectiles = projectiles.filter(p => p && p.active);
-
-    aoeZones.forEach(a => {
-        if (a && a.update) a.update(dt, enemies, player);
-    });
+    aoeZones.forEach(a => { if (a && a.update) a.update(dt, enemies, player); });
     aoeZones = aoeZones.filter(a => a && a.active);
 
     // Update Statuses, DoTs, and physics (knockback)
@@ -654,11 +632,8 @@ function gameLoop(timestamp) {
     // Phase 15: Update Floating Text
     for (let i = floatingTexts.length - 1; i >= 0; i--) {
         const ft = floatingTexts[i];
-        ft.y -= 30 * dt; // Float up
-        ft.life -= dt;
-        if (ft.life <= 0) {
-            floatingTexts.splice(i, 1);
-        }
+        ft.y -= 30 * dt; ft.life -= dt;
+        if (ft.life <= 0) floatingTexts.splice(i, 1);
     }
 
     if (dialogue) {
@@ -671,18 +646,16 @@ function gameLoop(timestamp) {
         input.click = null;
     }
 
-    // Gold Auto-Pickup (radius 45px)
     if (player && droppedGold.length > 0) {
         for (let i = droppedGold.length - 1; i >= 0; i--) {
             const dg = droppedGold[i];
-            const dist = Math.sqrt((player.x - dg.x) ** 2 + (player.y - dg.y) ** 2);
+            const dist = Math.hypot(player.x - dg.x, player.y - dg.y);
             if (dist < 45) {
                 player.gold += dg.amount;
                 addCombatLog(`Auto-picked ${dg.amount} Gold`, 'log-heal');
                 bus.emit('gold:pickup', { amount: dg.amount });
                 droppedGold.splice(i, 1);
-                updateHud();
-                renderInventory();
+                updateHud(); renderInventory();
             }
         }
     }
@@ -695,17 +668,12 @@ function gameLoop(timestamp) {
             const screen = camera.toScreen(currentMenuFocus.x, currentMenuFocus.y);
             picker.style.left = `${screen.x - 110}px`;
             picker.style.top = `${screen.y - 180}px`;
-
             // Auto-close if too far
-            const d = Math.sqrt((player.x - currentMenuFocus.x) ** 2 + (player.y - currentMenuFocus.y) ** 2);
-            if (d > 120) {
-                picker.remove();
-                activeDialogueNpc = null;
-                activeWaypointObj = null;
+            if (Math.hypot(player.x - currentMenuFocus.x, player.y - currentMenuFocus.y) > 120) {
+                picker.remove(); activeDialogueNpc = activeWaypointObj = null;
             }
         } else {
-            activeDialogueNpc = null;
-            activeWaypointObj = null;
+            activeDialogueNpc = activeWaypointObj = null;
         }
     }
 
@@ -718,44 +686,189 @@ function gameLoop(timestamp) {
         $('boss-hp-fill').style.width = `${pct}%`;
         $('boss-hp-text').textContent = `${Math.ceil(pct)}%`;
         $('boss-name').textContent = boss.name || 'Act Boss';
-
         // --- Phase 3.1: Boss Phase Triggers ---
         if (pct < 50 && !boss._phase2Triggered) {
-            boss._phase2Triggered = true;
-            boss.moveSpeed *= 1.4;
-            boss.atkSpeed *= 1.3;
-            fx.shake(1000, 10);
-            fx.emitBurst(boss.x, boss.y, '#ff0000', 40, 4);
+            boss._phase2Triggered = true; boss.moveSpeed *= 1.4; boss.atkSpeed *= 1.3;
+            fx.shake(1000, 10); fx.emitBurst(boss.x, boss.y, '#ff0000', 40, 4);
             addCombatLog(`${boss.name} enters a FURY!`, 'log-crit');
             // Subtle visual change (flag for renderer)
             boss.isEnraged = true;
         }
-    } else {
-        if (hpBar) hpBar.classList.add('hidden');
+    } else if (hpBar) {
+        hpBar.classList.add('hidden');
     }
 
-    // Render
+    // Mercenary AI
+    if (mercenary) {
+        if (mercenary.hp > 0) {
+            mercenary.update(dt, player, enemies, dungeon);
+            mercenary._deadNotified = false;
+        } else if (!mercenary._deadNotified) {
+            addCombatLog(`Your companion ${mercenary.name} has fallen!`, 'log-dmg');
+            playDeathSfx(); mercenary._deadNotified = true; updateHud();
+        }
+    }
+
+    checkDeaths();
+    checkAchievements();
+
+    for (const o of gameObjects) {
+        if (o.type === 'portal' || o.type === 'uber_portal' || o.type === 'rift_exit') {
+            if (Math.hypot(player.x - o.x, player.y - o.y) < 20) {
+                addCombatLog('Entering Portal...', 'log-level');
+                nextZone(o.type === 'portal' ? o.interact(player)?.targetZone : o.targetZone);
+                break;
+            }
+        }
+    }
+
+    if (player.hp <= 0 && state === 'GAME') {
+        checkDeaths(); return;
+    }
+
+    if (Math.hypot(player.x - dungeon.exitPos.x, player.y - dungeon.exitPos.y) < 20) {
+        if (isZoneLocked) {
+            if (player.path) player.path = [];
+            player.x -= (dungeon.exitPos.x - player.x) * 0.1;
+            player.y -= (dungeon.exitPos.y - player.y) * 0.1;
+            bus.emit('combat:log', { text: "The ancient evil blocks your path forward!", type: 'log-dmg' });
+        } else {
+            nextZone();
+        }
+    }
+
     renderer.clear();
     dungeon.render(renderer, camera);
-
     camera.apply(renderer.ctx);
 
     // Render entities
+    if (player.path && player.path.length > 0) {
+        renderer.ctx.save(); renderer.ctx.globalAlpha = 0.4; renderer.ctx.fillStyle = '#ffff00';
+        for (let i = 0; i < player.path.length; i++) {
+            const p = player.path[i]; const size = 2 - (i / player.path.length);
+            renderer.ctx.beginPath(); renderer.ctx.arc(p.x, p.y, Math.max(0.5, size), 0, Math.PI * 2); renderer.ctx.fill();
+        }
+        renderer.ctx.restore();
+    }
+
+    for (const di of droppedItems) {
+        if (lootFilter >= 1 && (!di.rarity || di.rarity === 'normal')) continue;
+        if (lootFilter >= 2 && di.rarity === 'magic') continue;
+        if (di.rarity === 'unique' || di.rarity === 'rare' || di.rarity === 'set') {
+            const ctx = renderer.ctx; ctx.save(); ctx.globalCompositeOperation = 'screen';
+            const color = di.rarity === 'unique' ? 'rgba(232, 160, 32, 0.6)' : di.rarity === 'set' ? 'rgba(0, 255, 0, 0.5)' : 'rgba(240, 208, 48, 0.5)';
+            const radial = ctx.createRadialGradient(di.x, di.y, 2, di.x, di.y, 12);
+            radial.addColorStop(0, color); radial.addColorStop(1, 'transparent');
+            ctx.fillStyle = radial; ctx.beginPath(); ctx.arc(di.x, di.y, 12, 0, Math.PI * 2); ctx.fill();
+            const shimmer = 0.6 + Math.sin(lastTime * 0.005) * 0.3; ctx.globalAlpha = shimmer;
+            const g = ctx.createLinearGradient(0, di.y, 0, di.y - 120); g.addColorStop(0, color); g.addColorStop(1, 'transparent');
+            ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(di.x - 4, di.y); ctx.lineTo(di.x + 4, di.y); ctx.lineTo(di.x + 1, di.y - 120); ctx.lineTo(di.x - 1, di.y - 120); ctx.closePath(); ctx.fill();
+            ctx.restore();
+        }
+        renderer.drawSprite(di.icon, di.x, di.y, 14);
+        renderer.ctx.font = '4px Cinzel, serif'; renderer.ctx.textAlign = 'center';
+        renderer.ctx.fillStyle = di.rarity === 'unique' ? '#e8a020' : di.rarity === 'set' ? '#00ff00' : di.rarity === 'rare' ? '#f0d030' : di.rarity === 'magic' ? '#4080ff' : '#aaa';
+        renderer.ctx.fillText(di.name, di.x, di.y + 10);
+    }
+
+    renderWorldOverlay(renderer.ctx, renderer.width, renderer.height);
+
+    for (const g of droppedGold) {
+        renderer.fillCircle(g.x, g.y, 4, '#ffd700'); renderer.strokeCircle(g.x, g.y, 4, '#c8972a', 1);
+        renderer.ctx.font = '4px Cinzel, serif'; renderer.ctx.textAlign = 'center'; renderer.ctx.fillStyle = '#fff'; renderer.ctx.fillText(g.amount, g.x, g.y + 7);
+    }
+
+    renderList.sort((a, b) => a.y - b.y);
     for (const e of renderList) {
         if (e.isPlayer) {
-             // Logic moved to renderer/main loop in previous steps
-             // For now just call render
-             // ...
+            renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)'; renderer.ctx.beginPath(); renderer.ctx.ellipse(e.x, e.y + 6, 8, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
+            if (e.activeAura) {
+                const auraColors = { might_aura: '#ffd700', prayer_aura: '#40c040', holy_fire_aura: '#ff4000', resist_all: '#4080ff', vigor: '#ffffff', fanaticism: '#ffa000', conviction: '#a040ff' };
+                const auraColor = auraColors[e.activeAura] || '#ffe880';
+                const pulse = 0.3 + Math.sin(lastTime * 0.004) * 0.15; const auraRadius = 25 + Math.sin(lastTime * 0.003) * 3;
+                renderer.ctx.save(); renderer.ctx.globalAlpha = pulse; renderer.ctx.strokeStyle = auraColor; renderer.ctx.lineWidth = 1.5; renderer.ctx.shadowColor = auraColor; renderer.ctx.shadowBlur = 8;
+                renderer.ctx.beginPath(); renderer.ctx.ellipse(e.x, e.y + 2, auraRadius, auraRadius * 0.4, 0, 0, Math.PI * 2); renderer.ctx.stroke(); renderer.ctx.restore();
+            }
+            renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 18, e.animState, e.facingDir, lastTime, null, e.equipment, e.hitFlashTimer);
+            e.renderMinions(renderer, lastTime);
+        } else {
+            e.render(renderer, lastTime);
         }
     }
 
     // (rest of render loop)
-    // ...
-    requestAnimationFrame(gameLoop);
-}
-        if (hpBar) hpBar.classList.add('hidden');
+    if (network && network.isConnected) {
+        network.otherPlayers.forEach(p => {
+            renderer.ctx.fillStyle = 'rgba(0,0,0,0.2)'; renderer.ctx.beginPath(); renderer.ctx.ellipse(p.x, p.y + 6, 8, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
+            renderer.drawAnim(`class_${p.classId}`, p.x, p.y - 4, 18, p.animState, p.facingDir, lastTime);
+            renderer.ctx.font = '6px Cinzel, serif'; renderer.ctx.textAlign = 'center'; renderer.ctx.fillStyle = '#00ffcc'; renderer.ctx.fillText(p.name || 'Hero', p.x, p.y - 20);
+        });
     }
 
+    if (mercenary && mercenary.hp > 0) {
+        renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)'; renderer.ctx.beginPath(); renderer.ctx.ellipse(mercenary.x, mercenary.y + 6, 6, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
+        renderer.drawAnim('class_rogue', mercenary.x, mercenary.y - 4, 26, mercenary.hp > 0 ? 'idle' : 'walk', 'south', lastTime);
+        const bw = 18; renderer.ctx.fillStyle = '#333'; renderer.ctx.fillRect(mercenary.x - bw / 2, mercenary.y - 14, bw, 2);
+        renderer.ctx.fillStyle = '#4caf50'; renderer.ctx.fillRect(mercenary.x - bw / 2, mercenary.y - 14, bw * (mercenary.hp / mercenary.maxHp), 2);
+    }
+
+    for (const n of npcs) n.render(renderer, lastTime);
+    for (const obj of gameObjects) {
+        if (obj.type === 'shrine' || obj.type === 'waypoint' || obj.type === 'altar') {
+            const pulse = 0.4 + Math.sin(lastTime * 0.004) * 0.2; const color = obj.type === 'shrine' ? 'rgba(0, 255, 255,' : 'rgba(255, 215, 0,';
+            renderer.ctx.save(); renderer.ctx.globalCompositeOperation = 'screen';
+            const radial = renderer.ctx.createRadialGradient(obj.x, obj.y, 4, obj.x, obj.y, 25); radial.addColorStop(0, `${color} ${pulse})`); radial.addColorStop(1, 'transparent');
+            renderer.ctx.fillStyle = radial; renderer.ctx.beginPath(); renderer.ctx.arc(obj.x, obj.y, 25, 0, Math.PI * 2); renderer.ctx.fill(); renderer.ctx.restore();
+        }
+        obj.render(renderer, lastTime);
+    }
+
+    projectiles.forEach(p => p.render(renderer, lastTime));
+    aoeZones.forEach(a => a.render(renderer, lastTime));
+
+    renderer.ctx.restore();
+    renderer.ctx.save(); renderer.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (fx && fx.renderScreen) fx.renderScreen(renderer.ctx, camera);
+    renderer.ctx.restore();
+    bus.emit('render:effects', { renderer, lastTime });
+
+    if (player && renderer && camera) {
+        const screen = camera.toScreen(player.x, player.y - 15);
+        const baseRadius = (150 + (player.lightRadius || 0)); const flicker = Math.sin(Date.now() / 150) * 8;
+        let ambient = zoneLevel === 0 ? 'rgba(0, 0, 4, 0.15)' : zoneLevel <= 3 ? 'rgba(8, 12, 18, 0.70)' : 'rgba(0, 0, 0, 0.85)';
+        renderer.applyLighting(screen.x, screen.y, (baseRadius + flicker) * camera.zoom, ambient);
+    }
+
+    camera.reset(renderer.ctx);
+    if (dialogue) renderer.text(dialogue.text, renderer.width / 2, renderer.height - 120, { size: 16, align: 'center', color: '#ffd700' });
+    updateHud();
+
+    if (timestamp - lastSaveTime > 30000 && activeSlotId) {
+        lastSaveTime = timestamp;
+        SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty: window._difficulty, waypoints: [...discoveredWaypoints], mercenary: mercenary ? mercenary.serialize() : null, cube, achievements: Array.from(unlockedAchievements) });
+        addCombatLog('Progress Saved.', 'log-info');
+    }
+
+    renderer.text(`FPS: ${Math.round(1000 / dt)}`, renderer.width - 20, renderer.height - 20, { size: 10, align: 'right', color: '#555' });
+    renderMinimap();
+    if (showFullMap && explored) {
+        const mw = renderer.width, mh = renderer.height, ts = dungeon.tileSize;
+        const scale = Math.min(mw / (dungeon.width * ts), mh / (dungeon.height * ts)) * 0.8;
+        const ox = (mw - (dungeon.width * ts) * scale) / 2, oy = (mh - (dungeon.height * ts) * scale) / 2;
+        renderer.ctx.fillStyle = 'rgba(0,0,0,0.7)'; renderer.ctx.fillRect(0, 0, mw, mh);
+        for (let r = 0; r < dungeon.height; r++) {
+            for (let c = 0; c < dungeon.width; c++) {
+                if (!explored[r][c]) continue;
+                const t = dungeon.grid[r][c]; if (t === 1) continue;
+                renderer.ctx.fillStyle = t === 0 ? '#444' : t === 3 ? '#ffd700' : t === 6 ? '#2d5a27' : t === 8 ? '#1e4b85' : '#555';
+                renderer.ctx.fillRect(ox + c * ts * scale, oy + r * ts * scale, ts * scale + 1, ts * scale + 1);
+            }
+        }
+        renderer.ctx.fillStyle = '#0f0'; renderer.ctx.fillRect(ox + player.x * scale - 2, oy + player.y * scale - 2, 4, 4);
+    }
+
+    requestAnimationFrame(gameLoop);
+}
     // Mercenary follow & attack AI
     if (mercenary) {
         if (mercenary.hp > 0) {
