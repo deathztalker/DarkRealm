@@ -280,7 +280,7 @@ const UNIQUES = [
         mods: [
             { stat: '+classSkills:warrior', value: 2 },
             { stat: 'pctIAS', value: 30 },
-            { stat: 'lifeStealPct', value: 6 },
+        { stat: 'lifeStealPct', value: 6 },
             { stat: 'allRes', value: 30 },
             { stat: 'flatSTR', value: 20 },
             { stat: 'flatVIT', value: 20 },
@@ -299,6 +299,148 @@ const UNIQUES = [
             { stat: 'pctMoveSpeed', value: 30 },
         ],
         flavor: '"The titans fell, but their fury remained."'
+    },
+
+    // ═══════════════════════════════════════════════════════
+    // ★★★ WoW LEGENDARY TIER — Proc-based Weapons & Armor ★★★
+    // Each has an onHit: { chance, effect } that combat.js reads.
+    // ═══════════════════════════════════════════════════════
+    {
+        id: 'thunderfury', name: 'Thunderfury, Blessed Blade of the Windseeker',
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 60,
+        mods: [
+            { stat: 'pctDmg', value: 160 },
+            { stat: 'pctIAS', value: 25 },
+            { stat: 'flatLightDmg', value: 45 },
+            { stat: 'allRes', value: 30 },
+        ],
+        onHit: { chance: 0.20, effect: 'chain_lightning', damage: 80, targets: 3, type: 'lightning' },
+        flavor: '"Corrupted no more, the blade sings with the fury of storms."',
+        isLegendary: true, legendaryColor: '#00ccff'
+    },
+    {
+        id: 'shadowmourne', name: 'Shadowmourne',
+        base: 'zweihander', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 80,
+        mods: [
+            { stat: 'pctDmg', value: 240 },
+            { stat: 'lifeStealPct', value: 12 },
+            { stat: 'flatSTR', value: 50 },
+            { stat: 'flatHP', value: 400 },
+        ],
+        onHit: { chance: 1.0, effect: 'soul_stack', maxStacks: 10, explodeDmg: 500, type: 'shadow' },
+        flavor: '"The whispers of a thousand consumed souls guide each strike."',
+        isLegendary: true, legendaryColor: '#8800cc'
+    },
+    {
+        id: 'sulfuras', name: "Sulfuras, Hand of Ragnaros",
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 70,
+        mods: [
+            { stat: 'pctDmg', value: 200 },
+            { stat: 'flatFireDmg', value: 100 },
+            { stat: 'flatSTR', value: 40 },
+            { stat: 'fireRes', value: 75 },
+        ],
+        onHit: { chance: 0.15, effect: 'meteor_drop', damage: 350, radius: 120, type: 'fire' },
+        flavor: '"I AM SULFURAS!"',
+        isLegendary: true, legendaryColor: '#ff4400'
+    },
+    {
+        id: 'valanyr', name: "Val'anyr, Hammer of Ancient Kings",
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 75,
+        mods: [
+            { stat: '+allSkills', value: 2 },
+            { stat: 'flatHP', value: 600 },
+            { stat: 'lifeRegenPerSec', value: 30 },
+            { stat: 'allRes', value: 25 },
+        ],
+        onHit: { chance: 0.10, effect: 'divine_shield', shieldHp: 800, duration: 8 },
+        flavor: '"Blessed by Yogg-Saron himself. Each blow mends the worthy."',
+        isLegendary: true, legendaryColor: '#ffdd44'
+    },
+    {
+        id: 'atiesh', name: "Atiesh, Greatstaff of the Guardian",
+        base: 'war_staff', rarity: RARITY.UNIQUE, icon: 'item_war_staff', dropLvl: 65,
+        mods: [
+            { stat: '+allSkills', value: 3 },
+            { stat: 'flatMP', value: 500 },
+            { stat: 'manaRegenPerSec', value: 25 },
+            { stat: 'pctDmg', value: 80 },
+            { stat: 'critChance', value: 10 },
+        ],
+        onHit: { chance: 0.12, effect: 'arcane_burst', damage: 200, radius: 80, type: 'magic' },
+        passive: { effect: 'mana_aura', manaRegen: 5 },
+        flavor: '"The staff of Medivh, the last guardian. Arcane power radiates from it."',
+        isLegendary: true, legendaryColor: '#aa44ff'
+    },
+    {
+        id: 'frostmourne', name: "Frostmourne",
+        base: 'zweihander', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 85,
+        mods: [
+            { stat: 'pctDmg', value: 300 },
+            { stat: 'manaStealPct', value: 15 },
+            { stat: 'flatColdDmg', value: 80 },
+            { stat: 'lifeStealPct', value: 15 },
+            { stat: 'flatSTR', value: 60 },
+        ],
+        onHit: { chance: 0.25, effect: 'soul_rip', damage: 150, freeze: true, freezeDuration: 3, type: 'cold' },
+        flavor: '"Whoever wields this cursed blade shall forever hunger."',
+        isLegendary: true, legendaryColor: '#44eeff', cursed: true
+    },
+    {
+        id: 'warglaive_azzinoth', name: "Warglaive of Azzinoth",
+        base: 'rune_blade', rarity: RARITY.UNIQUE, icon: 'item_rune_blade', dropLvl: 70,
+        mods: [
+            { stat: 'pctDmg', value: 180 },
+            { stat: 'pctIAS', value: 35 },
+            { stat: 'flatDEX', value: 30 },
+            { stat: 'critChance', value: 20 },
+            { stat: 'critMulti', value: 50 },
+        ],
+        onHit: { chance: 0.20, effect: 'blade_dance', hits: 3, damage: 60, type: 'physical' },
+        flavor: '"Torn from the hands of Illidan Stormrage after his defeat in the Black Temple."',
+        isLegendary: true, legendaryColor: '#00ff88'
+    },
+    {
+        id: 'thoridal', name: "Thori'dal, the Stars' Fury",
+        base: 'long_bow', rarity: RARITY.UNIQUE, icon: 'item_long_bow', dropLvl: 72,
+        mods: [
+            { stat: 'pctDmg', value: 200 },
+            { stat: 'pctIAS', value: 40 },
+            { stat: 'flatDEX', value: 35 },
+            { stat: 'critChance', value: 15 },
+            { stat: 'flatLightDmg', value: 60 },
+        ],
+        onHit: { chance: 0.30, effect: 'stellar_arrow', damage: 120, piercing: true, type: 'lightning' },
+        flavor: '"From the sunwell itself. It never runs out of arrows."',
+        isLegendary: true, legendaryColor: '#ffffaa'
+    },
+    {
+        id: 'ashbringer', name: "Corrupted Ashbringer",
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 65,
+        mods: [
+            { stat: 'pctDmg', value: 150 },
+            { stat: 'flatHP', value: 200 },
+            { stat: '+allSkills', value: 1 },
+            { stat: 'allRes', value: 20 },
+            { stat: 'lifeStealPct', value: 8 },
+        ],
+        onHit: { chance: 0.18, effect: 'consecration', damage: 100, radius: 90, type: 'holy', healPlayer: 50 },
+        flavor: '"Even corrupted, the blade still yearns to cleanse the darkness."',
+        isLegendary: true, legendaryColor: '#ffffff'
+    },
+    {
+        id: 'glaive_fallen_prince', name: "Glaive of the Fallen Prince",
+        base: 'rune_blade', rarity: RARITY.UNIQUE, icon: 'item_rune_blade', dropLvl: 78,
+        mods: [
+            { stat: 'pctDmg', value: 210 },
+            { stat: 'lifeStealPct', value: 10 },
+            { stat: 'flatColdDmg', value: 50 },
+            { stat: 'flatHP', value: 300 },
+            { stat: 'pctIAS', value: 20 },
+        ],
+        onHit: { chance: 0.08, effect: 'army_of_the_dead', count: 3, duration: 12, type: 'shadow' },
+        flavor: '"The Lich King\'s will made blade. Three souls are bound to serve it."',
+        isLegendary: true, legendaryColor: '#88aaff'
     }
 ];
 
@@ -482,6 +624,10 @@ export class LootSystem {
 
     _buildUnique(template) {
         const base = ITEM_BASES[template.base];
+        if (!base) {
+            console.warn(`[LootSystem] Unknown base '${template.base}' for unique '${template.name}'`);
+            return null;
+        }
         const item = {
             id: `item_${Date.now()}_${Math.random().toString(36).slice(2)}`,
             baseId: template.base, rarity: RARITY.UNIQUE, ilvl: template.dropLvl,
@@ -497,10 +643,17 @@ export class LootSystem {
             sockets: 0, socketed: [], insertedRunes: [],
             identified: false,
             flavor: template.flavor,
+            // ★ WoW Legendary fields
+            onHit: template.onHit || null,
+            passive: template.passive || null,
+            isLegendary: template.isLegendary || false,
+            legendaryColor: template.legendaryColor || null,
+            cursed: template.cursed || false,
         };
         this._applyDurability(item, base, template.dropLvl);
         return item;
     }
+
 
     _buildSetItem(template) {
         const base = ITEM_BASES[template.base];

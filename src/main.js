@@ -568,7 +568,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     updateRiftHud();
 
     // Ensure boss bar hidden unless zone 5 or rift boss
-    const isBossZone = zoneLevel === 5 || zoneLevel === 10 || zoneLevel === 15 || zoneLevel === 20 || (zoneLevel > 21 && zoneLevel % 5 === 0);
+    isBossZone = zoneLevel === 5 || zoneLevel === 10 || zoneLevel === 15 || zoneLevel === 20 || (zoneLevel > 21 && zoneLevel % 5 === 0);
     const bossBar = $('boss-hp-bar');
     if (bossBar && !isBossZone) bossBar.classList.add('hidden');
 
@@ -594,9 +594,104 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     // Init explored for minimap
     explored = Array.from({ length: dungeon.height }, () => Array(dungeon.width).fill(false));
 
+    // ─── MMO NETWORK SETUP ────────────────────────────────────────────
+    network = new NetworkManager({ player, enemies, onChatMessage: addChatMessage, onWhisper: addChatMessage });
+    window.enemies = enemies; // Expose for proc engine AoE
+
+    // Inspect Player → fill panel
+    network.onInspectData = (remotePlayer) => {
+        const panel = document.getElementById('panel-inspect');
+        if (!panel) return;
+        const slots = ['mainhand', 'offhand', 'head', 'chest', 'gloves', 'boots', 'belt', 'ring1', 'ring2', 'amulet'];
+        let html = `<div style="text-align:center; padding:10px 0;">
+            <div style="color:var(--gold); font-size:14px; font-family:Cinzel,serif;">${remotePlayer.charName || 'Unknown'}</div>
+            <div style="color:#888; font-size:10px;">Level ${remotePlayer.level} ${remotePlayer.className}</div>
+        </div><div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:4px;">`;
+        slots.forEach(slot => {
+            const item = remotePlayer.equipment?.[slot];
+            if (item) {
+                const color = window.getItemColor?.(item.rarity) || '#fff';
+                html += `<div style="background:#1a1a1a; border:1px solid #333; border-radius:3px; padding:5px; font-size:9px;">
+                    <div style="color:#666; text-transform:uppercase; font-size:7px;">${slot}</div>
+                    <div style="color:${color};">${item.name}</div>
+                </div>`;
+            }
+        });
+        html += '</div>';
+        panel.querySelector('.panel-body') && (panel.querySelector('.panel-body').innerHTML = html);
+        panel.classList.remove('hidden');
+    };
+
+    // Trade callbacks → wire full trade UI
+    network.onTradeStart = (partnerName) => {
+        const tradePanel = document.getElementById('panel-trade');
+        if (!tradePanel) return;
+        const headerEl = tradePanel.querySelector('#trade-partner-name');
+        if (headerEl) headerEl.textContent = `Trading with: ${partnerName}`;
+        // Clear offer slots
+        const myOffer = tradePanel.querySelector('#trade-my-offer');
+        const theirOffer = tradePanel.querySelector('#trade-their-offer');
+        if (myOffer) myOffer.innerHTML = '';
+        if (theirOffer) theirOffer.innerHTML = '';
+        tradePanel.classList.remove('hidden');
+        addCombatLog(`Trade started with ${partnerName}`, 'log-info');
+    };
+    network.onTradePartnerUpdate = (items) => {
+        const theirOffer = document.querySelector('#trade-their-offer');
+        if (!theirOffer) return;
+        theirOffer.innerHTML = '';
+        (items || []).forEach(item => {
+            const slot = document.createElement('div');
+            slot.className = 'trade-slot';
+            slot.innerHTML = window.getItemHtml?.(item) || item.name;
+            theirOffer.appendChild(slot);
+        });
+    };
+    network.onTradeStatusUpdate = (status) => {
+        const lockBtn = document.getElementById('btn-trade-lock');
+        if (lockBtn) lockBtn.textContent = status.lock1 && status.lock2 ? '✔ LOCKED' : 'LOCK';
+        const acceptBtn = document.getElementById('btn-trade-accept');
+        if (acceptBtn) acceptBtn.disabled = !(status.lock1 && status.lock2);
+    };
+    network.onTradeExecute = (receive, give) => {
+        // Remove given items from inventory
+        (give || []).forEach(giveItem => {
+            const idx = player.inventory.findIndex(it => it && it.id === giveItem.id);
+            if (idx !== -1) player.inventory[idx] = null;
+        });
+        // Add received items 
+        (receive || []).forEach(recItem => player.addToInventory(recItem));
+        saveGame();
+        renderInventory?.();
+        document.getElementById('panel-trade')?.classList.add('hidden');
+        addCombatLog('Trade complete!', 'log-crit');
+    };
+
+    // Duel callbacks
+    network.onDuelStart = (opponentName) => {
+        addCombatLog(`⚔️ DUEL vs ${opponentName} - BEGIN!`, 'log-crit');
+        const duelBanner = document.createElement('div');
+        duelBanner.id = 'duel-banner';
+        duelBanner.innerHTML = `<span style="color:#ff4444; font-family:Cinzel,serif; font-size:18px; text-shadow: 0 0 20px #ff0000;">⚔ DUEL vs ${opponentName}</span>`;
+        duelBanner.style.cssText = 'position:fixed; top:80px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.85); border:2px solid #ff4444; border-radius:8px; padding:10px 24px; z-index:200; animation: fadeIn 0.5s ease;';
+        document.body.appendChild(duelBanner);
+        setTimeout(() => duelBanner.remove(), 5000);
+    };
+    network.onDuelEnd = (data) => {
+        addCombatLog(data?.winner ? `⚔️ ${data.winner} wins the duel!` : '⚔️ Duel ended.', 'log-crit');
+        if (player.hp <= 1) player.hp = player.maxHp * 0.15; // Restore after duel loss
+    };
+
+    // Party HUD hook
+    window.updatePartyHUD = updatePartyHUD;
+
+    network.init();
+    DB.trackPresence(player.charName, zoneLevel);
+
     lastTime = performance.now();
     requestAnimationFrame(gameLoop);
 }
+
 
 // ——— GAME LOOP ———
 function gameLoop(timestamp) {
@@ -1006,6 +1101,36 @@ function gameLoop(timestamp) {
         renderer.ctx.fillStyle = '#4caf50';
         renderer.ctx.fillText(mercenary.name, mercenary.x, mercenary.y - 18);
     }
+
+    // ─── RENDER OTHER MMO PLAYERS ───────────────────────────────────────
+    if (network && network.otherPlayers && network.otherPlayers.size > 0) {
+        const ctx = renderer.ctx;
+        network.otherPlayers.forEach((op) => {
+            // Shadow beneath
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,80,255,0.25)';
+            ctx.beginPath();
+            ctx.ellipse(op.x, op.y + 6, 8, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Character sprite
+            renderer.drawAnim(
+                `class_${op.classId || 'warrior'}`,
+                op.x, op.y - 4, 18,
+                op.animState || 'idle', op.facingDir || 'south',
+                lastTime
+            );
+            // Nameplate
+            ctx.font = 'bold 7px Cinzel, serif';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#0044ff';
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = '#88aaff';
+            ctx.fillText(op.name || 'Player', op.x, op.y - 20);
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        });
+    }
+
 
     for (const n of npcs) {
         // Subtle glow for town NPCs
@@ -2635,7 +2760,12 @@ function getItemHtml(item, cantEquip = false, isGamble = false) {
         socketsHtml += '</div>';
     }
 
-    return `<div class="inv-item ${rarityClass} ${ceClass} ${isGamble ? 'mystery-item' : ''}">
+    // ★ Legendary border glow
+    const legendaryStyle = (!isGamble && item.isLegendary && item.legendaryColor)
+        ? `style="box-shadow: 0 0 14px 3px ${item.legendaryColor}, inset 0 0 5px ${item.legendaryColor}40; border-color: ${item.legendaryColor};" data-legendary="true"`
+        : '';
+
+    return `<div class="inv-item ${rarityClass} ${ceClass} ${isGamble ? 'mystery-item' : ''}" ${legendaryStyle}>
         ${quantityBadge}
         ${socketsHtml}
         ${durabilityHtml}
@@ -2643,6 +2773,7 @@ function getItemHtml(item, cantEquip = false, isGamble = false) {
         <div class="rarity-glow"></div>
     </div>`;
 }
+
 
 function getIconForItem(iconStr) {
     if (!iconStr) return 'ra-circle';
@@ -3286,12 +3417,16 @@ bus.on('skill:used', d => {
 // ——— PANEL TOGGLES ———
 function togglePanel(name) {
     const panel = $(`panel-${name}`);
+    if (!panel) return;
     panel.classList.toggle('hidden');
-    if (name === 'talents' && !panel.classList.contains('hidden')) renderTalentTree();
-    if (name === 'character' && !panel.classList.contains('hidden')) renderCharacterPanel();
-    if (name === 'inventory' && !panel.classList.contains('hidden')) renderInventory();
-    if (name === 'mercenary' && !panel.classList.contains('hidden')) renderMercenaryPanel();
-    if (name === 'bounties' && !panel.classList.contains('hidden')) renderBountyBoard();
+    if (panel.classList.contains('hidden')) return;
+
+    if (name === 'talents') renderTalentTree();
+    if (name === 'character') renderCharacterPanel();
+    if (name === 'inventory') renderInventory();
+    if (name === 'mercenary') renderMercenaryPanel();
+    if (name === 'bounties') renderBountyBoard();
+    if (name === 'quests') renderQuestJournal();
 }
 
 $('btn-sort-inv')?.addEventListener('click', () => {
@@ -3450,29 +3585,13 @@ function tryCastTownPortal() {
         return;
     }
 
-    // Check for scrolls or tomes in inventory
-    const scrollIdx = player.inventory.findIndex(it => it && it.baseId === 'scroll_town_portal');
-    const tomeIdx = player.inventory.findIndex(it => it && it.baseId === 'tome_tp' && (it.charges || 0) > 0);
-
-    if (scrollIdx === -1 && tomeIdx === -1) {
-        addCombatLog('You have no Scrolls of Town Portal!', 'log-dmg');
-        return;
-    }
-
-    // Consume scroll or charge
-    if (tomeIdx !== -1) {
-        player.inventory[tomeIdx].charges--;
-    } else {
-        player.inventory[scrollIdx] = null;
-    }
-
+    // Portal is now a built-in ability for all heroes
     portalReturnZone = zoneLevel;
     const tp = new GameObject('portal', player.x, player.y - 40, 'obj_portal');
     tp.targetZone = 0; // Go to town
     gameObjects.push(tp);
     if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 50, 4);
     addCombatLog('Town Portal Opened!', 'log-level');
-    renderInventory();
 }
 
 // Town Portal
@@ -3558,12 +3677,6 @@ bus.on('action:weapon_swap', () => {
     }
 });
 
-$('btn-inventory').addEventListener('click', () => togglePanel('inventory'));
-$('btn-talents').addEventListener('click', () => togglePanel('talents'));
-$('btn-character').addEventListener('click', () => togglePanel('character'));
-$('btn-stash')?.addEventListener('click', toggleTownPanels);
-$('btn-cube')?.addEventListener('click', toggleTownPanels);
-
 function toggleTownPanels() {
     if (zoneLevel !== 0) {
         addCombatLog('Stash and Cube are only available in town!', 'log-dmg');
@@ -3580,11 +3693,6 @@ function toggleTownPanels() {
         $('panel-cube').classList.add('hidden');
     }
 }
-
-$('btn-quests')?.addEventListener('click', () => {
-    togglePanel('quests');
-    if (!$('panel-quests').classList.contains('hidden')) renderQuestJournal();
-});
 
 // ——— QUEST LOG ———
 function renderQuestJournal() {
@@ -4661,7 +4769,39 @@ function itemTooltipText(item, isComparison = false) {
         t += `<div class="tooltip-flavor" style="color:#bf642f; font-style:italic; margin-top:8px;">"${flavorText}"</div>`;
     }
 
-    // Set Item Completion Tracker
+    // ★ WoW Legendary Proc Display
+    if (item.isLegendary && item.onHit) {
+        const proc = item.onHit;
+        const procColor = item.legendaryColor || '#ffd700';
+        const effectNames = {
+            chain_lightning: '⚡ Chain Lightning — bounces to 3 nearby enemies',
+            soul_stack: `💀 Soul Rend — stores souls on hit, explodes at ${proc.maxStacks || 10} stacks`,
+            meteor_drop: '🔥 Meteor Strike — calls a meteor from the sky',
+            divine_shield: '💛 Divine Shield — absorbs incoming damage',
+            arcane_burst: '✨ Arcane Burst — AoE arcane explosion',
+            soul_rip: '❄️ Soul Rip — freezes and drains soul',
+            blade_dance: `🌀 Blade Dance — ${proc.hits || 3} rapid strikes`,
+            stellar_arrow: '⭐ Stellar Arrow — piercing projectile',
+            consecration: '✝️ Consecration — holy AoE + heal',
+            army_of_the_dead: '💀 Army of the Dead — raise shadow minions',
+        };
+        const procDesc = effectNames[proc.effect] || proc.effect;
+        const procChance = proc.chance < 1 ? `${(proc.chance * 100).toFixed(0)}%` : '100%';
+        t += `
+        <div style="border-top:1px solid ${procColor}44; margin-top:8px; padding-top:8px; border:1px solid ${procColor}55; border-radius:4px; padding:8px; background:${procColor}08;">
+            <div style="color:${procColor}; font-size:11px; font-weight:bold; margin-bottom:4px; text-shadow:0 0 6px ${procColor};">★ LEGENDARY EFFECT</div>
+            <div style="color:#aaa; font-size:10px;">On Hit (${procChance} chance):</div>
+            <div style="color:${procColor}; font-size:11px; margin-top:2px;">${procDesc}</div>
+        </div>`;
+    }
+    if (item.passive) {
+        t += `<div style="color:#aa44ff; font-size:10px; margin-top:4px;">✦ Passive: ${item.passive.effect}</div>`;
+    }
+    if (item.cursed) {
+        t += `<div style="color:#ff4444; font-size:10px; margin-top:4px;">☠ CURSED — Impossible to remove</div>`;
+    }
+
+
     if (item.rarity === 'set' && item.setId) {
         const def = SETS[item.setId];
         if (def) {
@@ -7029,7 +7169,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('btn-portal')) document.getElementById('btn-portal').onclick = () => bus.emit('action:town_portal');
     if (document.getElementById('btn-stash')) document.getElementById('btn-stash').onclick = toggleTownPanels;
     if (document.getElementById('btn-cube')) document.getElementById('btn-cube').onclick = toggleTownPanels;
-    if (document.getElementById('btn-quests')) document.getElementById('btn-quests').onclick = () => togglePanel('quest');
+    if (document.getElementById('btn-quests')) document.getElementById('btn-quests').onclick = () => togglePanel('quests');
 });
 
 function updateRespawns() {

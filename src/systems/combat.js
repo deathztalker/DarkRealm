@@ -295,7 +295,184 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
         bus.emit('entity:death', { entity: target, killer: attacker });
     }
 
+
+    // ═══════════════════════════════════════════════════
+    // ★ WoW LEGENDARY PROC ENGINE ★
+    // Fires onHit effects from equipped weapons/offhand
+    // ═══════════════════════════════════════════════════
+    if (attacker.isPlayer && finalDealt > 0 && attacker.equipment) {
+        const weapon = attacker.equipment.mainhand;
+        if (weapon && weapon.onHit) {
+            const proc = weapon.onHit;
+
+            // ----- SOUL STACK (Shadowmourne) -----
+            if (proc.effect === 'soul_stack') {
+                if (!attacker._shadowmourneStacks) attacker._shadowmourneStacks = 0;
+                attacker._shadowmourneStacks++;
+                if (attacker._shadowmourneStacks >= (proc.maxStacks || 10)) {
+                    attacker._shadowmourneStacks = 0;
+                    // AoE shadow explosion on all nearby enemies
+                    if (window.enemies) {
+                        window.enemies.forEach(e => {
+                            if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < 200) {
+                                e.hp = Math.max(0, e.hp - (proc.explodeDmg || 500));
+                            }
+                        });
+                    }
+                    if (fx) { fx.emitBurst(target.x, target.y, '#8800cc', 80, 6); fx.shake(600, 12); }
+                    bus.emit('combat:log', { text: '★ SHADOWMOURNE: Soul Rend!', cls: 'log-crit' });
+                } else {
+                    if (fx) fx.emitBurst(target.x, target.y, '#660088', 6, 2);
+                }
+
+            } else if (Math.random() < (proc.chance || 0)) {
+
+                // ----- CHAIN LIGHTNING (Thunderfury) -----
+                if (proc.effect === 'chain_lightning') {
+                    bus.emit('combat:log', { text: '⚡ Thunderfury: Chain Lightning!', cls: 'log-crit' });
+                    let lastPos = { x: target.x, y: target.y };
+                    let bounced = 0;
+                    const maxBounces = proc.targets || 3;
+                    const hitTargets = new Set([target]);
+                    if (window.enemies) {
+                        const sorted = window.enemies
+                            .filter(e => e.hp > 0 && !hitTargets.has(e))
+                            .sort((a, b) => Math.hypot(a.x - lastPos.x, a.y - lastPos.y) - Math.hypot(b.x - lastPos.x, b.y - lastPos.y));
+                        for (const e of sorted) {
+                            if (bounced >= maxBounces) break;
+                            const dist = Math.hypot(e.x - lastPos.x, e.y - lastPos.y);
+                            if (dist < 250) {
+                                e.hp = Math.max(0, e.hp - (proc.damage || 80));
+                                if (fx) fx.emitLightning?.(lastPos.x, lastPos.y, e.x, e.y, 3);
+                                lastPos = { x: e.x, y: e.y };
+                                hitTargets.add(e);
+                                bounced++;
+                            }
+                        }
+                    }
+                    // Also reduce enemy attack speed (debuff)
+                    if (target._statuses) {
+                        const existing = target._statuses.find(s => s.type === 'attackSlowed');
+                        if (!existing) target._statuses.push({ type: 'attackSlowed', duration: 6, value: 0.25 });
+                    }
+
+                // ----- METEOR DROP (Sulfuras) -----
+                } else if (proc.effect === 'meteor_drop') {
+                    bus.emit('combat:log', { text: '🔥 Sulfuras: Meteor Strike!', cls: 'log-crit' });
+                    const mx = target.x, my = target.y;
+                    if (fx) { fx.emitBurst(mx, my, '#ff4400', 60, 5); fx.shake(800, 15); }
+                    if (window.enemies) {
+                        window.enemies.forEach(e => {
+                            if (e.hp > 0 && Math.hypot(e.x - mx, e.y - my) < (proc.radius || 120)) {
+                                e.hp = Math.max(0, e.hp - (proc.damage || 350));
+                                if (e._statuses) e._statuses.push({ type: 'burn', duration: 4, value: 30 });
+                            }
+                        });
+                    }
+
+                // ----- DIVINE SHIELD (Val'anyr) -----
+                } else if (proc.effect === 'divine_shield') {
+                    bus.emit('combat:log', { text: "💛 Val'anyr: Divine Shield!", cls: 'log-crit' });
+                    attacker.divineShield = (attacker.divineShield || 0) + (proc.shieldHp || 800);
+                    attacker._divineShieldTimer = proc.duration || 8;
+                    if (fx) fx.emitHolyBurst?.(attacker.x, attacker.y);
+
+                // ----- ARCANE BURST (Atiesh) -----
+                } else if (proc.effect === 'arcane_burst') {
+                    bus.emit('combat:log', { text: '✨ Atiesh: Arcane Burst!', cls: 'log-crit' });
+                    if (fx) fx.emitBurst(target.x, target.y, '#aa44ff', 40, 4);
+                    if (window.enemies) {
+                        window.enemies.forEach(e => {
+                            if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < (proc.radius || 80)) {
+                                e.hp = Math.max(0, e.hp - (proc.damage || 200));
+                            }
+                        });
+                    }
+
+                // ----- SOUL RIP (Frostmourne) -----
+                } else if (proc.effect === 'soul_rip') {
+                    bus.emit('combat:log', { text: '❄️ Frostmourne: Soul Rip!', cls: 'log-crit' });
+                    target.hp = Math.max(0, target.hp - (proc.damage || 150));
+                    // Steal HP
+                    attacker.hp = Math.min(attacker.maxHp, attacker.hp + (proc.damage || 150) * 0.5);
+                    if (proc.freeze && target._statuses) {
+                        target._statuses.push({ type: 'frozen', duration: proc.freezeDuration || 3, value: 0 });
+                    }
+                    if (fx) { fx.emitBurst(target.x, target.y, '#44eeff', 30, 3); }
+
+                // ----- BLADE DANCE (Warglaive of Azzinoth) -----
+                } else if (proc.effect === 'blade_dance') {
+                    bus.emit('combat:log', { text: '🌀 Warglaive: Blade Dance!', cls: 'log-crit' });
+                    const hits = proc.hits || 3;
+                    for (let i = 0; i < hits; i++) {
+                        setTimeout(() => {
+                            if (target.hp > 0) {
+                                target.hp = Math.max(0, target.hp - (proc.damage || 60));
+                                if (fx) fx.emitSlash?.(target.x, target.y, Math.random() * Math.PI * 2, '#00ff88', 30);
+                            }
+                        }, i * 80);
+                    }
+
+                // ----- STELLAR ARROW (Thori'dal) -----
+                } else if (proc.effect === 'stellar_arrow') {
+                    bus.emit('combat:log', { text: "⭐ Thori'dal: Stellar Arrow!", cls: 'log-crit' });
+                    if (fx) fx.emitBurst(target.x, target.y, '#ffffaa', 20, 3);
+                    // Piercing — hit ALL enemies in a line
+                    if (window.enemies) {
+                        const dx = target.x - attacker.x, dy = target.y - attacker.y;
+                        const len = Math.hypot(dx, dy) || 1;
+                        const nx = dx / len, ny = dy / len;
+                        window.enemies.forEach(e => {
+                            if (e.hp <= 0) return;
+                            const ex = e.x - attacker.x, ey = e.y - attacker.y;
+                            const dot = ex * nx + ey * ny;
+                            if (dot > 0) {
+                                const cross = Math.abs(ex * ny - ey * nx);
+                                if (cross < 40) e.hp = Math.max(0, e.hp - (proc.damage || 120));
+                            }
+                        });
+                    }
+
+                // ----- CONSECRATION (Corrupted Ashbringer) -----
+                } else if (proc.effect === 'consecration') {
+                    bus.emit('combat:log', { text: '✝️ Ashbringer: Consecration!', cls: 'log-crit' });
+                    if (window.enemies) {
+                        window.enemies.forEach(e => {
+                            if (e.hp > 0 && Math.hypot(e.x - attacker.x, e.y - attacker.y) < (proc.radius || 90)) {
+                                e.hp = Math.max(0, e.hp - (proc.damage || 100));
+                            }
+                        });
+                    }
+                    attacker.hp = Math.min(attacker.maxHp, attacker.hp + (proc.healPlayer || 50));
+                    if (fx) { fx.emitHolyBurst?.(attacker.x, attacker.y); }
+
+                // ----- ARMY OF THE DEAD (Glaive of the Fallen Prince) -----
+                } else if (proc.effect === 'army_of_the_dead') {
+                    bus.emit('combat:log', { text: '💀 Army of the Dead rises!', cls: 'log-crit' });
+                    // Spawn temporary shadow minions via event
+                    bus.emit('proc:army_of_dead', {
+                        x: attacker.x, y: attacker.y,
+                        count: proc.count || 3,
+                        duration: proc.duration || 12
+                    });
+                    if (fx) { fx.emitBurst(attacker.x, attacker.y, '#334466', 50, 5); }
+                }
+            }
+        }
+    }
+
+    // ----- Divine Shield damage absorption -----
+    if (target.isPlayer && target.divineShield > 0) {
+        const absorbed = Math.min(finalDealt, target.divineShield);
+        target.divineShield -= absorbed;
+        if (target.divineShield <= 0) {
+            target.divineShield = 0;
+            bus.emit('combat:log', { text: 'Divine Shield shattered!', cls: 'log-dmg' });
+        }
+    }
+
     return dealt;
+
 }
 
 /**

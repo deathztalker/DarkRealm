@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dark Realm — Action RPG</title>
+  <meta name="description"
+    content="Dark Realm — a browser-based action RPG inspired by Diablo 2, World of Warcraft and Path of Exile.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/rpg-awesome@0.2.0/css/rpg-awesome.min.css">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚔️</text></svg>">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script type="module" crossorigin src="/assets/index-B-WnCWrk.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/rolldown-runtime-lhHHWwHU.js">
+  <link rel="modulepreload" crossorigin href="/assets/EventBus-kTHVGmnB.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-DSy_IG_5.css">
+</head>
+
+<body>
+  <!-- Main Menu -->
+  <div id="main-menu" class="screen active">
+    <div class="menu-bg-particles" id="particles"></div>
+    
+    <!-- Auth Status -->
+    <div id="auth-status-container">
+      <span id="auth-status-text">Playing as Guest</span>
+      <button id="btn-open-auth" class="btn-secondary small">Log In</button>
+      <button id="btn-logout" class="btn-secondary small hidden">Logout</button>
+    </div>
+
+    <!-- Character Selection Screen -->
+    <div id="screen-char-select" class="menu-sub-screen">
+      <div class="selection-container">
+        <div class="char-list-side">
+          <h2 class="cinzel-title">Select Hero</h2>
+          <div id="char-selection-list">
+            <!-- Characters load here -->
+          </div>
+          <button id="btn-show-create" class="btn-secondary" style="width:100%; margin-top:20px;">+ Create New Hero</button>
+        </div>
+        
+        <div class="char-preview-side">
+          <div class="title-block">
+            <h1 class="game-title">Dark Realm</h1>
+            <p class="game-subtitle">The Abyss Awaits</p>
+          </div>
+          <div id="char-preview-pedestal">
+            <!-- Dynamic character preview -->
+            <div id="char-preview-render"></div>
+          </div>
+          <div id="selected-char-info">
+             <h3 id="preview-name">Select a Hero</h3>
+             <p id="preview-details">Lvl 1 Placeholder</p>
+          </div>
+          <div class="difficulty-group" style="margin-top:20px;">
+             <button class="diff-btn active" data-diff="0">NORMAL</button>
+             <button class="diff-btn" data-diff="1">NIGHTMARE</button>
+             <button class="diff-btn" data-diff="2">HELL</button>
+          </div>
+          <button id="btn-enter-world" class="btn-primary" disabled style="margin-top:30px; padding: 15px 60px;">Enter the Realm</button>
+          
+          <div id="keybinds-legend"
+            style="margin-top: 30px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 11px; color: #888; font-family: 'Cinzel', serif; border-top: 1px solid #333; padding-top: 15px; width: 80%; max-width: 400px;">
+            <div>[WASD] Movement</div>
+            <div>[1-4] Potions</div>
+            <div>[Q-G] Skills</div>
+            <div>[I] Inventory</div>
+            <div>[C] Stats</div>
+            <div>[T] Talents</div>
+            <div>[J] Journal</div>
+            <div>[H] Achievements</div>
+            <div>[L] Loot Filter</div>
+            <div>[P] Social (MMO)</div>
+            <div>[X] Weapon Swap</div>
+            <div>[TAB] Full Map</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Management Tools (Floating or Sidebar Bottom) -->
+      <div style="position: absolute; bottom: 20px; left: 20px; display: flex; gap: 10px; z-index: 100;">
+        <button id="btn-export-save" class="btn-secondary small" title="Export save data to a file">Export Save</button>
+        <button id="btn-import-save" class="btn-secondary small" title="Import save data from a file">Import Save</button>
+        <input type="file" id="import-file" style="display:none;" accept=".json">
+      </div>
+    </div>
+
+    <!-- Character Creation Screen -->
+    <div id="screen-char-create" class="menu-sub-screen hidden">
+      <div class="menu-content">
+        <h2 class="section-title">Forge Your Destiny</h2>
+        <div class="class-selection" id="class-selection">
+          <div class="class-grid" id="class-grid"></div>
+          <div class="class-info-panel" id="class-info">
+            <h3 id="class-name">—</h3>
+            <p id="class-desc">Select a class to see its path.</p>
+            <div id="class-stats"></div>
+          </div>
+          <div style="margin-top:20px;">
+            <input type="text" id="character-name" placeholder="Hero Name" maxlength="12" class="mmo-input">
+            <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
+              <button id="btn-back-to-select" class="btn-secondary">Cancel</button>
+              <button id="btn-new-game" class="btn-primary" disabled>Create Hero</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="game-screen" class="screen">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Rift Progress HUD (End-Game) -->
+    <div id="rift-hud" class="hidden"
+      style="position:absolute; top:80px; left:50%; transform:translateX(-50%); width:500px; text-align:center; z-index:100; pointer-events:none;">
+      <div id="rift-depth-label"
+        style="font-family:'Cinzel Decorative', serif; color:#c080ff; font-size:16px; margin-bottom:5px; text-shadow:0 0 10px #8000ff;">
+        RIFT DEPTH 1</div>
+      <div id="rift-gauge"
+        style="width:100%; height:12px; border:1px solid #c080ff; background:rgba(0,0,0,0.8); border-radius:10px; overflow:hidden; box-shadow:0 0 10px rgba(128,0,255,0.3);">
+        <div id="rift-gauge-fill"
+          style="width:0%; height:100%; background:linear-gradient(to right, #400080, #8000ff, #c080ff); transition:width 0.3s ease-out; box-shadow:0 0 15px #c080ff;">
+        </div>
+      </div>
+      <div id="rift-mods-list" style="display:flex; justify-content:center; gap:10px; margin-top:8px;">
+        <!-- Chaos Mods pop here -->
+      </div>
+    </div>
+
+    <!-- Boss HP Bar Overlay -->
+    <div id="boss-hp-bar" class="hidden"
+      style="position:absolute; top:40px; left:50%; transform:translateX(-50%); width:600px; height:24px; border:2px solid #311; background:#111; z-index:100; box-shadow:0 0 20px rgba(255,0,0,0.3); pointer-events:none;">
+      <div class="boss-elite-label">BOSS</div>
+      <div id="boss-hp-fill"
+        style="width:100%; height:100%; background:linear-gradient(to right, #600, #c00); transition:width 0.1s linear; position:relative;">
+        <div id="boss-hp-text"
+          style="position:absolute; width:100%; text-align:center; color:#fff; font-size:10px; line-height:24px; font-family:'Cinzel',serif; text-shadow:1px 1px 2px #000;">
+          100%</div>
+      </div>
+      <div id="boss-name"
+        style="position:absolute; top:-28px; left:0; width:100%; text-align:center; color:#ff4040; font-family:'Cinzel', serif; font-size:22px; text-shadow:2px 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;">
+        Act Boss</div>
+    </div>
+
+    <!-- Phase 3 Wave 6: Mercenary HUD -->
+    <div id="mercenary-hud" class="hidden" style="position:absolute; top:8px; left:8px; z-index:100; cursor:pointer;">
+      <div
+        style="display:flex; gap:10px; align-items:center; background:rgba(0,0,0,0.6); padding:4px 8px; border:1px solid #4a3520; border-radius:4px; box-shadow:0 0 10px #000;">
+        <div id="merc-hud-portrait"
+          style="width:40px; height:40px; background:#111; border:1px solid var(--gold); border-radius:4px; display:flex; justify-content:center; align-items:center; font-size:20px; text-shadow:0 0 5px var(--gold);">
+          👤</div>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <div id="merc-hud-name"
+            style="font-family:'Cinzel', serif; font-size:11px; color:var(--gold); white-space:nowrap;">Mercenary</div>
+          <div
+            style="width:100px; height:6px; background:#111; border:1px solid #311; border-radius:2px; overflow:hidden;">
+            <div id="merc-hud-hp-fill"
+              style="width:100%; height:100%; background:linear-gradient(to right, #600, #c00); transition:width 0.3s;">
+            </div>
+          </div>
+          <div id="merc-hud-lvl" style="font-size:9px; color:#aaa;">Level 1</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Minimap -->
+    <canvas id="minimap" width="160" height="120"
+      style="position:absolute; top:54px; right:8px; border:2px solid #444; background:#000; z-index:50; opacity:0.85; border-radius:4px; cursor:crosshair;"></canvas>
+
+    <div id="quest-hud" class="hidden"
+      style="position:absolute; right:10px; top:195px; width:150px; background:rgba(0,0,0,0.8); border:1px solid #bf642f; padding:8px; border-radius:4px; font-family:'Cinzel',serif; box-sizing:border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.5); z-index:50;">
+      <div
+        style="color:#bf642f; font-size:12px; border-bottom:1px solid #4a3520; padding-bottom:4px; margin-bottom:4px; text-transform:uppercase;">
+        Active Quest</div>
+      <div id="quest-desc" style="font-size:10px; color:#ddd; margin-bottom:4px;"></div>
+      <div style="font-size:14px; color:#ffd700; text-align:right;" id="quest-progress">0/5</div>
+    </div>
+
+    <!-- Buff Bar -->
+    <div id="buff-bar"
+      style="position:absolute; bottom:140px; left:50%; transform:translateX(-50%); display:flex; gap:6px; z-index:95;">
+    </div>
+
+    <!-- HUD -->
+    <div id="hud">
+      <div id="hud-left">
+        <div class="orb-container">
+          <div id="hp-orb" class="orb hp-orb">
+            <div id="hp-fill" class="orb-fill"></div>
+            <div class="orb-text"><span id="hp-text">100</span></div>
+          </div>
+          <label class="orb-label">Life</label>
+        </div>
+      </div>
+
+      <div id="hud-center">
+        <div id="xp-bar-container">
+          <div id="xp-bar"></div>
+        </div>
+        <div id="potion-belt">
+          <div class="potion-slot" id="belt-1" data-slot="0"><span class="belt-key">1</span>
+            <div class="potion-icon" id="pi-0"></div>
+          </div>
+          <div class="potion-slot" id="belt-2" data-slot="1"><span class="belt-key">2</span>
+            <div class="potion-icon" id="pi-1"></div>
+          </div>
+          <div class="potion-slot" id="belt-3" data-slot="2"><span class="belt-key">3</span>
+            <div class="potion-icon" id="pi-2"></div>
+          </div>
+          <div class="potion-slot" id="belt-4" data-slot="3"><span class="belt-key">4</span>
+            <div class="potion-icon" id="pi-3"></div>
+          </div>
+        </div>
+        <div id="skill-bar">
+          <div class="skill-slot" id="skill-1" data-slot="0">
+            <span class="skill-key">Q</span>
+            <div class="skill-icon" id="si-0"></div>
+            <div class="cd-overlay" id="cd-0"></div>
+          </div>
+          <div class="skill-slot" id="skill-2" data-slot="1">
+            <span class="skill-key">E</span>
+            <div class="skill-icon" id="si-1"></div>
+            <div class="cd-overlay" id="cd-1"></div>
+          </div>
+          <div class="skill-slot" id="skill-3" data-slot="2">
+            <span class="skill-key">R</span>
+            <div class="skill-icon" id="si-2"></div>
+            <div class="cd-overlay" id="cd-2"></div>
+          </div>
+          <div class="skill-slot" id="skill-4" data-slot="3">
+            <span class="skill-key">F</span>
+            <div class="skill-icon" id="si-3"></div>
+            <div class="cd-overlay" id="cd-3"></div>
+          </div>
+          <div class="skill-slot" id="skill-5" data-slot="4">
+            <span class="skill-key">G</span>
+            <div class="skill-icon" id="si-4"></div>
+            <div class="cd-overlay" id="cd-4"></div>
+          </div>
+        </div>
+        <div id="zone-label">
+          <span id="zone-name">Blood Moor</span>
+          <div id="hud-loot-filter" style="font-size:9px; color:#aaa; margin-top:2px;">FILTER: ALL</div>
+        </div>
+      </div>
+
+      <div id="hud-right">
+        <div class="orb-container">
+          <div id="mp-orb" class="orb mp-orb">
+            <div id="mp-fill" class="orb-fill"></div>
+            <div class="orb-text"><span id="mp-text">80</span></div>
+          </div>
+          <label class="orb-label">Mana</label>
+        </div>
+      </div>
+    </div>
+    <!-- HUD Buttons -->
+    <div id="hud-buttons">
+      <div id="broken-gear-warning" class="hidden" title="You have broken equipment! Stats are disabled."
+        style="width: 32px; height: 32px; background: rgba(255,0,0,0.2); border: 1px solid #f00; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-bottom: 5px; color: #f00; font-size: 18px; cursor: help;">
+        ⚠</div>
+      <button class="hud-btn" id="btn-inventory" title="Inventory (I)">🎒</button>
+      <button class="hud-btn" id="btn-talents" title="Talents (T)">✨</button>
+      <button class="hud-btn" id="btn-character" title="Character (C)">📊</button>
+      <button class="hud-btn" id="btn-mercenary" title="Mercenary (M)">🛡️</button>
+      <button class="hud-btn" id="btn-social" title="Social (O)">👥</button>
+      <button class="hud-btn" id="btn-portal" title="Town Portal (P)">🌀</button>
+      <button class="hud-btn" id="btn-stash" title="Stash (N)">📦</button>
+      <button class="hud-btn" id="btn-cube" title="Horadric Cube (U)">🎲</button>
+      <button class="hud-btn" id="btn-quests" title="Quests (Q)">📜</button>
+    </div>
+  </div>
+
+  <!-- Combat log -->
+  <div id="combat-log"></div>
+
+  <!-- Transition Overlay -->
+  <div id="transition-overlay"
+    style="position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:9999; opacity:0; pointer-events:none; transition:opacity 0.5s;">
+  </div>
+
+  <!-- Quest Log Panel -->
+  <div id="panel-quests" class="panel hidden" style="width:320px;">
+    <div class="panel-header"><span>📜 Quest Log</span><button class="panel-close" data-panel="quests">✕</button></div>
+    <div id="quest-list" style="padding:15px; max-height: 350px; overflow-y: auto;"></div>
+    <div id="quest-stats" style="padding:10px; border-top:1px solid #333; color:#888; font-size:11px;"></div>
+  </div>
+
+  <!-- Achievements Panel -->
+  <div id="panel-achievements" class="panel hidden" style="width: 400px;">
+    <div class="panel-header"><span>🏆 Achievements</span><button class="panel-close"
+        data-panel="achievements">✕</button></div>
+    <div id="achievements-list"
+      style="padding:15px; max-height: 450px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
+  </div>
+
+  <!-- Mobile Trading Panel -->
+  <div id="panel-trade-mobile" class="panel hidden" style="display: flex; flex-direction: column;">
+    <div class="panel-header" style="display: flex; justify-content: space-around; padding: 0; min-height: 50px;">
+      <button id="btn-trade-vendor-tab" class="trade-tab active"
+        style="flex: 1; padding: 12px; background: rgba(50,50,50,0.8); border: none; color: #fff; font-family: 'Cinzel', serif;">VENDOR</button>
+      <button id="btn-trade-inventory-tab" class="trade-tab"
+        style="flex: 1; padding: 12px; background: transparent; border: none; color: #888; font-family: 'Cinzel', serif;">INVENTORY</button>
+      <button class="panel-close" data-panel="trade-mobile"
+        style="position: absolute; top: 12px; right: 15px; font-size: 20px;">✕</button>
+    </div>
+    <div id="mobile-trade-content" style="padding: 15px; flex: 1; overflow-y: auto; background: rgba(0,0,0,0.5);">
+      <!-- Content populated by JS -->
+    </div>
+    <div id="mobile-trade-footer"
+      style="padding: 10px; border-top: 1px solid #333; text-align: right; color: var(--gold); font-size: 14px;">
+      Total Gold: <span id="mobile-trade-gold-val">0</span>
+    </div>
+  </div>
+
+  <!-- Panels (toggled) -->
+  <div id="panel-inventory" class="panel hidden">
+    <div class="panel-header">
+      <span>Inventory</span>
+      <div style="display:flex; gap:5px;">
+        <button id="btn-sort-inv" class="btn-secondary small" style="padding: 2px 8px; font-size:10px;">SORT</button>
+        <button class="panel-close" data-panel="inventory">✕</button>
+      </div>
+    </div>
+    <div id="equip-slots">
+      <div class="equip-slot" data-slot="head" data-label="Helm"></div>
+      <div class="equip-slot" data-slot="amulet" data-label="Amulet"></div>
+      <div class="equip-slot" data-slot="chest" data-label="Armor"></div>
+      <div class="equip-slot" data-slot="mainhand" data-label="Weapon">
+        <div id="wset-main-1" class="weapon-set-indicator active">I</div>
+        <div id="wset-main-2" class="weapon-set-indicator">II</div>
+      </div>
+      <div class="equip-slot" data-slot="offhand" data-label="Shield">
+        <div id="wset-off-1" class="weapon-set-indicator active">I</div>
+        <div id="wset-off-2" class="weapon-set-indicator">II</div>
+      </div>
+      <div class="equip-slot" data-slot="gloves" data-label="Gloves"></div>
+      <div class="equip-slot" data-slot="belt" data-label="Belt"></div>
+      <div class="equip-slot" data-slot="boots" data-label="Boots"></div>
+      <div class="equip-slot" data-slot="ring1" data-label="Ring"></div>
+      <div class="equip-slot" data-slot="ring2" data-label="Ring"></div>
+    </div>
+
+    <div id="inventory-grid">
+      <!-- 10x4 Grid populated by JS -->
+    </div>
+  </div>
+
+  <div id="panel-shop" class="panel hidden">
+    <div class="panel-header">
+      <span>Merchant</span>
+      <div style="display:flex; gap:5px;">
+        <button id="btn-sell-junk" class="btn-secondary small"
+          style="padding: 2px 8px; font-size:10px; color:#ff4444; border-color:#880000;">SELL JUNK</button>
+        <button class="panel-close" data-panel="shop">✕</button>
+      </div>
+    </div>
+    <div id="shop-items" style="display:flex; flex-direction:column; gap:8px; padding:10px; overflow-y:auto; flex:1;">
+      <!-- Populated by JS -->
+    </div>
+    <div id="shop-gold" style="padding:10px; text-align:right; color:var(--gold); border-top:1px solid #333;">Your Gold:
+      0</div>
+  </div>
+
+  <div id="panel-stash" class="panel hidden">
+    <div class="panel-header"><span>Alijo (Stash)</span><button class="panel-close" data-panel="stash">✕</button></div>
+    <div
+      style="display:flex; background:#111; border-bottom:1px solid #333; align-items:center; justify-content:space-between; padding-right:8px;">
+      <div style="display:flex; flex:1;">
+        <button id="btn-stash-personal" class="stash-tab active"
+          style="padding:8px; border:none; background:transparent; color:#888; cursor:pointer; font-family:Cinzel,serif; font-size:11px;">PERSONAL</button>
+        <button id="btn-stash-shared" class="stash-tab"
+          style="padding:8px; border:none; background:transparent; color:#888; cursor:pointer; font-family:Cinzel,serif; font-size:11px;">SHARED</button>
+      </div>
+      <button id="btn-sort-stash" class="btn-secondary small" style="padding: 2px 8px; font-size:10px;">SORT</button>
+    </div>
+    <div id="stash-grid" style="display:grid; grid-template-columns:repeat(5,40px); gap:4px; padding:10px;">
+      <!-- 20 slots populated by JS -->
+    </div>
+    <div style="padding:10px; border-top:1px solid #333; background:rgba(0,0,0,0.3);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span style="color:var(--gold); font-size:12px;">STASH GOLD:</span>
+        <span id="stash-gold-val" style="color:#fff; font-size:12px;">0</span>
+      </div>
+      <div style="display:flex; gap:4px;">
+        <button id="btn-stash-deposit" class="btn-secondary small" style="flex:1; font-size:9px;">DEPOSIT</button>
+        <button id="btn-stash-withdraw" class="btn-secondary small" style="flex:1; font-size:9px;">WITHDRAW</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-cube" class="panel hidden" style="width:200px;">
+    <div class="panel-header"><span style="color:#bf642f;">Horadric Cube</span><button class="panel-close"
+        data-panel="cube">✕</button></div>
+    <div style="padding:10px;text-align:center;font-size:11px;color:#888;">Combine powerful artifacts using arcane
+      recipes.
+    </div>
+    <div id="cube-grid"
+      style="display:grid; grid-template-columns:repeat(3,40px); gap:4px; padding:10px; justify-content:center;">
+      <!-- 9 slots (3x3 grid) -->
+    </div>
+    <div style="text-align:center; padding-bottom:10px;">
+      <button id="btn-transmute" class="btn-primary small">Transmute</button>
+    </div>
+  </div>
+
+  <div id="panel-talents" class="panel hidden">
+    <div class="panel-header"><span id="talent-tree-title">Talents</span><button class="panel-close"
+        data-panel="talents">✕</button></div>
+    <div id="talent-points-remaining">Points: <span id="tp-value">0</span></div>
+    <div id="talent-trees"></div>
+    <button id="btn-reset-talents" class="btn-secondary small">Reset (500g)</button>
+  </div>
+
+  <div id="panel-character" class="panel hidden">
+    <div class="panel-header"><span>Character</span><button class="panel-close" data-panel="character">✕</button>
+    </div>
+    <div id="character-stats-panel"></div>
+  </div>
+
+  <div id="panel-mercenary" class="panel hidden" style="width:240px;">
+    <div class="panel-header"><span>Companion (O)</span><button class="panel-close" data-panel="mercenary">✕</button>
+    </div>
+    <div style="padding:10px; text-align:center;">
+      <div id="merc-paperdoll"
+        style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:15px;">
+        <div class="equip-slot merc-slot" data-slot="head" data-label="Helm"
+          style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+        <div class="equip-slot merc-slot" data-slot="chest" data-label="Armor"
+          style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+        <div style="display:flex; gap:8px;">
+          <div class="equip-slot merc-slot" data-slot="mainhand" data-label="Weapon"
+            style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+          <div class="equip-slot merc-slot" data-slot="offhand" data-label="Shield"
+            style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+        </div>
+      </div>
+      <div id="merc-stats-display"
+        style="font-size:11px; text-align:left; color:#aaa; background:rgba(0,0,0,0.3); padding:8px; border-radius:4px;">
+        <!-- Stats here -->
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <!-- Tooltip -->
+  <div id="tooltip" class="hidden"></div>
+  <div id="tooltip-compare" class="hidden"></div>
+
+  <!-- Boss Victory Announcement -->
+  <div id="boss-victory-announcement" class="hidden">
+    <div class="victory-banner">
+      <div class="vic-glow"></div>
+      <div class="vic-label">BOSS DEFEATED</div>
+      <div id="vic-boss-name" class="vic-sub">The Butcher</div>
+    </div>
+  </div>
+
+  <!-- Achievement Announcement -->
+  <div id="achievement-announcement" class="hidden">
+    <div class="achievement-banner">
+      <div class="ach-glow"></div>
+      <div class="ach-label">ACHIEVEMENT UNLOCKED</div>
+      <div id="ach-name" class="ach-sub">First Blood</div>
+    </div>
+  </div>
+
+  <!-- Death Screen -->
+  <div id="death-screen" class="screen overlay hidden">
+    <h2>You Have Fallen</h2>
+    <p id="death-stats"></p>
+    <button class="btn-primary" id="btn-respawn">Rise Again</button>
+    <button class="btn-secondary" id="btn-main-menu-death">Main Menu</button>
+  </div>
+
+  <!-- Victory Screen -->
+  <div id="victory-screen" class="screen overlay hidden">
+    <h2 style="color:#d4af37; font-size:48px; text-shadow:0 0 20px rgba(212,175,55,0.5);">Victory</h2>
+    <p>The Butcher has been slain. The darkness recedes... for now.</p>
+    <div id="victory-stats" style="margin:20px 0; color:#aaa;"></div>
+    <button class="btn-primary" id="btn-continue-rift">Enter the Infinite Rifts</button>
+    <button class="btn-secondary" id="btn-victory-menu">Return to Main Menu</button>
+  </div>
+
+  <!-- Dialogue Box -->
+  <div id="dialog-box" class="hidden">
+    <div class="npc-header">
+      <div class="npc-portrait-sub"
+        style="width:48px;height:48px;background:rgba(212,175,55,0.1);border:1px solid #d4af37;border-radius:4px;display:flex;justify-content:center;align-items:center;font-size:24px;">
+        👤</div>
+      <div class="npc-name" id="npc-active-name">Merchant</div>
+    </div>
+    <div id="dialog-text">Greetings, traveler. How can I help you?</div>
+    <div id="dialog-options">
+      <!-- Options pop here -->
+    </div>
+  </div>
+
+  <!-- Auth Modal -->
+  <div id="auth-modal" class="screen overlay hidden" style="z-index: 10000; background: rgba(0,0,0,0.85);">
+    <div
+      style="background: #111; border: 2px solid #4a3520; padding: 30px; width: 300px; text-align: center; border-radius: 8px; box-shadow: 0 0 20px #000;">
+      <h2 style="font-family: 'Cinzel', serif; color: var(--gold); margin-bottom: 20px;">Realm Account</h2>
+      <input type="email" id="auth-email" placeholder="Email Address"
+        style="width:100%; padding: 10px; margin-bottom: 10px; background: #222; border: 1px solid #333; color: #fff; font-family: 'Cinzel', serif;">
+      <input type="password" id="auth-password" placeholder="Password"
+        style="width:100%; padding: 10px; margin-bottom: 20px; background: #222; border: 1px solid #333; color: #fff; font-family: 'Cinzel', serif;">
+      <div id="auth-error" style="color: #ff4444; font-size: 11px; margin-bottom: 15px; min-height: 15px;"></div>
+      <div style="display: flex; gap: 10px; justify-content: space-between;">
+        <button id="btn-auth-login" class="btn-primary" style="flex:1;">Log In</button>
+        <button id="btn-auth-register" class="btn-secondary" style="flex:1;">Register</button>
+      </div>
+      <button onclick="document.getElementById('auth-modal').classList.add('hidden')"
+        style="margin-top: 15px; background: transparent; border: none; color: #888; cursor: pointer;">Cancel</button>
+      <div style="margin-top: 15px; font-size: 10px; color: #555;">Cloud saves will automatically sync to your account.
+      </div>
+    </div>
+  </div>
+
+  <!-- Party HUD -->
+  <div id="party-hud" class="hidden">
+    <!-- Party members health/mana bars will be injected here -->
+  </div>
+
+  <!-- Social Panel -->
+  <div id="panel-social" class="panel hidden">
+    <div class="panel-header">
+      <span>Social (P)</span>
+      <button class="panel-close" data-panel="social">✕</button>
+    </div>
+    <div class="social-tabs">
+      <button class="social-tab active" data-tab="friends">Friends</button>
+      <button class="social-tab" data-tab="party">Party</button>
+    </div>
+    <div id="social-content">
+      <div id="social-friends-list" class="social-tab-content">
+        <!-- Friends list with status -->
+      </div>
+      <div id="social-party-list" class="social-tab-content hidden">
+        <!-- Party members -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Inspect Panel -->
+  <div id="panel-inspect" class="panel hidden">
+    <div class="panel-header">
+      <span id="inspect-title">Inspect</span>
+      <button class="panel-close" data-panel="inspect">✕</button>
+    </div>
+    <div class="inspect-container">
+      <div class="inspect-paperdoll" id="inspect-paperdoll">
+        <!-- Gear slots filled via JS -->
+      </div>
+      <div class="inspect-stats" id="inspect-stats"></div>
+    </div>
+  </div>
+
+  <!-- Trade Panel -->
+  <div id="panel-trade" class="panel hidden">
+    <div class="panel-header">
+      <span>Trade</span>
+      <button class="panel-close" data-panel="trade">✕</button>
+    </div>
+    <div class="trade-window">
+      <div class="trade-side" id="trade-my-side">
+        <div class="trade-side-header">My Offer</div>
+        <div class="trade-slots" id="trade-my-slots"></div>
+        <div class="trade-status" id="trade-my-status">Waiting...</div>
+      </div>
+      <div class="trade-side" id="trade-their-side">
+        <div class="trade-side-header" id="trade-partner-name">Their Offer</div>
+        <div class="trade-slots" id="trade-their-slots"></div>
+        <div class="trade-status" id="trade-their-status">Waiting...</div>
+      </div>
+    </div>
+    <div class="trade-footer">
+      <button id="trade-btn-lock" class="trade-btn">Lock</button>
+      <button id="trade-btn-accept" class="trade-btn disabled">Accept</button>
+    </div>
+  </div>
+
+  <!-- Auction House Panel -->
+  <div id="panel-auction" class="panel hidden">
+    <div class="panel-header">
+      <span>Auction House</span>
+      <button class="panel-close" data-panel="auction">✕</button>
+    </div>
+    <div class="social-tabs">
+      <button class="ah-tab active" data-tab="browse">Browse</button>
+      <button class="ah-tab" data-tab="post">Post Item</button>
+    </div>
+    <div id="ah-content">
+      <div id="ah-browse-list" class="ah-tab-content">
+        <!-- Auctions list -->
+      </div>
+      <div id="ah-post-form" class="ah-tab-content hidden">
+        <div style="padding:20px; text-align:center;">
+          <div id="ah-selected-item-box" class="trade-slot" style="margin: 0 auto 15px;"></div>
+          <input type="number" id="ah-price-input" placeholder="Price (Gold)" style="background:#000; border:1px solid #4a3520; color:#fff; padding:8px; width:120px;">
+          <button id="ah-btn-post" class="trade-btn" style="margin-top:15px; display:block; width:100%;">Post Auction</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <div id="custom-tooltip"></div>
+
+  <!-- MMO Chat UI -->
+  <div id="mmo-chat-container" class="hidden">
+    <div id="chat-messages"></div>
+    <input type="text" id="chat-input" placeholder="Press Enter to chat..." maxlength="100">
+  </div>
+</body>
+
+</html>

@@ -60,6 +60,28 @@ export const VendorUI = {
             nav.appendChild(btn);
         });
 
+        // REPAIR ALL SERVICE
+        const repairCost = Object.values(window.player.equipment).reduce((acc, it) => {
+            if (it && it.durability < it.maxDurability) return acc + Math.ceil((it.maxDurability - it.durability) * 2);
+            return acc;
+        }, 0);
+
+        const repBtn = document.createElement('button');
+        repBtn.className = 'btn-secondary small';
+        repBtn.style.marginLeft = '10px';
+        repBtn.style.color = repairCost > 0 ? '#4caf50' : '#888';
+        repBtn.textContent = `🛠️ REPAIR ALL (${repairCost}g)`;
+        repBtn.onclick = () => {
+            if (repairCost > 0 && window.player.gold >= repairCost) {
+                window.player.gold -= repairCost;
+                Object.values(window.player.equipment).forEach(it => { if (it) it.durability = it.maxDurability; });
+                this.renderDesktop();
+                if(window.addCombatLog) window.addCombatLog(`Equipment repaired for ${repairCost}g`, 'log-heal');
+                if(window.updateHud) window.updateHud();
+            }
+        };
+        nav.appendChild(repBtn);
+
         const restock = document.createElement('button');
         restock.className = 'btn-secondary small';
         restock.style.marginLeft = 'auto';
