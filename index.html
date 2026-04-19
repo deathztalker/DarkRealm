@@ -23,77 +23,89 @@
   <!-- Main Menu -->
   <div id="main-menu" class="screen active">
     <div class="menu-bg-particles" id="particles"></div>
-    <!-- Auth Status (fixed in corner, outside scrollable content) -->
+    
+    <!-- Auth Status -->
     <div id="auth-status-container">
-      <span id="auth-status-text">Playing as Guest (Local Saves)</span>
-      <button id="btn-open-auth" class="btn-secondary small">Log In / Register</button>
+      <span id="auth-status-text">Playing as Guest</span>
+      <button id="btn-open-auth" class="btn-secondary small">Log In</button>
       <button id="btn-logout" class="btn-secondary small hidden">Logout</button>
     </div>
-    <div class="menu-content">
 
-      <div class="title-block">
-        <h1 class="game-title">Dark Realm</h1>
-        <p class="game-subtitle">The Abyss Awaits</p>
-      </div>
-      <div class="class-selection" id="class-selection">
-        <h2 class="section-title">Choose Your Class</h2>
-        <div class="class-grid" id="class-grid">
-          <!-- Populated by JS -->
+    <!-- Character Selection Screen -->
+    <div id="screen-char-select" class="menu-sub-screen">
+      <div class="selection-container">
+        <div class="char-list-side">
+          <h2 class="cinzel-title">Select Hero</h2>
+          <div id="char-selection-list">
+            <!-- Characters load here -->
+          </div>
+          <button id="btn-show-create" class="btn-secondary" style="width:100%; margin-top:20px;">+ Create New Hero</button>
         </div>
-        <div class="class-info-panel" id="class-info">
-          <h3 id="class-name">—</h3>
-          <p id="class-desc">Hover over a class to see its description.</p>
-          <div id="class-stats"></div>
-        </div>
-        <div id="character-creation" style="margin-top: 15px; text-align: center;">
-          <input type="text" id="character-name" placeholder="Enter Character Name" maxlength="12"
-            style="padding: 8px; background: #111; border: 1px solid #4a3520; color: #fff; font-family: 'Cinzel', serif; width: 200px; text-align: center; border-radius: 4px;">
-        </div>
-      </div>
-      <div class="menu-buttons">
-        <div id="difficulty-selection" style="margin-bottom: 20px; text-align: center;">
-          <p
-            style="font-family: 'Cinzel', serif; font-size: 11px; color: var(--gold); margin-bottom: 6px; letter-spacing: 1px;">
-            WORLD TIER</p>
-          <div class="difficulty-group">
-            <button class="diff-btn active" data-diff="0"
-              title="The classic experience. Standard challenge and rewards.">NORMAL</button>
-            <button class="diff-btn" data-diff="1"
-              title="Nightmare: 2.5x Enemy Stats. +50% XP, +30% Magic Find.">NIGHTMARE</button>
-            <button class="diff-btn" data-diff="2"
-              title="Hell: 5.0x Enemy Stats. +150% XP, +100% Magic Find.">HELL</button>
+        
+        <div class="char-preview-side">
+          <div class="title-block">
+            <h1 class="game-title">Dark Realm</h1>
+            <p class="game-subtitle">The Abyss Awaits</p>
+          </div>
+          <div id="char-preview-pedestal">
+            <!-- Dynamic character preview -->
+            <div id="char-preview-render"></div>
+          </div>
+          <div id="selected-char-info">
+             <h3 id="preview-name">Select a Hero</h3>
+             <p id="preview-details">Lvl 1 Placeholder</p>
+          </div>
+          <div class="difficulty-group" style="margin-top:20px;">
+             <button class="diff-btn active" data-diff="0">NORMAL</button>
+             <button class="diff-btn" data-diff="1">NIGHTMARE</button>
+             <button class="diff-btn" data-diff="2">HELL</button>
+          </div>
+          <button id="btn-enter-world" class="btn-primary" disabled style="margin-top:30px; padding: 15px 60px;">Enter the Realm</button>
+          
+          <div id="keybinds-legend"
+            style="margin-top: 30px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 11px; color: #888; font-family: 'Cinzel', serif; border-top: 1px solid #333; padding-top: 15px; width: 80%; max-width: 400px;">
+            <div>[WASD] Movement</div>
+            <div>[1-4] Potions</div>
+            <div>[Q-G] Skills</div>
+            <div>[I] Inventory</div>
+            <div>[C] Stats</div>
+            <div>[T] Talents</div>
+            <div>[J] Journal</div>
+            <div>[H] Achievements</div>
+            <div>[L] Loot Filter</div>
+            <div>[P] Social (MMO)</div>
+            <div>[X] Weapon Swap</div>
+            <div>[TAB] Full Map</div>
           </div>
         </div>
-        <button id="btn-new-game" class="btn-primary" disabled>Enter the Realm</button>
-        <button id="btn-continue" class="btn-secondary">Continue</button>
-        <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
-          <button id="btn-export-save" class="btn-secondary small" title="Export save data to a file">Export
-            Save</button>
-          <button id="btn-import-save" class="btn-secondary small" title="Import save data from a file">Import
-            Save</button>
-          <input type="file" id="import-file" style="display:none;" accept=".json">
+      </div>
+      
+      <!-- Management Tools (Floating or Sidebar Bottom) -->
+      <div style="position: absolute; bottom: 20px; left: 20px; display: flex; gap: 10px; z-index: 100;">
+        <button id="btn-export-save" class="btn-secondary small" title="Export save data to a file">Export Save</button>
+        <button id="btn-import-save" class="btn-secondary small" title="Import save data from a file">Import Save</button>
+        <input type="file" id="import-file" style="display:none;" accept=".json">
+      </div>
+    </div>
+
+    <!-- Character Creation Screen -->
+    <div id="screen-char-create" class="menu-sub-screen hidden">
+      <div class="menu-content">
+        <h2 class="section-title">Forge Your Destiny</h2>
+        <div class="class-selection" id="class-selection">
+          <div class="class-grid" id="class-grid"></div>
+          <div class="class-info-panel" id="class-info">
+            <h3 id="class-name">—</h3>
+            <p id="class-desc">Select a class to see its path.</p>
+          </div>
+          <div style="margin-top:20px;">
+            <input type="text" id="character-name" placeholder="Hero Name" maxlength="12" class="mmo-input">
+            <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
+              <button id="btn-back-to-select" class="btn-secondary">Cancel</button>
+              <button id="btn-new-game" class="btn-primary" disabled>Create Hero</button>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div id="keybinds-legend"
-        style="margin-top: 30px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 11px; color: #888; font-family: 'Cinzel', serif; border-top: 1px solid #333; padding-top: 15px;">
-        <div>[WASD] Movement</div>
-        <div>[1-4] Potions</div>
-        <div>[Q-G] Skills</div>
-        <div>[I] Inventory</div>
-        <div>[C] Stats</div>
-        <div>[T] Talents</div>
-        <div>[J] Journal</div>
-        <div>[H] Achievements</div>
-        <div>[L] Loot Filter</div>
-        <div>[P] Town Portal</div>
-        <div>[X] Weapon Swap</div>
-        <div>[TAB] Full Map</div>
-        <div>[U] Cube | [N] Stash</div>
-      </div>
-
-      <div class="save-slots" id="save-slots" style="display:none;">
-        <!-- Save slot selection -->
       </div>
     </div>
   </div>

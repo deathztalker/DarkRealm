@@ -722,7 +722,69 @@ function updatePartyHUD(members) {
     });
 }
 
-    // Create Act Cleared Splash Container if missing
+// ——— START GAME ———
+async function startGame(slotId = null, loadPlayerData = null, charName = null) {
+    if (!selectedClass && !loadPlayerData) return;
+
+    if (loadPlayerData) {
+        selectedClass = loadPlayerData.classId || (loadPlayerData.player?.classId);
+        zoneLevel = loadPlayerData.zoneLevel || 0;
+        activeSlotId = slotId || loadPlayerData.slotId;
+        if (loadPlayerData.campaign) campaign.deserialize(loadPlayerData.campaign);
+    } else {
+        zoneLevel = 0;
+        activeSlotId = slotId || SaveSystem.newSlotId();
+        campaign.reset();
+        player = new Player(selectedClass);
+        window.player = player;
+        Vendor.init(loot, player);
+        if (charName) player.charName = charName;
+        const idTome = { ...items.tome_identify, charges: 20, identified: true };
+        const tpTome = { ...items.tome_tp, charges: 20, identified: true };
+        player.addToInventory(idTome);
+        player.addToInventory(tpTome);
+        if ($('hardcore-mode') && $('hardcore-mode').checked) player.isHardcore = true;
+    }
+    
+    window._activeSlotId = activeSlotId;
+    $('main-menu').classList.remove('active');
+    $('game-screen').classList.add('active');
+    state = 'GAME';
+
+    const canvas = $('game-canvas');
+    const adjustZoom = () => {
+        if (!camera) return;
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        camera.zoom = width >= 1024 ? 2.0 : (width > height ? 1.3 : 1.1);
+    };
+
+    renderer = new Renderer(canvas);
+    camera = new Camera(renderer.width, renderer.height, 2.0);
+    adjustZoom();
+    window.addEventListener('resize', adjustZoom);
+    input = new Input(canvas);
+    window.mobileControls = new MobileControls(input);
+
+    network = new NetworkManager({ 
+        get player() { return player; }, 
+        get enemies() { return enemies; },
+        onChatMessage: (msg) => {
+            const chatBox = document.getElementById('chat-messages');
+            if (chatBox) {
+                const msgEl = document.createElement('div');
+                msgEl.className = 'chat-msg' + (msg.isSystem ? ' system-msg' : '');
+                msgEl.innerHTML = `<span class="chat-msg-time">[${msg.time}]</span><span class="chat-msg-sender">${msg.sender}:</span><span class="chat-msg-text">${msg.text}</span>`;
+                chatBox.appendChild(msgEl);
+                chatBox.scrollTop = chatBox.scrollHeight;
+                while (chatBox.children.length > 50) chatBox.removeChild(chatBox.firstChild);
+            }
+        }
+    });
+    window.network = network;
+    network.init();
+
+    // Create Act Cleared Splash Container
     if (!$('act-splash-container')) {
         const splash = document.createElement('div');
         splash.id = 'act-splash-container';
@@ -730,134 +792,47 @@ function updatePartyHUD(members) {
         document.body.appendChild(splash);
     }
 
-    // Extract early fields for generation theming
-    let curHighestZone = 0;
-    if (loadPlayerData && loadPlayerData.highestZone) {
-        curHighestZone = loadPlayerData.highestZone;
-    }
-
-    // Set initial theme
-    function getTheme(z, hz) {
+    let curHighestZone = loadPlayerData?.highestZone || 0;
+    const getTheme = (z, hz) => {
         if (z === 0) {
-            if (hz >= 21) return 'snow';
-            if (hz >= 16) return 'hell';
-            if (hz >= 11) return 'jungle';
-            if (hz >= 6) return 'desert';
+            if (hz >= 21) return 'snow'; if (hz >= 16) return 'hell';
+            if (hz >= 11) return 'jungle'; if (hz >= 6) return 'desert';
             return 'town';
-        } else {
-            if (z >= 21) return 'snow';
-            if (z >= 16) return 'hell';
-            if (z >= 11) return 'jungle';
-            if (z >= 6) return 'desert';
-            return 'cathedral';
         }
-    }
+        if (z >= 21) return 'snow'; if (z >= 16) return 'hell';
+        if (z >= 11) return 'jungle'; if (z >= 6) return 'desert';
+        return 'cathedral';
+    };
     window.currentTheme = getTheme(zoneLevel, curHighestZone);
 
-    // Generate dungeon
     dungeon = new Dungeon(80, 60, 16);
     dungeon.generate(zoneLevel, window.currentTheme);
 
-    // Create player
     if (loadPlayerData && loadPlayerData.player) {
         player = Player.deserialize(loadPlayerData.player);
-        player.x = dungeon.playerStart.x;
-        player.y = dungeon.playerStart.y;
+        player.x = dungeon.playerStart.x; player.y = dungeon.playerStart.y;
         player.highestZone = loadPlayerData.highestZone || 0;
-        // Restore stash
-        if (loadPlayerData.stash && Array.isArray(loadPlayerData.stash)) {
-            stash = loadPlayerData.stash;
-            while (stash.length < 20) stash.push(null);
-        }
-        // Restore difficulty and waypoints
-        if (typeof loadPlayerData.difficulty === 'number') {
-            difficulty = loadPlayerData.difficulty;
-        }
-        if (Array.isArray(loadPlayerData.waypoints)) {
-            discoveredWaypoints = new Set(loadPlayerData.waypoints);
-            discoveredWaypoints.add(0); // Always have town
-        }
-        // Restore mercenary
-        if (loadPlayerData.mercenary) {
-            mercenary = Mercenary.deserialize(loadPlayerData.mercenary);
-        }
+        if (loadPlayerData.stash) stash = loadPlayerData.stash;
+        if (typeof loadPlayerData.difficulty === 'number') difficulty = loadPlayerData.difficulty;
+        if (loadPlayerData.waypoints) discoveredWaypoints = new Set(loadPlayerData.waypoints);
+        if (loadPlayerData.mercenary) mercenary = Mercenary.deserialize(loadPlayerData.mercenary);
     } else {
-        player = new Player(selectedClass);
-        if (charName) player.charName = charName;
-        if ($('hardcore-mode') && $('hardcore-mode').checked) {
-            player.isHardcore = true;
-        }
-        player.x = dungeon.playerStart.x;
-        player.y = dungeon.playerStart.y;
-
-        const cls = getClass(selectedClass);
-        if (cls?.trees[0]?.nodes[0]) {
-            const firstSkill = cls.trees[0].nodes[0].id;
-            player.hotbar[0] = firstSkill;
-            player.talents.points[firstSkill] = 1;
-            player.talents.unspent = 0;
-        }
-    }
-
-    window._difficulty = difficulty;
-
-    // Potion Belt
-    for (let i = 0; i < 4; i++) {
-        const slotEl = $(`pi-${i}`);
-        const potion = player.belt[i];
-        if (potion) {
-            slotEl.style.backgroundImage = `url('assets/${potion.icon}.png')`;
-            slotEl.title = potion.name;
-        } else {
-            slotEl.style.backgroundImage = 'none';
-            slotEl.title = '';
-        }
+        player.x = dungeon.playerStart.x; player.y = dungeon.playerStart.y;
     }
 
     camera.follow(player);
     window.player = player;
-    window.aoeZones = aoeZones;
-    window._difficulty = window._difficulty || 0; // Ensure it exists
     npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
     gameObjects = dungeon.objectSpawns.map(s => new GameObject(s.type, s.x, s.y, s.icon));
     enemies = dungeon.enemySpawns.map(s => new Enemy(s));
 
-    // Apply difficulty & Rift scaling to enemies
-    const diffMult = window.DIFFICULTY_MULT[window._difficulty] || 1;
-    let riftMult = 1.0;
-    if (zoneLevel >= 7) {
-        riftMult = Math.pow(1.15, zoneLevel - 6); // 15% more power per depth
-    }
-
-    for (const e of enemies) {
-        let hpM = diffMult * riftMult;
-        let dmgM = diffMult * riftMult;
-
-        // Modifiers
-        activeRiftMods.forEach(mod => {
-            if (mod.hp) hpM *= mod.hp;
-            if (mod.dmg) dmgM *= mod.dmg;
-            if (mod.speed) e.moveSpeed *= mod.speed;
-        });
-
-        e.maxHp = Math.round(e.maxHp * hpM);
-        e.hp = e.maxHp;
-        e.dmg = Math.round(e.dmg * dmgM);
-        e.xpReward = Math.round(e.xpReward * hpM);
-    }
-
     player.setRefs(dungeon, camera, enemies);
-    updateSkillBar();
-
-    droppedItems = [];
-    droppedGold = [];
-    dialogue = null;
-
     updateHud();
-    updateRiftHud();
+    isBossZone = zoneLevel === 5 || zoneLevel === 10 || (zoneLevel % 5 === 0);
 
-    // Ensure boss bar hidden unless zone 5 or rift boss
-    isBossZone = zoneLevel === 5 || zoneLevel === 10 || zoneLevel === 15 || zoneLevel === 20 || (zoneLevel > 21 && zoneLevel % 5 === 0);
+    lastTime = performance.now();
+    requestAnimationFrame(gameLoop);
+}
     const bossBar = $('boss-hp-bar');
     if (bossBar && !isBossZone) bossBar.classList.add('hidden');
 
@@ -6446,15 +6421,22 @@ window.addEventListener('DOMContentLoaded', () => {
 
     renderSaveSlots();
 
-    $('btn-new-game').addEventListener('click', () => {
+    $('btn-new-game').addEventListener('click', async () => {
         if (!selectedClass) return;
         const nameInput = $('character-name');
         const charName = nameInput ? nameInput.value.trim() : null;
+        if (!charName) { addCombatLog("Please enter a name", 'log-dmg'); return; }
+        
         initAudio();
-        // Set difficulty before starting
         const activeDiffBtn = document.querySelector('.diff-btn.active');
         window._difficulty = activeDiffBtn ? parseInt(activeDiffBtn.dataset.diff) : 0;
-        startGame(null, null, charName);
+        
+        // In MMO mode, we create the save and THEN return to select or start directly
+        const slotId = SaveSystem.newSlotId();
+        await startGame(slotId, null, charName);
+        
+        // Force a save to initialize the cloud record
+        saveGame();
     });
 
     // Difficulty selection wiring
@@ -6533,132 +6515,110 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ——— SAVE SLOT UI ———
+let selectedCharSlot = null;
+
 async function renderSaveSlots() {
-    const container = $('save-slots');
+    const listContainer = document.getElementById('char-selection-list');
+    const screenSelect = document.getElementById('screen-char-select');
+    const screenCreate = document.getElementById('screen-char-create');
+    const btnEnter = document.getElementById('btn-enter-world');
+    
+    if (!listContainer) return;
+    
     let slots = [];
     if (DB.isLoggedIn()) {
         slots = await DB.getSaves();
     } else {
         slots = SaveSystem.listSlots();
     }
-    const btnContinue = $('btn-continue');
 
     if (slots.length === 0) {
-        container.style.display = 'none';
-        btnContinue.disabled = true;
-        btnContinue.style.opacity = '0.5';
+        screenSelect.classList.add('hidden');
+        screenCreate.classList.remove('hidden');
         return;
     }
 
-    container.style.display = 'block';
-    btnContinue.style.display = 'none'; // Replace old continue button with slot cards
-
-    container.innerHTML = `<h3 style="color:var(--gold);font-family:'Cinzel',serif;margin-bottom:8px;">Saved Characters</h3>`;
-    for (const slot of slots) {
+    screenSelect.classList.remove('hidden');
+    screenCreate.classList.add('hidden');
+    listContainer.innerHTML = '';
+    
+    slots.forEach(slot => {
         const card = document.createElement('div');
-        card.className = 'save-slot-card';
-        const date = new Date(slot.timestamp).toLocaleDateString();
+        card.className = 'char-entry';
+        if (selectedCharSlot && selectedCharSlot.id === slot.id) card.classList.add('selected');
+        
         card.innerHTML = `
-            <i class="ra ${getIconForClass(slot.classId)} slot-icon" style="font-size:32px; color:var(--gold); text-shadow: 0 0 8px rgba(255,215,0,0.5);"></i>
-            <div class="slot-info">
-                <div class="slot-name" style="text-shadow: 0 0 4px rgba(255,255,255,0.3);">${slot.name || slot.className}</div>
-                <div class="slot-detail" style="color:#aaa;">Level ${slot.level} ${slot.className} — ${date}</div>
-            </div>
-            <button class="slot-delete" title="Delete character">✖</button>
+            <div class="char-entry-name">${slot.name}</div>
+            <div class="char-entry-details">Lvl ${slot.level} ${slot.className}</div>
         `;
+        
+        card.onclick = () => {
+            document.querySelectorAll('.char-entry').forEach(e => e.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedCharSlot = slot;
+            btnEnter.disabled = false;
+            updateCharPreview(slot);
+        };
+        
+        listContainer.appendChild(card);
+    });
 
-        // Click to load
-        card.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('slot-delete')) return;
-
-            let saveData = null;
-            if (DB.isLoggedIn()) {
-                const cloudSaves = await DB.getSaves();
-                const cloudMatch = cloudSaves.find(s => s.id === slot.id);
-                if (cloudMatch) {
-                    saveData = {
-                        player: cloudMatch.player,
-                        zoneLevel: cloudMatch.zoneLevel || 0,
-                        stash: cloudMatch.stash || [],
-                        cube: cloudMatch.cube || [],
-                        mercenary: cloudMatch.mercenary || null,
-                        slotId: cloudMatch.id,
-                        difficulty: cloudMatch.difficulty || 0,
-                        waypoints: cloudMatch.waypoints || [0],
-                    };
-                }
-            }
-            if (!saveData) saveData = SaveSystem.loadSlot(slot.id);
-
-            if (saveData) {
-                let pData = null;
-                try { pData = typeof saveData.player === 'string' ? JSON.parse(saveData.player) : saveData.player; } catch (err) { }
-                const maxDiff = (pData && pData.maxDifficulty) ? pData.maxDifficulty : 0;
-
-                // Show Difficulty Selection if unlocked
-                const picker = document.createElement('div');
-                picker.className = 'dialogue-picker-menu';
-                picker.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(10,8,5,0.95); border:1px solid #bf642f; padding:20px; z-index:2000; text-align:center; box-shadow:0 0 20px #000; min-width:250px; border-radius:10px;';
-                picker.innerHTML = `<h3 style="color:var(--gold); margin-bottom:15px; font-family:'Cinzel',serif; font-size:18px;">Select Difficulty</h3>`;
-
-                // Show all difficulties up to maxDifficulty
-                for (let d = 0; d <= maxDiff; d++) {
-                    const btn = document.createElement('button');
-                    btn.className = 'btn-secondary';
-                    btn.style.cssText = 'display:block; width:100%; margin-bottom:10px; padding:12px; font-weight:bold; font-size:14px;';
-
-                    if (d === 3) {
-                        btn.textContent = '⚡ Rift Mode ⚡';
-                        btn.style.color = '#bf642f'; // Unique orange
-                        btn.style.border = '1px solid #ff9000';
-                    } else {
-                        btn.textContent = DIFFICULTY_NAMES[d];
-                        if (d === 1) btn.style.color = '#ffcc00'; // Nightmare
-                        if (d === 2) btn.style.color = '#ff4400'; // Hell
-                    }
-
-                    btn.onclick = (ev) => {
-                        ev.stopPropagation();
-                        saveData.difficulty = d;
-
-                        // If Rift Mode, override starting zone
-                        if (d === 3) {
-                            saveData.zoneLevel = 26;
-                        } else if (saveData.zoneLevel >= 26) {
-                            // If coming back to normal game, return to Town
-                            saveData.zoneLevel = 0;
-                        }
-
-                        picker.remove();
-                        initAudio();
-                        startGame(slot.id, saveData);
-                    };
-                    picker.appendChild(btn);
-                }
-
-                const cancelBtn = document.createElement('button');
-                cancelBtn.className = 'btn-secondary small';
-                cancelBtn.style.marginTop = '10px';
-                cancelBtn.textContent = 'Cancel';
-                cancelBtn.onclick = (ev) => { ev.stopPropagation(); picker.remove(); };
-                picker.appendChild(cancelBtn);
-
-                document.body.appendChild(picker);
-            }
-        });
-
-        // Delete button
-        card.querySelector('.slot-delete').addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (confirm(`Delete ${slot.name || slot.className} (Level ${slot.level})?`)) {
-                SaveSystem.deleteSlot(slot.id);
-                renderSaveSlots();
-            }
-        });
-
-        container.appendChild(card);
+    if (!selectedCharSlot && slots.length > 0) {
+        listContainer.firstChild.click();
     }
 }
+
+function updateCharPreview(slot) {
+    const nameEl = document.getElementById('preview-name');
+    const detailsEl = document.getElementById('preview-details');
+    if (nameEl) nameEl.innerText = slot.name;
+    if (detailsEl) detailsEl.innerText = `Level ${slot.level} ${slot.className}`;
+    
+    const renderDiv = document.getElementById('char-preview-render');
+    if (renderDiv) {
+        renderDiv.innerHTML = `<img src="assets/class_${slot.classId}.png" style="height:200px; filter: drop-shadow(0 0 20px rgba(216,176,104,0.4));">`;
+    }
+}
+
+// Wire MMO Menu Events
+document.getElementById('btn-show-create')?.addEventListener('click', () => {
+    document.getElementById('screen-char-select').classList.add('hidden');
+    document.getElementById('screen-char-create').classList.remove('hidden');
+});
+
+document.getElementById('btn-back-to-select')?.addEventListener('click', () => {
+    renderSaveSlots();
+});
+
+document.getElementById('btn-enter-world')?.addEventListener('click', async () => {
+    if (!selectedCharSlot) return;
+    
+    let saveData = null;
+    if (DB.isLoggedIn()) {
+        const cloudSaves = await DB.getSaves();
+        const cloudMatch = cloudSaves.find(s => s.id === selectedCharSlot.id);
+        if (cloudMatch) {
+            saveData = {
+                player: cloudMatch.player,
+                zoneLevel: cloudMatch.zoneLevel || 0,
+                stash: cloudMatch.stash || [],
+                cube: cloudMatch.cube || [],
+                mercenary: cloudMatch.mercenary || null,
+                slotId: cloudMatch.id,
+                difficulty: cloudMatch.difficulty || 0,
+                waypoints: cloudMatch.waypoints || [0],
+            };
+        }
+    }
+    if (!saveData) saveData = SaveSystem.loadSlot(selectedCharSlot.id);
+    
+    if (saveData) {
+        initAudio();
+        const activeDiffBtn = document.querySelector('.diff-btn.active');
+        window._difficulty = activeDiffBtn ? parseInt(activeDiffBtn.dataset.diff) : (saveData.difficulty || 0);
+        startGame(selectedCharSlot.id, saveData);
+    }
+});
 
 // --- Phase 29: World Overlay & Time Logic ---
 function renderWorldOverlay(ctx, w, h) {
