@@ -15,6 +15,7 @@ import { loot, SETS } from './systems/lootSystem.js';
 import { updateStatuses } from './systems/combat.js';
 import { SaveSystem } from './systems/saveSystem.js';
 import { DB } from './systems/db.js';
+import { NetworkManager } from './network/NetworkManager.js';
 import { NPC } from './entities/npc.js';
 import { Mercenary } from './entities/mercenary.js';
 import { Pet } from './entities/pet.js';
@@ -26,7 +27,6 @@ import { fx } from './engine/ParticleSystem.js';
 import { Vendor } from './vendorSystem.js';
 import { VendorUI } from './ui/vendorUI.js';
 import { campaign } from './systems/campaignSystem.js';
-import { NetworkManager } from './network/NetworkManager.js';
 
 // Expose globals for external modules
 window.loot = loot;
@@ -154,45 +154,46 @@ function updateRiftHud() {
 function spawnRiftGuardian() {
     window.riftGuardianSpawned = true;
 
-    // Guardian Pool
-    const guardians = [
-        { name: 'Andariel', icon: 'boss_andariel', hpMult: 1.5, dmgMult: 1.2 },
-        { name: 'Duriel', icon: 'boss_duriel', hpMult: 1.8, dmgMult: 1.3 },
-        { name: 'Mephisto', icon: 'boss_mephisto', hpMult: 1.6, dmgMult: 1.4 },
-        { name: 'Diablo', icon: 'boss_diablo', hpMult: 2.0, dmgMult: 1.5 },
-        { name: 'The Cow King', icon: 'boss_cow_king', hpMult: 2.2, dmgMult: 1.6 },
-        { name: 'The Butcher', icon: 'boss_the_butcher', hpMult: 1.8, dmgMult: 1.8 }
-    ];
-
-    const base = guardians[Math.floor(Math.random() * guardians.length)];
-    const depth = zoneLevel - 6;
-
-    // Choose location near player
+    // Choose a random location near player (ensure walkable)
     const angle = Math.random() * Math.PI * 2;
-    const tx = player.x + Math.cos(angle) * 150;
-    const ty = player.y + Math.sin(angle) * 150;
+    const dist = 120;
+    const tx = player.x + Math.cos(angle) * dist;
+    const ty = player.y + Math.sin(angle) * dist;
+
+    // In actual game, we'd check dungeon.isWalkable here
 
     const bossData = {
-        x: tx, y: ty,
+        id: 'rift_guardian',
+        name: `Guardian of Depth ${zoneLevel - 6}`,
         type: 'boss',
-        level: zoneLevel,
-        name: `${base.name}, Guardian of Depth ${depth}`,
-        icon: base.icon,
-        hpMult: (15 + depth * 2) * base.hpMult,
-        dmgMult: (3 + depth * 0.2) * base.dmgMult,
-        isRiftGuardian: true
+        maxHp: 5000 * Math.pow(1.2, zoneLevel - 6),
+        dmg: 60 * Math.pow(1.1, zoneLevel - 6),
+        moveSpeed: 100,
+        attackSpeed: 1.5,
+        attackRange: 40,
+        xpReward: 1000 * (zoneLevel - 6),
+        color: '#ff00ff',
+        size: 35,
+        x: tx, y: ty
     };
 
     const boss = new Enemy(bossData);
     enemies.push(boss);
+
+    bus.on('combat:damage', (data) => {
+        const { worldX, worldY, dealt, isCrit, type } = data;
+        if (typeof dealt === 'number' || dealt === 'Blocked!') {
+            spawnFloatingText(worldX, worldY, dealt, type, isCrit);
+        }
+    });
 
     playZoneTransition(); // reuse for sound/flash
     fx.emitHolyBurst(tx, ty);
     fx.emitBurst(tx, ty, '#f0f', 50, 4);
     fx.shake(1000, 15);
 
-    addCombatLog(`THE RIFT GUARDIAN HAS ARRIVED: ${boss.name}!`, 'log-crit');
-    if (typeof startAmbientBoss === 'function') startAmbientBoss();
+    addCombatLog('THE RIFT GUARDIAN HAS ARRIVED!', 'log-crit');
+    startAmbientBoss();
 
     const bossBar = $('boss-hp-bar');
     if (bossBar) {
@@ -348,22 +349,98 @@ function selectClass(classId) {
     selectedClass = classId;
     document.querySelectorAll('.class-card').forEach(c => c.classList.toggle('selected', c.dataset.classId === classId));
     $('btn-new-game').disabled = false;
-    showClassInfo(classId);
 }
 
 function showClassInfo(classId) {
     const cls = getClass(classId);
-    $('class-name').innerHTML = `<i class="ra ${getIconForClass(cls.id)}" style="font-size:24px;vertical-align:middle;color:var(--gold);"></i> ${cls.name}`;
-    $('class-desc').textContent = cls.desc;
-    const statsHtml = ['str', 'dex', 'vit', 'int'].map(s =>
-        `<div class="class-stat-bar"><span>${s.toUpperCase()}</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${cls.statBars[s]}%"></div></div></div>`
-    ).join('');
-    $('class-stats').innerHTML = statsHtml;
+    if (!cls) return;
+    const nameEl = document.getElementById('class-name');
+    const descEl = document.getElementById('class-desc');
+    const statsEl = document.getElementById('class-stats');
+    if (nameEl) nameEl.textContent = cls.name;
+    if (descEl) descEl.textContent = cls.description;
+    if (statsEl) {
+        const statsHtml = Object.entries(cls.stats).map(([stat, val]) => 
+            `<div class="class-stat-row"><span>${stat.toUpperCase()}</span><span>${val}</span></div>`
+        ).join('');
+        statsEl.innerHTML = statsHtml;
+    }
 }
 
-// ——— START GAME ———
-async function startGame(slotId = null, loadPlayerData = null, charName = null) {    if (!selectedClass && !loadPlayerData) return;
+async function renderSaveSlots() {
+    const listContainer = document.getElementById('char-selection-list');
+    const screenSelect = document.getElementById('screen-char-select');
+    const screenCreate = document.getElementById('screen-char-create');
+    const btnEnter = document.getElementById('btn-enter-world');
+    if (!listContainer) return;
+    let cloudSlots = [];
+    if (DB.isLoggedIn()) {
+        cloudSlots = await DB.getSaves();
+        cloudSlots.forEach(s => s._isCloud = true);
+    }
+    const localSlots = SaveSystem.listSlots();
+    localSlots.forEach(s => s._isCloud = false);
+    const allSlots = [...cloudSlots, ...localSlots];
+    if (allSlots.length === 0) {
+        screenSelect.classList.add('hidden');
+        screenCreate.classList.remove('hidden');
+        return;
+    }
+    screenSelect.classList.remove('hidden');
+    screenCreate.classList.add('hidden');
+    listContainer.innerHTML = '';
+    allSlots.forEach(slot => {
+        const card = document.createElement('div');
+        card.className = 'char-entry';
+        if (selectedCharSlot && selectedCharSlot.id === slot.id) card.classList.add('selected');
+        const typeTag = slot._isCloud ? '<span style="color:var(--cyan); font-size:9px;">[CLOUD]</span>' : '<span style="color:#888; font-size:9px;">[LOCAL]</span>';
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <div>
+                    <div class="char-entry-name">${slot.name} ${typeTag}</div>
+                    <div class="char-entry-details">Lvl ${slot.level} ${slot.className}</div>
+                </div>
+                ${(!slot._isCloud && DB.isLoggedIn()) ? `<button class="btn-migrate" title="Migrate to Cloud">☁️</button>` : ''}
+            </div>
+        `;
+        const migrateBtn = card.querySelector('.btn-migrate');
+        if (migrateBtn) {
+            migrateBtn.onclick = async (e) => {
+                e.stopPropagation();
+                if (confirm(`Migrate ${slot.name} to Cloud?`)) {
+                    const localData = SaveSystem.loadSlot(slot.id);
+                    if (localData && await DB.upsertSave(slot.id, localData)) {
+                        addCombatLog(`${slot.name} migrated!`, 'log-crit');
+                        renderSaveSlots();
+                    }
+                }
+            };
+        }
+        card.onclick = () => {
+            document.querySelectorAll('.char-entry').forEach(e => e.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedCharSlot = slot;
+            btnEnter.disabled = false;
+            updateCharPreview(slot);
+        };
+        listContainer.appendChild(card);
+    });
+    if (!selectedCharSlot && allSlots.length > 0) listContainer.firstChild.click();
+}
 
+function updateCharPreview(slot) {
+    const nameEl = document.getElementById('preview-name');
+    const detailsEl = document.getElementById('preview-details');
+    if (nameEl) nameEl.innerText = slot.name;
+    if (detailsEl) detailsEl.innerText = `Level ${slot.level} ${slot.className}`;
+    const renderDiv = document.getElementById('char-preview-render');
+    if (renderDiv) {
+        renderDiv.innerHTML = `<img src="assets/class_${slot.classId}.png" style="height:200px; filter: drop-shadow(0 0 20px rgba(216,176,104,0.4));">`;
+    }
+}
+
+async function startGame(slotId = null, loadPlayerData = null, charName = null) {
+    if (!selectedClass && !loadPlayerData) return;
     if (loadPlayerData) {
         selectedClass = loadPlayerData.classId || (loadPlayerData.player?.classId);
         zoneLevel = loadPlayerData.zoneLevel || 0;
@@ -377,36 +454,27 @@ async function startGame(slotId = null, loadPlayerData = null, charName = null) 
         window.player = player;
         Vendor.init(loot, player);
         if (charName) player.charName = charName;
-        const idTome = { ...items.tome_identify, charges: 20, identified: true };
-        const tpTome = { ...items.tome_tp, charges: 20, identified: true };
-        player.addToInventory(idTome);
-        player.addToInventory(tpTome);
-        if ($('hardcore-mode') && $('hardcore-mode').checked) player.isHardcore = true;
+        player.addToInventory({ ...items.tome_identify, charges: 20, identified: true });
+        player.addToInventory({ ...items.tome_tp, charges: 20, identified: true });
+        if ($('hardcore-mode')?.checked) player.isHardcore = true;
     }
-    
     window._activeSlotId = activeSlotId;
     $('main-menu').classList.remove('active');
     $('game-screen').classList.add('active');
     state = 'GAME';
-
     const canvas = $('game-canvas');
-    const adjustZoom = () => {
-        if (!camera) return;
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        camera.zoom = width >= 1024 ? 2.0 : (width > height ? 1.3 : 1.1);
-    };
-
     renderer = new Renderer(canvas);
     camera = new Camera(renderer.width, renderer.height, 2.0);
+    const adjustZoom = () => {
+        const w = window.innerWidth, h = window.innerHeight;
+        camera.zoom = w >= 1024 ? 2.0 : (w > h ? 1.3 : 1.1);
+    };
     adjustZoom();
     window.addEventListener('resize', adjustZoom);
     input = new Input(canvas);
     window.mobileControls = new MobileControls(input);
-
-    network = new NetworkManager({ 
-        get player() { return player; }, 
-        get enemies() { return enemies; },
+    network = new NetworkManager({
+        get player() { return player; }, get enemies() { return enemies; },
         onChatMessage: (msg) => {
             const chatBox = document.getElementById('chat-messages');
             if (chatBox) {
@@ -421,9 +489,7 @@ async function startGame(slotId = null, loadPlayerData = null, charName = null) 
         onWhisper: (msg) => {
             const chatBox = document.getElementById('chat-messages');
             if (chatBox) {
-                const isSent = msg.sender === player.charName;
-                const displayPartner = isSent ? msg.target : msg.sender;
-                const prefix = isSent ? `To ${displayPartner}` : `From ${displayPartner}`;
+                const prefix = msg.sender === player.charName ? `To ${msg.target}` : `From ${msg.sender}`;
                 const msgEl = document.createElement('div');
                 msgEl.className = 'chat-msg whisper-msg';
                 msgEl.innerHTML = `<span class="chat-msg-time">[${msg.time}]</span><span class="chat-msg-sender">${prefix}:</span><span class="chat-msg-text">${msg.text}</span>`;
@@ -434,206 +500,92 @@ async function startGame(slotId = null, loadPlayerData = null, charName = null) 
         onInspectData: (data) => {
             const panel = document.getElementById('panel-inspect');
             const paperdoll = document.getElementById('inspect-paperdoll');
-            const title = document.getElementById('inspect-title');
             if (!panel || !paperdoll) return;
-            title.innerText = `Inspecting: ${data.charName} (Lvl ${data.level} ${data.classId})`;
+            document.getElementById('inspect-title').innerText = `Inspecting: ${data.charName} (Lvl ${data.level} ${data.classId})`;
             paperdoll.innerHTML = '';
-            const slots = ['head', 'amulet', 'chest', 'mainhand', 'offhand', 'gloves', 'belt', 'boots', 'ring1', 'ring2'];
-            slots.forEach(slot => {
+            ['head', 'amulet', 'chest', 'mainhand', 'offhand', 'gloves', 'belt', 'boots', 'ring1', 'ring2'].forEach(slot => {
                 const item = data.equipment[slot];
                 const slotEl = document.createElement('div');
-                slotEl.className = 'inspect-slot';
-                slotEl.style.gridArea = slot;
+                slotEl.className = 'inspect-slot'; slotEl.style.gridArea = slot;
                 if (item) {
-                    const img = document.createElement('img');
-                    img.src = renderer.getIconPath(item.baseId);
-                    img.style.width = '32px';
-                    slotEl.appendChild(img);
-                    slotEl.title = item.name;
-                } else {
-                    slotEl.style.opacity = '0.3';
-                    slotEl.innerText = slot[0].toUpperCase();
-                }
+                    const img = document.createElement('img'); img.src = renderer.getIconPath(item.baseId); img.style.width = '32px';
+                    slotEl.appendChild(img); slotEl.title = item.name;
+                } else { slotEl.style.opacity = '0.3'; slotEl.innerText = slot[0].toUpperCase(); }
                 paperdoll.appendChild(slotEl);
             });
             panel.classList.remove('hidden');
         },
-        onTradeStart: (partnerName) => {
-            const panel = document.getElementById('panel-trade');
-            document.getElementById('trade-partner-name').innerText = `${partnerName}'s Offer`;
+        onTradeStart: (partner) => {
+            document.getElementById('trade-partner-name').innerText = `${partner}'s Offer`;
             document.getElementById('trade-my-slots').innerHTML = '';
             document.getElementById('trade-their-slots').innerHTML = '';
-            myOffer = [];
-            panel.classList.remove('hidden');
+            myOffer = []; document.getElementById('panel-trade').classList.remove('hidden');
         },
         onTradePartnerUpdate: (offer) => {
-            const container = document.getElementById('trade-their-slots');
-            container.innerHTML = '';
+            const container = document.getElementById('trade-their-slots'); container.innerHTML = '';
             offer.forEach(item => {
-                const el = document.createElement('div');
-                el.className = 'trade-slot';
-                if (item) {
-                    const img = document.createElement('img');
-                    img.src = renderer.getIconPath(item.baseId);
-                    img.style.width = '32px';
-                    el.appendChild(img);
-                }
+                const el = document.createElement('div'); el.className = 'trade-slot';
+                if (item) { const img = document.createElement('img'); img.src = renderer.getIconPath(item.baseId); img.style.width = '32px'; el.appendChild(img); }
                 container.appendChild(el);
             });
         },
         onTradeStatusUpdate: (status) => {
-            const myStatus = document.getElementById('trade-my-status');
-            const theirStatus = document.getElementById('trade-their-status');
-            const acceptBtn = document.getElementById('trade-btn-accept');
-            myStatus.innerText = status.lock1 ? 'LOCKED' : 'Offering...';
-            myStatus.style.color = status.lock1 ? '#00ff00' : '#888';
-            theirStatus.innerText = status.lock2 ? 'LOCKED' : 'Offering...';
-            theirStatus.style.color = status.lock2 ? '#00ff00' : '#888';
-            if (status.lock1 && status.lock2) acceptBtn.classList.remove('disabled');
-            else acceptBtn.classList.add('disabled');
+            const myStatus = document.getElementById('trade-my-status'), theirStatus = document.getElementById('trade-their-status'), acceptBtn = document.getElementById('trade-btn-accept');
+            myStatus.innerText = status.lock1 ? 'LOCKED' : 'Offering...'; myStatus.style.color = status.lock1 ? '#00ff00' : '#888';
+            theirStatus.innerText = status.lock2 ? 'LOCKED' : 'Offering...'; theirStatus.style.color = status.lock2 ? '#00ff00' : '#888';
+            if (status.lock1 && status.lock2) acceptBtn.classList.remove('disabled'); else acceptBtn.classList.add('disabled');
         },
         onTradeExecute: (receive, give) => {
-            give.forEach(item => {
-                const idx = player.inventory.findIndex(i => i && i.name === item.name);
-                if (idx !== -1) player.inventory[idx] = null;
-            });
+            give.forEach(item => { const idx = player.inventory.findIndex(i => i && i.name === item.name); if (idx !== -1) player.inventory[idx] = null; });
             receive.forEach(item => player.addToInventory(item));
             bus.emit('combat:log', { text: "Trade Successful!", cls: 'log-level' });
-            document.getElementById('panel-trade').classList.add('hidden');
-            saveGame();
+            document.getElementById('panel-trade').classList.add('hidden'); saveGame();
         },
-        onDuelStart: (opponentName) => {
-            addCombatLog(`DUEL STARTED: vs ${opponentName}!`, 'log-crit');
-            fx.shake(500, 10);
-        },
-        onDuelEnd: (winnerName) => {
-            addCombatLog(`DUEL ENDED! Winner: ${winnerName || 'Draw'}`, 'log-level');
-        }
+        onDuelStart: (opp) => { addCombatLog(`DUEL STARTED: vs ${opp}!`, 'log-crit'); fx.shake(500, 10); },
+        onDuelEnd: (winner) => { addCombatLog(`DUEL ENDED! Winner: ${winner || 'Draw'}`, 'log-level'); }
     });
-    window.network = network;
-    network.init();
-
-    // Create Act Cleared Splash Container
-    if (!$('act-splash-container')) {
-        const splash = document.createElement('div');
-        splash.id = 'act-splash-container';
-        splash.className = 'act-cleared-splash';
-        document.body.appendChild(splash);
-    }
-
+    window.network = network; network.init();
+    if (!$('act-splash-container')) { const s = document.createElement('div'); s.id = 'act-splash-container'; s.className = 'act-cleared-splash'; document.body.appendChild(s); }
     let curHighestZone = loadPlayerData?.highestZone || 0;
     const getTheme = (z, hz) => {
-        if (z === 0) {
-            if (hz >= 21) return 'snow'; if (hz >= 16) return 'hell';
-            if (hz >= 11) return 'jungle'; if (hz >= 6) return 'desert';
-            return 'town';
-        }
-        if (z >= 21) return 'snow'; if (z >= 16) return 'hell';
-        if (z >= 11) return 'jungle'; if (z >= 6) return 'desert';
-        return 'cathedral';
+        if (z === 0) { if (hz >= 21) return 'snow'; if (hz >= 16) return 'hell'; if (hz >= 11) return 'jungle'; if (hz >= 6) return 'desert'; return 'town'; }
+        if (z >= 21) return 'snow'; if (z >= 16) return 'hell'; if (z >= 11) return 'jungle'; if (z >= 6) return 'desert'; return 'cathedral';
     };
     window.currentTheme = getTheme(zoneLevel, curHighestZone);
-
-    dungeon = new Dungeon(80, 60, 16);
-    dungeon.generate(zoneLevel, window.currentTheme);
-
+    dungeon = new Dungeon(80, 60, 16); dungeon.generate(zoneLevel, window.currentTheme);
     if (loadPlayerData && loadPlayerData.player) {
-        player = Player.deserialize(loadPlayerData.player);
-        player.x = dungeon.playerStart.x; player.y = dungeon.playerStart.y;
+        player = Player.deserialize(loadPlayerData.player); player.x = dungeon.playerStart.x; player.y = dungeon.playerStart.y;
         player.highestZone = loadPlayerData.highestZone || 0;
         if (loadPlayerData.stash) stash = loadPlayerData.stash;
         if (typeof loadPlayerData.difficulty === 'number') difficulty = loadPlayerData.difficulty;
         if (loadPlayerData.waypoints) discoveredWaypoints = new Set(loadPlayerData.waypoints);
         if (loadPlayerData.mercenary) mercenary = Mercenary.deserialize(loadPlayerData.mercenary);
-    } else {
-        player.x = dungeon.playerStart.x; player.y = dungeon.playerStart.y;
-    }
-
-    camera.follow(player);
-    window.player = player;
+    } else { player.x = dungeon.playerStart.x; player.y = dungeon.playerStart.y; }
+    camera.follow(player); window.player = player;
     npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
     gameObjects = dungeon.objectSpawns.map(s => new GameObject(s.type, s.x, s.y, s.icon));
     enemies = dungeon.enemySpawns.map(s => new Enemy(s));
-
     player.setRefs(dungeon, camera, enemies);
     updateHud();
-
-    // Ensure boss bar hidden unless zone 5 or rift boss
     isBossZone = zoneLevel === 5 || zoneLevel === 10 || zoneLevel === 15 || zoneLevel === 20 || (zoneLevel > 21 && zoneLevel % 5 === 0);
-    const bossBar = $('boss-hp-bar');
-    if (bossBar && !isBossZone) bossBar.classList.add('hidden');
-
-    // Initial save
-    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
-        difficulty: window._difficulty,
-        waypoints: [...discoveredWaypoints],
-        mercenary: mercenary ? mercenary.serialize() : null,
-        cube,
-        campaign: campaign.serialize(),
-        achievements: Array.from(unlockedAchievements)
-    });
-
-    // Initial ambient audio
-    if (isBossZone) {
-        startAmbientBoss();
-    } else if (zoneLevel > 0) {
-        startAmbientDungeon();
-    } else {
-        stopAmbient(); // Town is quiet for now
-    }
-
-    // Init explored for minimap
+    const bossBar = $('boss-hp-bar'); if (bossBar && !isBossZone) bossBar.classList.add('hidden');
+    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty: window._difficulty, waypoints: [...discoveredWaypoints], mercenary: mercenary ? mercenary.serialize() : null, cube, campaign: campaign.serialize(), achievements: Array.from(unlockedAchievements) });
+    if (isBossZone) startAmbientBoss(); else if (zoneLevel > 0) startAmbientDungeon(); else stopAmbient();
     explored = Array.from({ length: dungeon.height }, () => Array(dungeon.width).fill(false));
-
-    lastTime = performance.now();
-    requestAnimationFrame(gameLoop);
+    lastTime = performance.now(); requestAnimationFrame(gameLoop);
 }
 
-// ——— GAME LOOP ———
-let enemySyncTimer = 0;
-let renderList = [];
+let enemySyncTimer = 0; let renderList = [];
 function gameLoop(timestamp) {
     if (state !== 'GAME') return;
-    const rawDt = Math.min(0.1, (timestamp - lastTime) / 1000);
-    const dt = rawDt * timeScale;
-    lastTime = timestamp;
-
-    // Cache the render list every 5 frames to avoid expensive filtering/allocation every frame
-    if (!renderList.length || (Math.floor(timestamp) % 5 === 0)) {
-        renderList = [...(enemies || []), player].filter(e => e);
-    }
-
-    // TimeScale Recovery (Lerp back to 1.0)
-    if (timeScale < 1.0) {
-        timeScale = Math.min(1.0, timeScale + rawDt * 0.8);
-    }
-
-    // Boss Proximity Logic
-    let closestBoss = null;
-    let minDist = 400; // Activation range
-    for (const e of enemies) {
-        if (e.type === 'boss' && e.hp > 0) {
-            const d = Math.hypot(e.x - player.x, e.y - player.y);
-            if (d < minDist) {
-                minDist = d;
-                closestBoss = e;
-            }
-            // Emit aura
-            fx.emitBossAura(e.x, e.y, e.color || '#f0f');
-        }
-    }
+    const rawDt = Math.min(0.1, (timestamp - lastTime) / 1000); const dt = rawDt * timeScale; lastTime = timestamp;
+    if (!renderList.length || (Math.floor(timestamp) % 5 === 0)) { renderList = [...(enemies || []), player].filter(e => e); }
+    if (timeScale < 1.0) timeScale = Math.min(1.0, timeScale + rawDt * 0.8);
+    let closestBoss = null, minDist = 400;
+    for (const e of enemies) { if (e.type === 'boss' && e.hp > 0) { const d = Math.hypot(e.x - player.x, e.y - player.y); if (d < minDist) { minDist = d; closestBoss = e; } fx.emitBossAura(e.x, e.y, e.color || '#f0f'); } }
     uiActiveBoss = closestBoss;
-
-    // Update
-    // --- Phase 29: World Time Tick (1 sec real = 10 game mins) ---
-    worldTime = (worldTime + dt * 10) % 1440;
-    const hour = worldTime / 60;
-    window.isNight = (hour >= 20 || hour < 6);
-
-    if (input) input.update();
-    if (window.mobileControls) window.mobileControls.update(player);
-
-    // --- Phase 3.1: Atmospheric Weather System ---
+    worldTime = (worldTime + dt * 10) % 1440; const hour = worldTime / 60; window.isNight = (hour >= 20 || hour < 6);
+    if (input) input.update(); if (window.mobileControls) window.mobileControls.update(player);
     if (window.fx && player) {
         const theme = window.currentTheme;
         if (theme === 'snow') window.fx.emitBlizzard(renderer.width, renderer.height);
@@ -642,46 +594,25 @@ function gameLoop(timestamp) {
         else if (theme === 'jungle' || theme === 'temple') window.fx.emitRain(renderer.width, renderer.height);
         else if (theme === 'wilderness') window.fx.emitMist(renderer.width, renderer.height);
     }
-
     if (player) {
-        // --- PvP Duel Target Injection ---
         let targetEnemies = enemies;
-        if (network && network.duelOpponentId) {
+        if (network?.duelOpponentId) {
             const opp = Array.from(network.otherPlayers.values()).find(p => p.id === network.duelOpponentId);
-            if (opp) {
-                // Ensure opponent has necessary properties for combat logic
-                opp.hp = opp.hp || 100;
-                opp.maxHp = opp.maxHp || 100;
-                opp.isPlayer = true;
-                targetEnemies = [...enemies, opp];
-            }
+            if (opp) { opp.hp = opp.hp || 100; opp.maxHp = opp.maxHp || 100; opp.isPlayer = true; targetEnemies = [...enemies, opp]; }
         }
-
         player.update(dt, input, targetEnemies, dungeon, (aoe) => aoeZones.push(aoe));
-        // Sync to Server (MMO)
-
-        if (network && network.isConnected) {
+        if (network?.isConnected) {
             network.sendMovement(player.x, player.y, player.animState, player.facingDir);
-            // If Host, sync enemies
             if (network.isHost && enemies.length > 0) {
-                enemySyncTimer += dt;
-                if (enemySyncTimer > 0.1) {
-                    enemySyncTimer = 0;
-                    const enemyData = enemies.filter(e => e.hp > 0).map(e => ({
-                        id: e.syncId, x: e.x, y: e.y, hp: e.hp, anim: e.animState, dir: e.facingDir
-                    }));
+                enemySyncTimer += dt; if (enemySyncTimer > 0.1) {
+                    enemySyncTimer = 0; const enemyData = enemies.filter(e => e.hp > 0).map(e => ({ id: e.syncId, x: e.x, y: e.y, hp: e.hp, anim: e.animState, dir: e.facingDir }));
                     network.sendEnemySync(enemyData);
                 }
             }
         }
-
-        // HP Regen out of combat (passive) + gear-based regen (always active)
         fx.update(dt * 1000);
-
         if (player.hp > 0 && player.hp < player.maxHp) {
-            let hpRegen = (player.lifeRegenPerSec || 0) * dt;
-            // Rift Mod: Cursed (Armor/Res reduction)
-            if (performance.now() - lastHitTime > 5000) hpRegen += player.maxHp * 0.005 * dt;
+            let hpRegen = (player.lifeRegenPerSec || 0) * dt; if (performance.now() - lastHitTime > 5000) hpRegen += player.maxHp * 0.005 * dt;
             if (hpRegen > 0) player.hp = Math.min(player.maxHp, player.hp + hpRegen);
         }
         if (player.mp < player.maxMp && player.hp > 0) {
@@ -689,301 +620,85 @@ function gameLoop(timestamp) {
             player.mp = Math.min(player.maxMp, player.mp + mpRegen);
         }
     }
-
-    if (camera) {
-        camera.w = renderer.width; camera.h = renderer.height;
-        camera.update(dt);
-    }
-
-    // Update entities — pass dungeon for collision checks
+    if (camera) { camera.w = renderer.width; camera.h = renderer.height; camera.update(dt); }
     for (const e of (enemies || [])) e.update(dt, player, dungeon, enemies);
     for (const n of npcs) n.update(dt);
     if (activePet) activePet.update(dt, player, droppedGold);
     if (player) player.updateMinions(dt, enemies, dungeon);
-
-    // Update Projectiles & AoEs
-    projectiles.forEach(p => { if (p && p.update) p.update(dt, enemies, player, dungeon, (aoe) => { if (aoe) aoeZones.push(aoe); }); });
-    projectiles = projectiles.filter(p => p && p.active);
-    aoeZones.forEach(a => { if (a && a.update) a.update(dt, enemies, player); });
+    projectiles.forEach(p => { if (p?.update) p.update(dt, enemies, player, dungeon, (aoe) => { if (aoe) aoeZones.push(aoe); }); });
+    projectiles = projectiles.filter(p => p?.active);
+    aoeZones.forEach(a => { if (a?.update) a.update(dt, enemies, player); });
     aoeZones = aoeZones.filter(a => a && a.active);
-
-    // Update Statuses, DoTs, and physics (knockback)
-    const statusTargets = [player, ...enemies, ...npcs];
-    if (mercenary) statusTargets.push(mercenary);
-    updateStatuses(statusTargets, dt);
-
-    // Update Loot Beams (Tick the particle system for persistence)
-    for (const drop of droppedItems) {
-        if (drop.rarity === 'unique' || drop.rarity === 'set') {
-            const color = drop.rarity === 'unique' ? '#bf642f' : '#00ff00';
-            if (fx && Math.random() < 0.1) fx.emitLootBeam(drop.x, drop.y, color);
-        }
-    }
-
-    // Phase 15: Update Floating Text
-    for (let i = floatingTexts.length - 1; i >= 0; i--) {
-        const ft = floatingTexts[i];
-        ft.y -= 30 * dt; ft.life -= dt;
-        if (ft.life <= 0) floatingTexts.splice(i, 1);
-    }
-
-    if (dialogue) {
-        dialogue.timer -= dt;
-        if (dialogue.timer <= 0) dialogue = null;
-    }
-
-    if (input.click) {
-        checkInteractions(input.click);
-        input.click = null;
-    }
-
+    const st = [player, ...enemies, ...npcs]; if (mercenary) st.push(mercenary); updateStatuses(st, dt);
+    for (const drop of droppedItems) { if ((drop.rarity === 'unique' || drop.rarity === 'set') && fx && Math.random() < 0.1) fx.emitLootBeam(drop.x, drop.y, drop.rarity === 'unique' ? '#bf642f' : '#00ff00'); }
+    for (let i = floatingTexts.length - 1; i >= 0; i--) { const ft = floatingTexts[i]; ft.y -= 30 * dt; ft.life -= dt; if (ft.life <= 0) floatingTexts.splice(i, 1); }
+    if (dialogue) { dialogue.timer -= dt; if (dialogue.timer <= 0) dialogue = null; }
+    if (input.click) { checkInteractions(input.click); input.click = null; }
     if (player && droppedGold.length > 0) {
         for (let i = droppedGold.length - 1; i >= 0; i--) {
-            const dg = droppedGold[i];
-            const dist = Math.hypot(player.x - dg.x, player.y - dg.y);
-            if (dist < 45) {
-                player.gold += dg.amount;
-                addCombatLog(`Auto-picked ${dg.amount} Gold`, 'log-heal');
-                bus.emit('gold:pickup', { amount: dg.amount });
-                droppedGold.splice(i, 1);
-                updateHud(); renderInventory();
+            const dg = droppedGold[i]; if (Math.hypot(player.x - dg.x, player.y - dg.y) < 45) {
+                player.gold += dg.amount; addCombatLog(`Auto-picked ${dg.amount} Gold`, 'log-heal');
+                bus.emit('gold:pickup', { amount: dg.amount }); droppedGold.splice(i, 1); updateHud(); renderInventory();
             }
         }
     }
-
-    // Update Floating Dialogue Position
-    const currentMenuFocus = activeDialogueNpc || activeWaypointObj;
-    if (currentMenuFocus) {
-        const picker = document.getElementById('dialogue-picker');
-        if (picker) {
-            const screen = camera.toScreen(currentMenuFocus.x, currentMenuFocus.y);
-            picker.style.left = `${screen.x - 110}px`;
-            picker.style.top = `${screen.y - 180}px`;
-            // Auto-close if too far
-            if (Math.hypot(player.x - currentMenuFocus.x, player.y - currentMenuFocus.y) > 120) {
-                picker.remove(); activeDialogueNpc = activeWaypointObj = null;
-            }
-        } else {
-            activeDialogueNpc = activeWaypointObj = null;
-        }
-    }
-
-    // Boss check
-    const boss = enemies.find(e => e.type === 'boss');
-    const hpBar = $('boss-hp-bar');
-    if (boss && boss.hp > 0 && state === 'GAME') {
-        hpBar.classList.remove('hidden');
-        const pct = Math.max(0, (boss.hp / boss.maxHp) * 100);
-        $('boss-hp-fill').style.width = `${pct}%`;
-        $('boss-hp-text').textContent = `${Math.ceil(pct)}%`;
-        $('boss-name').textContent = boss.name || 'Act Boss';
-        // --- Phase 3.1: Boss Phase Triggers ---
-        if (pct < 50 && !boss._phase2Triggered) {
-            boss._phase2Triggered = true; boss.moveSpeed *= 1.4; boss.atkSpeed *= 1.3;
-            fx.shake(1000, 10); fx.emitBurst(boss.x, boss.y, '#ff0000', 40, 4);
-            addCombatLog(`${boss.name} enters a FURY!`, 'log-crit');
-            // Subtle visual change (flag for renderer)
-            boss.isEnraged = true;
-        }
-    } else if (hpBar) {
-        hpBar.classList.add('hidden');
-    }
-
-    // Mercenary AI
-    if (mercenary) {
-        if (mercenary.hp > 0) {
-            mercenary.update(dt, player, enemies, dungeon);
-            mercenary._deadNotified = false;
-        } else if (!mercenary._deadNotified) {
-            addCombatLog(`Your companion ${mercenary.name} has fallen!`, 'log-dmg');
-            playDeathSfx(); mercenary._deadNotified = true; updateHud();
-        }
-    }
-
-    checkDeaths();
-    checkAchievements();
-
-    for (const o of gameObjects) {
-        if (o.type === 'portal' || o.type === 'uber_portal' || o.type === 'rift_exit') {
-            if (Math.hypot(player.x - o.x, player.y - o.y) < 20) {
-                addCombatLog('Entering Portal...', 'log-level');
-                nextZone(o.type === 'portal' ? o.interact(player)?.targetZone : o.targetZone);
-                break;
-            }
-        }
-    }
-
-    if (player.hp <= 0 && state === 'GAME') {
-        checkDeaths(); return;
-    }
-
-    if (Math.hypot(player.x - dungeon.exitPos.x, player.y - dungeon.exitPos.y) < 20) {
-        if (isZoneLocked) {
-            if (player.path) player.path = [];
-            player.x -= (dungeon.exitPos.x - player.x) * 0.1;
-            player.y -= (dungeon.exitPos.y - player.y) * 0.1;
-            bus.emit('combat:log', { text: "The ancient evil blocks your path forward!", type: 'log-dmg' });
-        } else {
-            nextZone();
-        }
-    }
-
-    renderer.clear();
-    dungeon.render(renderer, camera);
-    camera.apply(renderer.ctx);
-
-    // Render entities
-    if (player.path && player.path.length > 0) {
-        renderer.ctx.save(); renderer.ctx.globalAlpha = 0.4; renderer.ctx.fillStyle = '#ffff00';
-        for (let i = 0; i < player.path.length; i++) {
-            const p = player.path[i]; const size = 2 - (i / player.path.length);
-            renderer.ctx.beginPath(); renderer.ctx.arc(p.x, p.y, Math.max(0.5, size), 0, Math.PI * 2); renderer.ctx.fill();
-        }
-        renderer.ctx.restore();
-    }
-
+    const b = enemies.find(e => e.type === 'boss'), hb = $('boss-hp-bar');
+    if (b && b.hp > 0 && state === 'GAME') {
+        hb.classList.remove('hidden'); const p = Math.max(0, (b.hp / b.maxHp) * 100);
+        $('boss-hp-fill').style.width = `${p}%`; $('boss-hp-text').textContent = `${Math.ceil(p)}%`; $('boss-name').textContent = b.name || 'Act Boss';
+        if (p < 50 && !b._phase2Triggered) { b._phase2Triggered = true; b.moveSpeed *= 1.4; b.atkSpeed *= 1.3; fx.shake(1000, 10); fx.emitBurst(b.x, b.y, '#ff0000', 40, 4); addCombatLog(`${b.name} enters a FURY!`, 'log-crit'); b.isEnraged = true; }
+    } else if (hb) hb.classList.add('hidden');
+    checkDeaths(); checkAchievements();
+    for (const o of gameObjects) { if ((o.type === 'portal' || o.type === 'uber_portal' || o.type === 'rift_exit') && Math.hypot(player.x - o.x, player.y - o.y) < 20) { addCombatLog('Entering Portal...', 'log-level'); nextZone(o.type === 'portal' ? o.interact(player)?.targetZone : o.targetZone); break; } }
+    if (player.hp <= 0 && state === 'GAME') { checkDeaths(); return; }
+    if (Math.hypot(player.x - dungeon.exitPos.x, player.y - dungeon.exitPos.y) < 20) { if (isZoneLocked) { if (player.path) player.path = []; player.x -= (dungeon.exitPos.x - player.x) * 0.1; player.y -= (dungeon.exitPos.y - player.y) * 0.1; bus.emit('combat:log', { text: "Evil blocks your path!", type: 'log-dmg' }); } else nextZone(); }
+    renderer.clear(); dungeon.render(renderer, camera); camera.apply(renderer.ctx);
+    if (player.path?.length > 0) { renderer.ctx.save(); renderer.ctx.globalAlpha = 0.4; renderer.ctx.fillStyle = '#ffff00'; for (let i = 0; i < player.path.length; i++) { const p = player.path[i]; renderer.ctx.beginPath(); renderer.ctx.arc(p.x, p.y, Math.max(0.5, 2 - (i / player.path.length)), 0, Math.PI * 2); renderer.ctx.fill(); } renderer.ctx.restore(); }
     for (const di of droppedItems) {
-        if (lootFilter >= 1 && (!di.rarity || di.rarity === 'normal')) continue;
-        if (lootFilter >= 2 && di.rarity === 'magic') continue;
+        if (lootFilter >= 1 && (!di.rarity || di.rarity === 'normal')) continue; if (lootFilter >= 2 && di.rarity === 'magic') continue;
         if (di.rarity === 'unique' || di.rarity === 'rare' || di.rarity === 'set') {
             const ctx = renderer.ctx; ctx.save(); ctx.globalCompositeOperation = 'screen';
             const color = di.rarity === 'unique' ? 'rgba(232, 160, 32, 0.6)' : di.rarity === 'set' ? 'rgba(0, 255, 0, 0.5)' : 'rgba(240, 208, 48, 0.5)';
-            const radial = ctx.createRadialGradient(di.x, di.y, 2, di.x, di.y, 12);
-            radial.addColorStop(0, color); radial.addColorStop(1, 'transparent');
+            const radial = ctx.createRadialGradient(di.x, di.y, 2, di.x, di.y, 12); radial.addColorStop(0, color); radial.addColorStop(1, 'transparent');
             ctx.fillStyle = radial; ctx.beginPath(); ctx.arc(di.x, di.y, 12, 0, Math.PI * 2); ctx.fill();
-            const shimmer = 0.6 + Math.sin(lastTime * 0.005) * 0.3; ctx.globalAlpha = shimmer;
+            ctx.globalAlpha = 0.6 + Math.sin(lastTime * 0.005) * 0.3;
             const g = ctx.createLinearGradient(0, di.y, 0, di.y - 120); g.addColorStop(0, color); g.addColorStop(1, 'transparent');
-            ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(di.x - 4, di.y); ctx.lineTo(di.x + 4, di.y); ctx.lineTo(di.x + 1, di.y - 120); ctx.lineTo(di.x - 1, di.y - 120); ctx.closePath(); ctx.fill();
-            ctx.restore();
+            ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(di.x - 4, di.y); ctx.lineTo(di.x + 4, di.y); ctx.lineTo(di.x + 1, di.y - 120); ctx.lineTo(di.x - 1, di.y - 120); ctx.closePath(); ctx.fill(); ctx.restore();
         }
-        renderer.drawSprite(di.icon, di.x, di.y, 14);
-        renderer.ctx.font = '4px Cinzel, serif'; renderer.ctx.textAlign = 'center';
+        renderer.drawSprite(di.icon, di.x, di.y, 14); renderer.ctx.font = '4px Cinzel, serif'; renderer.ctx.textAlign = 'center';
         renderer.ctx.fillStyle = di.rarity === 'unique' ? '#e8a020' : di.rarity === 'set' ? '#00ff00' : di.rarity === 'rare' ? '#f0d030' : di.rarity === 'magic' ? '#4080ff' : '#aaa';
         renderer.ctx.fillText(di.name, di.x, di.y + 10);
     }
-
     renderWorldOverlay(renderer.ctx, renderer.width, renderer.height);
-
-    for (const g of droppedGold) {
-        renderer.fillCircle(g.x, g.y, 4, '#ffd700'); renderer.strokeCircle(g.x, g.y, 4, '#c8972a', 1);
-        renderer.ctx.font = '4px Cinzel, serif'; renderer.ctx.textAlign = 'center'; renderer.ctx.fillStyle = '#fff'; renderer.ctx.fillText(g.amount, g.x, g.y + 7);
-    }
-
-function checkInteractions(click) {
-    const worldPos = camera.toWorld(click.x, click.y);
-
-    // NPCs
-    for (const n of npcs) {
-        const d = Math.hypot(n.x - worldPos.x, n.y - worldPos.y);
-        if (d < 50) {
-            renderDialogueMenu(n);
-            return;
-        }
-    }
-
-    // Objects
-    for (const o of gameObjects) {
-        const d = Math.hypot(o.x - worldPos.x, o.y - worldPos.y);
-        if (d < 20) {
-            const res = o.interact(player);
-            if (res && res.type === 'STASH') {
-                togglePanel('stash');
-            } else if (res && res.type === 'CUBE') {
-                togglePanel('cube');
-            } else if (res && res.type === 'BREAKABLE') {
-                const goldAmt = 5 + Math.floor(Math.random() * 15) * (1 + difficulty * 0.5);
-                droppedGold.push({ x: o.x, y: o.y, amount: Math.round(goldAmt) });
-                if (Math.random() < 0.15) {
-                    const itm = loot.generate(zoneLevel, 'normal');
-                    droppedItems.push({ ...itm, x: o.x, y: o.y });
-                }
-                addCombatLog('You smashed a barrel!', 'log-info');
-                fx.emitBurst(o.x, o.y, '#8b4513', 10, 1.5);
-            } else if (res && res.type === 'PORTAL') {
-                addCombatLog('Entering Portal...', 'log-level');
-                nextZone(res.targetZone);
-            } else if (res && res.type === 'WAYPOINT') {
-                if (!discoveredWaypoints.has(res.zone)) {
-                    discoveredWaypoints.add(res.zone);
-                    addCombatLog('Waypoint Discovered: ' + (ZONE_NAMES[res.zone] || 'Area'), 'log-crit');
-                    saveGame();
-                    if (fx) fx.emitBurst(o.x, o.y, '#ffd700', 30, 2.5);
-                } else {
-                    renderWaypointMenu(o);
-                }
-            } else if (res && res.type === 'SHRINE') {
-                const sType = res.shrineType;
-                let buffName = '';
-                const buffData = { type: '', id: '', value: 0, duration: 60 };
-                if (sType === 'experience') { buffName = 'Experience Shrine (+50% XP)'; buffData.type = 'exp'; buffData.id = 'shrine_exp'; buffData.value = 50; buffData.duration = 120; }
-                else if (sType === 'armor') { buffName = 'Armor Shrine (+100% Defense)'; buffData.type = 'armor'; buffData.id = 'shrine_armor'; buffData.value = 100; }
-                else if (sType === 'combat') { buffName = 'Combat Shrine (+50% Damage)'; buffData.type = 'damage'; buffData.id = 'shrine_damage'; buffData.value = 50; }
-                else if (sType === 'mana') { buffName = 'Mana Shrine (+500% Mana Regen)'; buffData.type = 'mana'; buffData.id = 'shrine_mana'; buffData.value = 500; player.mp = player.maxMp; }
-                else if (sType === 'resist') { buffName = 'Resist Shrine (+75 All Resists)'; buffData.type = 'resist'; buffData.id = 'shrine_resist'; buffData.value = 75; }
-                else if (sType === 'speed') { buffName = 'Stamina Shrine (+30% Move Speed)'; buffData.type = 'speed'; buffData.id = 'shrine_speed'; buffData.value = 30; }
-                player._buffs.push({ ...buffData });
-                player._statsDirty = true;
-                player._recalcStats();
-                addCombatLog('Touched ' + buffName, 'log-heal');
-                fx.emitBurst(o.x, o.y, '#4080ff', 30, 2);
-            }
-            return;
-        }
-    }
-
-    // Manual Pickup
-    for (let i = droppedItems.length - 1; i >= 0; i--) {
-        const di = droppedItems[i];
-        if (Math.hypot(di.x - worldPos.x, di.y - worldPos.y) < 22) {
-            if (Math.hypot(di.x - player.x, di.y - player.y) < 45) {
-                if (player.addToInventory(di)) {
-                    addCombatLog('Picked up ' + di.name, 'log-item');
-                    bus.emit('item:pickup', { item: di });
-                    droppedItems.splice(i, 1);
-                    playLoot(); renderInventory();
-                } else addCombatLog('Inventory full!', 'log-dmg');
-            } else addCombatLog('Too far to pick up', 'log-dmg');
-            return;
-        }
-    }
-}
+    for (const g of droppedGold) { renderer.fillCircle(g.x, g.y, 4, '#ffd700'); renderer.strokeCircle(g.x, g.y, 4, '#c8972a', 1); renderer.ctx.font = '4px Cinzel, serif'; renderer.ctx.textAlign = 'center'; renderer.ctx.fillStyle = '#fff'; renderer.ctx.fillText(g.amount, g.x, g.y + 7); }
     renderList.sort((a, b) => a.y - b.y);
     for (const e of renderList) {
         if (e.isPlayer) {
             renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)'; renderer.ctx.beginPath(); renderer.ctx.ellipse(e.x, e.y + 6, 8, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
             if (e.activeAura) {
-                const auraColors = { might_aura: '#ffd700', prayer_aura: '#40c040', holy_fire_aura: '#ff4000', resist_all: '#4080ff', vigor: '#ffffff', fanaticism: '#ffa000', conviction: '#a040ff' };
-                const auraColor = auraColors[e.activeAura] || '#ffe880';
+                const auraColor = { might_aura: '#ffd700', prayer_aura: '#40c040', holy_fire_aura: '#ff4000', resist_all: '#4080ff', vigor: '#ffffff', fanaticism: '#ffa000', conviction: '#a040ff' }[e.activeAura] || '#ffe880';
                 const pulse = 0.3 + Math.sin(lastTime * 0.004) * 0.15; const auraRadius = 25 + Math.sin(lastTime * 0.003) * 3;
                 renderer.ctx.save(); renderer.ctx.globalAlpha = pulse; renderer.ctx.strokeStyle = auraColor; renderer.ctx.lineWidth = 1.5; renderer.ctx.shadowColor = auraColor; renderer.ctx.shadowBlur = 8;
                 renderer.ctx.beginPath(); renderer.ctx.ellipse(e.x, e.y + 2, auraRadius, auraRadius * 0.4, 0, 0, Math.PI * 2); renderer.ctx.stroke(); renderer.ctx.restore();
             }
-            renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 18, e.animState, e.facingDir, lastTime, null, e.equipment, e.hitFlashTimer);
-            e.renderMinions(renderer, lastTime);
-        } else {
-            e.render(renderer, lastTime);
-        }
+            renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 18, e.animState, e.facingDir, lastTime, null, e.equipment, e.hitFlashTimer); e.renderMinions(renderer, lastTime);
+        } else e.render(renderer, lastTime);
     }
-
-    // (rest of render loop)
-    if (network && network.isConnected) {
+    if (network?.isConnected) {
         network.otherPlayers.forEach(p => {
             renderer.ctx.fillStyle = 'rgba(0,0,0,0.2)'; renderer.ctx.beginPath(); renderer.ctx.ellipse(p.x, p.y + 6, 8, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
             renderer.drawAnim(`class_${p.classId}`, p.x, p.y - 4, 18, p.animState, p.facingDir, lastTime);
             renderer.ctx.font = '6px Cinzel, serif'; renderer.ctx.textAlign = 'center'; renderer.ctx.fillStyle = '#00ffcc'; renderer.ctx.fillText(p.name || 'Hero', p.x, p.y - 20);
         });
     }
-
-    if (mercenary && mercenary.hp > 0) {
+    if (mercenary?.hp > 0) {
         renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)'; renderer.ctx.beginPath(); renderer.ctx.ellipse(mercenary.x, mercenary.y + 6, 6, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
-        renderer.drawAnim('class_rogue', mercenary.x, mercenary.y - 4, 26, mercenary.hp > 0 ? 'idle' : 'walk', 'south', lastTime);
-        const bw = 18; renderer.ctx.fillStyle = '#333'; renderer.ctx.fillRect(mercenary.x - bw / 2, mercenary.y - 14, bw, 2);
-        renderer.ctx.fillStyle = '#4caf50'; renderer.ctx.fillRect(mercenary.x - bw / 2, mercenary.y - 14, bw * (mercenary.hp / mercenary.maxHp), 2);
+        renderer.drawAnim('class_rogue', mercenary.x, mercenary.y - 4, 26, 'idle', 'south', lastTime);
+        const bw = 18; renderer.ctx.fillStyle = '#333'; renderer.ctx.fillRect(mercenary.x - bw / 2, mercenary.y - 14, bw, 2); renderer.ctx.fillStyle = '#4caf50'; renderer.ctx.fillRect(mercenary.x - bw / 2, mercenary.y - 14, bw * (mercenary.hp / mercenary.maxHp), 2);
     }
-
     for (const n of npcs) n.render(renderer, lastTime);
     for (const obj of gameObjects) {
-        if (obj.type === 'shrine' || obj.type === 'waypoint' || obj.type === 'altar') {
+        if (['shrine', 'waypoint', 'altar'].includes(obj.type)) {
             const pulse = 0.4 + Math.sin(lastTime * 0.004) * 0.2; const color = obj.type === 'shrine' ? 'rgba(0, 255, 255,' : 'rgba(255, 215, 0,';
             renderer.ctx.save(); renderer.ctx.globalCompositeOperation = 'screen';
             const radial = renderer.ctx.createRadialGradient(obj.x, obj.y, 4, obj.x, obj.y, 25); radial.addColorStop(0, `${color} ${pulse})`); radial.addColorStop(1, 'transparent');
@@ -991,54 +706,63 @@ function checkInteractions(click) {
         }
         obj.render(renderer, lastTime);
     }
-
-    projectiles.forEach(p => p.render(renderer, lastTime));
-    aoeZones.forEach(a => a.render(renderer, lastTime));
-
-    renderer.ctx.restore();
-    renderer.ctx.save(); renderer.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    if (fx && fx.renderScreen) fx.renderScreen(renderer.ctx, camera);
-    renderer.ctx.restore();
+    projectiles.forEach(p => p.render(renderer, lastTime)); aoeZones.forEach(a => a.render(renderer, lastTime));
+    renderer.ctx.restore(); renderer.ctx.save(); renderer.ctx.setTransform(1, 0, 0, 1, 0, 0); if (fx?.renderScreen) fx.renderScreen(renderer.ctx, camera); renderer.ctx.restore();
     bus.emit('render:effects', { renderer, lastTime });
-
     if (player && renderer && camera) {
-        const screen = camera.toScreen(player.x, player.y - 15);
-        const baseRadius = (150 + (player.lightRadius || 0)); const flicker = Math.sin(Date.now() / 150) * 8;
-        let ambient = zoneLevel === 0 ? 'rgba(0, 0, 4, 0.15)' : zoneLevel <= 3 ? 'rgba(8, 12, 18, 0.70)' : 'rgba(0, 0, 0, 0.85)';
-        renderer.applyLighting(screen.x, screen.y, (baseRadius + flicker) * camera.zoom, ambient);
+        const s = camera.toScreen(player.x, player.y - 15); const r = (150 + (player.lightRadius || 0)); const f = Math.sin(Date.now() / 150) * 8;
+        renderer.applyLighting(s.x, s.y, (r + f) * camera.zoom, zoneLevel === 0 ? 'rgba(0, 0, 4, 0.15)' : zoneLevel <= 3 ? 'rgba(8, 12, 18, 0.70)' : 'rgba(0, 0, 0, 0.85)');
     }
-
-    camera.reset(renderer.ctx);
-    if (dialogue) renderer.text(dialogue.text, renderer.width / 2, renderer.height - 120, { size: 16, align: 'center', color: '#ffd700' });
+    camera.reset(renderer.ctx); if (dialogue) renderer.text(dialogue.text, renderer.width / 2, renderer.height - 120, { size: 16, align: 'center', color: '#ffd700' });
     updateHud();
-
     if (timestamp - lastSaveTime > 30000 && activeSlotId) {
-        lastSaveTime = timestamp;
-        SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty: window._difficulty, waypoints: [...discoveredWaypoints], mercenary: mercenary ? mercenary.serialize() : null, cube, achievements: Array.from(unlockedAchievements) });
-        addCombatLog('Progress Saved.', 'log-info');
+        lastSaveTime = timestamp; SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty: window._difficulty, waypoints: [...discoveredWaypoints], mercenary: mercenary ? mercenary.serialize() : null, cube, achievements: Array.from(unlockedAchievements) }); addCombatLog('Progress Saved.', 'log-info');
     }
-
-    renderer.text(`FPS: ${Math.round(1000 / dt)}`, renderer.width - 20, renderer.height - 20, { size: 10, align: 'right', color: '#555' });
-    renderMinimap();
+    renderer.text(`FPS: ${Math.round(1000 / dt)}`, renderer.width - 20, renderer.height - 20, { size: 10, align: 'right', color: '#555' }); renderMinimap();
     if (showFullMap && explored) {
-        const mw = renderer.width, mh = renderer.height, ts = dungeon.tileSize;
-        const scale = Math.min(mw / (dungeon.width * ts), mh / (dungeon.height * ts)) * 0.8;
+        const mw = renderer.width, mh = renderer.height, ts = dungeon.tileSize, scale = Math.min(mw / (dungeon.width * ts), mh / (dungeon.height * ts)) * 0.8;
         const ox = (mw - (dungeon.width * ts) * scale) / 2, oy = (mh - (dungeon.height * ts) * scale) / 2;
         renderer.ctx.fillStyle = 'rgba(0,0,0,0.7)'; renderer.ctx.fillRect(0, 0, mw, mh);
-        for (let r = 0; r < dungeon.height; r++) {
-            for (let c = 0; c < dungeon.width; c++) {
-                if (!explored[r][c]) continue;
-                const t = dungeon.grid[r][c]; if (t === 1) continue;
-                renderer.ctx.fillStyle = t === 0 ? '#444' : t === 3 ? '#ffd700' : t === 6 ? '#2d5a27' : t === 8 ? '#1e4b85' : '#555';
-                renderer.ctx.fillRect(ox + c * ts * scale, oy + r * ts * scale, ts * scale + 1, ts * scale + 1);
-            }
-        }
+        for (let r = 0; r < dungeon.height; r++) { for (let c = 0; c < dungeon.width; c++) { if (!explored[r][c]) continue; const t = dungeon.grid[r][c]; if (t === 1) continue; renderer.ctx.fillStyle = t === 0 ? '#444' : t === 3 ? '#ffd700' : t === 6 ? '#2d5a27' : t === 8 ? '#1e4b85' : '#555'; renderer.ctx.fillRect(ox + c * ts * scale, oy + r * ts * scale, ts * scale + 1, ts * scale + 1); } }
         renderer.ctx.fillStyle = '#0f0'; renderer.ctx.fillRect(ox + player.x * scale - 2, oy + player.y * scale - 2, 4, 4);
     }
-
     requestAnimationFrame(gameLoop);
 }
-function checkDeaths() {
+
+function checkInteractions(click) {
+    const worldPos = camera.toWorld(click.x, click.y);
+    for (const n of npcs) { if (Math.hypot(n.x - worldPos.x, n.y - worldPos.y) < 50) { renderDialogueMenu(n); return; } }
+    for (const o of gameObjects) {
+        if (Math.hypot(o.x - worldPos.x, o.y - worldPos.y) < 20) {
+            const res = o.interact(player);
+            if (res?.type === 'STASH') togglePanel('stash');
+            else if (res?.type === 'CUBE') togglePanel('cube');
+            else if (res?.type === 'BREAKABLE') {
+                const goldAmt = 5 + Math.floor(Math.random() * 15) * (1 + difficulty * 0.5); droppedGold.push({ x: o.x, y: o.y, amount: Math.round(goldAmt) });
+                if (Math.random() < 0.15) { const itm = loot.generate(zoneLevel, 'normal'); droppedItems.push({ ...itm, x: o.x, y: o.y }); }
+                addCombatLog('You smashed a barrel!', 'log-info'); fx.emitBurst(o.x, o.y, '#8b4513', 10, 1.5);
+            } else if (res?.type === 'PORTAL') { addCombatLog('Entering Portal...', 'log-level'); nextZone(res.targetZone); }
+            else if (res?.type === 'WAYPOINT') { if (!discoveredWaypoints.has(res.zone)) { discoveredWaypoints.add(res.zone); addCombatLog('Waypoint Discovered!', 'log-crit'); saveGame(); if (fx) fx.emitBurst(o.x, o.y, '#ffd700', 30, 2.5); } else renderWaypointMenu(o); }
+            else if (res?.type === 'SHRINE') {
+                const sType = res.shrineType; let buffData = { type: '', id: '', value: 0, duration: 60 };
+                if (sType === 'experience') buffData = { type: 'exp', id: 'shrine_exp', value: 50, duration: 120 };
+                else if (sType === 'armor') buffData = { type: 'armor', id: 'shrine_armor', value: 100 };
+                else if (sType === 'combat') buffData = { type: 'damage', id: 'shrine_damage', value: 50 };
+                else if (sType === 'mana') { buffData = { type: 'mana', id: 'shrine_mana', value: 500 }; player.mp = player.maxMp; }
+                else if (sType === 'resist') buffData = { type: 'resist', id: 'shrine_resist', value: 75 };
+                else if (sType === 'speed') buffData = { type: 'speed', id: 'shrine_speed', value: 30 };
+                player._buffs.push({ ...buffData }); player._statsDirty = true; player._recalcStats(); addCombatLog('Touched Shrine', 'log-heal'); fx.emitBurst(o.x, o.y, '#4080ff', 30, 2);
+            }
+            return;
+        }
+    }
+    for (let i = droppedItems.length - 1; i >= 0; i--) {
+        const di = droppedItems[i]; if (Math.hypot(di.x - worldPos.x, di.y - worldPos.y) < 22) {
+            if (Math.hypot(di.x - player.x, di.y - player.y) < 45) { if (player.addToInventory(di)) { addCombatLog('Picked up ' + di.name, 'log-item'); bus.emit('item:pickup', { item: di }); droppedItems.splice(i, 1); playLoot(); renderInventory(); } else addCombatLog('Inventory full!', 'log-dmg'); } else addCombatLog('Too far to pick up', 'log-dmg');
+            return;
+        }
+    }
+}
     for (const e of enemies) {
         if (e.hp <= 0 && e.state !== 'dead') {
             e.state = 'dead';
@@ -5765,27 +5489,30 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Preload all pixel art assets
     for (const name of ASSET_NAMES) {
-        Assets.load(name, `assets/${name}.png`);
+        let path = `assets/${name}.png`;
+        
+        // Use high-definition map objects if available
+        if (name === 'obj_portal') path = 'assets/map_objects/town_portal.png';
+        if (name === 'obj_waypoint') path = 'assets/map_objects/warp_point.png';
+        if (name === 'obj_chest') path = 'assets/map_objects/treasure_chest.png';
+        if (name === 'obj_chest_open') path = 'assets/map_objects/treasure_chest_open.png';
+        if (name === 'obj_shrine') path = 'assets/map_objects/arcane_shrine.png';
+        if (name === 'obj_shrine_used') path = 'assets/map_objects/arcane_shrine_inactive.png';
+        
+        Assets.load(name, path);
     }
 
     renderSaveSlots();
 
-    $('btn-new-game').addEventListener('click', async () => {
+    $('btn-new-game').addEventListener('click', () => {
         if (!selectedClass) return;
         const nameInput = $('character-name');
         const charName = nameInput ? nameInput.value.trim() : null;
-        if (!charName) { addCombatLog("Please enter a name", 'log-dmg'); return; }
-        
         initAudio();
+        // Set difficulty before starting
         const activeDiffBtn = document.querySelector('.diff-btn.active');
         window._difficulty = activeDiffBtn ? parseInt(activeDiffBtn.dataset.diff) : 0;
-        
-        // In MMO mode, we create the save and THEN return to select or start directly
-        const slotId = SaveSystem.newSlotId();
-        await startGame(slotId, null, charName);
-        
-        // Force a save to initialize the cloud record
-        saveGame();
+        startGame(null, null, charName);
     });
 
     // Difficulty selection wiring
@@ -5864,139 +5591,132 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ——— SAVE SLOT UI ———
-let selectedCharSlot = null;
-
 async function renderSaveSlots() {
-    const listContainer = document.getElementById('char-selection-list');
-    const screenSelect = document.getElementById('screen-char-select');
-    const screenCreate = document.getElementById('screen-char-create');
-    const btnEnter = document.getElementById('btn-enter-world');
-    
-    if (!listContainer) return;
-    
-    let cloudSlots = [];
+    const container = $('save-slots');
+    let slots = [];
     if (DB.isLoggedIn()) {
-        cloudSlots = await DB.getSaves();
-        cloudSlots.forEach(s => s._isCloud = true);
+        slots = await DB.getSaves();
+    } else {
+        slots = SaveSystem.listSlots();
     }
-    
-    const localSlots = SaveSystem.listSlots();
-    localSlots.forEach(s => s._isCloud = false);
+    const btnContinue = $('btn-continue');
 
-    const allSlots = [...cloudSlots, ...localSlots];
-
-    if (allSlots.length === 0) {
-        screenSelect.classList.add('hidden');
-        screenCreate.classList.remove('hidden');
+    if (slots.length === 0) {
+        container.style.display = 'none';
+        btnContinue.disabled = true;
+        btnContinue.style.opacity = '0.5';
         return;
     }
 
-    screenSelect.classList.remove('hidden');
-    screenCreate.classList.add('hidden');
-    listContainer.innerHTML = '';
-    
-    allSlots.forEach(slot => {
+    container.style.display = 'block';
+    btnContinue.style.display = 'none'; // Replace old continue button with slot cards
+
+    container.innerHTML = `<h3 style="color:var(--gold);font-family:'Cinzel',serif;margin-bottom:8px;">Saved Characters</h3>`;
+    for (const slot of slots) {
         const card = document.createElement('div');
-        card.className = 'char-entry';
-        if (selectedCharSlot && selectedCharSlot.id === slot.id) card.classList.add('selected');
-        
-        const typeTag = slot._isCloud ? '<span style="color:var(--cyan); font-size:9px;">[CLOUD]</span>' : '<span style="color:#888; font-size:9px;">[LOCAL]</span>';
-        
+        card.className = 'save-slot-card';
+        const date = new Date(slot.timestamp).toLocaleDateString();
         card.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                <div>
-                    <div class="char-entry-name">${slot.name} ${typeTag}</div>
-                    <div class="char-entry-details">Lvl ${slot.level} ${slot.className}</div>
-                </div>
-                ${(!slot._isCloud && DB.isLoggedIn()) ? `<button class="btn-migrate" title="Migrate to Cloud" data-id="${slot.id}">☁️</button>` : ''}
+            <i class="ra ${getIconForClass(slot.classId)} slot-icon" style="font-size:32px; color:var(--gold); text-shadow: 0 0 8px rgba(255,215,0,0.5);"></i>
+            <div class="slot-info">
+                <div class="slot-name" style="text-shadow: 0 0 4px rgba(255,255,255,0.3);">${slot.name || slot.className}</div>
+                <div class="slot-detail" style="color:#aaa;">Level ${slot.level} ${slot.className} — ${date}</div>
             </div>
+            <button class="slot-delete" title="Delete character">✖</button>
         `;
-        
-        const migrateBtn = card.querySelector('.btn-migrate');
-        if (migrateBtn) {
-            migrateBtn.onclick = async (e) => {
-                e.stopPropagation();
-                if (confirm(`Do you want to migrate ${slot.name} to the Cloud? (It will be available on any device)`)) {
-                    const localData = SaveSystem.loadSlot(slot.id);
-                    if (localData) {
-                        const ok = await DB.upsertSave(slot.id, localData);
-                        if (ok) {
-                            addCombatLog(`${slot.name} successfully migrated!`, 'log-crit');
-                            // Optionally delete local? Better keep as backup for now.
-                            renderSaveSlots();
-                        }
-                    }
+
+        // Click to load
+        card.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('slot-delete')) return;
+
+            let saveData = null;
+            if (DB.isLoggedIn()) {
+                const cloudSaves = await DB.getSaves();
+                const cloudMatch = cloudSaves.find(s => s.id === slot.id);
+                if (cloudMatch) {
+                    saveData = {
+                        player: cloudMatch.player,
+                        zoneLevel: cloudMatch.zoneLevel || 0,
+                        stash: cloudMatch.stash || [],
+                        cube: cloudMatch.cube || [],
+                        mercenary: cloudMatch.mercenary || null,
+                        slotId: cloudMatch.id,
+                        difficulty: cloudMatch.difficulty || 0,
+                        waypoints: cloudMatch.waypoints || [0],
+                    };
                 }
-            };
-        }
+            }
+            if (!saveData) saveData = SaveSystem.loadSlot(slot.id);
 
-        card.onclick = () => {
-            document.querySelectorAll('.char-entry').forEach(e => e.classList.remove('selected'));
-            card.classList.add('selected');
-            selectedCharSlot = slot;
-            btnEnter.disabled = false;
-            updateCharPreview(slot);
-        };
-        
-        listContainer.appendChild(card);
-    });
+            if (saveData) {
+                let pData = null;
+                try { pData = typeof saveData.player === 'string' ? JSON.parse(saveData.player) : saveData.player; } catch (err) { }
+                const maxDiff = (pData && pData.maxDifficulty) ? pData.maxDifficulty : 0;
 
-    if (!selectedCharSlot && allSlots.length > 0) {
-        listContainer.firstChild.click();
+                // Show Difficulty Selection if unlocked
+                const picker = document.createElement('div');
+                picker.className = 'dialogue-picker-menu';
+                picker.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(10,8,5,0.95); border:1px solid #bf642f; padding:20px; z-index:2000; text-align:center; box-shadow:0 0 20px #000; min-width:250px; border-radius:10px;';
+                picker.innerHTML = `<h3 style="color:var(--gold); margin-bottom:15px; font-family:'Cinzel',serif; font-size:18px;">Select Difficulty</h3>`;
+
+                // Show all difficulties up to maxDifficulty
+                for (let d = 0; d <= maxDiff; d++) {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-secondary';
+                    btn.style.cssText = 'display:block; width:100%; margin-bottom:10px; padding:12px; font-weight:bold; font-size:14px;';
+
+                    if (d === 3) {
+                        btn.textContent = '⚡ Rift Mode ⚡';
+                        btn.style.color = '#bf642f'; // Unique orange
+                        btn.style.border = '1px solid #ff9000';
+                    } else {
+                        btn.textContent = DIFFICULTY_NAMES[d];
+                        if (d === 1) btn.style.color = '#ffcc00'; // Nightmare
+                        if (d === 2) btn.style.color = '#ff4400'; // Hell
+                    }
+
+                    btn.onclick = (ev) => {
+                        ev.stopPropagation();
+                        saveData.difficulty = d;
+
+                        // If Rift Mode, override starting zone
+                        if (d === 3) {
+                            saveData.zoneLevel = 26;
+                        } else if (saveData.zoneLevel >= 26) {
+                            // If coming back to normal game, return to Town
+                            saveData.zoneLevel = 0;
+                        }
+
+                        picker.remove();
+                        initAudio();
+                        startGame(slot.id, saveData);
+                    };
+                    picker.appendChild(btn);
+                }
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'btn-secondary small';
+                cancelBtn.style.marginTop = '10px';
+                cancelBtn.textContent = 'Cancel';
+                cancelBtn.onclick = (ev) => { ev.stopPropagation(); picker.remove(); };
+                picker.appendChild(cancelBtn);
+
+                document.body.appendChild(picker);
+            }
+        });
+
+        // Delete button
+        card.querySelector('.slot-delete').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete ${slot.name || slot.className} (Level ${slot.level})?`)) {
+                SaveSystem.deleteSlot(slot.id);
+                renderSaveSlots();
+            }
+        });
+
+        container.appendChild(card);
     }
 }
-
-function updateCharPreview(slot) {
-    const nameEl = document.getElementById('preview-name');
-    const detailsEl = document.getElementById('preview-details');
-    if (nameEl) nameEl.innerText = slot.name;
-    if (detailsEl) detailsEl.innerText = `Level ${slot.level} ${slot.className}`;
-    
-    const renderDiv = document.getElementById('char-preview-render');
-    if (renderDiv) {
-        renderDiv.innerHTML = `<img src="assets/class_${slot.classId}.png" style="height:200px; filter: drop-shadow(0 0 20px rgba(216,176,104,0.4));">`;
-    }
-}
-
-// Wire MMO Menu Events
-document.getElementById('btn-show-create')?.addEventListener('click', () => {
-    document.getElementById('screen-char-select').classList.add('hidden');
-    document.getElementById('screen-char-create').classList.remove('hidden');
-});
-
-document.getElementById('btn-back-to-select')?.addEventListener('click', () => {
-    renderSaveSlots();
-});
-
-document.getElementById('btn-enter-world')?.addEventListener('click', async () => {
-    if (!selectedCharSlot) return;
-    
-    let saveData = null;
-    if (DB.isLoggedIn()) {
-        const cloudSaves = await DB.getSaves();
-        const cloudMatch = cloudSaves.find(s => s.id === selectedCharSlot.id);
-        if (cloudMatch) {
-            saveData = {
-                player: cloudMatch.player,
-                zoneLevel: cloudMatch.zoneLevel || 0,
-                stash: cloudMatch.stash || [],
-                cube: cloudMatch.cube || [],
-                mercenary: cloudMatch.mercenary || null,
-                slotId: cloudMatch.id,
-                difficulty: cloudMatch.difficulty || 0,
-                waypoints: cloudMatch.waypoints || [0],
-            };
-        }
-    }
-    if (!saveData) saveData = SaveSystem.loadSlot(selectedCharSlot.id);
-    
-    if (saveData) {
-        initAudio();
-        const activeDiffBtn = document.querySelector('.diff-btn.active');
-        window._difficulty = activeDiffBtn ? parseInt(activeDiffBtn.dataset.diff) : (saveData.difficulty || 0);
-        startGame(selectedCharSlot.id, saveData);
-    }
-});
 
 // --- Phase 29: World Overlay & Time Logic ---
 function renderWorldOverlay(ctx, w, h) {
@@ -6557,6 +6277,7 @@ function handleBossDeath(boss) {
         portal.targetZone = 0;
         portal.isActPortal = true;
         gameObjects.push(portal);
+
         fx.emitHolyBurst(portal.x, portal.y);
     }
 }
@@ -6576,88 +6297,3 @@ function showActCleared(name, subtitle) {
 
     setTimeout(() => { splash.classList.remove('show'); }, 5000);
 }
-
-// --- Auction House Logic ---
-async function refreshAuctions() {
-    const list = document.getElementById('ah-browse-list');
-    if (!list) return;
-    list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Fetching auctions...</div>';
-    
-    const auctions = await DB.getAuctions();
-    list.innerHTML = auctions.length === 0 ? '<div style="text-align:center; padding:20px; color:#666;">No items listed.</div>' : '';
-    
-    auctions.forEach(a => {
-        const item = a.item_data;
-        const row = document.createElement('div');
-        row.className = 'auction-row';
-        row.innerHTML = `
-            <div class="trade-slot">${getItemHtml(item)}</div>
-            <div class="auction-info">
-                <div class="auction-name" style="color:${getItemColor(item.rarity)}">${item.name}</div>
-                <div class="auction-seller">By: ${a.seller_name}</div>
-            </div>
-            <div class="auction-price">${a.price} G</div>
-            <button class="btn-buy-ah" data-id="${a.id}" data-price="${a.price}">BUY</button>
-        `;
-        
-        row.querySelector('.btn-buy-ah').onclick = async () => {
-            if (player.gold >= a.price) {
-                const ok = await DB.buyAuction(a.id, a.price);
-                if (ok) {
-                    player.gold -= a.price;
-                    player.addToInventory(item);
-                    addCombatLog(`Bought ${item.name} for ${a.price} G!`, 'log-crit');
-                    refreshAuctions();
-                    saveGame();
-                }
-            } else {
-                addCombatLog("Not enough gold!", 'log-dmg');
-            }
-        };
-        list.appendChild(row);
-    });
-}
-
-function getItemColor(rarity) {
-    const colors = { normal: '#fff', magic: '#4850b8', rare: '#ffff00', set: '#00ff00', unique: '#bf642f' };
-    return colors[rarity] || '#fff';
-}
-
-
-// Wire AH Tabs
-document.querySelectorAll('.ah-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        document.querySelectorAll('.ah-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.ah-tab-content').forEach(c => c.classList.add('hidden'));
-        tab.classList.add('active');
-        document.getElementById(`ah-${tab.dataset.tab}-list` || `ah-${tab.dataset.tab}-form`).classList.remove('hidden');
-    });
-});
-
-let ahSelectedItem = null;
-bus.on('inventory:click', (idx) => {
-    const ahPanel = document.getElementById('panel-auction');
-    if (!ahPanel.classList.contains('hidden')) {
-        const item = player.inventory[idx];
-        if (item) {
-            ahSelectedItem = { item, idx };
-            document.getElementById('ah-selected-item-box').innerHTML = getItemHtml(item);
-        }
-    }
-});
-
-document.getElementById('ah-btn-post')?.addEventListener('click', async () => {
-    const price = parseInt(document.getElementById('ah-price-input').value);
-    if (ahSelectedItem && price > 0) {
-        const ok = await DB.postAuction(ahSelectedItem.item, price, player.charName);
-        if (ok) {
-            player.inventory[ahSelectedItem.idx] = null;
-            addCombatLog(`Listed ${ahSelectedItem.item.name} for ${price} Gold.`, 'log-info');
-            document.getElementById('ah-selected-item-box').innerHTML = '';
-            document.getElementById('ah-price-input').value = '';
-            ahSelectedItem = null;
-            renderInventory();
-            saveGame();
-        }
-    }
-});
