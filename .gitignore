@@ -14,16 +14,10 @@ skills-lock.json
 node_modules/
 .npm/
 
-# Assets & Large Binaries (Hosted on GitHub Pages)
-assets/
+# Large Binaries (Keep images for GH Pages, ignore zips)
 *.zip
 *.rar
 *.7z
-*.png
-*.jpg
-*.mp3
-*.ogg
-favicon.ico
 
 # Development / Extracted
 rpg_beings_extracted/
