@@ -1647,7 +1647,9 @@ export class Player {
             magicFind: this.magicFind || 0,
             goldFind: this.goldFind || 0,
             crushingBlow: this.crushingBlow || 0,
-            allSkillBonus: this.allSkillBonus || 0
+            allSkillBonus: this.allSkillBonus || 0,
+            activeAura: this.activeAura,
+            _auraSlvl: this._auraSlvl
         };
     }
 
@@ -1679,6 +1681,8 @@ export class Player {
         p.goldFind = data.goldFind || 0;
         p.crushingBlow = data.crushingBlow || 0;
         p.allSkillBonus = data.allSkillBonus || 0;
+        p.activeAura = data.activeAura || null;
+        p._auraSlvl = data._auraSlvl || 0;
 
         p._recalcStats();
         return p;

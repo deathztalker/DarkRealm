@@ -560,6 +560,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     }
 
     player.setRefs(dungeon, camera, enemies);
+    player.invalidateStats(); // Ensure item/aura stats are recalculated with refs ready
     updateSkillBar();
 
     droppedItems = [];
@@ -568,6 +569,8 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
 
     updateHud();
     updateRiftHud();
+    renderInventory();
+    renderCharacterPanel();
 
     // Ensure boss bar hidden unless zone 5 or rift boss
     isBossZone = zoneLevel === 5 || zoneLevel === 10 || zoneLevel === 15 || zoneLevel === 20 || (zoneLevel > 21 && zoneLevel % 5 === 0);
