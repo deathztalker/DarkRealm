@@ -7197,27 +7197,57 @@ function updateRespawns() {
     }
 }
 
-function addChatMessage(sender, text, type = 'global') {
+let currentChatChannel = 'all';
+
+function addChatMessage(sender, text, type = 'general') {
     const container = document.getElementById('chat-messages');
     if (!container) return;
     
     const div = document.createElement('div');
     div.className = `chat-msg chat-msg-${type}`;
+    div.dataset.channel = type; // Store channel for filtering
     
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     let html = `<span class="chat-msg-time">[${time}]</span>`;
     
-    if (sender) {
-        html += `<span class="chat-msg-sender">${sender}:</span>`;
-    }
+    if (type === 'whisper') html += `<span class="chat-msg-sender">[From ${sender}]:</span>`;
+    else if (type === 'system') html += `<span class="chat-msg-sender">[System]:</span>`;
+    else if (sender) html += `<span class="chat-msg-sender">${sender}:</span>`;
     
     html += `<span class="chat-msg-text">${text}</span>`;
     div.innerHTML = html;
     
+    // Filter logic: only show if channel matches current tab or if 'all'
+    if (currentChatChannel !== 'all' && currentChatChannel !== type) {
+        div.style.display = 'none';
+    }
+    
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
     
-    // Show chat container if it was hidden
-    const chatUI = document.getElementById('mmo-chat-container');
-    if (chatUI) chatUI.classList.remove('hidden');
+    // Auto-limit messages to prevent lag (WoW style)
+    while (container.children.length > 100) {
+        container.removeChild(container.firstChild);
+    }
+}
+
+function setChatChannel(channel) {
+    currentChatChannel = channel;
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    // Update Tab UI
+    document.querySelectorAll('.chat-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.channel === channel);
+    });
+
+    // Filter messages
+    Array.from(container.children).forEach(msg => {
+        if (channel === 'all') {
+            msg.style.display = 'block';
+        } else {
+            msg.style.display = msg.dataset.channel === channel ? 'block' : 'none';
+        }
+    });
+    container.scrollTop = container.scrollHeight;
 }

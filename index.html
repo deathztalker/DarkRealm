@@ -613,10 +613,19 @@
   <script type="module" src="src/main.js"></script>
   <div id="custom-tooltip"></div>
 
-  <!-- MMO Chat UI -->
-  <div id="mmo-chat-container" class="hidden">
-    <div id="chat-messages"></div>
-    <input type="text" id="chat-input" placeholder="Press Enter to chat..." maxlength="100">
+  <!-- MMO WoW-Style Chat UI -->
+  <div id="mmo-chat-container" class="chat-container">
+    <div class="chat-tabs">
+      <button class="chat-tab active" data-channel="all">All</button>
+      <button class="chat-tab" data-channel="general">General</button>
+      <button class="chat-tab" data-channel="combat">Combat</button>
+      <button class="chat-tab" data-channel="system">System</button>
+    </div>
+    <div id="chat-messages" class="chat-messages-area"></div>
+    <div class="chat-input-wrapper">
+      <span id="chat-channel-indicator">[General]:</span>
+      <input type="text" id="chat-input" placeholder="Press Enter to chat..." maxlength="100">
+    </div>
   </div>
 </body>
 
