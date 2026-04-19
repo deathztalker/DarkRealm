@@ -1,40 +1,31 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const path = require('path');
 const cors = require('cors');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-// Enable CORS for Express
-app.use(cors({
-    origin: ["https://deathztalker.github.io", "http://localhost:3000", "http://127.0.0.1:3000"],
-    credentials: true
-}));
+// Enable CORS for Express and Socket.io
+app.use(cors());
 
 const server = http.createServer(app);
-
-// Enable CORS for Socket.io
 const io = new Server(server, {
     cors: {
-        origin: ["https://deathztalker.github.io", "http://localhost:3000", "http://127.0.0.1:3000"],
-        methods: ["GET", "POST"],
-        credentials: true
-    },
-    allowEIO3: true
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
 });
-
-const PORT = process.env.PORT || 3000;
 
 // Health check route
 app.get('/', (req, res) => {
     res.send('MMO Server is running and healthy!');
 });
 
-app.use(express.static(path.join(__dirname, '..')));
-
-// Player states: { socketId: { x, y, animState, facingDir, classId, name } }
+// --- GLOBAL STATE (Volatile) ---
 const players = {};
+const friends = {}; // socketId -> Set(names)
+const activeTrades = {}; // tradeId -> tradeData
 let currentHostId = null;
 
 function electNewHost() {
@@ -53,6 +44,7 @@ io.on('connection', (socket) => {
 
     // Join Game
     socket.on('join', (data) => {
+        if (!data) return;
         players[socket.id] = {
             id: socket.id,
             x: data.x || 0,
@@ -74,7 +66,7 @@ io.on('connection', (socket) => {
 
     // Movement Relay
     socket.on('move', (data) => {
-        if (players[socket.id]) {
+        if (data && players[socket.id]) {
             players[socket.id].x = data.x;
             players[socket.id].y = data.y;
             players[socket.id].animState = data.animState;
@@ -85,32 +77,27 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Combat Relay: Enemy Damaged
-    socket.on('enemy_damaged', (data) => {
-        socket.broadcast.emit('enemy_damaged', data);
-    });
-
-    // Combat Relay: Enemy Death
-    socket.on('enemy_death', (enemyId) => {
-        socket.broadcast.emit('enemy_death', enemyId);
-    });
+    // Combat Relay
+    socket.on('enemy_damaged', (data) => socket.broadcast.emit('enemy_damaged', data));
+    socket.on('enemy_death', (enemyId) => socket.broadcast.emit('enemy_death', enemyId));
+    socket.on('enemy_sync', (enemies) => socket.broadcast.emit('enemy_sync', enemies));
 
     // Chat System
     socket.on('chat_message', (text) => {
         const player = players[socket.id];
-        if (player) {
-            const message = {
+        if (player && text) {
+            io.emit('chat_message', {
                 id: Date.now(),
                 sender: player.name,
                 text: text,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            };
-            io.emit('chat_message', message);
+            });
         }
     });
 
     // Whisper System
     socket.on('whisper', (data) => {
+        if (!data) return;
         const sender = players[socket.id];
         const targetSocketId = Object.keys(players).find(id => players[id].name === data.targetName);
         
@@ -130,30 +117,29 @@ io.on('connection', (socket) => {
     });
 
     // Friends System
-    const friends = {}; // socketId -> Set(names)
     socket.on('add_friend', (name) => {
+        if (!name) return;
         if (!friends[socket.id]) friends[socket.id] = new Set();
         friends[socket.id].add(name);
-        socket.emit('system_message', `${name} added to your friends list.`);
+        socket.emit('system_message', `${name} added to friends.`);
         socket.emit('friends_list', Array.from(friends[socket.id]));
     });
 
     // --- Trade System ---
-    const activeTrades = {}; // tradeId -> { p1, p2, offer1, offer2, lock1, lock2, accept1, accept2 }
-
     socket.on('trade_invite', (targetName) => {
-        const targetId = Object.keys(players).find(id => players[id].name === targetName);
-        if (targetId && targetId !== socket.id) {
-            io.to(targetId).emit('trade_invite', { from: players[socket.id].name, fromId: socket.id });
-            socket.emit('system_message', `Trade invitation sent to ${targetName}.`);
-        } else {
-            socket.emit('system_message', `Player "${targetName}" not found or busy.`);
+        const tid = Object.keys(players).find(id => players[id].name === targetName);
+        if (tid && tid !== socket.id) {
+            io.to(tid).emit('trade_invite', { from: players[socket.id].name, fromId: socket.id });
         }
     });
 
     socket.on('trade_accept', (fromId) => {
         if (!players[fromId] || !players[socket.id]) return;
-        const tradeId = `trade_${Math.min(socket.id, fromId)}_${Math.max(socket.id, fromId)}`;
+        
+        // Correct way to generate unique ID for two strings
+        const ids = [socket.id, fromId].sort();
+        const tradeId = `trade_${ids[0]}_${ids[1]}`;
+
         activeTrades[tradeId] = {
             p1: fromId, p2: socket.id,
             offer1: [], offer2: [],
@@ -165,12 +151,15 @@ io.on('connection', (socket) => {
     });
 
     socket.on('trade_update', (data) => {
+        if (!data || !data.tradeId) return;
         const trade = activeTrades[data.tradeId];
         if (!trade) return;
+
         const isP1 = socket.id === trade.p1;
-        if (isP1) { trade.offer1 = data.offer; trade.lock1 = trade.lock2 = false; }
-        else { trade.offer2 = data.offer; trade.lock1 = trade.lock2 = false; }
-        trade.accept1 = trade.accept2 = false;
+        if (isP1) { trade.offer1 = data.offer; } else { trade.offer2 = data.offer; }
+        
+        // Reset locks and accepts on update
+        trade.lock1 = trade.lock2 = trade.accept1 = trade.accept2 = false;
         
         const partnerId = isP1 ? trade.p2 : trade.p1;
         io.to(partnerId).emit('trade_update', { offer: data.offer });
@@ -179,20 +168,22 @@ io.on('connection', (socket) => {
     });
 
     socket.on('trade_lock', (data) => {
+        if (!data || !data.tradeId) return;
         const trade = activeTrades[data.tradeId];
         if (!trade) return;
-        if (socket.id === trade.p1) trade.lock1 = true;
-        else trade.lock2 = true;
+
+        if (socket.id === trade.p1) trade.lock1 = true; else trade.lock2 = true;
         
         io.to(trade.p1).emit('trade_status', { lock1: trade.lock1, lock2: trade.lock2 });
         io.to(trade.p2).emit('trade_status', { lock1: trade.lock1, lock2: trade.lock2 });
     });
 
     socket.on('trade_confirm', (data) => {
+        if (!data || !data.tradeId) return;
         const trade = activeTrades[data.tradeId];
         if (!trade || !trade.lock1 || !trade.lock2) return;
-        if (socket.id === trade.p1) trade.accept1 = true;
-        else trade.accept2 = true;
+
+        if (socket.id === trade.p1) trade.accept1 = true; else trade.accept2 = true;
 
         if (trade.accept1 && trade.accept2) {
             io.to(trade.p1).emit('trade_execute', { receive: trade.offer2, give: trade.offer1 });
@@ -201,17 +192,11 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Enemy Sync (Host broadcasts)
-    socket.on('enemy_sync', (enemies) => {
-        socket.broadcast.emit('enemy_sync', enemies);
-    });
-
-    // --- PvP Duel System ---
+    // --- Duel System ---
     socket.on('duel_invite', (targetName) => {
-        const targetId = Object.keys(players).find(id => players[id].name === targetName);
-        if (targetId && targetId !== socket.id) {
-            io.to(targetId).emit('duel_invite', { from: players[socket.id].name, fromId: socket.id });
-            socket.emit('system_message', `Duel challenge sent to ${targetName}.`);
+        const tid = Object.keys(players).find(id => players[id].name === targetName);
+        if (tid && tid !== socket.id) {
+            io.to(tid).emit('duel_invite', { from: players[socket.id].name, fromId: socket.id });
         }
     });
 
@@ -222,13 +207,14 @@ io.on('connection', (socket) => {
     });
 
     socket.on('duel_cancel', (targetId) => {
-        io.to(targetId).emit('duel_end', { reason: 'cancelled' });
+        if (targetId) io.to(targetId).emit('duel_end', { reason: 'cancelled' });
     });
 
     // Disconnect
     socket.on('disconnect', () => {
         console.log(`User disconnected: ${socket.id}`);
         delete players[socket.id];
+        delete friends[socket.id];
         
         if (socket.id === currentHostId) {
             electNewHost();
@@ -240,5 +226,5 @@ io.on('connection', (socket) => {
 
 // CRITICAL: Bind to 0.0.0.0 for Railway
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`MMO Server running on port ${PORT}`);
+    console.log(`>>> MMO Server is LIVE on port ${PORT}`);
 });
