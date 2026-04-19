@@ -4,53 +4,119 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 
 const app = express();
-// Prioridad absoluta al puerto de Railway (process.env.PORT)
 const PORT = process.env.PORT || 3000;
 
-console.log('>>> INICIANDO SERVIDOR MMO...');
+console.log('>>> SISTEMA INICIANDO - MODO MMO COMPLETO <<<');
 
+// 1. CORS TOTAL
 app.use(cors());
 
-// Health check instantáneo
-app.get('/', (req, res) => {
-    res.status(200).send('SERVER_ALIVE');
-});
+// 2. HEALTH CHECK INSTANTÁNEO
+app.get('/', (req, res) => res.status(200).send('HEALTHY'));
 
 const server = http.createServer(app);
 
+// 3. SOCKET.IO CON TODO EL PODER
 const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+    cors: { origin: "*", methods: ["GET", "POST"] },
+    transports: ['websocket', 'polling']
 });
 
-// Lógica mínima para validar conexión
+// --- ESTADO GLOBAL ---
+const players = {};
+const friends = {};
+const activeTrades = {}; 
+let currentHostId = null;
+
+function electNewHost() {
+    const ids = Object.keys(players);
+    if (ids.length > 0) {
+        currentHostId = ids[0];
+        io.to(currentHostId).emit('host_assignment', true);
+    } else {
+        currentHostId = null;
+    }
+}
+
 io.on('connection', (socket) => {
-    console.log(`[Socket] Conectado: ${socket.id}`);
-    
+    console.log(`[Socket] + ${socket.id}`);
+
     socket.on('join', (data) => {
-        socket.emit('current_players', {});
-        socket.broadcast.emit('player_joined', { id: socket.id, name: data?.name });
+        if (!data) return;
+        players[socket.id] = {
+            id: socket.id,
+            x: data.x || 0,
+            y: data.y || 0,
+            animState: 'idle',
+            facingDir: 'down',
+            classId: data.classId,
+            name: data.name || 'Stranger'
+        };
+        if (!currentHostId) electNewHost();
+        socket.emit('current_players', players);
+        socket.broadcast.emit('player_joined', players[socket.id]);
     });
 
     socket.on('move', (data) => {
-        socket.broadcast.emit('player_moved', { id: socket.id, ...data });
+        if (data && players[socket.id]) {
+            Object.assign(players[socket.id], data);
+            socket.broadcast.emit('player_moved', players[socket.id]);
+        }
     });
 
+    socket.on('enemy_damaged', (data) => socket.broadcast.emit('enemy_damaged', data));
+    socket.on('enemy_death', (id) => socket.broadcast.emit('enemy_death', id));
+    socket.on('enemy_sync', (data) => socket.broadcast.emit('enemy_sync', data));
+
     socket.on('chat_message', (text) => {
-        io.emit('chat_message', { sender: 'Player', text, time: new Date().toLocaleTimeString() });
+        const p = players[socket.id];
+        if (p && text) {
+            io.emit('chat_message', {
+                id: Date.now(),
+                sender: p.name,
+                text: text,
+                time: new Date().toLocaleTimeString()
+            });
+        }
+    });
+
+    socket.on('whisper', (data) => {
+        if (!data) return;
+        const sender = players[socket.id];
+        const targetSocketId = Object.keys(players).find(id => players[id].name === data.targetName);
+        if (sender && targetSocketId) {
+            const whisper = { id: Date.now(), sender: sender.name, target: data.targetName, text: data.text, time: new Date().toLocaleTimeString() };
+            socket.emit('whisper', whisper);
+            io.to(targetSocketId).emit('whisper', whisper);
+        }
+    });
+
+    // --- SISTEMA DE COMERCIO (RESTAURADO) ---
+    socket.on('trade_invite', (targetName) => {
+        const tid = Object.keys(players).find(id => players[id].name === targetName);
+        if (tid && tid !== socket.id) io.to(tid).emit('trade_invite', { from: players[socket.id].name, fromId: socket.id });
+    });
+
+    socket.on('trade_accept', (fromId) => {
+        if (!players[fromId] || !players[socket.id]) return;
+        const ids = [socket.id, fromId].sort();
+        const tradeId = `trade_${ids[0]}_${ids[1]}`;
+        activeTrades[tradeId] = { p1: fromId, p2: socket.id, offer1: [], offer2: [], lock1: false, lock2: false, accept1: false, accept2: false };
+        io.to(fromId).emit('trade_start', { tradeId, partner: players[socket.id].name });
+        io.to(socket.id).emit('trade_start', { tradeId, partner: players[fromId].name });
     });
 
     socket.on('disconnect', () => {
-        console.log(`[Socket] Desconectado: ${socket.id}`);
+        console.log(`[Socket] - ${socket.id}`);
+        delete players[socket.id];
+        if (socket.id === currentHostId) electNewHost();
+        io.emit('player_left', socket.id);
     });
 });
 
-// Captura de errores para evitar cierres inesperados
 process.on('uncaughtException', (err) => console.error('CRITICAL:', err));
-process.on('unhandledRejection', (reason, promise) => console.error('REJECTION:', reason));
 
+// ESCUCHA SIN RESTRICCIONES (Railway gestiona la IP)
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`>>> MMO SERVER LIVE EN PUERTO ${PORT} <<<`);
+    console.log(`>>> MMO SERVER LIVE ON PORT ${PORT} <<<`);
 });
