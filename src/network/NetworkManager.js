@@ -18,7 +18,11 @@ export class NetworkManager {
     async init() {
         // --- Socket.io for High-Speed Movement Sync ---
         if (typeof io !== 'undefined') {
-            this.socket = io();
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const serverUrl = isLocal ? 'http://localhost:3000' : 'https://darkrealm.up.railway.app'; 
+            
+            console.log(`Connecting to socket server at: ${serverUrl}`);
+            this.socket = io(serverUrl);
             this.setupSocketHandlers();
             this.setupTradeHandlers();
             this.setupDuelHandlers();
