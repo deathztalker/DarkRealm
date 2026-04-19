@@ -3519,6 +3519,23 @@ body.socketing-mode .inv-item:not(.unidentified) {
     cursor: pointer;
 }
 
+.btn-migrate {
+    background: rgba(0, 150, 255, 0.2);
+    border: 1px solid var(--cyan);
+    color: #fff;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.btn-migrate:hover {
+    background: rgba(0, 150, 255, 0.4);
+    box-shadow: 0 0 10px var(--cyan);
+}
+
+
 
 
 

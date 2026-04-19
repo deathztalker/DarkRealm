@@ -362,369 +362,7 @@ function showClassInfo(classId) {
 }
 
 // ——— START GAME ———
-function startGame(slotId = null, loadPlayerData = null, charName = null) {
-    if (!selectedClass && !loadPlayerData) return;
-
-    if (loadPlayerData) {
-        // Loading existing character
-        selectedClass = loadPlayerData.classId;
-        zoneLevel = loadPlayerData.zoneLevel || 0;
-        activeSlotId = loadPlayerData.slotId;
-        campaign.deserialize(loadPlayerData.campaign);
-    } else {
-        // New character
-        zoneLevel = 0; // Start in Town
-        activeSlotId = slotId || SaveSystem.newSlotId();
-        campaign.reset();
-
-        // Starting Gear for new characters
-        if (!loadPlayerData) {
-            player = new Player(selectedClass);
-            window.player = player;
-            Vendor.init(loot, player);
-            if (charName) player.charName = charName;
-
-            const idTome = { ...items.tome_identify, charges: 20, identified: true };
-            const tpTome = { ...items.tome_tp, charges: 20, identified: true };
-            player.addToInventory(idTome);
-            player.addToInventory(tpTome);
-
-            if ($('hardcore-mode') && $('hardcore-mode').checked) {
-                player.isHardcore = true;
-            }
-        }
-    }
-    window._activeSlotId = activeSlotId;
-
-    // Switch screens
-    $('main-menu').classList.remove('active');
-    $('game-screen').classList.add('active');
-    state = 'GAME';
-
-    // Init canvas
-    const canvas = $('game-canvas');
-
-    // Determine zoom level based on screen width
-    const adjustZoom = () => {
-        if (!camera) return;
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-
-        if (width >= 1024) {
-            camera.zoom = 2.0; // Desktop
-        } else if (width > height) {
-            camera.zoom = 1.3; // Mobile Landscape (Cinema / Wide view)
-        } else {
-            camera.zoom = 1.1; // Mobile Portrait (Panoramic view)
-        }
-    };
-
-    renderer = new Renderer(canvas);
-    camera = new Camera(renderer.width, renderer.height, 2.0); // Default to 2.0 initially
-    adjustZoom(); // Apply correct zoom immediately
-
-    window.addEventListener('resize', adjustZoom);
-
-    input = new Input(canvas);
-    window.mobileControls = new MobileControls(input);
-
-    // Initialize Network (MMO)
-    network = new NetworkManager({ 
-        get player() { return player; }, 
-        get enemies() { return enemies; },
-        onChatMessage: (msg) => {
-            const chatBox = document.getElementById('chat-messages');
-            if (chatBox) {
-                const msgEl = document.createElement('div');
-                msgEl.className = 'chat-msg' + (msg.isSystem ? ' system-msg' : '');
-                msgEl.innerHTML = `
-                    <span class="chat-msg-time">[${msg.time}]</span>
-                    <span class="chat-msg-sender">${msg.sender}:</span>
-                    <span class="chat-msg-text">${msg.text}</span>
-                `;
-                chatBox.appendChild(msgEl);
-                chatBox.scrollTop = chatBox.scrollHeight;
-                while (chatBox.children.length > 50) chatBox.removeChild(chatBox.firstChild);
-            }
-        },
-        onWhisper: (msg) => {
-            const chatBox = document.getElementById('chat-messages');
-            if (chatBox) {
-                const isSent = msg.sender === player.charName;
-                const displayPartner = isSent ? msg.target : msg.sender;
-                const prefix = isSent ? `To ${displayPartner}` : `From ${displayPartner}`;
-                
-                const msgEl = document.createElement('div');
-                msgEl.className = 'chat-msg whisper-msg';
-                msgEl.innerHTML = `
-                    <span class="chat-msg-time">[${msg.time}]</span>
-                    <span class="chat-msg-sender">${prefix}:</span>
-                    <span class="chat-msg-text">${msg.text}</span>
-                `;
-                chatBox.appendChild(msgEl);
-                chatBox.scrollTop = chatBox.scrollHeight;
-            }
-        },
-        onFriendsListUpdate: (friends) => {
-            console.log("Friends list updated:", friends);
-            // Optionally update a friends UI panel here
-        }
-    });
-    window.network = network;
-    network.init();
-
-    // MMO Chat Input with Commands
-    const chatInput = document.getElementById('chat-input');
-    const chatContainer = document.getElementById('mmo-chat-container');
-    if (chatInput && chatContainer) {
-        chatContainer.classList.remove('hidden');
-        chatInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                const text = chatInput.value.trim();
-                if (text) {
-                    if (text.startsWith('/w ')) {
-                        const parts = text.split(' ');
-                        const target = parts[1];
-                        const message = parts.slice(2).join(' ');
-                        if (target && message) network.sendWhisper(target, message);
-                    } else if (text.startsWith('/f add ')) {
-                        const name = text.replace('/f add ', '').trim();
-                        if (name) network.addFriend(name);
-                    } else if (text.startsWith('/p invite ')) {
-                        const name = text.replace('/p invite ', '').trim();
-                        network.inviteToParty?.(name);
-                    } else if (text.startsWith('/inspect ')) {
-                        const name = text.replace('/inspect ', '').trim();
-                        network.inspectPlayer?.(name);
-                    } else if (text.startsWith('/trade invite ')) {
-                        const name = text.replace('/trade invite ', '').trim();
-                        network.sendTradeInvite?.(name);
-                    } else if (text === '/trade accept') {
-                        network.acceptTrade?.();
-                    } else if (text.startsWith('/duel ')) {
-                        const name = text.replace('/duel ', '').trim();
-                        network.sendDuelInvite?.(name);
-                    } else if (text === '/duel accept') {
-                        network.acceptDuel?.();
-                    } else if (text === '/ah') {
-                        togglePanel('auction');
-                        refreshAuctions();
-                    } else {
-                        network.sendChat(text);
-                    }
-                    chatInput.value = '';
-                }
-                chatInput.blur();
-                e.stopPropagation();
-            }
-        });
-        
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && document.activeElement !== chatInput && state === 'GAME') {
-                chatInput.focus();
-                e.preventDefault();
-            }
-            if (e.key.toLowerCase() === 'p' && state === 'GAME' && document.activeElement !== chatInput) {
-                togglePanel('social');
-            }
-        });
-    }
-
-    // --- Inspect Handler ---
-    network.game.onInspectData = (data) => {
-        const panel = document.getElementById('panel-inspect');
-        const paperdoll = document.getElementById('inspect-paperdoll');
-        const title = document.getElementById('inspect-title');
-        if (!panel || !paperdoll) return;
-
-        title.innerText = `Inspecting: ${data.charName} (Lvl ${data.level} ${data.classId})`;
-        paperdoll.innerHTML = '';
-        
-        const slots = ['head', 'amulet', 'chest', 'mainhand', 'offhand', 'gloves', 'belt', 'boots', 'ring1', 'ring2'];
-        slots.forEach(slot => {
-            const item = data.equipment[slot];
-            const slotEl = document.createElement('div');
-            slotEl.className = 'inspect-slot';
-            slotEl.style.gridArea = slot;
-            if (item) {
-                const img = document.createElement('img');
-                img.src = renderer.getIconPath(item.baseId);
-                img.style.width = '32px';
-                slotEl.appendChild(img);
-                slotEl.title = item.name;
-            } else {
-                slotEl.style.opacity = '0.3';
-                slotEl.innerText = slot[0].toUpperCase();
-            }
-            paperdoll.appendChild(slotEl);
-        });
-        
-        panel.classList.remove('hidden');
-    };
-
-    // --- Trade Handler ---
-    let myOffer = [];
-    network.game.onTradeStart = (partnerName) => {
-        const panel = document.getElementById('panel-trade');
-        document.getElementById('trade-partner-name').innerText = `${partnerName}'s Offer`;
-        document.getElementById('trade-my-slots').innerHTML = '';
-        document.getElementById('trade-their-slots').innerHTML = '';
-        myOffer = [];
-        panel.classList.remove('hidden');
-    };
-
-    network.game.onTradePartnerUpdate = (offer) => {
-        const container = document.getElementById('trade-their-slots');
-        container.innerHTML = '';
-        offer.forEach(item => {
-            const el = document.createElement('div');
-            el.className = 'trade-slot';
-            if (item) {
-                const img = document.createElement('img');
-                img.src = renderer.getIconPath(item.baseId);
-                img.style.width = '32px';
-                el.appendChild(img);
-            }
-            container.appendChild(el);
-        });
-    };
-
-    network.game.onTradeStatusUpdate = (status) => {
-        const myStatus = document.getElementById('trade-my-status');
-        const theirStatus = document.getElementById('trade-their-status');
-        const lockBtn = document.getElementById('trade-btn-lock');
-        const acceptBtn = document.getElementById('trade-btn-accept');
-
-        myStatus.innerText = status.lock1 ? 'LOCKED' : 'Offering...';
-        myStatus.style.color = status.lock1 ? '#00ff00' : '#888';
-        theirStatus.innerText = status.lock2 ? 'LOCKED' : 'Offering...';
-        theirStatus.style.color = status.lock2 ? '#00ff00' : '#888';
-
-        if (status.lock1 && status.lock2) {
-            acceptBtn.classList.remove('disabled');
-        } else {
-            acceptBtn.classList.add('disabled');
-        }
-    };
-
-    network.game.onTradeExecute = (receive, give) => {
-        // Finalize trade: remove given, add received
-        give.forEach(item => {
-            const idx = player.inventory.findIndex(i => i && i.name === item.name);
-            if (idx !== -1) player.inventory[idx] = null;
-        });
-        receive.forEach(item => {
-            player.addToInventory(item);
-        });
-        
-        bus.emit('combat:log', { text: "Trade Successful!", cls: 'log-level' });
-        document.getElementById('panel-trade').classList.add('hidden');
-        saveGame();
-    };
-
-    document.getElementById('trade-btn-lock').addEventListener('click', () => {
-        network.lockTrade();
-    });
-
-    document.getElementById('trade-btn-accept').addEventListener('click', () => {
-        network.confirmTrade();
-    });
-
-    // Helper for adding items to trade (simplified click from inventory)
-    bus.on('inventory:click', (idx) => {
-        const panel = document.getElementById('panel-trade');
-        if (!panel.classList.contains('hidden')) {
-            const item = player.inventory[idx];
-            if (item && myOffer.length < 9) {
-                myOffer.push(item);
-                network.updateTradeOffer(myOffer);
-                // Update local offer UI
-                const container = document.getElementById('trade-my-slots');
-                const el = document.createElement('div');
-                el.className = 'trade-slot';
-                const img = document.createElement('img');
-                img.src = renderer.getIconPath(item.baseId);
-                img.style.width = '32px';
-                el.appendChild(img);
-                container.appendChild(el);
-            }
-        }
-    });
-
-    // Social Panel Tabs
-    document.querySelectorAll('.social-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-            document.querySelectorAll('.social-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.social-tab-content').forEach(c => c.classList.add('hidden'));
-            tab.classList.add('active');
-            const target = tab.getAttribute('data-tab');
-            document.getElementById(`social-${target}-list`).classList.remove('hidden');
-        });
-    });
-
-    // Start Presence Tracking
-    if (player && DB.isLoggedIn()) {
-        DB.trackPresence(player.charName, dungeon?.zoneLevel || 0);
-    }
-
-    bus.on('social:presenceSync', (onlineUsers) => {
-        renderFriendsList(onlineUsers);
-    });
-}
-
-function renderFriendsList(onlineUsers = {}) {
-    const list = document.getElementById('social-friends-list');
-    if (!list) return;
-    
-    DB.getFriends().then(friends => {
-        list.innerHTML = friends.length === 0 ? '<div style="padding:10px; color:#666;">No friends added. Use /f add Name</div>' : '';
-        
-        friends.forEach(f => {
-            const isOnline = onlineUsers[f.friend_id] || onlineUsers[f.user_id];
-            const name = isOnline ? isOnline[0].charName : 'Friend';
-            const zone = isOnline ? `Zone ${isOnline[0].zoneLevel}` : 'Offline';
-            
-            const el = document.createElement('div');
-            el.className = 'social-row';
-            el.innerHTML = `
-                <div class="status-dot ${isOnline ? 'status-online' : 'status-offline'}"></div>
-                <div class="social-name">${name}</div>
-                <div class="social-zone">${zone}</div>
-            `;
-            list.appendChild(el);
-        });
-    });
-}
-
-function updatePartyHUD(members) {
-    const hud = document.getElementById('party-hud');
-    if (!hud) return;
-    
-    if (!members || members.length <= 1) {
-        hud.classList.add('hidden');
-        return;
-    }
-
-    hud.classList.remove('hidden');
-    hud.innerHTML = '';
-    members.forEach(m => {
-        if (m.id === DB.session?.user.id) return; // Don't show self in side bars
-        const el = document.createElement('div');
-        el.className = 'party-member-card';
-        el.innerHTML = `
-            <div class="party-member-stats">
-                <div class="party-member-name">${m.name}</div>
-                <div class="party-bar"><div class="party-hp-fill" style="width:${(m.hp/m.maxHp)*100}%"></div></div>
-                <div class="party-bar"><div class="party-mp-fill" style="width:${(m.mp/m.maxMp)*100}%"></div></div>
-            </div>
-        `;
-        hud.appendChild(el);
-    });
-}
-
-// ——— START GAME ———
-async function startGame(slotId = null, loadPlayerData = null, charName = null) {
-    if (!selectedClass && !loadPlayerData) return;
+async function startGame(slotId = null, loadPlayerData = null, charName = null) {    if (!selectedClass && !loadPlayerData) return;
 
     if (loadPlayerData) {
         selectedClass = loadPlayerData.classId || (loadPlayerData.player?.classId);
@@ -828,11 +466,9 @@ async function startGame(slotId = null, loadPlayerData = null, charName = null) 
 
     player.setRefs(dungeon, camera, enemies);
     updateHud();
-    isBossZone = zoneLevel === 5 || zoneLevel === 10 || (zoneLevel % 5 === 0);
 
-    lastTime = performance.now();
-    requestAnimationFrame(gameLoop);
-}
+    // Ensure boss bar hidden unless zone 5 or rift boss
+    isBossZone = zoneLevel === 5 || zoneLevel === 10 || zoneLevel === 15 || zoneLevel === 20 || (zoneLevel > 21 && zoneLevel % 5 === 0);
     const bossBar = $('boss-hp-bar');
     if (bossBar && !isBossZone) bossBar.classList.add('hidden');
 
@@ -978,8 +614,6 @@ function gameLoop(timestamp) {
             const mpRegen = player.maxMp * 0.003 * dt + (player.manaRegenPerSec || 0) * dt;
             player.mp = Math.min(player.maxMp, player.mp + mpRegen);
         }
-
-        // Moved to centralized Atmospheric Weather System block above
     }
     if (camera) {
         camera.w = renderer.width;
@@ -1076,7 +710,6 @@ function gameLoop(timestamp) {
     }
 
     // Boss check
-    // Boss check
     const boss = enemies.find(e => e.type === 'boss');
     const hpBar = $('boss-hp-bar');
     if (boss && boss.hp > 0 && state === 'GAME') {
@@ -1098,6 +731,28 @@ function gameLoop(timestamp) {
             boss.isEnraged = true;
         }
     } else {
+        if (hpBar) hpBar.classList.add('hidden');
+    }
+
+    // Render
+    renderer.clear();
+    dungeon.render(renderer, camera);
+
+    camera.apply(renderer.ctx);
+
+    // Render entities
+    for (const e of renderList) {
+        if (e.isPlayer) {
+             // Logic moved to renderer/main loop in previous steps
+             // For now just call render
+             // ...
+        }
+    }
+
+    // (rest of render loop)
+    // ...
+    requestAnimationFrame(gameLoop);
+}
         if (hpBar) hpBar.classList.add('hidden');
     }
 
@@ -6525,14 +6180,18 @@ async function renderSaveSlots() {
     
     if (!listContainer) return;
     
-    let slots = [];
+    let cloudSlots = [];
     if (DB.isLoggedIn()) {
-        slots = await DB.getSaves();
-    } else {
-        slots = SaveSystem.listSlots();
+        cloudSlots = await DB.getSaves();
+        cloudSlots.forEach(s => s._isCloud = true);
     }
+    
+    const localSlots = SaveSystem.listSlots();
+    localSlots.forEach(s => s._isCloud = false);
 
-    if (slots.length === 0) {
+    const allSlots = [...cloudSlots, ...localSlots];
+
+    if (allSlots.length === 0) {
         screenSelect.classList.add('hidden');
         screenCreate.classList.remove('hidden');
         return;
@@ -6542,16 +6201,41 @@ async function renderSaveSlots() {
     screenCreate.classList.add('hidden');
     listContainer.innerHTML = '';
     
-    slots.forEach(slot => {
+    allSlots.forEach(slot => {
         const card = document.createElement('div');
         card.className = 'char-entry';
         if (selectedCharSlot && selectedCharSlot.id === slot.id) card.classList.add('selected');
         
+        const typeTag = slot._isCloud ? '<span style="color:var(--cyan); font-size:9px;">[CLOUD]</span>' : '<span style="color:#888; font-size:9px;">[LOCAL]</span>';
+        
         card.innerHTML = `
-            <div class="char-entry-name">${slot.name}</div>
-            <div class="char-entry-details">Lvl ${slot.level} ${slot.className}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <div>
+                    <div class="char-entry-name">${slot.name} ${typeTag}</div>
+                    <div class="char-entry-details">Lvl ${slot.level} ${slot.className}</div>
+                </div>
+                ${(!slot._isCloud && DB.isLoggedIn()) ? `<button class="btn-migrate" title="Migrate to Cloud" data-id="${slot.id}">☁️</button>` : ''}
+            </div>
         `;
         
+        const migrateBtn = card.querySelector('.btn-migrate');
+        if (migrateBtn) {
+            migrateBtn.onclick = async (e) => {
+                e.stopPropagation();
+                if (confirm(`Do you want to migrate ${slot.name} to the Cloud? (It will be available on any device)`)) {
+                    const localData = SaveSystem.loadSlot(slot.id);
+                    if (localData) {
+                        const ok = await DB.upsertSave(slot.id, localData);
+                        if (ok) {
+                            addCombatLog(`${slot.name} successfully migrated!`, 'log-crit');
+                            // Optionally delete local? Better keep as backup for now.
+                            renderSaveSlots();
+                        }
+                    }
+                }
+            };
+        }
+
         card.onclick = () => {
             document.querySelectorAll('.char-entry').forEach(e => e.classList.remove('selected'));
             card.classList.add('selected');
@@ -6563,7 +6247,7 @@ async function renderSaveSlots() {
         listContainer.appendChild(card);
     });
 
-    if (!selectedCharSlot && slots.length > 0) {
+    if (!selectedCharSlot && allSlots.length > 0) {
         listContainer.firstChild.click();
     }
 }
