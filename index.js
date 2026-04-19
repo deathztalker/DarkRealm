@@ -4,22 +4,21 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 
 const app = express();
+// Railway asigna el puerto automáticamente en process.env.PORT
 const PORT = process.env.PORT || 3000;
 
-// Log de arranque para debug en Railway
-console.log('>>> SYSTEM STARTING...');
+console.log('>>> INICIANDO SERVIDOR MMO...');
 
-// Middleware de CORS
 app.use(cors());
 
-// Health check para Railway
+// Health check mejorado con log
 app.get('/', (req, res) => {
-    res.status(200).send('SERVER_OK');
+    console.log(`[HealthCheck] Petición recibida desde: ${req.ip}`);
+    res.status(200).send('MMO_SERVER_OK');
 });
 
 const server = http.createServer(app);
 
-// Socket.io con configuración de producción
 const io = new Server(server, {
     cors: {
         origin: "*",
@@ -29,7 +28,7 @@ const io = new Server(server, {
     transports: ['websocket', 'polling']
 });
 
-// --- ESTADO DEL JUEGO (VOLÁTIL) ---
+// --- LÓGICA DE JUEGO MANTENIDA ---
 const players = {};
 let currentHostId = null;
 
@@ -44,7 +43,7 @@ function electNewHost() {
 }
 
 io.on('connection', (socket) => {
-    console.log(`+ Player: ${socket.id}`);
+    console.log(`[Socket] Nuevo jugador conectado: ${socket.id}`);
 
     socket.on('join', (data) => {
         if (!data) return;
@@ -69,10 +68,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('enemy_damaged', (data) => socket.broadcast.emit('enemy_damaged', data));
-    socket.on('enemy_death', (id) => socket.broadcast.emit('enemy_death', id));
-    socket.on('enemy_sync', (data) => socket.broadcast.emit('enemy_sync', data));
-
     socket.on('chat_message', (text) => {
         const p = players[socket.id];
         if (p && text) {
@@ -80,13 +75,17 @@ io.on('connection', (socket) => {
                 id: Date.now(),
                 sender: p.name,
                 text: text,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                time: new Date().toLocaleTimeString()
             });
         }
     });
 
+    socket.on('enemy_damaged', (data) => socket.broadcast.emit('enemy_damaged', data));
+    socket.on('enemy_death', (id) => socket.broadcast.emit('enemy_death', id));
+    socket.on('enemy_sync', (data) => socket.broadcast.emit('enemy_sync', data));
+
     socket.on('disconnect', () => {
-        console.log(`- Player: ${socket.id}`);
+        console.log(`[Socket] Jugador desconectado: ${socket.id}`);
         delete players[socket.id];
         if (socket.id === currentHostId) electNewHost();
         io.emit('player_left', socket.id);
@@ -95,6 +94,7 @@ io.on('connection', (socket) => {
 
 process.on('uncaughtException', (err) => console.error('CRITICAL:', err));
 
+// ESCUCHA EN 0.0.0.0 (Obligatorio para Railway)
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`>>> MMO SERVER LIVE ON PORT ${PORT} <<<`);
+    console.log(`>>> MMO SERVER LIVE EN PUERTO ${PORT} <<<`);
 });
