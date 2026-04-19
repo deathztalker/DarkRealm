@@ -857,7 +857,7 @@ function updatePartyHUD(members) {
     updateRiftHud();
 
     // Ensure boss bar hidden unless zone 5 or rift boss
-    const isBossZone = zoneLevel === 5 || zoneLevel === 10 || zoneLevel === 15 || zoneLevel === 20 || (zoneLevel > 21 && zoneLevel % 5 === 0);
+    isBossZone = zoneLevel === 5 || zoneLevel === 10 || zoneLevel === 15 || zoneLevel === 20 || (zoneLevel > 21 && zoneLevel % 5 === 0);
     const bossBar = $('boss-hp-bar');
     if (bossBar && !isBossZone) bossBar.classList.add('hidden');
 
@@ -889,11 +889,17 @@ function updatePartyHUD(members) {
 
 // ——— GAME LOOP ———
 let enemySyncTimer = 0;
+let renderList = [];
 function gameLoop(timestamp) {
     if (state !== 'GAME') return;
     const rawDt = Math.min(0.1, (timestamp - lastTime) / 1000);
     const dt = rawDt * timeScale;
     lastTime = timestamp;
+
+    // Cache the render list every 5 frames to avoid expensive filtering/allocation every frame
+    if (!renderList.length || (Math.floor(timestamp) % 5 === 0)) {
+        renderList = [...(enemies || []), player].filter(e => e);
+    }
 
     // TimeScale Recovery (Lerp back to 1.0)
     if (timeScale < 1.0) {

@@ -328,13 +328,18 @@ export const DB = {
 
     async buyAuction(auctionId, price) {
         if (!this.isLoggedIn()) return false;
-        // En una app real, esto sería una transacción RPC de Postgres para evitar race conditions
-        const { error } = await this.client
-            .from('auctions')
-            .update({ status: 'sold' })
-            .eq('id', auctionId)
-            .eq('status', 'active'); // Evitar doble compra
         
-        return !error;
+        // Usar RPC para transacción atómica
+        const { data, error } = await this.client.rpc('buy_auction', {
+            p_auction_id: auctionId,
+            p_buyer_id: this.session.user.id,
+            p_price: price
+        });
+        
+        if (error) {
+            console.error('Auction purchase error:', error.message);
+            return false;
+        }
+        return data; // Retorna el item_data
     }
 };

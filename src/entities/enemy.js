@@ -552,10 +552,17 @@ export class Enemy {
             this.state = 'flee';
         }
 
+        // --- Optimization: Throttle LOS checks ---
+        this.losCheckTimer = (this.losCheckTimer || 0) - dt;
+        if (this.losCheckTimer <= 0) {
+            this.losCheckTimer = 0.25;
+            this._cachedHasLos = dungeon ? dungeon.hasLineOfSight(this.x, this.y, player.x, player.y) : true;
+        }
+
         let effectiveDistSq = distSq;
         if (effectiveDistSq < aggroRange * aggroRange) {
-            if ((this.state === 'patrol' || this.state === 'idle') && dungeon) {
-                if (!dungeon.hasLineOfSight(this.x, this.y, player.x, player.y)) {
+            if ((this.state === 'patrol' || this.state === 'idle')) {
+                if (!this._cachedHasLos) {
                     effectiveDistSq = Infinity;
                 }
             }
@@ -571,8 +578,7 @@ export class Enemy {
             const angle = Math.atan2(dy, dx);
 
             // Harden LOS: If target obstructed, increment timer. If >4s, drop aggro.
-            const hasLOS = dungeon ? dungeon.hasLineOfSight(this.x, this.y, player.x, player.y) : true;
-            if (!hasLOS) {
+            if (!this._cachedHasLos) {
                 this.lostTargetTimer += dt;
                 if (this.lostTargetTimer > 4.0) {
                     this.state = 'patrol';

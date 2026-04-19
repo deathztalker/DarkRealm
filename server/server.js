@@ -14,6 +14,18 @@ app.use(express.static(path.join(__dirname, '..')));
 
 // Player states: { socketId: { x, y, animState, facingDir, classId, name } }
 const players = {};
+let currentHostId = null;
+
+function electNewHost() {
+    const ids = Object.keys(players);
+    if (ids.length > 0) {
+        currentHostId = ids[0];
+        io.to(currentHostId).emit('host_assignment', true);
+        console.log(`New Host elected: ${currentHostId}`);
+    } else {
+        currentHostId = null;
+    }
+}
 
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
@@ -30,6 +42,8 @@ io.on('connection', (socket) => {
             name: data.name || 'Stranger'
         };
         
+        if (!currentHostId) electNewHost();
+
         // Tell the new player about existing players
         socket.emit('current_players', players);
         
@@ -199,6 +213,12 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log(`User disconnected: ${socket.id}`);
         delete players[socket.id];
+        
+        if (socket.id === currentHostId) {
+            console.log('Host disconnected, migrating...');
+            electNewHost();
+        }
+
         io.emit('player_left', socket.id);
     });
 });

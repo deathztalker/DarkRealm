@@ -96,6 +96,11 @@ export class NetworkManager {
             this.otherPlayers.delete(id);
         });
 
+        this.socket.on('host_assignment', (status) => {
+            this.isHost = status;
+            console.log('Host Assignment:', status ? 'You are now the Zone Host' : 'You are a Guest');
+        });
+
         this.socket.on('enemy_damaged', (data) => {
             const enemy = this.game.enemies?.find(e => e.syncId === data.enemyId);
             if (enemy) enemy.hp -= data.damage;

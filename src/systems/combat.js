@@ -27,6 +27,8 @@ export const DMG_TYPE = {
  * @returns {{ dealt:number, isCrit:bool, type:string }}
  */
 export function calcDamage(attacker, baseDmg, type, defender) {
+    if (!attacker || !defender) return { dealt: 0, isCrit: false, type };
+    
     if (isBlinded(attacker) && Math.random() < 0.5) {
         return { dealt: 0, isCrit: false, type, missed: true };
     }

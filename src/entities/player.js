@@ -55,9 +55,12 @@ export class Player {
         this.baseVit = cls.stats.vit;
         this.baseInt = cls.stats.int;
 
-        this.fleeTimer = 0;
+        this._dots = [];
         this.hitFlashTimer = 0;
         this.lastAttacker = null;
+
+        // --- Optimization: Stats Dirty Flag ---
+        this._statsDirty = true;
 
         // Talent tree
         this.talents = new TalentTree(classId);
@@ -123,6 +126,9 @@ export class Player {
 
     // ─── Stats ───
     _recalcStats() {
+        if (!this._statsDirty) return;
+        this._statsDirty = false;
+
         const s = this._gearStats();
         const ts = this._talentStats();
         for (const k in ts) s[k] = (s[k] || 0) + ts[k];
@@ -1280,8 +1286,10 @@ export class Player {
             default: return false;
         }
         this.statPoints--;
+        this._statsDirty = true;
         this._recalcStats();
         return true;
+    }
     }
 
     // ─── Phase 23: Paragon Support ───
@@ -1310,6 +1318,7 @@ export class Player {
         
         this.paragonStats[category][stat]++;
         this.paragonPoints--;
+        this._statsDirty = true;
         this._recalcStats();
         return true;
     }
@@ -1375,6 +1384,7 @@ export class Player {
 
         const old = this.equipment[slot] || null;
         this.equipment[slot] = item;
+        this._statsDirty = true;
         this._recalcStats();
         return { success: true, swapped: old };
     }
@@ -1383,6 +1393,7 @@ export class Player {
         const item = this.equipment[slot];
         if (!item) return null;
         delete this.equipment[slot];
+        this._statsDirty = true;
         this._recalcStats();
         return item;
     }
@@ -1400,6 +1411,7 @@ export class Player {
 
         this.activeWeaponSet = this.activeWeaponSet === 1 ? 2 : 1;
         
+        this._statsDirty = true;
         this._recalcStats();
         bus.emit('log:add', { text: `Swapped to Weapon Set ${this.activeWeaponSet}`, cls: 'log-info' });
         if (fx) fx.emitBurst(this.x, this.y, '#aaa', 10, 1.2);
