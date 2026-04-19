@@ -1290,7 +1290,6 @@ export class Player {
         this._recalcStats();
         return true;
     }
-    }
 
     // ─── Phase 23: Paragon Support ───
     _paragonStats() {
