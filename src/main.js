@@ -26,6 +26,8 @@ import { fx } from './engine/ParticleSystem.js';
 import { Vendor } from './vendorSystem.js';
 import { VendorUI } from './ui/vendorUI.js';
 import { campaign } from './systems/campaignSystem.js';
+import { NetworkManager } from './network/NetworkManager.js';
+
 
 // Expose globals for external modules
 window.loot = loot;
@@ -371,8 +373,8 @@ async function renderSaveSlots(onlineUsers = {}) {
     let cloudSlots = []; if (DB.isLoggedIn()) { cloudSlots = await DB.getSaves(); cloudSlots.forEach(s => s._isCloud = true); }
     const localSlots = SaveSystem.listSlots(); localSlots.forEach(s => s._isCloud = false);
     const allSlots = [...cloudSlots, ...localSlots];
-    if (allSlots.length === 0) { if(screenSelect) screenSelect.classList.add('hidden'); if(screenCreate) screenCreate.classList.remove('hidden'); return; }
-    if(screenSelect) screenSelect.classList.remove('hidden'); if(screenCreate) screenCreate.classList.add('hidden'); listContainer.innerHTML = '';
+    if (allSlots.length === 0) { if (screenSelect) screenSelect.classList.add('hidden'); if (screenCreate) screenCreate.classList.remove('hidden'); return; }
+    if (screenSelect) screenSelect.classList.remove('hidden'); if (screenCreate) screenCreate.classList.add('hidden'); listContainer.innerHTML = '';
     allSlots.forEach(slot => {
         const card = document.createElement('div'); card.className = 'char-entry'; if (selectedCharSlot && selectedCharSlot.id === slot.id) card.classList.add('selected');
         const isOnline = onlineUsers[slot.id];
@@ -412,8 +414,8 @@ async function startGame(slotId = null, loadPlayerData = null, charName = null) 
         if ($('hardcore-mode')?.checked) player.isHardcore = true;
     }
     window._activeSlotId = activeSlotId;
-    if($('main-menu')) $('main-menu').classList.remove('active');
-    if($('game-screen')) $('game-screen').classList.add('active');
+    if ($('main-menu')) $('main-menu').classList.remove('active');
+    if ($('game-screen')) $('game-screen').classList.add('active');
     state = 'GAME';
 
     const canvas = $('game-canvas');
@@ -622,7 +624,7 @@ function gameLoop(timestamp) {
         if (p < 50 && !b._phase2Triggered) { b._phase2Triggered = true; b.moveSpeed *= 1.4; b.atkSpeed *= 1.3; fx.shake(1000, 10); fx.emitBurst(b.x, b.y, '#ff0000', 40, 4); addCombatLog(`${b.name} enters a FURY!`, 'log-crit'); b.isEnraged = true; }
     } else if (hb) hb.classList.add('hidden');
     if (mercenary) { if (mercenary.hp > 0) mercenary.update(dt, player, enemies, dungeon); else if (!mercenary._deadNotified) { addCombatLog(`Companion ${mercenary.name} fallen!`, 'log-dmg'); playDeathSfx(); mercenary._deadNotified = true; updateHud(); } }
-    
+
     checkAchievements();
 
     for (const o of gameObjects) { if ((o.type === 'portal' || o.type === 'uber_portal' || o.type === 'rift_exit') && Math.hypot(player.x - o.x, player.y - o.y) < 20) { addCombatLog('Entering Portal...', 'log-level'); nextZone(o.type === 'portal' ? o.interact(player)?.targetZone : o.targetZone); break; } }
@@ -709,7 +711,7 @@ function updatePartyHUD(members) {
     members.forEach(m => {
         if (m.id === DB.session?.user.id) return;
         const el = document.createElement('div'); el.className = 'party-member-card';
-        el.innerHTML = `<div class='party-member-stats'><div class='party-member-name'>${m.name}</div><div class='party-bar'><div class='party-hp-fill' style='width:${(m.hp/m.maxHp)*100}%'></div></div><div class='party-bar'><div class='party-mp-fill' style='width:${(m.mp/m.maxMp)*100}%'></div></div></div>`;
+        el.innerHTML = `<div class='party-member-stats'><div class='party-member-name'>${m.name}</div><div class='party-bar'><div class='party-hp-fill' style='width:${(m.hp / m.maxHp) * 100}%'></div></div><div class='party-bar'><div class='party-mp-fill' style='width:${(m.mp / m.maxMp) * 100}%'></div></div></div>`;
         hud.appendChild(el);
     });
 }
@@ -767,13 +769,13 @@ window.addEventListener('DOMContentLoaded', () => {
         Assets.load(name, path);
     }
     renderSaveSlots();
-    
+
     // Auth UI
     if (document.getElementById('btn-open-auth')) document.getElementById('btn-open-auth').onclick = () => document.getElementById('auth-modal').classList.remove('hidden');
     if (document.getElementById('btn-auth-login')) document.getElementById('btn-auth-login').onclick = async () => { const e = document.getElementById('auth-email').value, p = document.getElementById('auth-password').value; const res = await DB.signIn(e, p); if (res.success) { document.getElementById('auth-modal').classList.add('hidden'); renderSaveSlots(); } };
     if (document.getElementById('btn-auth-register')) document.getElementById('btn-auth-register').onclick = async () => { const e = document.getElementById('auth-email').value, p = document.getElementById('auth-password').value; const res = await DB.signUp(e, p); if (res.success) { document.getElementById('auth-modal').classList.add('hidden'); renderSaveSlots(); } };
     if (document.getElementById('btn-logout')) document.getElementById('btn-logout').onclick = async () => { await DB.signOut(); renderSaveSlots(); };
-    
+
     // Commands
     const chatInput = document.getElementById('chat-input');
     if (chatInput) {
@@ -817,9 +819,9 @@ window.addEventListener('DOMContentLoaded', () => {
         const target = document.getElementById(`social-${t.dataset.tab}-list`);
         if (target) target.classList.remove('hidden');
     });
-    
+
     if (document.getElementById('btn-new-game')) document.getElementById('btn-new-game').onclick = () => { if (!selectedClass) return; const nameIn = document.getElementById('character-name'); const name = nameIn ? nameIn.value.trim() : null; if (!name) return; initAudio(); startGame(SaveSystem.newSlotId(), null, name); saveGame(); };
-    if (document.getElementById('btn-export-save')) document.getElementById('btn-export-save').onclick = () => { const data = SaveSystem.exportData(); if (data) { const blob = new Blob([data], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'save.json'; a.click(); } };
+    if (document.getElementById('btn-export-save')) document.getElementById('btn-export-save').onclick = () => { const data = SaveSystem.exportData(); if (data) { const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'save.json'; a.click(); } };
     if (document.getElementById('btn-import-save')) document.getElementById('btn-import-save').onclick = () => document.getElementById('import-file').click();
     if (document.getElementById('import-file')) document.getElementById('import-file').onchange = (e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => { if (SaveSystem.importData(ev.target.result)) renderSaveSlots(); }; r.readAsText(f); } };
     if (document.getElementById('btn-enter-world')) document.getElementById('btn-enter-world').onclick = async () => { if (!selectedCharSlot) return; let saveData = null; if (selectedCharSlot._isCloud) { const cloud = await DB.getSaves(); saveData = cloud.find(s => s.id === selectedCharSlot.id); } else { saveData = SaveSystem.loadSlot(selectedCharSlot.id); } if (saveData) { initAudio(); startGame(selectedCharSlot.id, saveData); } };
