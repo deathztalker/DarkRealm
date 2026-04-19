@@ -164,8 +164,11 @@ export class MobileControls {
         const uiButtons = [
             { id: 'inv', action: 'ui:toggle:inventory', icon: '🎒' },
             { id: 'char', action: 'ui:toggle:character', icon: '📊' },
+            { id: 'merc', action: 'ui:toggle:mercenary', icon: '🛡️' },
+            { id: 'social', action: 'ui:toggle:social', icon: '👥' },
+            { id: 'port', action: 'action:town_portal', icon: '🌀' },
             { id: 'skill', action: 'ui:toggle:talents', icon: '✨' },
-            { id: 'ques', action: 'ui:toggle:journal', icon: '📜' },
+            { id: 'ques', action: 'ui:toggle:quests', icon: '📜' },
             { id: 'map', action: 'ui:toggle:fullmap', icon: '🗺️' }
         ];
 

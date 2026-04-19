@@ -596,7 +596,12 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     explored = Array.from({ length: dungeon.height }, () => Array(dungeon.width).fill(false));
 
     // ─── MMO NETWORK SETUP ────────────────────────────────────────────
-    network = new NetworkManager({ player, enemies, onChatMessage: addChatMessage, onWhisper: addChatMessage });
+    network = new NetworkManager({ 
+        player, 
+        enemies, 
+        onChatMessage: (data) => addChatMessage(data.sender, data.text, data.isSystem ? 'system' : 'general'),
+        onWhisper: (data) => addChatMessage(data.sender, data.text, 'whisper') 
+    });
     window.enemies = enemies; // Expose for proc engine AoE
 
     // Inspect Player → fill panel
@@ -2949,12 +2954,22 @@ function skillTooltipText(skillId) {
 }
 
 function addCombatLog(text, cls = '') {
+    // Original floating log
     const log = $('combat-log');
-    const entry = document.createElement('div');
-    entry.className = `log-entry ${cls}`;
-    entry.textContent = text;
-    log.prepend(entry);
-    while (log.children.length > 15) log.removeChild(log.lastChild);
+    if (log) {
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${cls}`;
+        entry.textContent = text;
+        log.prepend(entry);
+        while (log.children.length > 15) log.removeChild(log.lastChild);
+    }
+
+    // New WoW-Style Chat redirection
+    let channel = 'combat';
+    if (cls === 'log-item' || cls === 'log-unique' || cls === 'log-crit') channel = 'loot';
+    if (cls === 'log-level' || cls === 'log-info') channel = 'system';
+    
+    addChatMessage(null, text, channel);
 }
 
 // ——— MINIMAP ———
@@ -7179,6 +7194,14 @@ window.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('btn-stash')) document.getElementById('btn-stash').onclick = toggleTownPanels;
     if (document.getElementById('btn-cube')) document.getElementById('btn-cube').onclick = toggleTownPanels;
     if (document.getElementById('btn-quests')) document.getElementById('btn-quests').onclick = () => togglePanel('quests');
+
+    // WoW Chat Tab Switching
+    document.querySelectorAll('.chat-tab').forEach(tab => {
+        tab.onclick = (e) => {
+            e.stopPropagation();
+            setChatChannel(tab.dataset.channel);
+        };
+    });
 });
 
 function updateRespawns() {

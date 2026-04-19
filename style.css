@@ -2351,11 +2351,50 @@ body.socketing-mode .inv-slot {
     font-size: 10px;
   }
 
+  /* MOBILE CHAT ADAPTATION */
+  .chat-container {
+    width: 260px !important;
+    height: 120px !important;
+    bottom: 65px !important;
+    left: 5px !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+  }
+  .chat-container:not(:focus-within) {
+    height: 32px !important;
+    background: transparent !important;
+    border-color: transparent !important;
+  }
+  .chat-messages-area { font-size: 11px !important; }
+  .chat-tab { padding: 4px 5px !important; font-size: 8px !important; }
+
+  /* MMO LOGIN MOBILE */
+  #login-screen .panel {
+    width: 95% !important;
+    max-width: none !important;
+    padding: 10px !important;
+    max-height: 95vh;
+    overflow-y: auto;
+  }
+  .class-selection-container {
+    flex-direction: column !important;
+    height: auto !important;
+  }
+  .char-preview-side {
+    width: 100% !important;
+    height: 160px !important;
+    margin-bottom: 10px !important;
+  }
+  #char-preview-pedestal { transform: scale(0.6) !important; margin-top: -20px !important; }
+  .class-selection-main { width: 100% !important; }
+  .class-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 5px !important; }
+  .class-card { padding: 8px !important; }
+  .class-card-name { font-size: 9px !important; }
+
   /* IN-GAME HUD */
   #hud {
-    transform: scale(0.75);
+    transform: scale(0.7);
     transform-origin: bottom center;
-    bottom: -12px;
+    bottom: -15px;
   }
 
   #hud-buttons,
@@ -2367,42 +2406,48 @@ body.socketing-mode .inv-slot {
   body.is-mobile #mercenary-hud {
     top: 5px !important;
     left: 5px !important;
-    transform: scale(0.85);
+    transform: scale(0.7);
+    transform-origin: top left;
   }
 
   /* Landscape Specific Overrides */
   @media (orientation: landscape) {
+    .chat-container {
+      bottom: 5px !important;
+      left: 5px !important;
+      width: 220px !important;
+      height: 90px !important;
+    }
+    .class-selection-container { flex-direction: row !important; }
+    .char-preview-side { width: 35% !important; height: auto !important; }
+    .class-selection-main { width: 65% !important; }
+    .class-grid { grid-template-columns: repeat(5, 1fr) !important; }
+
     #minimap {
       top: auto !important;
       bottom: 10px !important;
       right: 10px !important;
-      width: 120px !important;
-      height: 90px !important;
-      transform: scale(0.9);
+      width: 110px !important;
+      height: 80px !important;
+      transform: scale(0.85);
       transform-origin: bottom right;
     }
 
     #quest-hud {
       top: 60px !important;
       right: 10px !important;
-      width: 130px !important;
-      font-size: 9px;
+      width: 120px !important;
+      font-size: 8px !important;
     }
 
     #hud {
-      transform: scale(0.55) translateX(-50%);
-      bottom: -18px;
-    }
-
-    #mercenary-hud {
-      transform: scale(0.75);
-      transform-origin: top left;
+      transform: scale(0.5) translateX(-50%);
+      bottom: -20px;
     }
   }
 
   #combat-log {
     display: none;
-    /* Too spammy for mobile */
   }
 
   /* PANELS */
