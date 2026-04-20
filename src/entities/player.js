@@ -94,8 +94,8 @@ export class Player {
         this.hpBuffer = 0;
         this.mpBuffer = 0;
 
-        // Aura (paladin)
-        this.activeAura = null;
+        // Auras (Supports multiple: skill, runewords, mercenary)
+        this.activeAuras = new Map(); // id -> level
 
         // Permanent Rewards (Quests)
         this.permanentResists = 0;
