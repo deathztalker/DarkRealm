@@ -859,7 +859,7 @@ export class Player {
         if (!skillId) return;
         if (this.cooldowns[slotIdx] > 0) return;
         const skill = this.skillMap[skillId];
-        if (!skill || skill.type !== 'active') return;
+        if (!skill || (skill.type !== 'active' && skill.type !== 'toggle')) return;
         if (this.mp < (skill.mana || 0)) return;
         const slvl = this.effectiveSkillLevel(skillId);
         if (slvl <= 0) return;

@@ -1421,35 +1421,18 @@ export class LootSystem {
      * @returns {object|null} item or null (no drop)
      */
     roll(enemy, playerStats = {}) {
-        const dropChance = this._dropChance(enemy);
+        // --- TEST MODE: 100% DROP CHANCE ---
+        const dropChance = 1.0; 
         if (Math.random() > dropChance) return null;
 
-        // 10% chance to drop a gem instead of regular equipment
-        if (Math.random() < 0.1) {
-            const gemBases = Object.keys(ITEM_BASES).filter(id => ITEM_BASES[id].type === 'gem');
-            const gemId = gemBases[Math.floor(Math.random() * gemBases.length)];
-            return this._buildItem(gemId, ITEM_BASES[gemId], RARITY.NORMAL, 1);
-        }
+        // Skip gems/potions for testing, force Unique equipment
+        const rarity = RARITY.UNIQUE;
+        const ilvl = Math.max(1, enemy.level + 5);
 
-        const rarity = this._rollRarity(enemy, playerStats.magicFind || 0);
-        const ilvl = Math.max(1, enemy.level + (rarity === RARITY.RARE ? 3 : 0));
-
-        // Unique roll
-        if (rarity === RARITY.UNIQUE) {
-            const eligible = UNIQUES.filter(u => u.dropLvl <= ilvl);
-            if (eligible.length) {
-                const u = eligible[Math.floor(Math.random() * eligible.length)];
-                return this._buildUnique(u);
-            }
-        }
-
-        // Set roll
-        if (rarity === RARITY.SET) {
-            const eligible = SET_ITEMS.filter(s => s.dropLvl <= ilvl);
-            if (eligible.length) {
-                const s = eligible[Math.floor(Math.random() * eligible.length)];
-                return this._buildSetItem(s);
-            }
+        // Use _pickUnique with null baseId to get variety
+        const template = this._pickUnique(null, ilvl);
+        if (template) {
+            return this._buildUnique(template);
         }
 
         return this.generate(ilvl, rarity);
@@ -1469,9 +1452,7 @@ export class LootSystem {
     }
 
     _dropChance(enemy) {
-        return enemy.type === 'boss' ? 1.0
-            : enemy.type === 'elite' ? 0.55
-                : 0.20;
+        return 1.0; // Force drops for testing
     }
 
     _rollRarity(enemy, magicFind = 0) {
@@ -1480,13 +1461,14 @@ export class LootSystem {
     }
 
     _pickUnique(baseId, ilvl) {
-        let matches = UNIQUES.filter(u => u.base === baseId && u.dropLvl <= ilvl);
+        // If baseId is provided, try to match it. If null (Test mode), pick ANY unique.
+        let matches = UNIQUES.filter(u => (!baseId || u.base === baseId) && u.dropLvl <= ilvl);
         
         // --- TEST MODE VARIETY ---
         // If we forced 100% unique but no unique for this base exists at this level,
-        // pick ANY unique close to this level so we don't just drop nothing/fallback to rare.
+        // pick ANY unique regardless of base or level for total variety.
         if (matches.length === 0) {
-            matches = UNIQUES.filter(u => u.dropLvl <= ilvl + 5);
+            matches = UNIQUES; 
         }
 
         return matches.length > 0 ? matches[Math.floor(Math.random() * matches.length)] : null;

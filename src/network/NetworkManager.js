@@ -412,7 +412,10 @@ export class NetworkManager {
         }
     }
 
-    async inviteToParty(name) {
+    async sendPartyInvite(name) {
+        if (this.isConnected) this.socket.emit('party_invite', name);
+
+        // Backup to DB
         const target = await DB.findUserByName(name);
         if (target) {
             if (!this.currentParty) {
@@ -421,13 +424,20 @@ export class NetworkManager {
             } else {
                 await DB.joinParty(target.user_id);
             }
-            this.game.onChatMessage?.({ 
-                sender: 'System', text: `Invited ${name} to party.`, 
-                time: new Date().toLocaleTimeString(), isSystem: true 
-            });
         }
+
+        this.game.onChatMessage?.({
+            sender: 'System', text: `Invited ${name} to party.`,
+            time: new Date().toLocaleTimeString(), isSystem: true
+        });
     }
 
+    acceptPartyInvite(fromId) {
+        if (this.isConnected) {
+            this.socket.emit('party_accept', fromId);
+            this.refreshPartyState();
+        }
+    }
     // --- Inspect Logic ---
     async inspectPlayer(name) {
         const data = await DB.findUserByName(name);

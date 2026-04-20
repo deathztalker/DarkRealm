@@ -241,11 +241,12 @@ export class Enemy {
         if (this.isDuriel) {
             this.name = "Duriel, Lord of Pain";
             this.icon = 'enemy_demon';
-            this.maxHp = Math.round(this.maxHp * 3.5);
-            this.dmg = Math.round(this.dmg * 2.0);
+            this.maxHp = Math.round(base.hp * scale * 3.5 * diffMult);
+            this.dmg = Math.round(base.dmg * scale * 2.0 * diffMult);
             this.hp = this.maxHp;
             this.holyFreezeRadius = 250;
             this.holyFreezeSlow = 0.5;
+            this.isRiftBoss = false; // Ensure not flagged as rift boss
         }
 
         // --- Phase 24: Mephisto Specialized States ---

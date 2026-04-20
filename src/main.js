@@ -1250,8 +1250,8 @@ function gameLoop(timestamp) {
             // --- DRAW SPEECH BUBBLE ABOVE HEAD ---
             const bubble = speechBubbles.get(e.charName || e.name);
             if (bubble && Date.now() < bubble.expires) {
-                const sx = (e.x - renderer.camera.x) * renderer.camera.zoom + renderer.width / 2;
-                const sy = (e.y - 45 - renderer.camera.y) * renderer.camera.zoom + renderer.height / 2;
+                const sx = (e.x - camera.x) * camera.zoom + renderer.width / 2;
+                const sy = (e.y - 45 - camera.y) * camera.zoom + renderer.height / 2;
                 
                 ctx.save();
                 ctx.font = 'bold 10px Arial';
@@ -2104,12 +2104,29 @@ function nextZone(targetZone = null) {
 
         if (targetZone !== null) {
             const targetAct = campaign.getActForZone(targetZone);
-            if (!campaign.isActUnlocked(targetAct) && targetZone !== 0) {
+            if (!campaign.isActUnlocked(targetAct) && targetZone !== 0 && targetZone < 26) {
                 addCombatLog(`! THE NEXT ACT IS LOCKED. Defeat the Act Boss first!`, 'log-dmg');
                 isTransitioning = false;
                 if (overlay) overlay.style.opacity = '0';
                 return;
             }
+            
+            // --- MMO: Ensure each town is generated with its specific NPCs ---
+            const isTown = [0, 6, 11, 16, 21].includes(targetZone);
+            if (isTown && !worldZones[targetZone]) {
+                const townDungeon = new Dungeon(30, 30);
+                townDungeon.generate(targetZone);
+                worldZones[targetZone] = {
+                    dungeon: townDungeon,
+                    enemies: [],
+                    npcs: townDungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, townDungeon)),
+                    gameObjects: townDungeon.objectSpawns.map(s => new GameObject(s.id || s.type, s.x, s.y, s.icon, s.id)),
+                    droppedItems: [],
+                    droppedGold: [],
+                    respawnQueue: []
+                };
+            }
+
             zoneLevel = targetZone;
         } else {
             zoneLevel++;
@@ -6018,7 +6035,7 @@ function sortArray(arr) {
         const ra = rarityWeights[a.rarity] || 0;
         const rb = rarityWeights[b.rarity] || 0;
         if (ra !== rb) return rb - ra;
-        return a.baseId.localeCompare(b.baseId);
+        return (a.baseId || "").localeCompare(b.baseId || "");
     });
 
     for (let i = 0; i < arr.length; i++) {
