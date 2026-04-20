@@ -1,174 +1,135 @@
 /**
- * RANGER — Expanded endgame trees
- * Builds: 1. "Strafe Sniper" — Marksmanship multishot/strafe  2. "Beastmaster" — Nature companions  3. "Trapmaster" — Explosive+Ice traps
+ * RANGER — Class Definition
+ * Three trees: Archery (ranged DPS) · Traps (area control) · Nature (wilderness utility)
  */
 export const RANGER_CLASS = {
     id: 'ranger', name: 'Ranger', icon: '🏹',
-    desc: 'Deadly at range with devastating arrow volleys, loyal beast companions, and cunning traps. Kites circles around melee enemies while the arrows pile up.',
-    stats: { str: 4, dex: 9, vit: 4, int: 3 },
-    statBars: { str: 40, dex: 95, vit: 45, int: 30 },
-    allowedWeapons: ['bow'],
-    allowedOffhand: [],
+    description: 'A master archer and wilderness expert who picks targets from extreme range, controls terrain with traps, and communes with animal companions.',
+    stats: { str: 15, dex: 30, vit: 15, int: 10 },
     trees: [
+
+        // ═══ ARCHERY — High single-target ranged DPS ═══
         {
-            id: 'marksmanship', name: 'Marksmanship', icon: '🎯', nodes: [
+            id: 'archery', name: 'Archery', icon: '🏹',
+            nodes: [
                 {
-                    id: 'power_shot', row: 0, col: 1, type: 'active', icon: '🏹', name: 'Power Shot',
-                    desc: 'Heavy arrow: (15+slvl×8) physical at 140% weapon damage. Pierces 1 enemy.',
-                    endgame: 'slvl 20: 175 piercing. Bread-and-butter ranged attack.',
-                    maxPts: 20, mana: 5, cd: 0, group: 'physical', dmgBase: 15, dmgPerLvl: 8
+                    id: 'magic_arrow', row: 0, col: 1, type: 'active', icon: '🏹', name: 'Magic Arrow',
+                    desc: 'Active · Imbue your arrow with arcane energy for 10 + 5 per point magic damage. No cooldown. Generates 1 mana on hit (free after 10 casts).',
+                    tip: 'Max lvl (20): 110 magic damage per arrow. Main filler attack.',
+                    maxPts: 20, mana: 3, cd: 0, group: 'arrow', dmgBase: 10, dmgPerLvl: 5
                 },
                 {
-                    id: 'multi_shot', row: 1, col: 0, type: 'active', icon: '🏹', name: 'Multi-Shot',
-                    desc: 'Spray (3+slvl/5) arrows in a fan: (8+slvl×4) each.',
-                    endgame: 'slvl 20: 7 arrows × 88 = 616 potential AoE. Screen-wide clear.',
-                    maxPts: 20, mana: 8, cd: 0, group: 'physical', dmgBase: 8, dmgPerLvl: 4, req: 'power_shot:3',
-                    synergies: [{ from: 'power_shot', pctPerPt: 3 }]
-                },
-                {
-                    id: 'guided_arrow', row: 1, col: 2, type: 'active', icon: '🎯', name: 'Guided Arrow',
-                    desc: 'Homing arrow: (12+slvl×7) physical. Always hits. Pierces (1+slvl/10) targets.',
-                    endgame: 'slvl 20: 152 guaranteed-hit, pierces 3. Never misses even invisible enemies.',
-                    maxPts: 20, mana: 8, cd: 0, group: 'physical', dmgBase: 12, dmgPerLvl: 7, req: 'power_shot:5'
-                },
-                {
-                    id: 'bow_mastery', row: 2, col: 0, type: 'passive', icon: '📈', name: 'Bow Mastery',
-                    desc: '+6% bow damage and +2% crit per point.',
-                    endgame: 'slvl 20: +120% bow dmg, +40% crit. Every arrow becomes lethal.',
+                    id: 'bow_mastery', row: 1, col: 0, type: 'passive', icon: '🎯', name: 'Bow Mastery',
+                    desc: 'Passive · +5% projectile damage per point and +5 attack range per point. You can literally shoot from further away as you invest here.',
+                    tip: 'Max lvl (20): +100% damage · +100 attack range. Stack with sniper builds.',
                     maxPts: 20
                 },
                 {
-                    id: 'immolation_arrow', row: 2, col: 1, type: 'active', icon: '🔥', name: 'Immolation Arrow',
-                    desc: 'Fire arrow: (20+slvl×10) fire on impact + burning ground 3s.',
-                    endgame: 'slvl 20: 220 fire + ground burn. Element diversity for physical-immune enemies.',
-                    maxPts: 20, mana: 12, cd: 4, group: 'fire', dmgBase: 20, dmgPerLvl: 10, req: 'power_shot:5'
+                    id: 'multi_shot', row: 1, col: 2, type: 'active', icon: '🏹', name: 'Multi-Shot',
+                    desc: 'Active · Fire 3 + 0.2 per point arrows simultanously in a spread dealing 15 + 7 per point damage each. More arrows appear at higher levels. Great for grouped enemies.',
+                    tip: 'Max lvl (20): 7 arrows × 155 damage each. Effective vs packs.',
+                    maxPts: 20, mana: 12, cd: 1.5, group: 'arrow', dmgBase: 15, dmgPerLvl: 7, req: 'magic_arrow:3'
                 },
                 {
-                    id: 'strafe', row: 3, col: 0, type: 'active', icon: '🌀', name: 'Strafe',
-                    desc: 'Rapid-fire all visible enemies for 3s: (6+slvl×4) per arrow, 4 arrows/s.',
-                    endgame: 'slvl 20: 86/arrow × 4/s × 3s = 1032 total spread across all enemies.',
-                    maxPts: 20, mana: 14, cd: 8, group: 'physical', dmgBase: 6, dmgPerLvl: 4, req: 'multi_shot:10',
-                    synergies: [{ from: 'multi_shot', pctPerPt: 4 }]
+                    id: 'hunters_mark', row: 2, col: 1, type: 'active', icon: '🎯', name: 'Hunter\'s Mark',
+                    desc: 'Active · Brand a target with a hunting mark for 10 + 1 per point seconds. All your attacks against the marked target deal +30% damage, and the target cannot stealth or hide.',
+                    tip: 'Max lvl (20): +30% damage multiplier for 30s. Open every boss fight.',
+                    maxPts: 20, mana: 5, cd: 0
                 },
                 {
-                    id: 'mark_death', row: 3, col: 2, type: 'active', icon: '💀', name: 'Mark for Death',
-                    desc: 'Mark target: takes +(50+slvl×3)% damage from all sources for 10s.',
-                    endgame: 'slvl 20: +110% damage taken. Combined with Strafe = evaporate bosses.',
-                    maxPts: 20, mana: 6, cd: 15, group: 'buff', req: 'guided_arrow:5'
+                    id: 'rapid_fire', row: 3, col: 0, type: 'active', icon: '⚡', name: 'Rapid Fire',
+                    desc: 'Active · Channel a rapid salvo of 10 + 0.5 per point arrows in 2 seconds dealing 10 + 6 per point physical damage each. No cooldown. The ultimate sustained ranged DPS channel.',
+                    tip: 'Max lvl (20): 20 arrows × 130 each = 2,600 in 2s.',
+                    maxPts: 20, mana: 18, cd: 0, group: 'arrow', dmgBase: 10, dmgPerLvl: 6, req: 'multi_shot:5'
                 },
                 {
-                    id: 'rain_of_arrows', row: 4, col: 1, type: 'active', icon: '🌧️', name: 'Rain of Arrows',
-                    desc: 'Ultimate: arrow rain on target area for 5s: (12+slvl×7) per hit, 5 hits/s.',
-                    endgame: 'slvl 20: 152/hit × 5/s × 5s = 3800 total AoE. Endgame room-clear.',
-                    maxPts: 20, mana: 25, cd: 30, group: 'physical', dmgBase: 12, dmgPerLvl: 7, req: 'strafe:10',
-                    synergies: [{ from: 'bow_mastery', pctPerPt: 5 }]
+                    id: 'guided_arrow', row: 3, col: 2, type: 'active', icon: '✨', name: 'Guided Arrow',
+                    desc: 'Active · Fire a magical arrow that homes in on the nearest enemy dealing 35 + 15 per point magic damage. Always hits its target — no skill shot required.',
+                    tip: 'Max lvl (20): 335 magic damage · guaranteed hit. Boss-killing reliable damage.',
+                    maxPts: 20, mana: 14, cd: 2, group: 'arrow', dmgBase: 35, dmgPerLvl: 15, req: 'hunters_mark:5'
+                },
+                {
+                    id: 'strafe', row: 4, col: 1, type: 'active', icon: '🌀', name: 'Strafe',
+                    desc: 'Active · Lock in an automatic firing stance for 5 seconds, automatically firing at the nearest enemy every 0.5s for 20 + 8 per point physical damage. You can still move while strafing.',
+                    tip: 'Max lvl (20): 180 per shot every 0.5s for 5s = 1,800 total hands-free DPS.',
+                    maxPts: 20, mana: 20, cd: 8, group: 'arrow', dmgBase: 20, dmgPerLvl: 8, req: 'rapid_fire:5',
+                    synergies: [{ from: 'bow_mastery', pctPerPt: 4 }]
                 },
             ]
         },
+
+        // ═══ TRAPS — Terrain control ═══
         {
-            id: 'nature_ranger', name: 'Nature', icon: '🌿', nodes: [
+            id: 'traps', name: 'Traps', icon: '⚙️',
+            nodes: [
                 {
-                    id: 'companion_hawk', row: 0, col: 1, type: 'active', icon: '🦅', name: 'Summon Hawk',
-                    desc: 'Call a hawk companion: (8+slvl×4) physical with blinding attack every 5s.',
-                    endgame: 'slvl 20: 88 dmg hawk + periodic blind. Ranged pet with utility.',
-                    maxPts: 20, mana: 20, cd: 60, group: 'summon'
+                    id: 'frost_trap', row: 0, col: 1, type: 'active', icon: '🧊', name: 'Frost Trap',
+                    desc: 'Active · Plant a trap that freezes the first enemy to trigger it solid for 2 + 0.1 per point seconds and deals 15 + 6 per point cold damage in an AoE.',
+                    tip: 'Max lvl (20): 4s freeze + 135 cold AoE. Perfect chokepoint controller.',
+                    maxPts: 20, mana: 10, cd: 1.5
                 },
                 {
-                    id: 'ensnare', row: 1, col: 0, type: 'active', icon: '🕸️', name: 'Ensnare',
-                    desc: 'Net arrow: roots target for (2+slvl×0.1)s. Cannot move, can still attack.',
-                    endgame: 'slvl 20: 4s root at range. Kiting essential.',
-                    maxPts: 20, mana: 7, cd: 3, group: 'buff'
-                },
-                {
-                    id: 'viper_arrow', row: 1, col: 2, type: 'active', icon: '🐍', name: 'Viper Arrow',
-                    desc: 'Poison arrow: (5+slvl×3) poison/s for 5s. Stacks up to 4 times.',
-                    endgame: 'slvl 20: 65/s × 4 stacks = 260 poison/s sustained. Excellent DoT.',
-                    maxPts: 20, mana: 9, cd: 0, group: 'poison', dmgBase: 5, dmgPerLvl: 3
-                },
-                {
-                    id: 'comp_mastery', row: 2, col: 0, type: 'passive', icon: '📈', name: 'Companion Mastery',
-                    desc: '+10% pet damage and +8% pet HP per point.',
-                    endgame: 'slvl 20: +200% pet dmg, +160% HP. Transforms pets into real threats.',
+                    id: 'trap_mastery_r', row: 1, col: 0, type: 'passive', icon: '🔧', name: 'Trap Mastery',
+                    desc: 'Passive · +5% trap damage per point and trap blast radius grows +4% per point. At 5 points, you can have 2 traps active simultaneously.',
+                    tip: 'Max lvl (20): +100% trap damage · much larger explosion areas · 2 traps at 5pts.',
                     maxPts: 20
                 },
                 {
-                    id: 'spirit_guide', row: 2, col: 1, type: 'active', icon: '👻', name: 'Spirit Guide',
-                    desc: 'Nature spirit: grants party +(15+slvl×1.5)% move speed and (3+slvl×1) HP regen/s.',
-                    endgame: 'slvl 20: +45% speed + 23 HP regen for party. Travel and sustain combo.',
-                    maxPts: 20, mana: 14, cd: 60, group: 'buff', req: 'companion_hawk:5'
+                    id: 'ensnare', row: 1, col: 2, type: 'active', icon: '🕸️', name: 'Ensnare',
+                    desc: 'Active · Fire a net that roots a target for 2 + 0.1 per point seconds preventing movement. Also slows nearby enemies by 30% for the duration.',
+                    tip: 'Max lvl (20): 4s root + 30% AoE slow. Standard opener for a trapped target.',
+                    maxPts: 20, mana: 8, cd: 6
                 },
                 {
-                    id: 'wolf_pack', row: 3, col: 0, type: 'active', icon: '🐾', name: 'Call Wolf Pack',
-                    desc: 'Summon (2+slvl/5) wolves for (20+slvl×2)s. Wolves: (8+slvl×4) dmg with pack bonus (+10%/wolf).',
-                    endgame: 'slvl 20: 6 wolves for 60s, 88 dmg each + 60% pack bonus = 141 each. 846 DPS total.',
-                    maxPts: 20, mana: 22, cd: 45, group: 'summon', req: 'ensnare:10'
+                    id: 'viper_arrow', row: 2, col: 1, type: 'active', icon: '🐍', name: 'Viper Arrow',
+                    desc: 'Active · Shoot a arrow coated in deadly venom dealing 5 + 3 per point poison damage per second for 5 seconds. Combines with Hunter\'s Mark for amplified DoT.',
+                    tip: 'Max lvl (20): 65/s × 5s = 325 total poison per hit.',
+                    maxPts: 20, mana: 6, cd: 0, group: 'poison', dmgBase: 5, dmgPerLvl: 3, req: 'frost_trap:3'
                 },
                 {
-                    id: 'harmony', row: 3, col: 2, type: 'active', icon: '🌈', name: 'Nature\'s Harmony',
-                    desc: 'Heal all allies and companions for (30+slvl×12) HP. Removes 1 debuff from each.',
-                    endgame: 'slvl 20: 270 AoE heal + cleanse. Group sustain.',
-                    maxPts: 20, mana: 16, cd: 15, group: 'buff', req: 'spirit_guide:5'
-                },
-                {
-                    id: 'valkyrie', row: 4, col: 1, type: 'active', icon: '👼', name: 'Call Valkyrie',
-                    desc: 'Celestial protector: (200+slvl×50) HP and (15+slvl×8) physical dmg. Spear attacks pierce. Indestructible tank.',
-                    endgame: 'slvl 20: 1200 HP celestial ally. Best tank in the game for snipers.',
-                    maxPts: 20, mana: 40, cd: 90, group: 'summon', req: 'wolf_pack:10',
-                    synergies: [{ from: 'comp_mastery', pctPerPt: 5 }]
+                    id: 'ice_trap', row: 3, col: 1, type: 'active', icon: '❄️', name: 'Ice Trap',
+                    desc: 'Active · A powerful freeze trap dealing 35 + 15 per point cold damage that freezes all enemies in range for 1.5 seconds. ★ Synergy: +4% damage per Trap Mastery point.',
+                    tip: 'Max lvl (20): 335 cold AoE + 1.5s freeze.',
+                    maxPts: 20, mana: 15, cd: 1.5, group: 'cold', dmgBase: 35, dmgPerLvl: 15, req: 'ensnare:3',
+                    synergies: [{ from: 'trap_mastery_r', pctPerPt: 4 }]
                 },
             ]
         },
+
+        // ═══ NATURE — Companions and wilderness ═══
         {
-            id: 'traps_ranger', name: 'Traps', icon: '⚙️', nodes: [
+            id: 'nature', name: 'Nature', icon: '🌿',
+            nodes: [
                 {
-                    id: 'spike_trap', row: 0, col: 1, type: 'active', icon: '⚙️', name: 'Spike Trap',
-                    desc: 'Ground spikes: (10+slvl×5) physical when triggered. Max 3 active.',
-                    endgame: 'slvl 20: 110 physical per trap × 3 = area denial.',
-                    maxPts: 20, mana: 8, cd: 3, group: 'physical', dmgBase: 10, dmgPerLvl: 5
+                    id: 'companion_hawk', row: 0, col: 1, type: 'active', icon: '🦅', name: 'Hawk Companion',
+                    desc: 'Active · Summon a combat hawk that attacks alongside you dealing 8 + 4 per point physical damage per hit with a 10% chance to blind for 2s. Persistent companion until killed.',
+                    tip: 'Max lvl (20): Hawk deals 88 per hit with free blinds on 10% of hits.',
+                    maxPts: 20, mana: 20, cd: 5
                 },
                 {
-                    id: 'ice_trap', row: 1, col: 0, type: 'active', icon: '❄️', name: 'Ice Trap',
-                    desc: 'Triggered: (12+slvl×6) cold AoE + freeze 1.5s. Max 3 active.',
-                    endgame: 'slvl 20: 132 cold + 1.5s freeze per trap. Freeze-lock corridors.',
-                    maxPts: 20, mana: 10, cd: 3, group: 'cold', dmgBase: 12, dmgPerLvl: 6, req: 'spike_trap:3'
-                },
-                {
-                    id: 'trap_mastery_r', row: 1, col: 2, type: 'passive', icon: '📈', name: 'Trap Mastery',
-                    desc: '+8% trap damage and +5% trap area per point.',
-                    endgame: 'slvl 20: +160% trap dmg, +100% area. Traps cover entire rooms.',
+                    id: 'tracking', row: 1, col: 0, type: 'passive', icon: '👁️', name: 'Tracking',
+                    desc: 'Passive · +3% movement speed per point and +2% critical chance per point against debuffed enemies. The wilderness survival passive — faster and deadlier.',
+                    tip: 'Max lvl (20): +60% move speed · +40% crit vs debuffed targets.',
                     maxPts: 20
                 },
                 {
-                    id: 'scatter_shot', row: 2, col: 1, type: 'active', icon: '💥', name: 'Scatter Shot',
-                    desc: 'Shrapnel arrow: (15+slvl×8) physical AoE + knockback all enemies.',
-                    endgame: 'slvl 20: 175 AoE + knockback. Emergency crowd control.',
-                    maxPts: 20, mana: 12, cd: 6, group: 'physical', dmgBase: 15, dmgPerLvl: 8
+                    id: 'nature_mastery', row: 1, col: 2, type: 'passive', icon: '🌿', name: 'Nature Affinity',
+                    desc: 'Passive · +4% poison damage per point and +2% lightning damage per point. The nature-element passive for rangers who blend magic with arrows.',
+                    tip: 'Max lvl (20): +80% poison damage · +40% lightning damage.',
+                    maxPts: 20
                 },
                 {
-                    id: 'fire_trap_r', row: 2, col: 0, type: 'active', icon: '🔥', name: 'Fire Trap',
-                    desc: 'Triggered: (18+slvl×9) fire explosion + 3s burning ground. Max 3 active.',
-                    endgame: 'slvl 20: 198 fire + ground burn. Multi-element trap coverage.',
-                    maxPts: 20, mana: 12, cd: 3, group: 'fire', dmgBase: 18, dmgPerLvl: 9, req: 'spike_trap:5'
+                    id: 'mark_death', row: 2, col: 1, type: 'active', icon: '💀', name: 'Mark of Death',
+                    desc: 'Active · Curse a target with the Mark of Death for 10 seconds, causing them to take +50 + 3% per point more damage from all sources. Best single-target damage amplifier.',
+                    tip: 'Max lvl (20): Target takes +110% more damage for 10s. Always open with this on bosses.',
+                    maxPts: 20, mana: 8, cd: 0
                 },
                 {
-                    id: 'explosive_trap', row: 3, col: 0, type: 'active', icon: '💣', name: 'Explosive Trap',
-                    desc: 'Huge explosion: (30+slvl×15) fire in massive radius. Max 2.',
-                    endgame: 'slvl 20: 330 fire AoE × 2. Room-clearing explosions.',
-                    maxPts: 20, mana: 16, cd: 8, group: 'fire', dmgBase: 30, dmgPerLvl: 15, req: 'fire_trap_r:5',
-                    synergies: [{ from: 'ice_trap', pctPerPt: 4 }, { from: 'fire_trap_r', pctPerPt: 3 }]
-                },
-                {
-                    id: 'black_arrow', row: 3, col: 2, type: 'active', icon: '🏴', name: 'Black Arrow',
-                    desc: 'Shadow-infused arrow: (20+slvl×10) shadow + places invisible trap at impact dealing same on trigger.',
-                    endgame: 'slvl 20: 220 shadow hit + 220 trap = 440 total. Two hits, one arrow.',
-                    maxPts: 20, mana: 14, cd: 4, group: 'shadow', dmgBase: 20, dmgPerLvl: 10, req: 'scatter_shot:5'
-                },
-                {
-                    id: 'minefield', row: 4, col: 1, type: 'active', icon: '🏰', name: 'Minefield',
-                    desc: 'Ultimate: instantly deploy 5 random traps (fire/ice/spike/explosive) in target area.',
-                    endgame: 'slvl 20: instant 5-trap deployment. Combined damage = room wipe. Combines with Trap Mastery bonuses.',
-                    maxPts: 20, mana: 35, cd: 45, group: 'buff', req: 'explosive_trap:10',
-                    synergies: [{ from: 'trap_mastery_r', pctPerPt: 5 }]
+                    id: 'wolf_companion', row: 3, col: 1, type: 'active', icon: '🐺', name: 'Wolf Pack',
+                    desc: 'Active · Summon 2 dire wolves that charge and maul enemies for 15 + 6 per point physical damage. Wolves last 30 + 1 per point seconds and fight independently.',
+                    tip: 'Max lvl (20): 2 wolves each hitting for 135 damage, lasting 50s.',
+                    maxPts: 20, mana: 25, cd: 5, req: 'companion_hawk:3',
+                    synergies: [{ from: 'tracking', pctPerPt: 3 }]
                 },
             ]
         },

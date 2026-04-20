@@ -477,19 +477,266 @@ Object.assign(LEGENDARY_SYNERGIES, {
             label: '💀 Necromancer — Iron Maiden',
             condition: (p) => p.classId === 'necromancer' && _hasTalent(p, 'iron_maiden', 1),
             mult: 1.30, chanceBonus: 0.08,
-            bonusEffects: ['reflect_amplify'],  // iron maiden benefits from shred
+            bonusEffects: ['reflect_amplify'],
             desc: 'Armor shred boosts Iron Maiden reflect damage by 50%'
         },
         {
             label: '💀 Bone Dust Charm equipped',
             condition: (p) => _hasCharm(p, 'charm_bone_dust'),
             mult: 1.25, chanceBonus: 0.10,
-            bonusEffects: ['dust_cloud'],  // blinds nearby enemies on proc
+            bonusEffects: ['dust_cloud'],
             desc: 'Bone Dust: Armor Shatter releases blinding dust cloud (3s blind)'
         },
     ],
 
+    // ══════════════════════════════════════════════════════════════
+    // ★★★ WAVE 3 SYNERGIES ★★★
+    // ══════════════════════════════════════════════════════════════
+
+    // ── STORMRAGE VESTMENTS ───────────────────────────────────────
+    stormrage_vestments: [
+        {
+            label: '🌪️ Druid — Hurricane',
+            condition: (p) => p.classId === 'druid' && _hasTalent(p, 'hurricane', 1),
+            mult: 1.65, chanceBonus: 0.15,
+            bonusEffects: ['nature_cyclone', 'aoe_expand'],
+            desc: 'Nature Burst spawns a cyclone that pulls enemies inward (+50% AoE)'
+        },
+        {
+            label: '🌪️ Druid — Shapeshifting',
+            condition: (p) => p.classId === 'druid' && _hasTalent(p, 'dire_wolf', 1),
+            mult: 1.40, chanceBonus: 0.08,
+            bonusEffects: ['heal_on_proc'],
+            desc: 'Nature Burst also heals you for 80 HP while shapeshifted'
+        },
+        {
+            label: '🌱 Druid — Nature Mastery (10pts)',
+            condition: (p) => p.classId === 'druid' && _hasTalent(p, 'nature_mastery', 10),
+            mult: 1.30, chanceBonus: 0.05,
+            bonusEffects: ['entangle'],
+            desc: 'Nature Mastery: proc has 25% chance to root enemy for 2s'
+        },
+        {
+            label: '🌱 Nature Seed Charm equipped',
+            condition: (p) => _hasCharm(p, 'charm_nature_seed'),
+            mult: 1.35, chanceBonus: 0.10,
+            bonusEffects: ['rejuvenate'],
+            desc: 'Nature Seed: Also regenerates 25 HP/s for 5s after proc'
+        },
+    ],
+
+    // ── WRATH OF THE LICH KING ────────────────────────────────────
+    wrath_lich_king: [
+        {
+            label: '🦴 Necromancer — Plague',
+            condition: (p) => p.classId === 'necromancer' && _hasTalent(p, 'plague', 1),
+            mult: 1.70, chanceBonus: 0.10,
+            bonusEffects: ['plague_nova', 'spawn_revenant'],
+            desc: 'Each explosion spreads plague nova to all nearby enemies and spawns a skeleton'
+        },
+        {
+            label: '🦴 Necromancer — Mass Curse',
+            condition: (p) => p.classId === 'necromancer' && _hasTalent(p, 'mass_curse', 1),
+            mult: 1.50, chanceBonus: 0.08,
+            bonusEffects: ['curse_on_explode'],
+            desc: 'Soul explosion curses all hit enemies, reducing their damage by 30%'
+        },
+        {
+            label: '🦴 Plague Dust Charm equipped',
+            condition: (p) => _hasCharm(p, 'charm_plague_dust_2'),
+            mult: 1.40, chanceBonus: 0.12,
+            bonusEffects: ['faster_stacks', 'soul_drain_aoe'],
+            desc: 'Plague Dust: Reduces stacks needed by 2, explosion heals 20% damage dealt'
+        },
+    ],
+
+    // ── CENARION CUDGEL ───────────────────────────────────────────
+    cenarion_cudgel: [
+        {
+            label: '💚 Druid — Healing Touch',
+            condition: (p) => p.classId === 'druid' && _hasTalent(p, 'healing_touch', 1),
+            mult: 1.50, chanceBonus: 0.15,
+            bonusEffects: ['heal_party', 'aoe_expand'],
+            desc: 'Consecration heals nearby allies for 150 HP and radius +50%'
+        },
+        {
+            label: '💚 Druid — Rejuvenation',
+            condition: (p) => p.classId === 'druid' && _hasTalent(p, 'rejuvenation', 1),
+            mult: 1.30, chanceBonus: 0.10,
+            bonusEffects: ['rejuvenate'],
+            desc: 'Each proc applies 10 HP/s regeneration for 8s'
+        },
+        {
+            label: '💚 Paladin — Holy Light',
+            condition: (p) => p.classId === 'paladin' && _hasTalent(p, 'holy_light', 1),
+            mult: 1.45, chanceBonus: 0.10,
+            bonusEffects: ['holy_fire'],
+            desc: 'Consecration gains Holy Fire bonus (+40% fire DoT on hits)'
+        },
+        {
+            label: '🌱 Nature Seed Charm equipped',
+            condition: (p) => _hasCharm(p, 'charm_nature_seed'),
+            mult: 1.35, chanceBonus: 0.08,
+            bonusEffects: ['liferegen_burst'],
+            desc: 'Nature Seed: Proc also grants +50 HP/s regeneration for 5s'
+        },
+    ],
+
+    // ── STAFF OF JORDAN ───────────────────────────────────────────
+    staff_of_jordan: [
+        {
+            label: '🔵 Sorceress — Energy Shield',
+            condition: (p) => p.classId === 'sorceress' && _hasTalent(p, 'energy_shield', 1),
+            mult: 1.60, chanceBonus: 0.12,
+            bonusEffects: ['mana_storm', 'double_burst'],
+            desc: 'Mana Flood also fires a second burst and restores 15% max mana'
+        },
+        {
+            label: '🔵 Sorceress — Mana Shield',
+            condition: (p) => p.classId === 'sorceress' && _hasTalent(p, 'mana_shield', 1),
+            mult: 1.40, chanceBonus: 0.08,
+            bonusEffects: ['mana_storm'],
+            desc: 'Mana Burn AoE restores 20% of burned mana back to you'
+        },
+        {
+            label: '🔵 Arcane Crystal Charm equipped',
+            condition: (p) => _hasCharm(p, 'charm_arcane_crystal'),
+            mult: 1.45, chanceBonus: 0.15,
+            bonusEffects: ['double_burst', 'aoe_expand'],
+            desc: 'Arcane Crystal: Mana Flood radius +50% and fires a second wave'
+        },
+    ],
+
+    // ── THE UNSTOPPABLE FORCE ─────────────────────────────────────
+    unstoppable_force: [
+        {
+            label: '⚔️ Warrior — Berserk',
+            condition: (p) => p.classId === 'warrior' && _hasTalent(p, 'berserk', 1),
+            mult: 1.75, chanceBonus: 0.12,
+            bonusEffects: ['berserk_amp', 'aoe_expand'],
+            desc: 'Ground Pound radius doubles and damage +75% while Berserk active'
+        },
+        {
+            label: '⚔️ Warrior — Leap Attack',
+            condition: (p) => p.classId === 'warrior' && _hasTalent(p, 'leap_attack', 1),
+            mult: 1.45, chanceBonus: 0.10,
+            bonusEffects: ['knockback'],
+            desc: 'Ground Pound launches all hit enemies into the air (2s knockup)'
+        },
+        {
+            label: '⚔️ Warrior — Whirlwind',
+            condition: (p) => p.classId === 'warrior' && _hasTalent(p, 'whirlwind', 1),
+            mult: 1.30, chanceBonus: 0.08,
+            bonusEffects: [],
+            desc: '+30% crushing damage; Whirlwind procs extend Ground Pound stun'
+        },
+        {
+            label: '🛡️ Iron Will Token Charm equipped',
+            condition: (p) => _hasCharm(p, 'charm_iron_will'),
+            mult: 1.35, chanceBonus: 0.08,
+            bonusEffects: ['reflect_dmg'],
+            desc: 'Iron Will: Ground Pound also reflects 30% of damage taken during cast'
+        },
+    ],
+
+    // ── CRYPTFIEND'S BITE ─────────────────────────────────────────
+    cryptfiends_bite: [
+        {
+            label: '🕷️ Rogue — Death Sentry',
+            condition: (p) => p.classId === 'rogue' && _hasTalent(p, 'death_sentry', 1),
+            mult: 1.65, chanceBonus: 0.12,
+            bonusEffects: ['web_ensnare', 'chain_reaction'],
+            desc: 'Web trap also triggers a Death Sentry explosion on rooted enemies'
+        },
+        {
+            label: '🕷️ Rogue — Venom',
+            condition: (p) => p.classId === 'rogue' && _hasTalent(p, 'venom', 3),
+            mult: 1.45, chanceBonus: 0.10,
+            bonusEffects: ['soul_chain'],
+            desc: 'Venom: web-trapped enemies take +50% poison damage'
+        },
+        {
+            label: '🕷️ Rogue — Shadow Dance',
+            condition: (p) => p.classId === 'rogue' && _hasTalent(p, 'shadow_dance', 1),
+            mult: 1.30, chanceBonus: 0.08,
+            bonusEffects: ['stealth_reset'],
+            desc: 'Shadow Dance: killing a Webbed enemy resets Vanish cooldown'
+        },
+        {
+            label: '🕸️ Spider Silk Charm equipped',
+            condition: (p) => _hasCharm(p, 'charm_spider_silk'),
+            mult: 1.40, chanceBonus: 0.12,
+            bonusEffects: ['extra_hit', 'web_ensnare'],
+            desc: 'Spider Silk: +1 Blade Dance hit, all hits have 30% chance to Web'
+        },
+    ],
+
+    // ── JIN'DO'S HEXXER ───────────────────────────────────────────
+    jindos_hexxer: [
+        {
+            label: '🥁 Shaman — Totemic Wrath',
+            condition: (p) => p.classId === 'shaman' && _hasTalent(p, 'totemic_wrath', 1),
+            mult: 1.60, chanceBonus: 0.12,
+            bonusEffects: ['extra_bounce', 'chain_overload'],
+            desc: 'Totemic Wrath: Hex spreads via Chain Lightning (+2 targets, stuns)'
+        },
+        {
+            label: '🥁 Shaman — Earthbind Totem',
+            condition: (p) => p.classId === 'shaman' && _hasTalent(p, 'earthbind_totem', 1),
+            mult: 1.40, chanceBonus: 0.10,
+            bonusEffects: ['paralysis'],
+            desc: 'Hexed enemies are also rooted for 2s by Earthbind synergy'
+        },
+        {
+            label: '🥁 Shaman — Totem Mastery (5pts)',
+            condition: (p) => p.classId === 'shaman' && _hasTalent(p, 'totem_mastery', 5),
+            mult: 1.35, chanceBonus: 0.08,
+            bonusEffects: [],
+            desc: '+35% Hex/Chain Lightning damage from Totem Mastery'
+        },
+        {
+            label: '🥁 Thunder Drum Charm equipped',
+            condition: (p) => _hasCharm(p, 'charm_thunder_drum'),
+            mult: 1.45, chanceBonus: 0.10,
+            bonusEffects: ['chain_overload', 'extra_bounce'],
+            desc: 'Thunder Drum: Chain Lightning stuns all targets and bounces +2 times'
+        },
+    ],
+
+    // ── AZURESONG MAGEBLADE ───────────────────────────────────────
+    azuresong_mageblade: [
+        {
+            label: '💎 Sorceress — Arcane Torrent',
+            condition: (p) => p.classId === 'sorceress' && _hasTalent(p, 'arcane_torrent', 1),
+            mult: 1.65, chanceBonus: 0.12,
+            bonusEffects: ['mana_storm', 'double_burst', 'aoe_expand'],
+            desc: 'Mana Surge fires twice and restores 15% mana; AoE radius +50%'
+        },
+        {
+            label: '💎 Sorceress — Mana Shield',
+            condition: (p) => p.classId === 'sorceress' && _hasTalent(p, 'mana_shield', 1),
+            mult: 1.45, chanceBonus: 0.08,
+            bonusEffects: ['mana_storm'],
+            desc: 'Each proc restores 60 mana and boosts next spell damage +20%'
+        },
+        {
+            label: '💎 Warlock — Mana Feed',
+            condition: (p) => p.classId === 'warlock' && _hasTalent(p, 'mana_feed', 1),
+            mult: 1.35, chanceBonus: 0.10,
+            bonusEffects: ['void_echo'],
+            desc: 'Mana Surge echoes 3s later as a shadow burst'
+        },
+        {
+            label: '💠 Arcane Crystal Charm equipped',
+            condition: (p) => _hasCharm(p, 'charm_arcane_crystal'),
+            mult: 1.50, chanceBonus: 0.15,
+            bonusEffects: ['double_burst', 'mana_storm'],
+            desc: 'Arcane Crystal: Double burst + mana restore combo on every proc'
+        },
+    ],
+
 });
+
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN EXPORT: evaluateSynergies

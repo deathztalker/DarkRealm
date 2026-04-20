@@ -1,172 +1,154 @@
 /**
- * NECROMANCER — Expanded endgame trees
- * Builds: 1. "Skeleton Lord" — Summoning army  2. "Poison Nova Curser" — Curses+AoE  3. "Bone Sniper" — Bone Spear/Spirit
+ * NECROMANCER — Class Definition
+ * Three trees: Summoning (army of undead) · Bone (direct damage) · Curses (debuffs)
  */
 export const NECROMANCER_CLASS = {
     id: 'necromancer', name: 'Necromancer', icon: '💀',
-    desc: 'Master of death, bone, and decay. Raises skeletal armies, curses foes into oblivion, and weaponizes bone itself as piercing magic.',
-    stats: { str: 3, dex: 4, vit: 4, int: 9 },
-    statBars: { str: 30, dex: 40, vit: 40, int: 90 },
-    allowedWeapons: ['wand', 'staff'],
-    allowedOffhand: ['source', 'shield'],
+    description: 'Commands an army of undead minions and curses enemies into helplessness. Powerful indirect damage and unparalleled summon control.',
+    stats: { str: 15, dex: 15, vit: 15, int: 25 },
     trees: [
+
+        // ═══ SUMMONING — Army of Darkness build ═══
         {
-            id: 'summoning', name: 'Summoning', icon: '☠️', nodes: [
+            id: 'summoning', name: 'Summoning', icon: '💀',
+            nodes: [
                 {
-                    id: 'summon_skeleton', row: 0, col: 1, type: 'active', icon: '💀', name: 'Raise Skeleton',
-                    desc: 'Raise a warrior skeleton. Max (1+slvl/4). Each: (8+slvl×5) dmg, (40+slvl×15) HP.',
-                    endgame: 'slvl 20: 6 skeletons, 108 dmg, 340 HP each. Army of 6 = 648 DPS combined with mastery.',
-                    maxPts: 20, mana: 12, cd: 2, dmgBase: 8, dmgPerLvl: 5
+                    id: 'raise_skeleton', row: 0, col: 1, type: 'active', icon: '🦴', name: 'Raise Skeleton',
+                    desc: 'Active · Raise a skeleton warrior from a nearby corpse. Skeleton deals 8 + 4 per point damage. You can have 1 skeleton per 2 points invested (max 10). Each skeleton persists until killed.',
+                    tip: 'Max lvl (20): 10 skeletons each dealing 88 damage. Scales with Skeleton Mastery.',
+                    maxPts: 20, mana: 12, cd: 0
                 },
                 {
-                    id: 'skeleton_mastery', row: 1, col: 0, type: 'passive', icon: '📈', name: 'Skeleton Mastery',
-                    desc: '+15% skeleton HP and +12% damage per point. At 10pts: skeletons gain thorns aura.',
-                    endgame: 'slvl 20: +300% HP, +240% dmg on all skeletons. Non-negotiable for summon builds.',
+                    id: 'skeleton_mastery', row: 1, col: 0, type: 'passive', icon: '💪', name: 'Skeleton Mastery',
+                    desc: 'Passive · Each point gives all your minions +15% damage and +10% max HP. The single most important necromancer passive — invest heavily.',
+                    tip: 'Max lvl (20): +300% minion damage · +200% minion HP.',
                     maxPts: 20
                 },
                 {
-                    id: 'skeleton_mage', row: 1, col: 2, type: 'active', icon: '🧙', name: 'Skeleton Mage',
-                    desc: 'Raise a caster skeleton: fires (10+slvl×6) elemental bolts. Random element type. Max (1+slvl/5).',
-                    endgame: 'slvl 20: 5 mages, 130 elemental dmg each. Mixed damage types bypass single-element immunity.',
-                    maxPts: 20, mana: 14, cd: 3, group: 'magic', dmgBase: 10, dmgPerLvl: 6, req: 'summon_skeleton:3'
+                    id: 'golem', row: 1, col: 2, type: 'active', icon: '🗿', name: 'Clay Golem',
+                    desc: 'Active · Animate a hulking clay golem with 200 + 50 per point HP that slows every enemy it hits by 25%. Only one golem at a time. Tough frontline tank.',
+                    tip: 'Max lvl (20): 1,200 HP golem · 25% slow on all hits.',
+                    maxPts: 20, mana: 35, cd: 5
                 },
                 {
-                    id: 'golem', row: 2, col: 1, type: 'active', icon: '🗿', name: 'Clay Golem',
-                    desc: 'Summon tank golem: (50+slvl×20) HP, slows nearby enemies by 30%. Only 1 golem active.',
-                    endgame: 'slvl 20: 450 HP golem with AoE slow. Ideal tank for your skeleton army.',
-                    maxPts: 20, mana: 22, cd: 60, req: 'summon_skeleton:5'
-                },
-                {
-                    id: 'revive', row: 2, col: 0, type: 'active', icon: '🧟', name: 'Revive',
-                    desc: 'Revive a slain monster as your servant for (20+slvl×2)s. Retains original abilities. Max (1+slvl/6).',
-                    endgame: 'slvl 20: 60s duration, 4 revived monsters. Revive elite/rare mobs for their affixes!',
-                    maxPts: 20, mana: 28, cd: 5, req: 'summon_skeleton:10'
-                },
-                {
-                    id: 'golem_mastery', row: 3, col: 0, type: 'passive', icon: '📈', name: 'Golem Mastery',
-                    desc: '+20% golem HP and +15% golem damage per point. At 15pts: golem explodes on death dealing AoE.',
-                    endgame: 'slvl 20: +400% golem HP, +300% dmg. Death explosion adds burst damage.',
-                    maxPts: 20, req: 'golem:3'
-                },
-                {
-                    id: 'summon_resist', row: 3, col: 2, type: 'passive', icon: '🛡️', name: 'Summon Resist',
-                    desc: '+10% all elemental resistance for all summoned creatures per point.',
-                    endgame: 'slvl 20: all minions get +200% (capped 75%) all res. They never die to AoE spells.',
-                    maxPts: 20, req: 'revive:5'
-                },
-                {
-                    id: 'army_of_dead', row: 4, col: 1, type: 'active', icon: '⚰️', name: 'Army of the Dead',
-                    desc: 'Ultimate: instantly summon 10 skeleton warriors for 20s that deal (20+slvl×10) each, regardless of max.',
-                    endgame: 'slvl 20: 10 extra skeletons × 220 dmg for 20s. Combined with existing army = overwhelming.',
-                    maxPts: 20, mana: 40, cd: 120, req: 'skeleton_mastery:15',
-                    synergies: [{ from: 'skeleton_mastery', pctPerPt: 5 }]
-                },
-            ]
-        },
-        {
-            id: 'curses', name: 'Curses', icon: '🌑', nodes: [
-                {
-                    id: 'amplify_damage', row: 0, col: 1, type: 'active', icon: '💢', name: 'Amplify Damage',
-                    desc: 'Curse: target takes +(100+slvl×5)% physical damage for 10+slvl×1s.',
-                    endgame: 'slvl 20: +200% physical dmg taken for 30s. Doubles+ all physical DPS in party.',
-                    maxPts: 20, mana: 7, cd: 0, group: 'buff'
-                },
-                {
-                    id: 'weaken', row: 1, col: 0, type: 'active', icon: '💔', name: 'Weaken',
-                    desc: 'Curse: target deals -(30+slvl×1)% damage for 10+slvl×1s.',
-                    endgame: 'slvl 20: -50% enemy damage for 30s. Key survivability curse.',
-                    maxPts: 20, mana: 5, cd: 0, group: 'buff'
-                },
-                {
-                    id: 'iron_maiden', row: 1, col: 2, type: 'active', icon: '🩸', name: 'Iron Maiden',
-                    desc: 'Curse: returns (200+slvl×10)% of melee damage dealt back to attacker.',
-                    endgame: 'slvl 20: 400% damage reflect. Bosses literally kill themselves hitting you.',
-                    maxPts: 20, mana: 9, cd: 0, group: 'buff'
-                },
-                {
-                    id: 'decrepify', row: 2, col: 1, type: 'active', icon: '🦴', name: 'Decrepify',
-                    desc: 'Curse: slows by 50%, weakens by 30%, reduces phys resist by 25%. Duration: 10+slvl×0.5s.',
-                    endgame: 'slvl 20: 20s of total debilitation. The ultimate control curse.',
-                    maxPts: 20, mana: 10, cd: 0, group: 'buff', req: 'weaken:5'
-                },
-                {
-                    id: 'life_tap_curse', row: 2, col: 0, type: 'active', icon: '❤️', name: 'Life Tap',
-                    desc: 'Curse: all hits vs target steal (30+slvl×2)% as life for 10+slvl×1s.',
-                    endgame: 'slvl 20: 70% life steal for whole party. Turns any fight into a heal-fest.',
-                    maxPts: 20, mana: 8, cd: 0, group: 'buff', req: 'decrepify:5'
-                },
-                {
-                    id: 'lower_resist', row: 3, col: 0, type: 'active', icon: '⬇️', name: 'Lower Resist',
-                    desc: 'Curse: reduces all elemental resistances by -(35+slvl×2)% for 15s.',
-                    endgame: 'slvl 20: -75% all res. Combined with Sorceress mastery = negative resistances.',
-                    maxPts: 20, mana: 9, cd: 0, group: 'buff', req: 'decrepify:5'
-                },
-                {
-                    id: 'poison_nova', row: 3, col: 2, type: 'active', icon: '☠️', name: 'Poison Nova',
-                    desc: 'Release a nova of poison: (20+slvl×12) poison damage to all enemies in range. DoT (5+slvl×3)/s for 4s.',
-                    endgame: 'slvl 20: 260 burst + 65/s DoT = 520 total per target AoE. Hybrid curse+damage build enabler.',
-                    maxPts: 20, mana: 18, cd: 8, group: 'poison', dmgBase: 20, dmgPerLvl: 12, req: 'lower_resist:3'
-                },
-                {
-                    id: 'mass_curse', row: 4, col: 1, type: 'active', icon: '🌑', name: 'Mass Curse',
-                    desc: 'Ultimate: apply ALL active curses to all enemies on screen simultaneously for 10s.',
-                    endgame: 'slvl 20: every curse you know hits every enemy at once. Total battlefield control.',
-                    maxPts: 20, mana: 30, cd: 60, req: 'lower_resist:10',
-                    synergies: [{ from: 'decrepify', pctPerPt: 4 }]
-                },
-            ]
-        },
-        {
-            id: 'bone', name: 'Bone & Poison', icon: '🦴', nodes: [
-                {
-                    id: 'teeth', row: 0, col: 0, type: 'active', icon: '🦷', name: 'Teeth',
-                    desc: 'Spray (3+slvl/3) bone shards in a fan: (8+slvl×4) magic damage each.',
-                    endgame: 'slvl 20: 9 shards × 88 = 792 potential. Good spread damage and synergy fuel.',
-                    maxPts: 20, mana: 9, cd: 0, group: 'bone', dmgBase: 8, dmgPerLvl: 4
-                },
-                {
-                    id: 'bone_spear', row: 0, col: 2, type: 'active', icon: '🦴', name: 'Bone Spear',
-                    desc: 'Piercing bone shard: (15+slvl×10) magic damage. Pierces all enemies in a line.',
-                    endgame: 'slvl 20: 215 magic piercing. Magic type bypasses all resistances. Top single-skill DPS.',
-                    maxPts: 20, mana: 11, cd: 0, group: 'bone', dmgBase: 15, dmgPerLvl: 10
-                },
-                {
-                    id: 'bone_armor', row: 1, col: 1, type: 'active', icon: '🛡️', name: 'Bone Armor',
-                    desc: 'Generate a bone shell absorbing (15+slvl×12) damage. Refreshable, no cooldown.',
-                    endgame: 'slvl 20: 255 damage absorb. Always keep up. Necromancer survivability backbone.',
-                    maxPts: 20, mana: 8, cd: 0, group: 'buff', dmgBase: 15, dmgPerLvl: 12
-                },
-                {
-                    id: 'bone_wall', row: 1, col: 0, type: 'active', icon: '🧱', name: 'Bone Wall',
-                    desc: 'Raise a wall of bones that blocks pathing for (5+slvl×0.5)s. Wall has (50+slvl×20) HP.',
-                    endgame: 'slvl 20: 15s wall with 450 HP. Blocks corridors, forces enemies to path around.',
-                    maxPts: 20, mana: 10, cd: 3, req: 'bone_armor:3'
-                },
-                {
-                    id: 'bone_spirit', row: 2, col: 1, type: 'active', icon: '👻', name: 'Bone Spirit',
-                    desc: 'Homing bone spirit: (25+slvl×14) magic damage. Always hits. Cannot be evaded.',
-                    endgame: 'slvl 20: 305 guaranteed magic damage. Snipes runners and invisible enemies.',
-                    maxPts: 20, mana: 18, cd: 0, group: 'bone', dmgBase: 25, dmgPerLvl: 14, req: 'bone_spear:5',
-                    synergies: [{ from: 'bone_spear', pctPerPt: 5 }, { from: 'teeth', pctPerPt: 3 }]
-                },
-                {
-                    id: 'bone_mastery', row: 2, col: 0, type: 'passive', icon: '📈', name: 'Bone Mastery',
-                    desc: 'Passive. +7% bone spell damage per point. At 10pts: bone spells have 5% chance to stun.',
-                    endgame: 'slvl 20: +140% bone dmg. Magic damage with stun = premium endgame.',
+                    id: 'golem_mastery', row: 2, col: 0, type: 'passive', icon: '🏔️', name: 'Golem Mastery',
+                    desc: 'Passive · Increases all your golems\' HP by +20% per point and their damage by +5% per point. At 10 points, golems gain life regeneration. Pairs with any golem type.',
+                    tip: 'Max lvl (20): +400% golem HP · +100% golem damage · regen at 10pts.',
                     maxPts: 20
                 },
                 {
-                    id: 'bone_prison', row: 3, col: 2, type: 'active', icon: '⛓️', name: 'Bone Prison',
-                    desc: 'Trap target in a bone cage for (3+slvl×0.2)s. Cannot move or be reached by melee.',
-                    endgame: 'slvl 20: 7s prison. Lock down dangerous rare/unique enemies completely.',
-                    maxPts: 20, mana: 14, cd: 8, req: 'bone_wall:5'
+                    id: 'revive', row: 2, col: 2, type: 'active', icon: '✨', name: 'Revive',
+                    desc: 'Active · Revive a monster corpse as a servant that retains ALL of its original abilities and attacks. Lasts 3 + 0.5 per point minutes. Can revive bosses.',
+                    tip: 'Max lvl (20): 13 minute duration. Reviving elites creates powerful temporary allies.',
+                    maxPts: 20, mana: 45, cd: 2, req: 'raise_skeleton:5'
                 },
                 {
-                    id: 'bone_storm', row: 4, col: 1, type: 'active', icon: '🌀', name: 'Bone Storm',
-                    desc: 'Ultimate: orbiting bone shards deal (15+slvl×8) magic/s to all nearby for 15s. You are immune to projectiles during.',
-                    endgame: 'slvl 20: 175/s AoE for 15s + projectile immunity. Melee-range devastation.',
-                    maxPts: 20, mana: 30, cd: 45, group: 'bone', dmgBase: 15, dmgPerLvl: 8, req: 'bone_spirit:10',
-                    synergies: [{ from: 'bone_mastery', pctPerPt: 4 }]
+                    id: 'summon_resist', row: 3, col: 0, type: 'passive', icon: '🛡️', name: 'Summon Resistance',
+                    desc: 'Passive · All your minions gain +5% elemental resistance per point. You personally also gain +2% all resistances per point. Makes your army durable in endgame content.',
+                    tip: 'Max lvl (20): Minions +100% res · you +40% all res.',
+                    maxPts: 20
+                },
+                {
+                    id: 'army_of_dead', row: 3, col: 2, type: 'active', icon: '⚔️', name: 'Army of the Dead',
+                    desc: 'Active · Instantly summon 5 skeleton warriors at your feet, bypassing the need for corpses. They last for 15 + 1 per point seconds. Perfect for boss fights with no corpses.',
+                    tip: 'Max lvl (20): 5 skeletons that last 35s. Emergency summon button.',
+                    maxPts: 20, mana: 60, cd: 45, req: 'raise_skeleton:10'
+                },
+                {
+                    id: 'iron_golem', row: 4, col: 1, type: 'active', icon: '⚙️', name: 'Iron Golem',
+                    desc: 'Active · Sacrifice a metal item from your inventory to create a golem that KEEPS all the item\'s stats. Higher quality items create stronger golems. Unique items create devastating golems.',
+                    tip: 'Sacrifice a legendary item to create a godlike golem that inherits its procs.',
+                    maxPts: 20, mana: 65, cd: 10, req: 'golem_mastery:10',
+                    synergies: [{ from: 'golem_mastery', pctPerPt: 5 }]
+                },
+            ]
+        },
+
+        // ═══ BONE — Direct damage spells ═══
+        {
+            id: 'bone', name: 'Bone', icon: '🦴',
+            nodes: [
+                {
+                    id: 'bone_spear', row: 0, col: 1, type: 'active', icon: '🔱', name: 'Bone Spear',
+                    desc: 'Active · Launch a bone spear that pierces through all enemies in a line dealing 20 + 10 per point shadow damage. Reliable single-target DPS at range.',
+                    tip: 'Max lvl (20): 220 shadow damage, hits every enemy in the line.',
+                    maxPts: 20, mana: 11, cd: 0, group: 'shadow', dmgBase: 20, dmgPerLvl: 10
+                },
+                {
+                    id: 'bone_armor', row: 1, col: 0, type: 'active', icon: '🦴', name: 'Bone Armor',
+                    desc: 'Active · Surround yourself with revolving bone shards, absorbing 20 + 15 per point damage before any reaches your HP. Instantly breaks when absorption is consumed — recast to refresh.',
+                    tip: 'Max lvl (20): 320 damage absorbed. Recast frequently.',
+                    maxPts: 20, mana: 12, cd: 0
+                },
+                {
+                    id: 'bone_mastery', row: 1, col: 2, type: 'passive', icon: '🟣', name: 'Bone Mastery',
+                    desc: 'Passive · +5% shadow and bone spell damage per point. Each point also reduces bone spell cooldowns by 0.3 seconds. The core bone-build passive.',
+                    tip: 'Max lvl (20): +100% bone damage · -6s total cooldown.',
+                    maxPts: 20
+                },
+                {
+                    id: 'bone_wall', row: 2, col: 0, type: 'active', icon: '🏯', name: 'Bone Wall',
+                    desc: 'Active · Erect a wall of bones at target location, blocking movement for 3 + 0.2 per point seconds. Enemies that attempt to pass take 15 + 6 per point damage.',
+                    tip: 'Max lvl (20): 7s wall + 135 damage on contact. Use to split enemy groups.',
+                    maxPts: 20, mana: 15, cd: 8, dmgBase: 15, dmgPerLvl: 6, req: 'bone_armor:3'
+                },
+                {
+                    id: 'bone_spirit', row: 3, col: 1, type: 'active', icon: '👻', name: 'Bone Spirit',
+                    desc: 'Active · Release a homing spirit that tracks the nearest enemy dealing 50 + 15 per point shadow damage. Always hits — no skill shot required. ★ Synergy: +4% per Bone Spear point.',
+                    tip: 'Max lvl (20): 350 damage · guaranteed hit. Boss assassin.',
+                    maxPts: 20, mana: 18, cd: 0, group: 'shadow', dmgBase: 50, dmgPerLvl: 15, req: 'bone_spear:5',
+                    synergies: [{ from: 'bone_spear', pctPerPt: 4 }]
+                },
+                {
+                    id: 'bone_nova', row: 4, col: 1, type: 'active', icon: '💥', name: 'Bone Nova',
+                    desc: 'Active · Fire a ring of 10 bone spirits simultaneously in all directions, each dealing 30 + 12 per point shadow damage. Devastating at close range against grouped enemies.',
+                    tip: 'Max lvl (20): 10 × 270 = 2,700 total potential. Melee-range nuke.',
+                    maxPts: 20, mana: 30, cd: 8, group: 'shadow', dmgBase: 30, dmgPerLvl: 12, req: 'bone_spirit:10',
+                    synergies: [{ from: 'bone_mastery', pctPerPt: 5 }]
+                },
+            ]
+        },
+
+        // ═══ CURSES — Debuf war machine ═══
+        {
+            id: 'curses', name: 'Curses', icon: '🔴',
+            nodes: [
+                {
+                    id: 'weaken', row: 0, col: 1, type: 'active', icon: '⬇️', name: 'Weaken',
+                    desc: 'Active · Curse a target reducing their damage output by 33% for 4 + 0.5 per point seconds. A cheap, effective debuff for tough enemies.',
+                    tip: 'Max lvl (20): -33% damage, lasts 14s.',
+                    maxPts: 20, mana: 4, cd: 0
+                },
+                {
+                    id: 'amplify_damage', row: 1, col: 0, type: 'active', icon: '🔺', name: 'Amplify Damage',
+                    desc: 'Active · Remove any curse and instead cause the target to take +100% physical damage from all sources for 4 + 0.5 per point seconds. Pairs devastatingly with melee allies.',
+                    tip: 'Max lvl (20): +100% physical damage taken for 14s. Best party debuff vs physical targets.',
+                    maxPts: 20, mana: 6, cd: 0
+                },
+                {
+                    id: 'mass_curse', row: 1, col: 2, type: 'active', icon: '📢', name: 'Mass Curse',
+                    desc: 'Active · Apply your currently active curse to ALL visible enemies simultaneously. Requires another curse to be active. Use Weaken or Amplify Damage first, then cast this.',
+                    tip: 'Instant AoE debuff — one of the most powerful utility skills in the game.',
+                    maxPts: 20, mana: 25, cd: 5, req: 'weaken:3'
+                },
+                {
+                    id: 'iron_maiden', row: 2, col: 0, type: 'active', icon: '⚔️', name: 'Iron Maiden',
+                    desc: 'Active · Curse a target: all physical damage they deal is reflected back for 100% of the original damage. Devastating vs melee bosses and large groups.',
+                    tip: 'A boss that deals 500 physical damage will take 500 reflected per hit. Melts physical attackers.',
+                    maxPts: 20, mana: 8, cd: 0, req: 'weaken:5'
+                },
+                {
+                    id: 'decrepify', row: 2, col: 2, type: 'active', icon: '🐢', name: 'Decrepify',
+                    desc: 'Active · Curse a target: slows movement and attack speed by 50%, reduces physical resistance by 50%, and halves their life regeneration. The ultimate all-in-one debuff.',
+                    tip: 'Combined with Bone Spear, Decrepify enemies take 50% more damage AND are slowed to a crawl.',
+                    maxPts: 20, mana: 12, cd: 0, req: 'amplify_damage:5'
+                },
+                {
+                    id: 'plague', row: 3, col: 1, type: 'active', icon: '☠️', name: 'Plague',
+                    desc: 'Active · Inflict a virulent plague on a target dealing 10 + 5 per point shadow damage per second. The plague SPREADS to nearby enemies on death, infecting up to 3 others.',
+                    tip: 'Max lvl (20): 110/s shadow DoT that spreads on kill. Excellent for clearing packs.',
+                    maxPts: 20, mana: 14, cd: 2, req: 'decrepify:5',
+                    synergies: [{ from: 'bone_mastery', pctPerPt: 3 }]
                 },
             ]
         },

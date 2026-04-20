@@ -16,10 +16,10 @@
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚔️</text></svg>">
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script type="module" crossorigin src="/assets/index-Bb4RuOFx.js"></script>
+  <script type="module" crossorigin src="/assets/index-DmXuJgwt.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/rolldown-runtime-lhHHWwHU.js">
   <link rel="modulepreload" crossorigin href="/assets/EventBus-kTHVGmnB.js">
-  <link rel="stylesheet" crossorigin href="/assets/index-DSy_IG_5.css">
+  <link rel="stylesheet" crossorigin href="/assets/index-BY2Reb3b.css">
 </head>
 
 <body>
@@ -276,11 +276,7 @@
       <button class="hud-btn" id="btn-stash" title="Stash (N)">📦</button>
       <button class="hud-btn" id="btn-cube" title="Horadric Cube (U)">🎲</button>
       <button class="hud-btn" id="btn-quests" title="Quests (Q)">📜</button>
-    </div>
   </div>
-
-  <!-- Combat log -->
-  <div id="combat-log"></div>
 
   <!-- Transition Overlay -->
   <div id="transition-overlay"
@@ -615,10 +611,20 @@
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <div id="custom-tooltip"></div>
 
-  <!-- MMO Chat UI -->
-  <div id="mmo-chat-container" class="hidden">
-    <div id="chat-messages"></div>
-    <input type="text" id="chat-input" placeholder="Press Enter to chat..." maxlength="100">
+  <!-- MMO WoW-Style Chat UI -->
+  <div id="mmo-chat-container" class="chat-container hidden">
+    <div class="chat-tabs">
+      <button class="chat-tab active" data-channel="all">All</button>
+      <button class="chat-tab" data-channel="general">General</button>
+      <button class="chat-tab" data-channel="combat">Combat</button>
+      <button class="chat-tab" data-channel="system">System</button>
+      <button id="btn-chat-lock" title="Toggle Chat Lock" style="margin-left:auto; background:none; border:none; color:#666; cursor:pointer; font-size:12px; padding:0 8px;">🔒</button>
+    </div>
+    <div id="chat-messages" class="chat-messages-area"></div>
+    <div class="chat-input-wrapper">
+      <span id="chat-channel-indicator">[General]:</span>
+      <input type="text" id="chat-input" placeholder="Press Enter to chat..." maxlength="100">
+    </div>
   </div>
 </body>
 

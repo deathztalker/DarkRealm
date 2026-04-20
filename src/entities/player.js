@@ -261,8 +261,10 @@ export class Player {
         // Correctly apply aura slow to attack speed here so it isn't overwritten
         this.atkSpd = baseAtkSpd * (this._auraSlowFactor < 1 ? (1 - (1 - this._auraSlowFactor) * 0.5) : 1);
         
-        // Attack Range
+        // Attack Range — base from weapon + Ranger Bow Mastery bonus
         this.attackRange = wep && wep.range ? Math.max(30, wep.range) : 30;
+        this.attackRange += (s.attackRangeBonus || 0);
+
 
         // Light Radius
         // Base is now 0, added to 240 in main.js. Let's make it more substantial.
@@ -337,31 +339,270 @@ export class Player {
         if (!this.talents || !this.talents.points) return ts;
         for (const [skillId, pts] of Object.entries(this.talents.points)) {
             if (pts <= 0) continue;
-            // Use raw points for passives base length to avoid recursive stat scaling loops
-            const slvl = pts; 
-            
-            // Hardcoded mapping for passive skill nodes across all classes
-            if (skillId.includes('_mastery') || skillId === 'venom') {
-                if (skillId === 'combat_mastery' || skillId === 'feral_mastery') { ts.pctDmg = (ts.pctDmg||0) + 5*slvl; ts.critChance = (ts.critChance||0) + 2*slvl; }
-                if (skillId === 'iron_skin') { ts.pctArmor = (ts.pctArmor||0) + 10*slvl; }
-                if (skillId === 'block_mastery') { ts.blockChance = (ts.blockChance||0) + 1*slvl; ts.pctArmor = (ts.pctArmor||0) + 3*slvl; }
-                if (skillId === 'fire_mastery') ts.pctFireDmg = (ts.pctFireDmg||0) + 5*slvl;
-                if (skillId === 'cold_mastery') ts.pctColdDmg = (ts.pctColdDmg||0) + 5*slvl;
-                if (skillId === 'light_mastery') ts.pctLightDmg = (ts.pctLightDmg||0) + 5*slvl;
-                if (skillId === 'shadow_mastery' || skillId === 'aff_mastery' || skillId === 'bone_mastery') ts.pctShadowDmg = (ts.pctShadowDmg||0) + 5*slvl;
-                if (skillId === 'pois_mastery' || skillId === 'venom') ts.pctPoisonDmg = (ts.pctPoisonDmg||0) + 5*slvl;
-                if (skillId === 'holy_mastery' || skillId === 'aura_mastery') ts.pctHolyDmg = (ts.pctHolyDmg||0) + 5*slvl;
-                if (skillId === 'elem_mastery' || skillId === 'nature_mastery') { ts.pctFireDmg=(ts.pctFireDmg||0)+3*slvl; ts.pctColdDmg=(ts.pctColdDmg||0)+3*slvl; ts.pctLightDmg=(ts.pctLightDmg||0)+3*slvl; }
-                if (skillId === 'bow_mastery' || skillId === 'trap_mastery' || skillId === 'trap_mastery_r') ts.pctDmg = (ts.pctDmg||0) + 5*slvl;
+            const slvl = pts;
+
+            // ══════════════════════════════════════════════════════
+            // ★ WARRIOR PASSIVES
+            // ══════════════════════════════════════════════════════
+            if (skillId === 'combat_mastery') {
+                // +5% damage and +2% crit per point (matches desc: "+5% dmg, +2% crit")
+                ts.pctDmg = (ts.pctDmg||0) + 5*slvl;
+                ts.critChance = (ts.critChance||0) + 2*slvl;
+                // At 10pts: +15% crit multiplier bonus
+                if (slvl >= 10) ts.critMulti = (ts.critMulti||0) + 15;
             }
-            if (skillId === 'life_tap' || skillId === 'soul_link') ts.lifeStealPct = (ts.lifeStealPct||0) + 2*slvl;
-            if (skillId === 'demon_armor') { ts.flatArmor = (ts.flatArmor||0) + 20*slvl; ts.allRes = (ts.allRes||0) + 2*slvl; }
-            if (skillId === 'lethality') ts.critMulti = (ts.critMulti||0) + 10*slvl;
-            if (skillId === 'chain_reaction') ts.critChance = (ts.critChance||0) + 1*slvl;
-            
-            // Phase 20: Radiance (Light Radius & Resists)
+            if (skillId === 'iron_skin') {
+                // +8% armor per point (desc says 8%, was coded as 10 — fixing)
+                ts.pctArmor = (ts.pctArmor||0) + 8*slvl;
+                // At 10pts: 5% physical damage reduction
+                if (slvl >= 10) ts.pctDmgReduce = (ts.pctDmgReduce||0) + 5;
+            }
+            if (skillId === 'block_mastery') {
+                // +3% block chance per point (desc says 3%, was coded as 1 — fixing)
+                ts.blockChance = (ts.blockChance||0) + 3*slvl;
+            }
+            if (skillId === 'life_tap') {
+                // +0.5% life steal per point (matches desc)
+                ts.lifeStealPct = (ts.lifeStealPct||0) + 0.5*slvl;
+                // At 15pts: also gain flat life regen
+                if (slvl >= 15) ts.lifeRegenPerSec = (ts.lifeRegenPerSec||0) + 5;
+            }
+
+            // ══════════════════════════════════════════════════════
+            // ★ SORCERESS PASSIVES
+            // ══════════════════════════════════════════════════════
+            if (skillId === 'fire_mastery') {
+                // +5% fire damage per point
+                ts.pctFireDmg = (ts.pctFireDmg||0) + 5*slvl;
+                // At 10pts: fire spells ignore 10% enemy fire resistance
+                if (slvl >= 10) ts.firePiercing = (ts.firePiercing||0) + 10;
+            }
+            if (skillId === 'cold_mastery') {
+                // +5% cold damage per point
+                ts.pctColdDmg = (ts.pctColdDmg||0) + 5*slvl;
+                // At 10pts: chill/freeze duration +25%
+                if (slvl >= 10) ts.freezeDurationBonus = (ts.freezeDurationBonus||0) + 0.25;
+            }
+            if (skillId === 'light_mastery' || skillId === 'lightning_mastery') {
+                // +5% lightning damage per point
+                ts.pctLightDmg = (ts.pctLightDmg||0) + 5*slvl;
+                // At 10pts: chain spells hit +1 additional target
+                if (slvl >= 10) ts.chainBounses = (ts.chainBounses||0) + 1;
+            }
+
+            // ══════════════════════════════════════════════════════
+            // ★ NECROMANCER PASSIVES
+            // ══════════════════════════════════════════════════════
+            if (skillId === 'skeleton_mastery') {
+                // +15% minion damage and +10% minion HP per point
+                ts.minionDmgPct = (ts.minionDmgPct||0) + 15*slvl;
+                ts.minionHpPct  = (ts.minionHpPct||0)  + 10*slvl;
+            }
+            if (skillId === 'golem_mastery') {
+                // +20% golem HP per point, +5% golem damage per point
+                ts.minionDmgPct = (ts.minionDmgPct||0) + 5*slvl;
+                ts.minionHpPct  = (ts.minionHpPct||0)  + 20*slvl;
+                // At 10pts: golems gain life regen
+                if (slvl >= 10) ts.minionRegenPct = (ts.minionRegenPct||0) + 10;
+            }
+            if (skillId === 'summon_resist') {
+                // +5% all resistances for minions; player also gains +2% allRes
+                ts.allRes = (ts.allRes||0) + 2*slvl;
+                ts.minionResistPct = (ts.minionResistPct||0) + 5*slvl;
+            }
+            if (skillId === 'bone_mastery') {
+                // +5% shadow/bone damage per point, -0.5s bone spell cooldown
+                ts.pctShadowDmg = (ts.pctShadowDmg||0) + 5*slvl;
+                ts.boneCdReduce = (ts.boneCdReduce||0) + 0.3*slvl;
+            }
+
+            // ══════════════════════════════════════════════════════
+            // ★ ROGUE PASSIVES
+            // ══════════════════════════════════════════════════════
+            if (skillId === 'venom') {
+                // +5% poison damage per point + 0.2s poison duration per point
+                ts.pctPoisonDmg = (ts.pctPoisonDmg||0) + 5*slvl;
+                ts.poisonDurationBonus = (ts.poisonDurationBonus||0) + 0.2*slvl;
+            }
+            if (skillId === 'lethality') {
+                // +10% crit multiplier per point (was +10 — correct)
+                ts.critMulti = (ts.critMulti||0) + 10*slvl;
+                // At 10pts: crits also apply a 2s bleed DoT
+                if (slvl >= 10) ts.critBleed = true;
+            }
+            if (skillId === 'chain_reaction') {
+                // +1% crit chance per point, trap explosion radius grows
+                ts.critChance = (ts.critChance||0) + 1*slvl;
+                ts.trapRadiusBonus = (ts.trapRadiusBonus||0) + 5*slvl;
+            }
+            if (skillId === 'virulence') {
+                // +4% poison damage and +2% IAS per point
+                ts.pctPoisonDmg = (ts.pctPoisonDmg||0) + 4*slvl;
+                ts.pctIAS = (ts.pctIAS||0) + 2*slvl;
+            }
+
+            // ══════════════════════════════════════════════════════
+            // ★ PALADIN PASSIVES (Auras + Retribution + Protection)
+            // ══════════════════════════════════════════════════════
+
+            // — AURAS TREE —
+            if (skillId === 'aura_mastery') {
+                // +5% holy damage per point, aura radius +4% per point
+                ts.pctHolyDmg      = (ts.pctHolyDmg||0)      + 5*slvl;
+                ts.auraRadiusBonus = (ts.auraRadiusBonus||0)  + 4*slvl;
+            }
+
+            // — RETRIBUTION TREE —
+            if (skillId === 'ret_mastery') {
+                // Righteous Vengeance: +5+2/pt holy DoT per crit; also +2% holy dmg/pt
+                ts.pctHolyDmg     = (ts.pctHolyDmg||0)     + 2*slvl;
+                ts.retDoTDmgPerPt = (ts.retDoTDmgPerPt||0) + 2*slvl;  // tracked for proc system
+            }
+            if (skillId === 'art_of_war') {
+                // Art of War: at full investment grant a crit-proc instant-cast flag
+                // Each point reduces the AoW internal cooldown by 0.5s
+                ts.artOfWarCdReduce = (ts.artOfWarCdReduce||0) + 0.5*slvl;
+            }
+            if (skillId === 'sacred_duty') {
+                // Sacred Duty: -1.5% Divine Shield CD per point, +1% crit per point
+                ts.divineCdReduce = (ts.divineCdReduce||0) + 1.5*slvl;
+                ts.critChance     = (ts.critChance||0)     + 1*slvl;
+            }
+
+            // — PROTECTION TREE —
+            if (skillId === 'prot_mastery') {
+                // Touched by the Light: +3% stamina/pt, +5 armor/pt
+                ts.pctVit    = (ts.pctVit||0)    + 3*slvl;
+                ts.flatArmor = (ts.flatArmor||0) + 5*slvl;
+            }
+            if (skillId === 'ardent_defender') {
+                // Ardent Defender: +1% damage reduction while below 35% HP per point
+                // at 10pts: cheat death (tracked as flag, resolved in combat)
+                ts.ardentDrPct = (ts.ardentDrPct||0) + 1*slvl;
+                if (slvl >= 10) ts.cheatDeath = true;
+            }
+
+
+            // ══════════════════════════════════════════════════════
+            // ★ SHAMAN PASSIVES
+            // ══════════════════════════════════════════════════════
+            if (skillId === 'elem_mastery') {
+                // +3% fire/cold/lightning damage per point
+                ts.pctFireDmg  = (ts.pctFireDmg||0)  + 3*slvl;
+                ts.pctColdDmg  = (ts.pctColdDmg||0)  + 3*slvl;
+                ts.pctLightDmg = (ts.pctLightDmg||0) + 3*slvl;
+                // At 10pts: -10% mana cost on all elemental spells
+                if (slvl >= 10) ts.elementalManaCostReduce = (ts.elementalManaCostReduce||0) + 10;
+            }
+            if (skillId === 'totem_mastery') {
+                // +20% totem duration per point, +8% totem area per point
+                ts.totemDurationBonus = (ts.totemDurationBonus||0) + 0.2*slvl;
+                ts.totemRadiusBonus   = (ts.totemRadiusBonus||0)   + 8*slvl;
+                // At 5pts: can place 1 extra totem at once
+                if (slvl >= 5) ts.extraTotem = (ts.extraTotem||0) + 1;
+            }
+            if (skillId === 'resto_mastery') {
+                // +8% heal effectiveness per point, +2 HP regen per point
+                ts.healBoostPct = (ts.healBoostPct||0) + 8*slvl;
+                ts.lifeRegenPerSec = (ts.lifeRegenPerSec||0) + 2*slvl;
+            }
+
+            // ══════════════════════════════════════════════════════
+            // ★ WARLOCK PASSIVES
+            // ══════════════════════════════════════════════════════
+            if (skillId === 'shadow_mastery' || skillId === 'aff_mastery') {
+                // +5% shadow damage per point
+                ts.pctShadowDmg = (ts.pctShadowDmg||0) + 5*slvl;
+                // At 10pts: DoTs can critically strike
+                if (slvl >= 10) ts.dotCanCrit = true;
+            }
+            if (skillId === 'demon_armor') {
+                // +20 flat armor per point, +2% all resist per point
+                ts.flatArmor = (ts.flatArmor||0) + 20*slvl;
+                ts.allRes = (ts.allRes||0) + 2*slvl;
+                // At 10pts: +5 life regen per second
+                if (slvl >= 10) ts.lifeRegenPerSec = (ts.lifeRegenPerSec||0) + 5;
+            }
+            if (skillId === 'soul_link') {
+                // 1% life steal per point, minion damage reduced by 10 but heals player
+                ts.lifeStealPct = (ts.lifeStealPct||0) + 1*slvl;
+            }
+            if (skillId === 'pois_mastery') {
+                ts.pctPoisonDmg = (ts.pctPoisonDmg||0) + 5*slvl;
+            }
+
+            // ══════════════════════════════════════════════════════
+            // ★ DRUID PASSIVES
+            // ══════════════════════════════════════════════════════
+            if (skillId === 'nature_mastery') {
+                // +3% fire/cold/light damage per point (ele bonus)
+                ts.pctFireDmg  = (ts.pctFireDmg||0)  + 3*slvl;
+                ts.pctColdDmg  = (ts.pctColdDmg||0)  + 3*slvl;
+                ts.pctLightDmg = (ts.pctLightDmg||0) + 3*slvl;
+                // At 10pts: nature damage also has 10% chance to root
+                if (slvl >= 10) ts.natureRootChance = (ts.natureRootChance||0) + 0.10;
+            }
+            if (skillId === 'feral_mastery') {
+                // +5% damage, +2% crit per point in shapeshifted forms
+                ts.pctDmg = (ts.pctDmg||0) + 5*slvl;
+                ts.critChance = (ts.critChance||0) + 2*slvl;
+                // At 10pts: +15% max HP while shapeshifted
+                if (slvl >= 10) ts.pctHP = (ts.pctHP||0) + 15;
+            }
+            if (skillId === 'natural_armor') {
+                // +6% armor per point, +2% HP regen per point
+                ts.pctArmor = (ts.pctArmor||0) + 6*slvl;
+                ts.lifeRegenPerSec = (ts.lifeRegenPerSec||0) + 1*slvl;
+            }
+
+            // ══════════════════════════════════════════════════════
+            // ★ RANGER PASSIVES
+            // ══════════════════════════════════════════════════════
+            if (skillId === 'bow_mastery') {
+                // +5% damage per point, attack range +5 per point
+                ts.pctDmg = (ts.pctDmg||0) + 5*slvl;
+                ts.attackRangeBonus = (ts.attackRangeBonus||0) + 5*slvl;
+            }
+            if (skillId === 'trap_mastery' || skillId === 'trap_mastery_r') {
+                // +5% damage per point, trap radius +4% per point
+                ts.pctDmg = (ts.pctDmg||0) + 5*slvl;
+                ts.trapRadiusBonus = (ts.trapRadiusBonus||0) + 4*slvl;
+            }
+            if (skillId === 'tracking') {
+                // +3% move speed per point, +2% crit vs debuffed enemies
+                ts.pctMoveSpeed = (ts.pctMoveSpeed||0) + 3*slvl;
+                ts.critChance = (ts.critChance||0) + 2*slvl;
+            }
+            if (skillId === 'nature_mastery' && this.classId === 'ranger') {
+                // Ranger version: +4% nature/poison damage per point
+                ts.pctPoisonDmg = (ts.pctPoisonDmg||0) + 4*slvl;
+                ts.pctLightDmg  = (ts.pctLightDmg||0)  + 2*slvl;
+            }
+
+            // ══════════════════════════════════════════════════════
+            // ★ UNIVERSAL PASSIVES (any class)
+            // ══════════════════════════════════════════════════════
             if (skillId === 'radiance') {
-                ts.allRes = (ts.allRes || 0) + 2 * slvl;
+                ts.allRes = (ts.allRes||0) + 2*slvl;
+                // light radius handled separately in _recalcStats
+            }
+            // Warlock/Necro shared passives
+            if (skillId === 'bone_mastery') {
+                ts.pctShadowDmg = (ts.pctShadowDmg||0) + 5*slvl;
+            }
+            // Attack speed passives
+            if (skillId === 'blade_efficiency' || skillId === 'swift_assault') {
+                ts.pctIAS = (ts.pctIAS||0) + 3*slvl;
+            }
+            // Generic mana passives
+            if (skillId === 'arcane_reservoir' || skillId === 'mana_tap') {
+                ts.flatMP = (ts.flatMP||0) + 20*slvl;
+                ts.manaRegenPerSec = (ts.manaRegenPerSec||0) + slvl;
+            }
+            // Generic life passives
+            if (skillId === 'vitality_mastery' || skillId === 'endurance') {
+                ts.flatHP = (ts.flatHP||0) + 15*slvl;
+                ts.lifeRegenPerSec = (ts.lifeRegenPerSec||0) + slvl * 0.5;
             }
         }
         return ts;

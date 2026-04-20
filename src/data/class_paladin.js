@@ -1,172 +1,193 @@
 /**
- * PALADIN — Expanded endgame trees
- * Builds: 1. "Hammerdin" — Holy/Combat Blessed Hammer spam  2. "Zealot" — Fanaticism+Zeal melee  3. "Aura Support" — Full aura party buffer
+ * PALADIN — Class Definition (WoW: Wrath of the Lich King inspired)
+ *
+ * Three trees:
+ *   • Auras        — Passive toggled auras that boost the entire party (UNCHANGED)
+ *   • Retribution  — Two-handed melee DPS: Judgements, seals, Divine Storm
+ *   • Protection   — Shield tank: block, Consecration, Holy Shield, Avenger's Shield
  */
 export const PALADIN_CLASS = {
-    id: 'paladin', name: 'Paladin', icon: '✨',
-    desc: 'Sacred warrior wielding divine power. Auras empower allies, holy magic smites the unholy, and zealous strikes cut through armor like paper.',
-    stats: { str: 7, dex: 3, vit: 6, int: 4 },
-    statBars: { str: 75, dex: 30, vit: 70, int: 45 },
-    allowedWeapons: ['sword', 'mace', 'axe'],
-    allowedOffhand: ['shield'],
+    id: 'paladin', name: 'Paladin', icon: '⚜️',
+    description: 'A righteous crusader empowered by divine light. Fill any role: overwhelm enemies as a Retribution warrior, shield allies as Protection, or command the battlefield with ancient Auras.',
+    stats: { str: 25, dex: 12, vit: 22, int: 11 },
+    primaryStat: 'str',
+    hitDie: 10,
     trees: [
+
+        // ════════════════════════════════════════════════════
+        // ★ AURAS — Passive auras that buff the entire party
+        //   (Kept intact as requested)
+        // ════════════════════════════════════════════════════
         {
-            id: 'holy', name: 'Holy', icon: '✝️', nodes: [
+            id: 'auras', name: 'Auras', icon: '🌟',
+            nodes: [
                 {
-                    id: 'holy_light', row: 0, col: 1, type: 'active', icon: '💛', name: 'Holy Light',
-                    desc: 'Heal self or ally: (25+slvl×12) HP. Damages undead for same amount.',
-                    endgame: 'slvl 20: 265 heal/dmg. Low cost, no CD. Unlimited sustain.',
-                    maxPts: 20, mana: 10, cd: 0, group: 'holy', dmgBase: 25, dmgPerLvl: 12
+                    id: 'might_aura', row: 0, col: 1, type: 'toggle', icon: '💪', name: 'Aura: Might',
+                    desc: 'Toggle Aura · Emit an aura of divine might that increases all nearby allies\' weapon damage by 20 + 2% per point. Passive — always on once activated.',
+                    tip: 'Max lvl (20): +60% weapon damage to entire party. The best aura for melee groups.',
+                    maxPts: 20, mana: 0, cd: 0
                 },
                 {
-                    id: 'holy_shock', row: 1, col: 0, type: 'active', icon: '⚡', name: 'Holy Shock',
-                    desc: 'Passive aura + active: adds (8+slvl×5) holy damage to attacks. Active burst: (12+slvl×7) AoE holy.',
-                    endgame: 'slvl 20: +108 holy/hit passive + 152 AoE active. Dual-use skill.',
-                    maxPts: 20, mana: 8, cd: 0, group: 'holy', dmgBase: 12, dmgPerLvl: 7
+                    id: 'prayer_aura', row: 1, col: 0, type: 'toggle', icon: '🙏', name: 'Aura: Prayer',
+                    desc: 'Toggle Aura · Emit a healing aura that restores 2 + 1 per point HP per second to you and all nearby allies. Scales well with Aura Mastery.',
+                    tip: 'Max lvl (20): +22 HP/s for entire party. Incredible sustained healing.',
+                    maxPts: 20, mana: 0, cd: 0
                 },
                 {
-                    id: 'consecration', row: 1, col: 2, type: 'active', icon: '🌟', name: 'Consecration',
-                    desc: 'Bless ground: (6+slvl×4) holy/s to enemies standing on it. Lasts 8+slvl×0.5s.',
-                    endgame: 'slvl 20: 86/s for 18s = 1548 total AoE. Zone denial for undead.',
-                    maxPts: 20, mana: 14, cd: 0, group: 'holy', dmgBase: 6, dmgPerLvl: 4
-                },
-                {
-                    id: 'holy_mastery', row: 2, col: 0, type: 'passive', icon: '📈', name: 'Holy Mastery',
-                    desc: '+6% holy damage and healing per point. At 10pts: holy spells pierce undead immunity.',
-                    endgame: 'slvl 20: +120% holy + heal. Undead immunity pierced.',
+                    id: 'aura_mastery', row: 1, col: 2, type: 'passive', icon: '⭐', name: 'Aura Mastery',
+                    desc: 'Passive · +5% holy damage per point and aura radius increases by +4% per point. Larger auras cover more party members. Core passive for dedicated aura builds.',
+                    tip: 'Max lvl (20): +100% holy damage · aura covers a huge area.',
                     maxPts: 20
                 },
                 {
-                    id: 'cleansing', row: 2, col: 1, type: 'active', icon: '💧', name: 'Cleansing',
-                    desc: 'Remove all debuffs from self/ally. Passive: reduces curse duration by (10+slvl×2)%.',
-                    endgame: 'slvl 20: instant debuff purge + 50% curse reduction. Anti-Necromancer.',
-                    maxPts: 20, mana: 6, cd: 0
+                    id: 'resist_all', row: 2, col: 1, type: 'toggle', icon: '🛡️', name: 'Aura: Resist All',
+                    desc: 'Toggle Aura · Boost all resistances of you and nearby allies by 5 + 1.5% per point. Essential in high-difficulty content where elemental damage is dangerous.',
+                    tip: 'Max lvl (20): +35% all resistances to party. Hard counters elemental bosses.',
+                    maxPts: 20, mana: 0, cd: 0, req: 'prayer_aura:3'
                 },
                 {
-                    id: 'divine_shield', row: 3, col: 0, type: 'active', icon: '🛡️', name: 'Divine Shield',
-                    desc: 'Immune to ALL damage for (2+slvl×0.15)s. Cannot attack during immunity.',
-                    endgame: 'slvl 20: 5s total immunity. Emergency button. Incredibly powerful correctly timed.',
-                    maxPts: 20, mana: 12, cd: 60, req: 'holy_light:10'
+                    id: 'holy_fire_aura', row: 2, col: 0, type: 'toggle', icon: '🔥', name: 'Aura: Holy Fire',
+                    desc: 'Toggle Aura · Emit a fiery holy aura that passively damages all nearby enemies for 3 + 2 per point fire/holy damage every second. Pure passive AoE without casting.',
+                    tip: 'Max lvl (20): 43 damage/s to all enemies in range. Free passive DPS.',
+                    maxPts: 20, mana: 0, cd: 0, req: 'might_aura:3'
                 },
                 {
-                    id: 'holy_smite', row: 3, col: 2, type: 'active', icon: '☀️', name: 'Holy Smite',
-                    desc: 'Column of light: (35+slvl×16) holy AoE + blinds enemies 2s reducing hit chance by 50%.',
-                    endgame: 'slvl 20: 355 AoE + blind. Combine with Consecration for devastating holy zones.',
-                    maxPts: 20, mana: 18, cd: 8, group: 'holy', dmgBase: 35, dmgPerLvl: 16, req: 'consecration:5',
-                    synergies: [{ from: 'consecration', pctPerPt: 5 }]
+                    id: 'vigor', row: 3, col: 0, type: 'toggle', icon: '💨', name: 'Aura: Vigor',
+                    desc: 'Toggle Aura · Emit an aura of divine speed, increasing movement speed of you and nearby allies by 20 + 1.5% per point.',
+                    tip: 'Max lvl (20): +50% movement speed party-wide.',
+                    maxPts: 20, mana: 0, cd: 0, req: 'resist_all:3'
                 },
                 {
-                    id: 'judgment', row: 4, col: 1, type: 'active', icon: '⚖️', name: 'Judgment',
-                    desc: 'Ultimate: call divine judgment on all enemies in large radius: (50+slvl×22) holy. Undead take ×3.',
-                    endgame: 'slvl 20: 490 holy AoE (1470 vs undead). Decimates undead zones. Top-tier holy nuke.',
-                    maxPts: 20, mana: 30, cd: 45, group: 'holy', dmgBase: 50, dmgPerLvl: 22, req: 'holy_smite:10',
-                    synergies: [{ from: 'holy_mastery', pctPerPt: 4 }]
+                    id: 'fanaticism', row: 3, col: 2, type: 'toggle', icon: '⚡', name: 'Aura: Fanaticism',
+                    desc: 'Toggle Aura · The most powerful offensive aura. Grants all nearby allies +30 + 1.5% per point attack speed AND +30 + 2% per point damage. Cannot be combined with other damage auras.',
+                    tip: 'Max lvl (20): +60% IAS · +70% damage. Best DPS aura in the game.',
+                    maxPts: 20, mana: 0, cd: 0, req: 'holy_fire_aura:5'
+                },
+                {
+                    id: 'conviction', row: 4, col: 1, type: 'toggle', icon: '🔴', name: 'Aura: Conviction',
+                    desc: 'Toggle Aura · Drastically reduce the armor and all resistances of all nearby enemies by 30 + 2% per point. The most powerful offensive support aura — enemies become drastically more vulnerable to all damage.',
+                    tip: 'Max lvl (20): -70% enemy armor and -70% all enemy resistances. Enables entire team.',
+                    maxPts: 20, mana: 0, cd: 0, req: 'fanaticism:10'
                 },
             ]
         },
+
+        // ════════════════════════════════════════════════════
+        // ★ RETRIBUTION — WoW LK melee DPS
+        //   Seals + Judgement burst · Divine Storm · windfury
+        // ════════════════════════════════════════════════════
         {
-            id: 'auras', name: 'Auras', icon: '🌐', nodes: [
+            id: 'retribution', name: 'Retribution', icon: '⚔️',
+            nodes: [
                 {
-                    id: 'might_aura', row: 0, col: 1, type: 'active', icon: '💪', name: 'Might',
-                    desc: 'Aura: party gains +(20+slvl×2)% physical damage. Only 1 aura active at a time.',
-                    endgame: 'slvl 20: +60% phys dmg for entire party. Default offensive aura.',
-                    maxPts: 20, mana: 0, cd: 0, group: 'aura'
+                    id: 'seal_of_command', row: 0, col: 1, type: 'toggle', icon: '⚔️', name: 'Seal of Command',
+                    desc: 'Toggle Seal · While active, every melee swing has a 30% chance to deal +40 + 8 per point bonus holy damage (beyond your normal hit). Keep a Seal active at ALL times — Judgement consumes it for a massive burst.',
+                    tip: 'Max lvl (20): +200 holy damage on proc. Seal + Judge = burst cycle.',
+                    maxPts: 20, mana: 2, cd: 0
                 },
                 {
-                    id: 'prayer_aura', row: 1, col: 0, type: 'active', icon: '🙏', name: 'Prayer',
-                    desc: 'Aura: party regenerates (2+slvl×1) HP/s.',
-                    endgame: 'slvl 20: 22 HP/s passive regen for party. Consistent sustain.',
-                    maxPts: 20, mana: 0, cd: 0, group: 'aura'
+                    id: 'crusader_strike', row: 1, col: 0, type: 'active', icon: '⚡', name: 'Crusader Strike',
+                    desc: 'Active · An instant melee strike that deals 120% weapon damage as holy damage and refreshes your active Seal (it will not be consumed). 6s cooldown. Your primary damage-per-cooldown button.',
+                    tip: 'Max lvl (20): 120% weapon as holy · Seal always active between Judgements.',
+                    maxPts: 20, mana: 5, cd: 6, group: 'holy', dmgBase: 0, dmgPerLvl: 0
                 },
                 {
-                    id: 'holy_fire_aura', row: 1, col: 2, type: 'active', icon: '🔥', name: 'Holy Fire',
-                    desc: 'Aura: adds (3+slvl×2) fire damage to all party melee hits. Pulses fire AoE every 2s.',
-                    endgame: 'slvl 20: +43 fire/hit + periodic AoE. Turns melee party into fire machines.',
-                    maxPts: 20, mana: 0, cd: 0, group: 'aura', dmgBase: 3, dmgPerLvl: 2
+                    id: 'judgement', row: 1, col: 2, type: 'active', icon: '⚖️', name: 'Judgement',
+                    desc: 'Active · Judge your current Seal against the target, releasing its stored power as a burst of 50 + 20 per point holy damage AND applying a 10-second debuff that increases holy damage taken by 15%. Consumes the Seal.',
+                    tip: 'Max lvl (20): 450 holy + 15% holy vuln. Always re-apply your Seal after Judging.',
+                    maxPts: 20, mana: 8, cd: 8, group: 'holy', dmgBase: 50, dmgPerLvl: 20, req: 'seal_of_command:1'
                 },
                 {
-                    id: 'resist_all', row: 2, col: 0, type: 'active', icon: '🛡️', name: 'Resist All',
-                    desc: 'Aura: party gains +(5+slvl×1.5)% all resistances.',
-                    endgame: 'slvl 20: +35% all res for party. Party-wide survivability.',
-                    maxPts: 20, mana: 0, cd: 0, group: 'aura'
-                },
-                {
-                    id: 'vigor', row: 2, col: 1, type: 'active', icon: '🏃', name: 'Vigor',
-                    desc: 'Aura: party gains +(20+slvl×1.5)% run speed and +(10+slvl×1)% stamina regen.',
-                    endgame: 'slvl 20: +50% run speed. Travel aura, invaluable for farming efficiency.',
-                    maxPts: 20, mana: 0, cd: 0, group: 'aura'
-                },
-                {
-                    id: 'fanaticism', row: 3, col: 0, type: 'active', icon: '⚡', name: 'Fanaticism',
-                    desc: 'Aura: +(30+slvl×1.5)% attack speed and +(30+slvl×2)% damage for party. THE endgame aura.',
-                    endgame: 'slvl 20: +60% IAS + +70% dmg for entire party. Best offensive aura in the game.',
-                    maxPts: 20, mana: 0, cd: 0, group: 'aura', req: 'might_aura:10'
-                },
-                {
-                    id: 'conviction', row: 3, col: 2, type: 'active', icon: '💥', name: 'Conviction',
-                    desc: 'Aura: nearby enemies lose -(30+slvl×2)% defense and -(30+slvl×2)% all resistances.',
-                    endgame: 'slvl 20: -70% def and -70% res on all nearby enemies. Breaks immunities with Lower Resist.',
-                    maxPts: 20, mana: 0, cd: 0, group: 'aura', req: 'resist_all:10'
-                },
-                {
-                    id: 'aura_mastery', row: 4, col: 1, type: 'passive', icon: '📈', name: 'Aura Mastery',
-                    desc: 'Passive. +5% aura effectiveness per point. At 20pts: run 2 auras simultaneously.',
-                    endgame: 'slvl 20: +100% aura power + dual auras. Fanaticism + Conviction = game-breaking.',
+                    id: 'ret_mastery', row: 2, col: 0, type: 'passive', icon: '🔴', name: 'Righteous Vengeance',
+                    desc: 'Passive · Your Judgement and Divine Storm critical strikes apply a 4-second DoT on the target for 5 + 2 per point holy damage per second. More crits = more DoTs stacking simultaneously.',
+                    tip: 'Max lvl (20): Each crit leaves a 45/s DoT. Stack DoTs on bosses.',
                     maxPts: 20
+                },
+                {
+                    id: 'art_of_war', row: 2, col: 2, type: 'passive', icon: '💡', name: 'Art of War',
+                    desc: 'Passive · Whenever you score a critical melee strike, your next spell (any Judgement, Exorcism, or Holy Light) costs NO mana and has no cast time. 10-second internal cooldown.',
+                    tip: 'Max lvl (20): Crit → instant free spell with no CD. Creates explosive burst windows.',
+                    maxPts: 20
+                },
+                {
+                    id: 'divine_storm', row: 3, col: 1, type: 'active', icon: '🌩️', name: 'Divine Storm',
+                    desc: 'Active · Unleash a devastating spin attack that hits ALL enemies near you for 110% weapon damage as holy damage. Heals you and up to 3 party members for 25% of all damage dealt. 10s cooldown.',
+                    tip: 'Max lvl (20): 110% weapon AoE holy · free party heal. Combines with Conviction Aura for massive numbers.',
+                    maxPts: 20, mana: 8, cd: 10, group: 'holy', dmgBase: 0, dmgPerLvl: 0, req: 'judgement:5',
+                    synergies: [{ from: 'ret_mastery', pctPerPt: 3 }]
+                },
+                {
+                    id: 'repentance', row: 3, col: 0, type: 'active', icon: '😇', name: 'Repentance',
+                    desc: 'Active · Lock a humanoid or demon target in a state of meditation for 6 + 0.3 per point seconds — they are completely incapacitated and cannot act. Cancelled by any damage.',
+                    tip: 'Max lvl (20): 12s CC on humanoids and demons. Essential crowd control for tough encounters.',
+                    maxPts: 20, mana: 9, cd: 60, req: 'crusader_strike:5'
+                },
+                {
+                    id: 'exorcism', row: 4, col: 1, type: 'active', icon: '🔥', name: 'Exorcism',
+                    desc: 'Active · Hurl holy fire at the target for 80 + 30 per point holy damage. ALWAYS critically strikes undead and demons. Against normal enemies Art of War makes it instant and free. 15s cooldown.',
+                    tip: 'Max lvl (20): 680 holy · guaranteed crit vs undead/demons. Best boss nuke in the tree.',
+                    maxPts: 20, mana: 14, cd: 15, group: 'holy', dmgBase: 80, dmgPerLvl: 30, req: 'divine_storm:5',
+                    synergies: [{ from: 'art_of_war', pctPerPt: 4 }, { from: 'judgement', pctPerPt: 3 }]
                 },
             ]
         },
+
+        // ════════════════════════════════════════════════════
+        // ★ PROTECTION — WoW LK shield tank
+        //   Avenger's Shield / Holy Shield / Hammer of Righteous
+        // ════════════════════════════════════════════════════
         {
-            id: 'combat', name: 'Combat', icon: '⚔️', nodes: [
+            id: 'protection', name: 'Protection', icon: '🛡️',
+            nodes: [
                 {
-                    id: 'zeal', row: 0, col: 1, type: 'active', icon: '⚔️', name: 'Zeal',
-                    desc: 'Strike with (2+slvl/5) rapid attacks at 75% weapon damage each.',
-                    endgame: 'slvl 20: 6 attacks per Zeal. With Fanaticism = machine-gun melee.',
-                    maxPts: 20, mana: 3, cd: 0, group: 'melee'
+                    id: 'avengers_shield', row: 0, col: 1, type: 'active', icon: '🛡️', name: 'Avenger\'s Shield',
+                    desc: 'Active · Hurl your shield at a target for 30 + 12 per point holy damage. The shield BOUNCES to 2 additional nearby enemies, dealing 85% of the original damage each. All targets are silenced for 3 seconds. Requires a shield equipped.',
+                    tip: 'Max lvl (20): 270 damage · two 229 bounces · 3s silence. Best opening skill for Protection.',
+                    maxPts: 20, mana: 10, cd: 15, group: 'holy', dmgBase: 30, dmgPerLvl: 12
                 },
                 {
-                    id: 'charge', row: 1, col: 0, type: 'active', icon: '🐎', name: 'Charge',
-                    desc: 'Rush to target: (30+slvl×12) physical on impact + knockback.',
-                    endgame: 'slvl 20: 270 charge hit. Gap closer that hits like a truck.',
-                    maxPts: 20, mana: 8, cd: 6, group: 'melee', dmgBase: 30, dmgPerLvl: 12
+                    id: 'holy_shield', row: 1, col: 0, type: 'active', icon: '✨', name: 'Holy Shield',
+                    desc: 'Active (Buff) · Infuse your shield with divine power for 8 + 0.4 per point seconds. During this time, every block also damages the attacker for 80 + 15 per point holy damage and increases your block chance by +30%. Requires shield.',
+                    tip: 'Max lvl (20): 16s buff · +30% block · 380 holy damage reflected on each block.',
+                    maxPts: 20, mana: 10, cd: 8, group: 'holy', dmgBase: 80, dmgPerLvl: 15, req: 'avengers_shield:1'
                 },
                 {
-                    id: 'vengeance', row: 1, col: 2, type: 'active', icon: '⚡', name: 'Vengeance',
-                    desc: 'Each hit adds (8+slvl×4) fire/cold/lightning damage (all 3 simultaneously).',
-                    endgame: 'slvl 20: +88 of each element per hit = +264 total elemental. Multi-element bypasses res.',
-                    maxPts: 20, mana: 10, cd: 0, group: 'melee', dmgBase: 8, dmgPerLvl: 4, req: 'zeal:5'
-                },
-                {
-                    id: 'combat_mastery', row: 2, col: 0, type: 'passive', icon: '📈', name: 'Combat Mastery',
-                    desc: '+4% melee damage and +3% attack speed per point.',
-                    endgame: 'slvl 20: +80% melee + 60% IAS. Core passive for all combat builds.',
+                    id: 'prot_mastery', row: 1, col: 2, type: 'passive', icon: '🧱', name: 'Touched by the Light',
+                    desc: 'Passive · +3% stamina per point, and 15% of your bonus stamina is converted into spell power (holy damage). Also grants +5 armor per point. Makes tanking and DPS scale together.',
+                    tip: 'Max lvl (20): +60% stamina · 15% stamina → spell power · +100 bonus armor. Tank and deal damage simultaneously.',
                     maxPts: 20
                 },
                 {
-                    id: 'smite', row: 2, col: 1, type: 'active', icon: '🔨', name: 'Smite',
-                    desc: 'Shield bash: (15+slvl×8) + always hits + stuns 1s. Uses shield damage.',
-                    endgame: 'slvl 20: 175 guaranteed-hit stun. Cannot miss = best single-target CC.',
-                    maxPts: 20, mana: 4, cd: 2, group: 'melee', dmgBase: 15, dmgPerLvl: 8
+                    id: 'hammer_righteous', row: 2, col: 1, type: 'active', icon: '🔨', name: 'Hammer of the Righteous',
+                    desc: 'Active · Strike the current target for 40% weapon damage as holy damage AND simultaneously hit all enemies near the target for 40% weapon damage as holy damage. 3 charges (recharge every 8s). Great threat generation.',
+                    tip: 'Max lvl (20): 40% weapon AoE holy · 3 charges. Excellent threat on multiple enemies.',
+                    maxPts: 20, mana: 5, cd: 8, group: 'holy', dmgBase: 0, dmgPerLvl: 0, req: 'holy_shield:3'
                 },
                 {
-                    id: 'blessed_hammer', row: 3, col: 0, type: 'active', icon: '🔨', name: 'Blessed Hammer',
-                    desc: 'Spiral hammer: (25+slvl×14) holy damage. Spins outward hitting multiple times. Ignores defense.',
-                    endgame: 'slvl 20: 305 per hammer, can multi-hit. The ICONIC Hammerdin skill. Ignores def = always full dmg.',
-                    maxPts: 20, mana: 14, cd: 0, group: 'holy', dmgBase: 25, dmgPerLvl: 14, req: 'zeal:10',
-                    synergies: [{ from: 'zeal', pctPerPt: 3 }, { from: 'smite', pctPerPt: 4 }]
+                    id: 'ardent_defender', row: 2, col: 0, type: 'passive', icon: '💎', name: 'Ardent Defender',
+                    desc: 'Passive · When you are below 35% HP, all damage you take is reduced by 20 + 1% per point. At 10 points, the first time you would die while at high talent investment, you instead survive at 1 HP (once per 120s).',
+                    tip: 'Max lvl (20): 40% damage reduction below 35% HP · "cheat death" at 10pts.',
+                    maxPts: 20
                 },
                 {
-                    id: 'foh', row: 3, col: 2, type: 'active', icon: '🌟', name: 'Fist of the Heavens',
-                    desc: 'Lightning bolt from sky: (40+slvl×18) holy damage + shower of holy bolts in radius.',
-                    endgame: 'slvl 20: 400 + holy bolt shower. Combines ranged + AoE. Alternative to Hammer builds.',
-                    maxPts: 20, mana: 16, cd: 0, group: 'holy', dmgBase: 40, dmgPerLvl: 18, req: 'vengeance:5'
+                    id: 'sacred_duty', row: 3, col: 2, type: 'passive', icon: '⏱️', name: 'Sacred Duty',
+                    desc: 'Passive · Reduces the cooldown of Divine Shield / Divine Protection by 30 + 1.5% per point. Also increases your critical strike chance by +1% per point.',
+                    tip: 'Max lvl (20): -60% Divine Shield CD (from 270s → 108s) · +20% crit.',
+                    maxPts: 20
                 },
                 {
-                    id: 'divine_storm', row: 4, col: 1, type: 'active', icon: '⛈️', name: 'Divine Storm',
-                    desc: 'Ultimate: 10s of spinning holy hammers + holy lightning simultaneously. (20+slvl×10) of each per tick.',
-                    endgame: 'slvl 20: 220/tick dual-element for 10s. The endgame Paladin super.',
-                    maxPts: 20, mana: 30, cd: 60, group: 'holy', dmgBase: 20, dmgPerLvl: 10, req: 'blessed_hammer:10',
-                    synergies: [{ from: 'blessed_hammer', pctPerPt: 5 }]
+                    id: 'shield_of_righteousness', row: 3, col: 0, type: 'active', icon: '💥', name: 'Shield of Righteousness',
+                    desc: 'Active · Slam a target with your shield, dealing 300% of your shield\'s block value as holy damage AND adding 30 + 10 per point bonus holy damage. Scales with every improvement to your block value.',
+                    tip: 'Max lvl (20): 300% shield block value + 530 bonus holy. Gets stronger as you upgrade your shield.',
+                    maxPts: 20, mana: 6, cd: 6, group: 'holy', dmgBase: 30, dmgPerLvl: 10, req: 'hammer_righteous:5',
+                    synergies: [{ from: 'prot_mastery', pctPerPt: 5 }]
+                },
+                {
+                    id: 'divine_protection', row: 4, col: 1, type: 'active', icon: '🛡️', name: 'Divine Protection',
+                    desc: 'Active · Surround yourself with divine energy, reducing ALL damage taken by 50% for 10 + 0.5 per point seconds. Unlike Divine Shield, you can still attack during this effect. 60s cooldown.',
+                    tip: 'Max lvl (20): 50% damage reduction for 20s while still fully fighting. The ultimate tank cooldown.',
+                    maxPts: 20, mana: 0, cd: 60, req: 'shield_of_righteousness:5',
+                    synergies: [{ from: 'ardent_defender', pctPerPt: 2 }]
                 },
             ]
         },

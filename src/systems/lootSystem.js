@@ -752,7 +752,665 @@ const UNIQUES = [
         flavor: '"A single scale from Deathwing himself. Still warm."',
         isLegendary: true, legendaryColor: '#ff6600'
     },
+
+    // ═══════════════════════════════════════════════════════
+    // ★★★ WAVE 3 — NUEVOS LEGENDARIOS POR CLASE ★★★
+    // ═══════════════════════════════════════════════════════
+
+    {   // ── STORMRAGE VESTMENTS — Druid (hurricane / shapeshifting synergy)
+        id: 'stormrage_vestments', name: "Stormrage Vestments",
+        base: 'chest', rarity: RARITY.UNIQUE, icon: 'item_chest_hd', dropLvl: 70,
+        mods: [
+            { stat: '+allSkills',      value: 2   },
+            { stat: 'pctDmg',          value: 80  },
+            { stat: 'flatHP',          value: 350 },
+            { stat: 'lifeRegenPerSec', value: 15  },
+            { stat: 'allRes',          value: 25  },
+            { stat: 'flatArmor',       value: 150 },
+        ],
+        onHit: { chance: 0.12, effect: 'arcane_burst', damage: 160, radius: 70, type: 'magic',
+                 natureHeal: true, healAmt: 80, extraEffect: 'nature_cyclone' },
+        passive: { effect: 'cold_aura', coldResBoost: 15 },
+        flavor: '"Woven from clouds and lightning. The sky itself obeys whoever wears it."',
+        isLegendary: true, legendaryColor: '#44aaff'
+    },
+    {   // ── WRATH OF THE LICH KING — Necromancer (plague nova, mass curse synergy)
+        id: 'wrath_lich_king', name: "Wrath of the Lich King",
+        base: 'war_staff', rarity: RARITY.UNIQUE, icon: 'item_war_staff', dropLvl: 80,
+        mods: [
+            { stat: '+allSkills',      value: 3   },
+            { stat: 'flatMP',          value: 600 },
+            { stat: 'lifeStealPct',    value: 6   },
+            { stat: 'pctShadowDmg',    value: 80  },
+            { stat: 'coldRes',         value: 50  },
+            { stat: 'manaRegenPerSec', value: 20  },
+        ],
+        onHit: { chance: 1.0, effect: 'soul_stack', maxStacks: 8, explodeDmg: 600, type: 'shadow',
+                 plagueExplosion: true, plagueRadius: 130, extraEffect: 'plague_nova' },
+        passive: { effect: 'mana_aura', manaRegen: 6 },
+        flavor: '"The Lich King\'s will given form. Every stroke leaves pestilence in its wake."',
+        isLegendary: true, legendaryColor: '#7744cc', cursed: true
+    },
+    {   // ── CENARION CUDGEL — Druid heal-on-hit (healing_stream, nature synergy)
+        id: 'cenarion_cudgel', name: "Cenarion Cudgel",
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 62,
+        mods: [
+            { stat: '+allSkills',      value: 2   },
+            { stat: 'flatHP',          value: 400 },
+            { stat: 'lifeRegenPerSec', value: 25  },
+            { stat: 'allRes',          value: 20  },
+            { stat: 'pctDmg',          value: 100 },
+        ],
+        onHit: { chance: 0.20, effect: 'consecration', damage: 80, radius: 100, type: 'holy',
+                 healPlayer: 150, extraEffect: 'rejuvenate' },
+        passive: { effect: 'holy_aura', holyResist: 20 },
+        flavor: '"Blessed by Cenarius himself. Each blow blooms into healing."',
+        isLegendary: true, legendaryColor: '#55ff44'
+    },
+    {   // ── STAFF OF JORDAN — Sorceress (mana burn AoE, energy_shield synergy)
+        id: 'staff_of_jordan', name: "Staff of Jordan",
+        base: 'war_staff', rarity: RARITY.UNIQUE, icon: 'item_war_staff', dropLvl: 55,
+        mods: [
+            { stat: '+allSkills',      value: 1   },
+            { stat: 'flatMP',          value: 800 },
+            { stat: 'manaRegenPerSec', value: 30  },
+            { stat: 'critChance',      value: 10  },
+            { stat: 'pctDmg',          value: 60  },
+        ],
+        onHit: { chance: 0.15, effect: 'arcane_burst', damage: 120, radius: 100, type: 'magic',
+                 manaBurn: true, manaBurnAmt: 200, extraEffect: 'mana_flood' },
+        passive: { effect: 'mana_aura', manaRegen: 8 },
+        flavor: '"Used by Jordan the wanderer to seal the demon portal. Its mana never runs dry."',
+        isLegendary: true, legendaryColor: '#5599ff'
+    },
+    {   // ── THE UNSTOPPABLE FORCE — Warrior (massive stun, berserk+leap synergy)
+        id: 'unstoppable_force', name: "The Unstoppable Force",
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 72,
+        mods: [
+            { stat: 'pctDmg',          value: 230 },
+            { stat: 'flatSTR',         value: 55  },
+            { stat: 'flatHP',          value: 350 },
+            { stat: 'pctIAS',          value: 15  },
+            { stat: 'crushingBlow',    value: 25  },
+        ],
+        onHit: { chance: 0.10, effect: 'meteor_drop', damage: 400, radius: 100, type: 'physical',
+                 knockback: true, knockbackForce: 80, stunDuration: 2.5, extraEffect: 'ground_pound' },
+        flavor: '"It has never stopped. It never will. Gods have tried."',
+        isLegendary: true, legendaryColor: '#cc8800'
+    },
+    {   // ── CRYPTFIEND'S BITE — Rogue (web on crit, death_sentry synergy)
+        id: 'cryptfiends_bite', name: "Cryptfiend's Bite",
+        base: 'rune_blade', rarity: RARITY.UNIQUE, icon: 'item_rune_blade', dropLvl: 65,
+        mods: [
+            { stat: 'pctDmg',          value: 170 },
+            { stat: 'flatDEX',         value: 40  },
+            { stat: 'critChance',      value: 25  },
+            { stat: 'critMulti',       value: 70  },
+            { stat: 'pctIAS',          value: 30  },
+            { stat: 'pctPoisonDmg',    value: 60  },
+        ],
+        onHit: { chance: 0.20, effect: 'blade_dance', hits: 4, damage: 70, type: 'shadow',
+                 poisonOnHit: true, poisonDps: 80, poisonDuration: 8,
+                 webTrap: true, rootDuration: 3, extraEffect: 'web_ensnare' },
+        flavor: '"The spider queen\'s fang. Each strike weaves a new prison cell."',
+        isLegendary: true, legendaryColor: '#aaffaa'
+    },
+    {   // ── JIN'DO'S HEXXER — Shaman (hex/fear on hit, totemic_wrath synergy)
+        id: 'jindos_hexxer', name: "Jin'do's Hexxer",
+        base: 'war_staff', rarity: RARITY.UNIQUE, icon: 'item_war_staff', dropLvl: 67,
+        mods: [
+            { stat: '+allSkills',      value: 2   },
+            { stat: 'flatLightDmg',    value: 55  },
+            { stat: 'pctDmg',          value: 130 },
+            { stat: 'critChance',      value: 12  },
+            { stat: 'allRes',          value: 20  },
+        ],
+        onHit: { chance: 0.18, effect: 'chain_lightning', damage: 130, targets: 4, type: 'lightning',
+                 hexOnHit: true, hexDuration: 3, fearDuration: 2, extraEffect: 'voodoo_curse' },
+        flavor: '"Jin\'do whispers through it. Enemies run from what they cannot see."',
+        isLegendary: true, legendaryColor: '#ffaa00'
+    },
+    {   // ── AZURESONG MAGEBLADE — Sorceress (mana flood, energy_shield synergy)
+        id: 'azuresong_mageblade', name: "Azuresong Mageblade",
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 60,
+        mods: [
+            { stat: '+allSkills',      value: 2   },
+            { stat: 'flatMP',          value: 500 },
+            { stat: 'manaRegenPerSec', value: 20  },
+            { stat: 'pctDmg',          value: 100 },
+            { stat: 'critChance',      value: 8   },
+            { stat: 'manaStealPct',    value: 8   },
+        ],
+        onHit: { chance: 0.15, effect: 'arcane_burst', damage: 180, radius: 90, type: 'magic',
+                 manaShred: true, manaShredAmt: 180, manaRestore: true, manaRestoreAmt: 60,
+                 extraEffect: 'mana_surge' },
+        passive: { effect: 'mana_aura', manaRegen: 5 },
+        flavor: '"Sing to it and it answers. A blade of pure arcane thought."',
+        isLegendary: true, legendaryColor: '#66bbff'
+    },
+
+    // ═══════════════════════════════════════════════════════
+    // ★★★ WAVE 3 CHARMS DE SINERGIA ★★★
+    // ═══════════════════════════════════════════════════════
+
+    {
+        id: 'charm_nature_seed', name: "Nature Seed",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 58,
+        mods: [{ stat: 'lifeRegenPerSec', value: 8 }, { stat: 'allRes', value: 8 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['stormrage_vestments', 'cenarion_cudgel', 'rhokdelar'],
+        flavor: '"A seed from the World Tree. It pulses with ancient life."',
+        isLegendary: true, legendaryColor: '#55ff44'
+    },
+    {
+        id: 'charm_plague_dust_2', name: "Plague Dust",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 65,
+        mods: [{ stat: 'pctShadowDmg', value: 20 }, { stat: 'pctPoisonDmg', value: 15 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['wrath_lich_king', 'bonereaver_edge', 'dirge'],
+        flavor: '"Ground from the bones of a scourge lord. It reeks of death."',
+        isLegendary: true, legendaryColor: '#7744cc'
+    },
+    {
+        id: 'charm_thunder_drum', name: "Thunder Drum",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 60,
+        mods: [{ stat: 'flatLightDmg', value: 25 }, { stat: 'pctIAS', value: 8 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['jindos_hexxer', 'doomhammer', 'thunderfury'],
+        flavor: '"Beat it once and every enemy in sight knows your name."',
+        isLegendary: true, legendaryColor: '#ffaa00'
+    },
+    {
+        id: 'charm_arcane_crystal', name: "Arcane Crystal",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 62,
+        mods: [{ stat: 'flatMP', value: 150 }, { stat: 'manaRegenPerSec', value: 10 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['azuresong_mageblade', 'staff_of_jordan', 'atiesh'],
+        flavor: '"Pure crystallized mana. It hums with contained wrath."',
+        isLegendary: true, legendaryColor: '#66bbff'
+    },
+    {
+        id: 'charm_iron_will', name: "Iron Will Token",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 60,
+        mods: [{ stat: 'flatHP', value: 100 }, { stat: 'pctArmor', value: 12 }, { stat: 'pctDmgReduce', value: 3 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['unstoppable_force', 'quelserrar', 'valanyr'],
+        flavor: '"Forged by Uther Lightbringer for warriors who refuse to fall."',
+        isLegendary: true, legendaryColor: '#cc8800'
+    },
+    {
+        id: 'charm_spider_silk', name: "Spider Silk Spool",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 58,
+        mods: [{ stat: 'critChance', value: 5 }, { stat: 'pctPoisonDmg', value: 15 }, { stat: 'pctIAS', value: 8 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['cryptfiends_bite', 'dirge', 'warglaive_azzinoth'],
+        flavor: '"Spun by the matriarch of the Crypt Fiend colony. Still sticky."',
+        isLegendary: true, legendaryColor: '#aaffaa'
+    },
+
+    // ═══════════════════════════════════════════════════════
+    // ★★★ WAVE 4 — CROSS-CLASS & ENDGAME LEGENDARIES ★★★
+    // ═══════════════════════════════════════════════════════
+
+    {   // ── BENEDICTION — Paladin/Priest support (holy nova, prayer synergy)
+        id: 'benediction', name: "Benediction",
+        base: 'war_staff', rarity: RARITY.UNIQUE, icon: 'item_war_staff', dropLvl: 75,
+        mods: [
+            { stat: '+allSkills',      value: 3   },
+            { stat: 'flatHP',          value: 300 },
+            { stat: 'flatMP',          value: 400 },
+            { stat: 'healBoostPct',    value: 60  },
+            { stat: 'allRes',          value: 30  },
+            { stat: 'lifeRegenPerSec', value: 10  },
+        ],
+        onHit: { chance: 0.20, effect: 'consecration', damage: 100, radius: 120, type: 'holy',
+                 healPlayer: 200, healParty: true, healPartyAmt: 100, extraEffect: 'holy_nova' },
+        passive: { effect: 'holy_aura', holyDmgBoost: 30 },
+        flavor: '"Blessed by Tirion himself. Carries the prayers of a thousand souls."',
+        isLegendary: true, legendaryColor: '#ffdd44'
+    },
+    {   // ── MAIEV'S WARGLAIVE — Rogue (fan of knives + shadow step synergy)
+        id: 'maievs_warglaive', name: "Maiev's Warglaive",
+        base: 'rune_blade', rarity: RARITY.UNIQUE, icon: 'item_rune_blade', dropLvl: 70,
+        mods: [
+            { stat: 'pctDmg',       value: 200 },
+            { stat: 'flatDEX',      value: 50  },
+            { stat: 'critChance',   value: 30  },
+            { stat: 'critMulti',    value: 80  },
+            { stat: 'pctIAS',       value: 35  },
+            { stat: 'pctShadowDmg', value: 50  },
+        ],
+        onHit: { chance: 0.25, effect: 'blade_dance', hits: 6, damage: 90, type: 'shadow',
+                 shadowStep: true, teleportBehind: true, extraEffect: 'fan_of_knives' },
+        flavor: '"Maiev never missed. She never forgave either."',
+        isLegendary: true, legendaryColor: '#9966cc'
+    },
+    {   // ── HAMMER OF GRACE — Paladin (blessed hammer spiral, Conviction synergy)
+        id: 'hammer_of_grace', name: "Hammer of Grace",
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 68,
+        mods: [
+            { stat: '+allSkills',    value: 2   },
+            { stat: 'pctHolyDmg',   value: 120 },
+            { stat: 'pctDmg',       value: 100 },
+            { stat: 'critChance',   value: 15  },
+            { stat: 'flatHP',       value: 250 },
+            { stat: 'allRes',       value: 20  },
+        ],
+        onHit: { chance: 0.20, effect: 'consecration', damage: 150, radius: 110, type: 'holy',
+                 spiralHammers: true, hammerCount: 5, extraEffect: 'holy_judgment' },
+        passive: { effect: 'holy_aura', holyDmgBoost: 20 },
+        flavor: '"Forged in the silver fires of the Mountain. Each swing is a prayer answered."',
+        isLegendary: true, legendaryColor: '#ffee55'
+    },
+    {   // ── RHOK'DELAR REBORN — Ranger (stellar arrow + nature arrow combo)
+        id: 'rhokdelar_reborn', name: "Rhok'delar Reborn",
+        base: 'long_bow', rarity: RARITY.UNIQUE, icon: 'item_bow_hd', dropLvl: 65,
+        mods: [
+            { stat: '+allSkills',      value: 2   },
+            { stat: 'pctDmg',          value: 160 },
+            { stat: 'critChance',      value: 20  },
+            { stat: 'critMulti',       value: 50  },
+            { stat: 'attackRangeBonus',value: 80  },
+            { stat: 'pctIAS',          value: 20  },
+        ],
+        onHit: { chance: 0.18, effect: 'stellar_arrow', damage: 250, type: 'magic',
+                 naturePiercing: true, multiArrow: true, arrowCount: 3, extraEffect: 'nature_volley' },
+        flavor: '"Cenarius himself shaped the wood. Every arrow finds its mark before it is nocked."',
+        isLegendary: true, legendaryColor: '#44dd44'
+    },
+    {   // ── CORRUPTION'S EMBRACE — Warlock (seed of corruption, soul fire synergy)
+        id: 'corruptions_embrace', name: "Corruption's Embrace",
+        base: 'robe', rarity: RARITY.UNIQUE, icon: 'item_chest_hd', dropLvl: 72,
+        mods: [
+            { stat: '+allSkills',      value: 3   },
+            { stat: 'pctShadowDmg',    value: 100 },
+            { stat: 'pctPoisonDmg',    value: 60  },
+            { stat: 'flatMP',          value: 500 },
+            { stat: 'lifeStealPct',    value: 8   },
+            { stat: 'manaRegenPerSec', value: 15  },
+        ],
+        onHit: { chance: 1.0, effect: 'soul_stack', maxStacks: 5, explodeDmg: 400, type: 'shadow',
+                 dotAmplify: true, dotAmpPct: 40, extraEffect: 'plague_nova' },
+        passive: { effect: 'mana_aura', manaRegen: 8 },
+        flavor: '"It wears you more than you wear it. The whispers grow louder over time."',
+        isLegendary: true, legendaryColor: '#cc44cc', cursed: true
+    },
+    {   // ── STONEBARK VESTMENT — Druid (bear form overhaul, barkskin synergy)
+        id: 'stonebark_vestment', name: "Stonebark Vestment",
+        base: 'chest', rarity: RARITY.UNIQUE, icon: 'item_chest_hd', dropLvl: 65,
+        mods: [
+            { stat: '+allSkills',      value: 2   },
+            { stat: 'flatHP',          value: 500 },
+            { stat: 'pctArmor',        value: 120 },
+            { stat: 'lifeRegenPerSec', value: 20  },
+            { stat: 'allRes',          value: 20  },
+            { stat: 'pctDmgReduce',    value: 8   },
+        ],
+        onHit: { chance: 0.15, effect: 'meteor_drop', damage: 200, radius: 100, type: 'physical',
+                 thornsOnHit: true, thornsDmgPct: 30, extraEffect: 'ground_pound' },
+        passive: { effect: 'cold_aura', coldResBoost: 20 },
+        flavor: '"The bark hardened over a thousand years. It does not bend. It does not break."',
+        isLegendary: true, legendaryColor: '#8B4513'
+    },
+    {   // ── DEATHCHARGER'S REINS — Universal (mounted speed, charge proc)
+        id: 'deathchargers_reins', name: "Deathcharger's Reins",
+        base: 'boots', rarity: RARITY.UNIQUE, icon: 'item_boots_hd', dropLvl: 60,
+        mods: [
+            { stat: 'pctMoveSpeed',    value: 50  },
+            { stat: 'pctDmg',          value: 80  },
+            { stat: 'flatHP',          value: 200 },
+            { stat: 'pctIAS',          value: 15  },
+            { stat: 'allRes',          value: 10  },
+        ],
+        onHit: { chance: 0.10, effect: 'meteor_drop', damage: 250, radius: 90, type: 'physical',
+                 chargeEffect: true, chargeSpeed: 3.0, chargeDuration: 1.0, extraEffect: 'ground_pound' },
+        flavor: '"The skeletal horse that carried them. The rider is gone. The speed remains."',
+        isLegendary: true, legendaryColor: '#aaaaaa'
+    },
+    {   // ── EYE OF NERUB — Rogue/Ranger (web trap + multishot, death sentry synergy)
+        id: 'eye_of_nerub', name: "Eye of Nerub",
+        base: 'amulet', rarity: RARITY.UNIQUE, icon: 'item_amulet_hd', dropLvl: 62,
+        mods: [
+            { stat: 'critChance',   value: 15  },
+            { stat: 'critMulti',    value: 40  },
+            { stat: 'pctDmg',       value: 80  },
+            { stat: 'pctPoisonDmg', value: 40  },
+            { stat: 'pctIAS',       value: 20  },
+        ],
+        onHit: { chance: 0.15, effect: 'blade_dance', hits: 4, damage: 60, type: 'shadow',
+                 webTrap: true, rootDuration: 2.5, poisonOnHit: true, poisonDps: 60, poisonDuration: 5 },
+        flavor: '"The compound eye that sees every angle at once. Death comes from all directions."',
+        isLegendary: true, legendaryColor: '#aaffaa'
+    },
+    {   // ── STAFF OF INNERVATE — Druid/Shaman healer (healing surge, ancestral)
+        id: 'staff_innervate', name: "Staff of Innervate",
+        base: 'war_staff', rarity: RARITY.UNIQUE, icon: 'item_war_staff', dropLvl: 70,
+        mods: [
+            { stat: '+allSkills',      value: 3   },
+            { stat: 'healBoostPct',    value: 80  },
+            { stat: 'flatMP',          value: 700 },
+            { stat: 'manaRegenPerSec', value: 25  },
+            { stat: 'lifeRegenPerSec', value: 12  },
+            { stat: 'allRes',          value: 20  },
+        ],
+        onHit: { chance: 0.20, effect: 'consecration', damage: 50, radius: 100, type: 'holy',
+                 healPlayer: 250, healParty: true, healPartyAmt: 150, manaRestore: true, manaRestoreAmt: 100 },
+        passive: { effect: 'mana_aura', manaRegen: 10 },
+        flavor: '"Touch it and feel the ley lines hum. Nature channels through it like a river."',
+        isLegendary: true, legendaryColor: '#44ff88'
+    },
+    {   // ── NELTHARION'S BLADE — Warrior (colossal slam, ignore armor, colossal build)
+        id: 'neltharions_blade', name: "Neltharion's Blade",
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 80,
+        mods: [
+            { stat: 'pctDmg',          value: 250 },
+            { stat: 'flatSTR',         value: 60  },
+            { stat: 'critChance',      value: 20  },
+            { stat: 'critMulti',       value: 100 },
+            { stat: 'pctIAS',          value: 25  },
+            { stat: 'crushingBlow',    value: 40  },
+        ],
+        onHit: { chance: 0.15, effect: 'meteor_drop', damage: 500, radius: 120, type: 'physical',
+                 armorIgnore: true, armorIgnorePct: 50, knockback: true, stunDuration: 2.0,
+                 extraEffect: 'ground_pound' },
+        flavor: '"Deathwing\'s tooth remade as a sword. The earth itself fears each swing."',
+        isLegendary: true, legendaryColor: '#ff3300', cursed: true
+    },
+
+    // ═══════════════════════════════════════════════════════
+    // ★★★ WAVE 4 CHARMS ★★★
+    // ═══════════════════════════════════════════════════════
+
+    {
+        id: 'charm_holy_radiance', name: "Holy Radiance",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 65,
+        mods: [{ stat: 'pctHolyDmg', value: 20 }, { stat: 'healBoostPct', value: 15 }, { stat: 'allRes', value: 10 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['benediction', 'hammer_of_grace', 'valanyr'],
+        flavor: '"Small enough to carry in your palm. Bright enough to light the darkest dungeon."',
+        isLegendary: true, legendaryColor: '#ffee55'
+    },
+    {
+        id: 'charm_shadow_ember', name: "Shadow Ember",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 65,
+        mods: [{ stat: 'pctShadowDmg', value: 25 }, { stat: 'lifeStealPct', value: 5 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['corruptions_embrace', 'maievs_warglaive', 'shadowmourne'],
+        flavor: '"Compressed shadow-fire. It burns cold."',
+        isLegendary: true, legendaryColor: '#cc44cc'
+    },
+    {
+        id: 'charm_elven_feather', name: "Elven Feather",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 60,
+        mods: [{ stat: 'attackRangeBonus', value: 40 }, { stat: 'critChance', value: 6 }, { stat: 'pctIAS', value: 10 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['rhokdelar_reborn', 'thoridal', 'eye_of_nerub'],
+        flavor: '"From the Arrow of Silvanas. Still perfectly balanced."',
+        isLegendary: true, legendaryColor: '#44dd44'
+    },
+    {
+        id: 'charm_primal_stone', name: "Primal Stone",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 65,
+        mods: [{ stat: 'flatHP', value: 120 }, { stat: 'pctArmor', value: 15 }, { stat: 'lifeRegenPerSec', value: 8 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['stonebark_vestment', 'staff_innervate', 'cenarion_cudgel'],
+        flavor: '"A fragment of the World Pillar. The oldest material on Azeroth."',
+        isLegendary: true, legendaryColor: '#8B4513'
+    },
+
+    // ═══════════════════════════════════════════════════════
+    // ★★★ WAVE 5 — PALADIN + ENDGAME LEGENDARIES ★★★
+    // ═══════════════════════════════════════════════════════
+
+    {   // ── THE ASHBRINGER — Paladin Retribution (Divine Storm empowerment, holy crit proc)
+        id: 'the_ashbringer', name: "The Ashbringer",
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 85,
+        mods: [
+            { stat: '+allSkills',   value: 3   },
+            { stat: 'pctHolyDmg',  value: 200 },
+            { stat: 'pctDmg',      value: 150 },
+            { stat: 'critChance',  value: 25  },
+            { stat: 'critMulti',   value: 100 },
+            { stat: 'pctIAS',      value: 30  },
+        ],
+        onHit: { chance: 0.25, effect: 'consecration', damage: 300, radius: 130, type: 'holy',
+                 divineStormEcho: true, holyAoE: true, judgementBoostPct: 50, extraEffect: 'holy_nova' },
+        passive: { effect: 'holy_aura', holyDmgBoost: 40 },
+        flavor: '"Reforged by Tirion Fordring. The corruption burned away. What remained was pure light."',
+        isLegendary: true, legendaryColor: '#ffffaa'
+    },
+    {   // ── VAL'ANYR — Paladin healer / Protection (healing surge, block proc)
+        id: 'valanyr', name: "Val'anyr, Hammer of Ancient Kings",
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 80,
+        mods: [
+            { stat: '+allSkills',      value: 3   },
+            { stat: 'healBoostPct',    value: 120 },
+            { stat: 'flatHP',          value: 600 },
+            { stat: 'flatMP',          value: 800 },
+            { stat: 'lifeRegenPerSec', value: 20  },
+            { stat: 'manaRegenPerSec', value: 20  },
+            { stat: 'allRes',          value: 25  },
+        ],
+        onHit: { chance: 0.20, effect: 'consecration', damage: 80, radius: 110, type: 'holy',
+                 healPlayer: 400, healParty: true, healPartyAmt: 250, bubbleShield: true, bubbleAmt: 300 },
+        passive: { effect: 'holy_aura', holyDmgBoost: 25 },
+        flavor: '"Shattered by Algalon. Reassembled by those who refused to let hope die."',
+        isLegendary: true, legendaryColor: '#ffffdd'
+    },
+    {   // ── LIBRAM OF AVENGEMENT — Paladin Retribution (Judgement × 2, crit seal proc)
+        id: 'libram_avengement', name: "Libram of Avengement",
+        base: 'off_hand', rarity: RARITY.UNIQUE, icon: 'item_amulet_hd', dropLvl: 72,
+        mods: [
+            { stat: 'pctHolyDmg',   value: 80  },
+            { stat: '+allSkills',   value: 2   },
+            { stat: 'critChance',   value: 12  },
+            { stat: 'critMulti',    value: 60  },
+            { stat: 'pctDmg',       value: 60  },
+        ],
+        onHit: { chance: 0.15, effect: 'meteor_drop', damage: 200, radius: 90, type: 'holy',
+                 sealRefund: true, judgementDoubleHit: true, extraEffect: 'holy_judgment' },
+        flavor: '"Every Judgement is written in this tome before it is cast."',
+        isLegendary: true, legendaryColor: '#ffee99'
+    },
+    {   // ── BULWARK OF ANCIENT KINGS — Protection Paladin (avenger shield bounce ×4, fortress proc)
+        id: 'bulwark_ancient_kings', name: "Bulwark of the Ancient Kings",
+        base: 'shield', rarity: RARITY.UNIQUE, icon: 'item_shield_hd', dropLvl: 78,
+        mods: [
+            { stat: 'pctArmor',        value: 120 },
+            { stat: 'blockChance',     value: 25  },
+            { stat: 'flatHP',          value: 500 },
+            { stat: 'allRes',          value: 30  },
+            { stat: 'pctDmgReduce',    value: 10  },
+            { stat: 'lifeRegenPerSec', value: 15  },
+        ],
+        onHit: { chance: 0.20, effect: 'consecration', damage: 120, radius: 100, type: 'holy',
+                 shieldExplode: true, shieldExplodeDmg: 250, bounces: 4, stunDuration: 1.5,
+                 extraEffect: 'holy_nova' },
+        passive: { effect: 'cold_aura', blockBonus: 10 },
+        flavor: '"Four kings lent their strength. Their kingdoms are gone. The shield remains."',
+        isLegendary: true, legendaryColor: '#eeeecc'
+    },
+    {   // ── THUNDERFURY — Warrior/Shaman (chain lightning, wind fury, boss control)
+        id: 'thunderfury', name: "Thunderfury, Blessed Blade of the Windseeker",
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 80,
+        mods: [
+            { stat: 'pctDmg',          value: 180 },
+            { stat: 'pctLightDmg',     value: 120 },
+            { stat: 'critChance',      value: 18  },
+            { stat: 'pctIAS',          value: 30  },
+            { stat: 'allRes',          value: 25  },
+        ],
+        onHit: { chance: 0.20, effect: 'chain_lightning_proc', damage: 300, chains: 5, type: 'lightning',
+                 debuffArmor: true, debuffAmt: 25, windFury: true, extraEffect: 'thunder_clap' },
+        flavor: '"DO YOU HEAR THAT? THUNDERFURY, BLESSED BLADE OF THE WINDSEEKER!"',
+        isLegendary: true, legendaryColor: '#66ccff'
+    },
+    {   // ── SHADOWMOURNE — Warrior/Paladin (soul fragment harvest, explode mechanic)
+        id: 'shadowmourne', name: "Shadowmourne",
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 85,
+        mods: [
+            { stat: 'pctDmg',          value: 300 },
+            { stat: 'flatSTR',         value: 70  },
+            { stat: 'critChance',      value: 15  },
+            { stat: 'critMulti',       value: 80  },
+            { stat: 'lifeStealPct',    value: 12  },
+            { stat: 'allRes',          value: 20  },
+        ],
+        onHit: { chance: 1.0, effect: 'soul_stack', maxStacks: 10, explodeDmg: 700, type: 'shadow',
+                 soulRip: true, soulRipDmg: 500, shadowFrenzy: true, extraEffect: 'plague_nova' },
+        flavor: '"Born of darkness and agony. The Lich King\'s own weapon, repurposed by mortal hands."',
+        isLegendary: true, legendaryColor: '#bb33bb', cursed: true
+    },
+    {   // ── FROSTMOURNE — Warlock/Necromancer (soul harvest, undead raise, silence)
+        id: 'frostmourne', name: "Frostmourne",
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 90,
+        mods: [
+            { stat: '+allSkills',      value: 4   },
+            { stat: 'pctShadowDmg',    value: 200 },
+            { stat: 'pctColdDmg',      value: 100 },
+            { stat: 'critChance',      value: 20  },
+            { stat: 'lifeStealPct',    value: 15  },
+            { stat: 'lifeRegenPerSec', value: -10 },  // cursed: drains life
+        ],
+        onHit: { chance: 0.25, effect: 'soul_stack', maxStacks: 12, explodeDmg: 600, type: 'shadow',
+                 raiseSlain: true, raiseDuration: 20, silence: true, silenceDuration: 2.5 },
+        flavor: '"Whomsoever takes up this blade shall wield power eternal... and be claimed by darkness forevermore."',
+        isLegendary: true, legendaryColor: '#aaddff', cursed: true
+    },
+    {   // ── DRAGONWRATH — Mage/Warlock (mana surge, arcane echo, frost proc)
+        id: 'dragonwrath', name: "Dragonwrath, Tarecgosa's Rest",
+        base: 'war_staff', rarity: RARITY.UNIQUE, icon: 'item_war_staff', dropLvl: 82,
+        mods: [
+            { stat: '+allSkills',      value: 4   },
+            { stat: 'pctFireDmg',      value: 100 },
+            { stat: 'pctColdDmg',      value: 100 },
+            { stat: 'flatMP',          value: 1000},
+            { stat: 'manaRegenPerSec', value: 30  },
+            { stat: 'critChance',      value: 15  },
+        ],
+        onHit: { chance: 0.30, effect: 'chain_lightning_proc', damage: 350, chains: 4, type: 'arcane',
+                 manaFlood: true, manaFloodAmt: 150, spellEcho: true, echoChance: 0.50 },
+        passive: { effect: 'mana_aura', manaRegen: 15 },
+        flavor: '"She chose to become a staff so her flight could continue through another\'s hands."',
+        isLegendary: true, legendaryColor: '#4499ff'
+    },
+    {   // ── THORI'DAL — Ranger (instant volley, no-ammo, star proc)
+        id: 'thoridal', name: "Thori'dal, the Stars' Fury",
+        base: 'long_bow', rarity: RARITY.UNIQUE, icon: 'item_bow_hd', dropLvl: 82,
+        mods: [
+            { stat: '+allSkills',       value: 3   },
+            { stat: 'pctDmg',           value: 200 },
+            { stat: 'critChance',       value: 20  },
+            { stat: 'critMulti',        value: 80  },
+            { stat: 'attackRangeBonus', value: 120 },
+            { stat: 'pctIAS',           value: 40  },
+        ],
+        onHit: { chance: 0.20, effect: 'stellar_arrow', damage: 350, type: 'magic',
+                 starVolley: true, arrowCount: 5, noAmmo: true, extraEffect: 'nature_volley' },
+        flavor: '"Forged from a star that fell on the Sunwell. It generates its own ammunition from light itself."',
+        isLegendary: true, legendaryColor: '#ffff55'
+    },
+    {   // ── SULFURAS — Warrior (lava proc, eternal flame, crushing blow)
+        id: 'sulfuras', name: "Sulfuras, Hand of Ragnaros",
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 78,
+        mods: [
+            { stat: 'pctDmg',          value: 220 },
+            { stat: 'pctFireDmg',      value: 150 },
+            { stat: 'flatSTR',         value: 50  },
+            { stat: 'critChance',      value: 12  },
+            { stat: 'crushingBlow',    value: 60  },
+            { stat: 'allRes',          value: 15  },
+        ],
+        onHit: { chance: 0.20, effect: 'meteor_drop', damage: 450, radius: 130, type: 'fire',
+                 lavaBurst: true, lavaDotDps: 80, lavaDotDur: 8, knockback: true,
+                 extraEffect: 'ground_pound' },
+        flavor: '"BY FIRE BE PURGED!"',
+        isLegendary: true, legendaryColor: '#ff6600'
+    },
+    {   // ── DIRGE — Rogue (instant death below 20% HP, shadow combo reset)
+        id: 'dirge', name: "Dirge",
+        base: 'rune_blade', rarity: RARITY.UNIQUE, icon: 'item_rune_blade', dropLvl: 68,
+        mods: [
+            { stat: 'pctDmg',       value: 140 },
+            { stat: 'flatDEX',      value: 40  },
+            { stat: 'critChance',   value: 20  },
+            { stat: 'critMulti',    value: 70  },
+            { stat: 'pctIAS',       value: 25  },
+        ],
+        onHit: { chance: 0.20, effect: 'blade_dance', hits: 4, damage: 75, type: 'shadow',
+                 executeBelow20: true, executeDmg: 800, comboReset: true, extraEffect: 'fan_of_knives' },
+        flavor: '"It doesn\'t sing. It just counts down."',
+        isLegendary: true, legendaryColor: '#cc99ff'
+    },
+    {   // ── GUT-RIPPER — Rogue/Ranger (visceral bleed, armor shred, combo gen)
+        id: 'gut_ripper', name: "Gut-Ripper",
+        base: 'rune_blade', rarity: RARITY.UNIQUE, icon: 'item_rune_blade', dropLvl: 65,
+        mods: [
+            { stat: 'pctDmg',       value: 100 },
+            { stat: 'critChance',   value: 18  },
+            { stat: 'pctPoisonDmg', value: 50  },
+            { stat: 'pctIAS',       value: 20  },
+            { stat: 'lifeStealPct', value: 6   },
+        ],
+        onHit: { chance: 0.20, effect: 'blade_dance', hits: 3, damage: 60, type: 'shadow',
+                 bleedOnCrit: true, bleedDps: 80, bleedDur: 5, armorShred: true, armorShredPct: 20 },
+        flavor: '"Gnolls call this \"the ender of meals\". Rogues call it \"Tuesday\'s tool\"."',
+        isLegendary: true, legendaryColor: '#cc6666'
+    },
+
+    // ═══════════════════════════════════════════════════════
+    // ★★★ WAVE 5 CHARMS ★★★
+    // ═══════════════════════════════════════════════════════
+
+    {
+        id: 'charm_ashbringer_shard', name: "Ashbringer Shard",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 80,
+        mods: [{ stat: 'pctHolyDmg', value: 30 }, { stat: 'critChance', value: 8 }, { stat: 'critMulti', value: 30 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['the_ashbringer', 'hammer_of_grace', 'valanyr'],
+        flavor: '"Even shattered, it burns like the sun."',
+        isLegendary: true, legendaryColor: '#ffffaa'
+    },
+    {
+        id: 'charm_souls_echo', name: "Soul's Echo",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 78,
+        mods: [{ stat: 'lifeStealPct', value: 8 }, { stat: 'pctShadowDmg', value: 20 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['frostmourne', 'shadowmourne', 'corruptions_embrace'],
+        flavor: '"The soul inside screams. You get used to it."',
+        isLegendary: true, legendaryColor: '#bb33bb'
+    },
+    {
+        id: 'charm_stormbringer_token', name: "Stormbringer Token",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 72,
+        mods: [{ stat: 'pctLightDmg', value: 25 }, { stat: 'pctIAS', value: 10 }, { stat: 'critChance', value: 5 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['thunderfury', 'azuresong_mageblade', 'jindo_hexxer'],
+        flavor: '"Charged by the same lightning that shaped us all in the beginning."',
+        isLegendary: true, legendaryColor: '#66ccff'
+    },
+    {
+        id: 'charm_ancient_ward', name: "Ancient Ward",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 75,
+        mods: [{ stat: 'pctArmor', value: 20 }, { stat: 'blockChance', value: 8 }, { stat: 'allRes', value: 12 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['bulwark_ancient_kings', 'the_unstoppable_force', 'valanyr'],
+        flavor: '"Warding runes inscribed by the last Earthen guardian."',
+        isLegendary: true, legendaryColor: '#eeeecc'
+    },
+    {
+        id: 'charm_rage_rune', name: "Rage Rune",
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 70,
+        mods: [{ stat: 'pctDmg', value: 20 }, { stat: 'critMulti', value: 40 }, { stat: 'crushingBlow', value: 10 }],
+        isLegendaryCharm: true,
+        legendaryBoosts: ['sulfuras', 'neltharions_blade', 'the_unstoppable_force'],
+        flavor: '"Etched in rage. Fueled by grievance."',
+        isLegendary: true, legendaryColor: '#ff6600'
+    },
 ];
+
+
+
 
 
 

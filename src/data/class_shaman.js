@@ -1,259 +1,141 @@
 /**
- * SHAMAN CLASS — Full endgame talent trees
- * 3 viable endgame builds:
- *   1. "Chain Caller" — Elemental tree, Chain Lightning + Storm Caller spam
- *   2. "Totem Master" — Totems tree, stacking up to 4 totems for massive sustained DPS
- *   3. "Spiritkeeper" — Restoration tree, hybrid heal + Ancestral Spirit tanking
- *
- * Skill formula key:
- *   dmgBase + dmgPerLvl * slvl = base damage before synergies/item bonuses
- *   synergy: +X% per point of referenced skill (stacks additively)
+ * SHAMAN — Class Definition
+ * Three trees: Elements (elemental DPS) · Totems (placed buffs/debuffs) · Restoration (healing)
  */
-
 export const SHAMAN_CLASS = {
-    id: 'shaman', name: 'Shaman', icon: '⚡',
-    desc: 'Voice of the storm and the earth. Channels lightning through sacred totems, calls ancestral warriors from beyond death, and binds living wounds with primal water. Every build demands mastery of the elements.',
-    stats: { str: 4, dex: 4, vit: 5, int: 8 },
-    statBars: { str: 45, dex: 45, vit: 55, int: 85 },
-    allowedWeapons: ['totem', 'mace', 'staff'],
-    allowedOffhand: ['shield', 'source'],
-
+    id: 'shaman', name: 'Shaman', icon: '🌩️',
+    description: 'Calls upon ancestral spirits and the raw elements to enhance allies with totems, shatter enemies with lightning, and restore the fallen.',
+    stats: { str: 18, dex: 15, vit: 18, int: 19 },
     trees: [
 
-        // ══════════════════════════════════════════
-        //  TREE 1 — ELEMENTAL
-        //  Endgame build: Chain Lightning + Storm Caller
-        //  Synergy chain: Lightning Bolt → Chain Lightning → Storm Caller
-        //  Goal: massive AoE lightning clear at maps 20+
-        // ══════════════════════════════════════════
+        // ═══ ELEMENTS — Elemental burst DPS ═══
         {
-            id: 'elemental', name: 'Elemental', icon: '🌩️',
+            id: 'elements', name: 'Elements', icon: '⚡',
             nodes: [
-
-                // Row 0
                 {
-                    id: 'lightning_bolt', row: 0, col: 1, type: 'active', icon: '⚡',
-                    name: 'Lightning Bolt',
-                    desc: 'Hurl a javelin of lightning. Dmg: (12 + slvl×8) to (20 + slvl×12). Arcs to 1 extra target per 8 points.',
-                    endgame: 'At slvl 20: 172–260 lightning dmg, arcs to 3 targets. Core source of the synergy chain.',
-                    maxPts: 20, mana: 8, cd: 0, group: 'lightning',
-                    dmgBase: 12, dmgMax: 20, dmgPerLvl: 8, dmgMaxPerLvl: 12,
-                },
-
-                // Row 1
-                {
-                    id: 'static_field', row: 1, col: 0, type: 'active', icon: '💢',
-                    name: 'Static Field',
-                    desc: 'Reduce all visible enemies current HP by (25 + slvl×1)% instantly. Range scales with level.',
-                    endgame: 'At slvl 20: strips 45% HP from all enemies on screen. Essential boss opener. HP floor: 1.',
-                    maxPts: 20, mana: 22, cd: 12, group: 'lightning',
-                    dmgBase: 25, dmgPerLvl: 1,
+                    id: 'lightning_bolt', row: 0, col: 1, type: 'active', icon: '⚡', name: 'Lightning Bolt',
+                    desc: 'Active · Hurl a lightning bolt dealing 12 + 8 per point lightning damage. Low cooldown — your main spam damage filler.',
+                    tip: 'Max lvl (20): 172 lightning damage with no downtime.',
+                    maxPts: 20, mana: 8, cd: 0.5, group: 'lightning', dmgBase: 12, dmgPerLvl: 8
                 },
                 {
-                    id: 'chain_lightning', row: 1, col: 2, type: 'active', icon: '🌩️',
-                    name: 'Chain Lightning',
-                    desc: 'Bolt jumps between (2 + slvl/4) enemies, each hit dealing (18 + slvl×10)–(28 + slvl×15) dmg. Bounces do not lose power.',
-                    endgame: 'At slvl 20: jumps 7 enemies for 218–328 each. With synergies can exceed 800 dmg/bounce.',
-                    maxPts: 20, mana: 14, cd: 0, group: 'lightning',
-                    dmgBase: 18, dmgMax: 28, dmgPerLvl: 10, dmgMaxPerLvl: 15,
-                    req: 'lightning_bolt:3',
-                    synergies: [ // receives synergy from:
-                        { from: 'lightning_bolt', pctPerPt: 5 },
-                        { from: 'thunder_strike', pctPerPt: 4 },
-                    ],
+                    id: 'elem_mastery', row: 1, col: 0, type: 'passive', icon: '🔮', name: 'Elemental Mastery',
+                    desc: 'Passive · +3% fire, cold, AND lightning damage per point. At 10 points, all elemental spell mana costs are reduced by 10%. The broad elemental damage passive.',
+                    tip: 'Max lvl (20): +60% to all three elements · mana discount at 10pts.',
+                    maxPts: 20
                 },
                 {
-                    id: 'thunder_strike', row: 1, col: 1, type: 'active', icon: '💥',
-                    name: 'Thunder Strike',
-                    desc: 'Slam ground releasing a shockwave: (30 + slvl×14) AoE lightning dmg, knocks back, stuns 0.6s. Hits all in radius.',
-                    endgame: 'At slvl 20: 310 dmg AoE + stun. Primary crowd control skill. Also synergizes Chain Lightning +4%/pt.',
-                    maxPts: 20, mana: 16, cd: 8, group: 'lightning',
-                    dmgBase: 30, dmgPerLvl: 14, req: 'lightning_bolt:5',
-                },
-
-                // Row 2 — Mastery (passive)
-                {
-                    id: 'elem_mastery', row: 2, col: 1, type: 'passive', icon: '📈',
-                    name: 'Elemental Mastery',
-                    desc: 'Passive. +5% to all elemental damage (fire, cold, lightning, earth) per point. Also +2% elemental pierce per 5 pts.',
-                    endgame: 'At slvl 20: +100% elemental dmg, 8% pierce — transforms every elemental skill to endgame viability.',
-                    maxPts: 20,
-                },
-
-                // Row 3
-                {
-                    id: 'storm_caller', row: 3, col: 0, type: 'active', icon: '🌪️',
-                    name: 'Storm Caller',
-                    desc: 'Conjure a living storm. For 8+slvl×0.5s, random lightning bolts hit random enemies every 0.3s for (40+slvl×18) dmg each.',
-                    endgame: 'At slvl 20: 18s storm, ~400 dmg bolts every 0.3s = devastating sustained AoE. Best boss DPS for Elemental build.',
-                    maxPts: 20, mana: 28, cd: 30, group: 'lightning',
-                    dmgBase: 40, dmgPerLvl: 18, req: 'chain_lightning:10',
-                    synergies: [{ from: 'chain_lightning', pctPerPt: 6 }],
+                    id: 'chain_lightning', row: 1, col: 2, type: 'active', icon: '⛈️', name: 'Chain Lightning',
+                    desc: 'Active · Strike a target for 30 + 14 per point lightning damage that chains to 3 nearby enemies for 70% reduced damage each. More targets nearby = more total damage.',
+                    tip: 'Max lvl (20): 310 primary + 217 × 3 chains. Excellent clearing.',
+                    maxPts: 20, mana: 15, cd: 2, group: 'lightning', dmgBase: 30, dmgPerLvl: 14, req: 'lightning_bolt:3'
                 },
                 {
-                    id: 'earthquake', row: 3, col: 2, type: 'active', icon: '🌍',
-                    name: 'Earthquake',
-                    desc: 'Seismic fissure travels 600px in chosen direction: (50+slvl×20) earth dmg + stuns 1.2s. Width grows with level.',
-                    endgame: 'At slvl 20: 450 dmg line, 1.2s stun. Viable off-spec for ground-clear. Synergizes with Elem Mastery.',
-                    maxPts: 20, mana: 20, cd: 12, group: 'earth',
-                    dmgBase: 50, dmgPerLvl: 20, req: 'thunder_strike:5',
+                    id: 'thunder_strike', row: 2, col: 1, type: 'active', icon: '💥', name: 'Thunder Strike',
+                    desc: 'Active · Channel 1 second then release a massive thunderclap AoE dealing 50 + 20 per point lightning damage to all nearby enemies and stunning them for 0.6s.',
+                    tip: 'Max lvl (20): 450 lightning AoE + 0.6s stun. Powerful but slow casting.',
+                    maxPts: 20, mana: 18, cd: 6, group: 'lightning', dmgBase: 50, dmgPerLvl: 20, req: 'chain_lightning:5'
                 },
-
-                // Row 4 — Synergy node
                 {
-                    id: 'cl_syn', row: 4, col: 1, type: 'synergy', icon: '🔗',
-                    name: 'Storm Mastery Synergy',
-                    desc: 'Each point of Thunder Strike adds +4% Chain Lightning damage. Each point of Lightning Bolt adds +5% Chain Lightning damage.',
-                    maxPts: 1, targetSkill: 'chain_lightning', bonusPerPoint: 'see desc',
-                    req: 'thunder_strike:1',
+                    id: 'lava_burst', row: 3, col: 0, type: 'active', icon: '🌋', name: 'Lava Burst',
+                    desc: 'Active · Cause lava to erupt from the ground dealing 60 + 20 per point fire damage. If the target is already on fire (Flame Shock), this spell is GUARANTEED to critically strike.',
+                    tip: 'Max lvl (20): 460 fire damage · always crits vs burning targets.',
+                    maxPts: 20, mana: 20, cd: 8, group: 'fire', dmgBase: 60, dmgPerLvl: 20, req: 'thunder_strike:5'
+                },
+                {
+                    id: 'earthquake', row: 3, col: 2, type: 'active', icon: '🌋', name: 'Earthquake',
+                    desc: 'Active · Shake the earth violently for 8 seconds, dealing 30 + 10 per point physical AoE damage per second and stunning enemies for 1.2s. Area slows movement by 50% while active.',
+                    tip: 'Max lvl (20): 230/s × 8s = 1,840 total. Ultimate AoE devastation.',
+                    maxPts: 20, mana: 35, cd: 30, group: 'earth', dmgBase: 30, dmgPerLvl: 10, req: 'lava_burst:5',
+                    synergies: [{ from: 'elem_mastery', pctPerPt: 4 }]
+                },
+                {
+                    id: 'storm_caller', row: 4, col: 1, type: 'passive', icon: '🌪️', name: 'Storm Caller',
+                    desc: 'Passive · When you cast any lightning spell, 15% chance to instantly reset Chain Lightning\'s cooldown. Also adds +2 chain targets to Chain Lightning permanently.',
+                    tip: 'Chain Lightning procs can cascade with this talent at high luck. Legendary for clearing.',
+                    maxPts: 20
                 },
             ]
         },
 
-        // ══════════════════════════════════════════
-        //  TREE 2 — TOTEMS
-        //  Endgame build: Stack 4 totems, use Totemic Wrath for burst
-        //  Key mechanic: Multiple totems active simultaneously
-        //  Goal: highest sustained DPS from 3 damage totems + 1 utility
-        // ══════════════════════════════════════════
+        // ═══ TOTEMS — Placed utility/DPS ═══
         {
-            id: 'totems', name: 'Totems', icon: '🗿',
+            id: 'totems', name: 'Totems', icon: '🪵',
             nodes: [
-
-                // Row 0
                 {
-                    id: 'searing_totem', row: 0, col: 1, type: 'active', icon: '🔥',
-                    name: 'Searing Totem',
-                    desc: 'Place a fire-spitting totem. Attacks nearest enemy every 1.5s for (8+slvl×6) fire dmg. Lasts 30+slvl×2s. Max totems: 1+slvl/8.',
-                    endgame: 'slvl 20: 128 dmg/shot, fires every 1.5s, lasts 70s. Max 3 Searing Totems active = 256 DPS each.',
-                    maxPts: 20, mana: 10, cd: 3, group: 'totem',
-                    dmgBase: 8, dmgPerLvl: 6,
-                },
-
-                // Row 1
-                {
-                    id: 'healing_stream', row: 1, col: 0, type: 'active', icon: '💧',
-                    name: 'Healing Stream Totem',
-                    desc: 'Totem pulses every 2s restoring (8+slvl×5) HP to lowest HP ally in 300px. Lasts 30+slvl×2s.',
-                    endgame: 'slvl 20: 108 HP every 2s = 54 HP/s without any healing power. Non-trivial sustain.',
-                    maxPts: 20, mana: 12, cd: 4, group: 'totem',
-                    dmgBase: 8, dmgPerLvl: 5,
+                    id: 'searing_totem', row: 0, col: 1, type: 'active', icon: '🔥', name: 'Searing Totem',
+                    desc: 'Active · Place a fire totem that shoots a fire bolt every second at the nearest enemy for 15 + 8 per point fire damage. Lasts 45 seconds. Stack multiple for sustained DPS.',
+                    tip: 'Max lvl (20): 175 fire/s. Place before combat for immediate DPS.',
+                    maxPts: 20, mana: 10, cd: 0
                 },
                 {
-                    id: 'stoneskin_totem', row: 1, col: 2, type: 'active', icon: '🪨',
-                    name: 'Stoneskin Totem',
-                    desc: 'Totem grants all allies within 350px +(10+slvl×2)% armor. Stacks with other buffs. Lasts 30+slvl×2s.',
-                    endgame: 'slvl 20: +50% armor buff. Massive survivability supplement for melee classes.',
-                    maxPts: 20, mana: 12, cd: 4, group: 'totem', req: 'searing_totem:3',
-                },
-
-                // Row 2 — Mastery
-                {
-                    id: 'totem_mastery', row: 2, col: 1, type: 'passive', icon: '📈',
-                    name: 'Totem Mastery',
-                    desc: 'Passive. Each point: +6% totem damage, +5% totem duration, +0.1 max concurrent totems (caps at +2 at lvl 20).',
-                    endgame: 'At slvl 20: +120% totem dmg, +100% duration, +2 max totems. Enables running 4+ totems simultaneously.',
-                    maxPts: 20,
-                },
-
-                // Row 3
-                {
-                    id: 'windfury_totem', row: 3, col: 0, type: 'active', icon: '💨',
-                    name: 'Windfury Totem',
-                    desc: 'Totem grants all allies +(20+slvl×2)% attack speed and +(10+slvl×1.5)% movement speed. Lasts 30+slvl×3s.',
-                    endgame: 'slvl 20: +60% attack speed, +40% move speed. Essential for melee-heavy parties. Very strong support build.',
-                    maxPts: 20, mana: 16, cd: 25, group: 'totem', req: 'searing_totem:10',
+                    id: 'totem_mastery', row: 1, col: 0, type: 'passive', icon: '🪵', name: 'Totem Mastery',
+                    desc: 'Passive · Each point extends all totem durations by +20% and enlarges their effect radius by +8%. At 5 points you can place one extra totem simultaneously.',
+                    tip: 'Max lvl (20): Totems last 4× longer · much larger radius · extra totem slot at 5pts.',
+                    maxPts: 20
                 },
                 {
-                    id: 'totemic_wrath', row: 3, col: 2, type: 'active', icon: '⚡',
-                    name: 'Totemic Wrath',
-                    desc: 'For 10+slvl×0.5s: all active totems attack (3+slvl/5) times per second and deal +(100+slvl×15)% damage.',
-                    endgame: 'slvl 20: 15s burst, 7 attacks/sec, +400% dmg on all totems. Deadly burst with 4 Searing Totems active.',
-                    maxPts: 20, mana: 22, cd: 40, group: 'buff', req: 'totem_mastery:10',
+                    id: 'windfury_totem', row: 1, col: 2, type: 'active', icon: '💨', name: 'Windfury Totem',
+                    desc: 'Active · Place a totem that grants all nearby allies a 20% chance on each melee swing to trigger two additional instant attacks dealing full weapon damage. Lasts 45 seconds.',
+                    tip: 'The most powerful melee buff totem. Massive DPS increase for entire melee group.',
+                    maxPts: 20, mana: 15, cd: 0
                 },
-
-                // Row 4 — Synergy
                 {
-                    id: 'totem_syn', row: 4, col: 1, type: 'synergy', icon: '🔗',
-                    name: 'Wrath Amplification',
-                    desc: 'Each point of Totem Mastery adds +3% Totemic Wrath bonus. Each point of Searing Totem adds +4% to all fire totems.',
-                    maxPts: 1, targetSkill: 'totemic_wrath', bonusPerPoint: 'see desc', req: 'totemic_wrath:1',
+                    id: 'earthbind_totem', row: 2, col: 0, type: 'active', icon: '⛰️', name: 'Earthbind Totem',
+                    desc: 'Active · Place a totem that continuously roots ALL nearby enemies in place, preventing movement for as long as they stay in range. Lasts 30 seconds. Enemies still attack.',
+                    tip: 'Invaluable for kiting strategies. Roots enemies so you can bomb them freely.',
+                    maxPts: 20, mana: 10, cd: 5, req: 'searing_totem:3'
+                },
+                {
+                    id: 'healing_spring', row: 2, col: 2, type: 'active', icon: '💧', name: 'Healing Spring',
+                    desc: 'Active · Place a healing totem that restores 10 + 4 per point HP per second to all nearby allies. Lasts 45 seconds. The best sustained group healing in a stationary fight.',
+                    tip: 'Max lvl (20): 90 HP/s to all allies in range.',
+                    maxPts: 20, mana: 18, cd: 0, req: 'windfury_totem:3'
+                },
+                {
+                    id: 'totemic_wrath', row: 3, col: 1, type: 'passive', icon: '🌩️', name: 'Totemic Wrath',
+                    desc: 'Passive · All your active totems passively increase the fire and lightning damage of all nearby allies by 5 + 1% per point per totem. Place more totems = bigger bonus.',
+                    tip: 'Max lvl (20): +25% per totem. With 4 active = +100% fire/lightning for party.',
+                    maxPts: 20, req: 'totem_mastery:5'
                 },
             ]
         },
 
-        // ══════════════════════════════════════════
-        //  TREE 3 — RESTORATION
-        //  Endgame build: Ancestral healer / hybrid sustain
-        //  Key mechanic: Healing Wave chain + Nature's Swiftness instant cast
-        //  Goal: unlimited sustain, permanent Ancestral Spirit uptime
-        // ══════════════════════════════════════════
+        // ═══ RESTORATION — Support healer ═══
         {
             id: 'restoration', name: 'Restoration', icon: '💚',
             nodes: [
-
-                // Row 0
                 {
-                    id: 'healing_wave', row: 0, col: 1, type: 'active', icon: '💚',
-                    name: 'Healing Wave',
-                    desc: 'Heal target for (30+slvl×12) HP, then chains to (1+slvl/4) additional nearby allies for 60% of previous heal.',
-                    endgame: 'slvl 20: 270 HP base heal, chains to 6 targets (each 60% of previous). ~780 total HP across party per cast.',
-                    maxPts: 20, mana: 12, cd: 0, group: 'holy',
-                    dmgBase: 30, dmgPerLvl: 12,
-                    synergies: [{ from: 'ancestral_spirit', pctPerPt: 4 }],
-                },
-
-                // Row 1
-                {
-                    id: 'earth_shield', row: 1, col: 0, type: 'active', icon: '🛡️',
-                    name: 'Earth Shield',
-                    desc: 'Wrap target in earth shell absorbing (40+slvl×16) dmg. While active, heals for 4% of damage absorbed. Lasts 15s.',
-                    endgame: 'slvl 20: absorbs 360 dmg + passive heal. Combine with Totem Mastery support for unkillable tanking.',
-                    maxPts: 20, mana: 14, cd: 15, group: 'earth',
-                    dmgBase: 40, dmgPerLvl: 16,
+                    id: 'healing_wave', row: 0, col: 1, type: 'active', icon: '💚', name: 'Healing Wave',
+                    desc: 'Active · Heal a target for 40 + 18 per point HP instantly. Quick cast, moderate mana cost. Your primary emergency heal.',
+                    tip: 'Max lvl (20): Heals for 400 HP in one cast.',
+                    maxPts: 20, mana: 18, cd: 0
                 },
                 {
-                    id: 'ancestral_spirit', row: 1, col: 2, type: 'active', icon: '👼',
-                    name: 'Ancestral Spirit',
-                    desc: 'Call a Golden Valkyrie spirit warrior for 20+slvl×2s. She tanks with (150+slvl×40) HP and strikes with spectral spear (dmg: 25+slvl×12).',
-                    endgame: 'slvl 20: 60s duration Valkyrie, 950 HP, 265 holy dmg. The ultimate ancestral protector for the Spiritkeeper build.',
-                    maxPts: 20, mana: 25, cd: 60, group: 'summon', req: 'healing_wave:5',
-                    dmgBase: 25, dmgPerLvl: 12,
-                },
-
-                // Row 2 — Mastery
-                {
-                    id: 'resto_mastery', row: 2, col: 1, type: 'passive', icon: '📈',
-                    name: 'Restoration Mastery',
-                    desc: 'Passive. +6% healing effectiveness and +4% earth spell damage per point. At 10pts: Healing Wave jumps to 1 extra target for free.',
-                    endgame: 'At slvl 20: +120% healing. Chain heal heals twice as many targets. Earth Shield absorbs triple base.',
-                    maxPts: 20,
-                },
-
-                // Row 3
-                {
-                    id: 'nature_swiftness', row: 3, col: 0, type: 'active', icon: '⚡',
-                    name: 'Nature\'s Swiftness',
-                    desc: 'Next healing or earth spell is instant cast and has +(50+slvl×5)% effectiveness. 20s cooldown, resets on kill.',
-                    endgame: 'slvl 20: +150% on instant Healing Wave = ~675 HP base heal chained to 6 targets. Cooldown resets on kill.',
-                    maxPts: 20, mana: 6, cd: 20, group: 'buff', req: 'healing_wave:10',
+                    id: 'resto_mastery', row: 1, col: 0, type: 'passive', icon: '💚', name: 'Restoration Mastery',
+                    desc: 'Passive · +8% healing effectiveness per point AND +2 HP regen per second per point (for you and allies in range). The core restoration passive.',
+                    tip: 'Max lvl (20): +160% healing power · +40 HP/s regen aura.',
+                    maxPts: 20
                 },
                 {
-                    id: 'mana_tide', row: 3, col: 2, type: 'active', icon: '🌊',
-                    name: 'Mana Tide Totem',
-                    desc: 'Place a totem that restores (2+slvl×0.5)% of max mana per second to all allies for 12+slvl×1s.',
-                    endgame: 'slvl 20: 12% max mana/sec for 32s = full mana bar in ~8s. Indispensible for mana-hungry parties.',
-                    maxPts: 20, mana: 18, cd: 60, group: 'totem', req: 'ancestral_spirit:5',
+                    id: 'healing_stream_totem', row: 1, col: 2, type: 'active', icon: '♒', name: 'Healing Stream',
+                    desc: 'Active · Place a totem that automatically heals the most injured ally within range for 15 + 6 per point HP every second. Lasts 60 seconds. Fully automatic.',
+                    tip: 'Max lvl (20): 135 HP/s automatic triage. Set it and forget it.',
+                    maxPts: 20, mana: 14, cd: 0
                 },
-
-                // Row 4 — Synergy
                 {
-                    id: 'hw_syn', row: 4, col: 1, type: 'synergy', icon: '🔗',
-                    name: 'Ancestral Resonance',
-                    desc: 'Each point of Ancestral Spirit adds +4% Healing Wave effectiveness. Each point of Earth Shield adds +5% chain heal range.',
-                    maxPts: 1, targetSkill: 'healing_wave', bonusPerPoint: 'see desc', req: 'ancestral_spirit:1',
+                    id: 'mana_tide', row: 2, col: 1, type: 'active', icon: '🔵', name: 'Mana Tide Totem',
+                    desc: 'Active · Place a totem that restores 5 + 2 per point mana per second to all nearby allies. Lasts 30 seconds. Invaluable for mana-hungry spellcaster groups.',
+                    tip: 'Max lvl (20): +45 mana/s for all allies. Keeps the whole group casting.',
+                    maxPts: 20, mana: 12, cd: 0, req: 'healing_stream_totem:3'
+                },
+                {
+                    id: 'ancestral_spirit', row: 3, col: 1, type: 'active', icon: '👻', name: 'Ancestral Spirit',
+                    desc: 'Active · Call upon an ancestor spirit to resurrect a fallen ally with 50 + 3% per point of their maximum HP restored. 90-second cooldown. The only resurrection in the game.',
+                    tip: 'Max lvl (20): Resurrects ally with 110% HP (brief overheal).',
+                    maxPts: 20, mana: 50, cd: 90, req: 'healing_wave:5'
                 },
             ]
-        }
+        },
     ]
 };

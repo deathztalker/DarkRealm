@@ -1,173 +1,142 @@
 /**
- * DRUID — Expanded endgame trees
- * Builds: 1. "Werebear Tank" — Shapeshifting bear tank  2. "Wind Druid" — Tornado+Hurricane AoE  3. "Beastmaster" — Summon army+Oak Sage
+ * DRUID — Class Definition
+ * Three trees: Shapeshifting (melee forms) · Nature (elemental spells) · Healing (restoration)
  */
 export const DRUID_CLASS = {
-    id: 'druid', name: 'Druid', icon: '🐺',
-    desc: 'Guardian of the wild. Transforms into bear or wolf, commands the fury of wind and earth, and summons spirit companions. The most versatile class.',
-    stats: { str: 6, dex: 4, vit: 7, int: 3 },
-    statBars: { str: 65, dex: 45, vit: 75, int: 30 },
-    allowedWeapons: ['mace', 'staff', 'axe'],
-    allowedOffhand: ['shield'],
+    id: 'druid', name: 'Druid', icon: '🌿',
+    description: 'A shapeshifter who fights as a bear, wolf, or human. Commands nature\'s elements and heals wounds with ancient magic.',
+    stats: { str: 20, dex: 20, vit: 20, int: 10 },
     trees: [
+
+        // ═══ SHAPESHIFTING — Melee form builds ═══
         {
-            id: 'shapeshifting', name: 'Shapeshifting', icon: '🐻', nodes: [
+            id: 'shapeshifting', name: 'Shapeshifting', icon: '🐻',
+            nodes: [
                 {
-                    id: 'bear_form', row: 0, col: 1, type: 'active', icon: '🐻', name: 'Werebear Form',
-                    desc: 'Transform: +(100+slvl×5)% HP, +(50+slvl×3)% armor. Unlocks Maul/Slam. Lasts 30+slvl×3s.',
-                    endgame: 'slvl 20: +200% HP, +110% armor for 90s. The tankiest form in the game.',
-                    maxPts: 20, mana: 15, cd: 30, group: 'buff'
+                    id: 'dire_wolf', row: 0, col: 1, type: 'active', icon: '🐺', name: 'Dire Wolf Form',
+                    desc: 'Active (Toggle) · Transform into a Dire Wolf: +50% movement speed, +30% attack speed, and your melee attacks deal 10 + 5 per point bonus physical damage. Cannot cast spells while shifted.',
+                    tip: 'Max lvl (20): +130 attack damage · fast mobile melee form for agile DPS.',
+                    maxPts: 20, mana: 10, cd: 0
                 },
                 {
-                    id: 'wolf_form', row: 0, col: 0, type: 'active', icon: '🐺', name: 'Werewolf Form',
-                    desc: 'Transform: +(50+slvl×2)% move speed, +(30+slvl×2)% IAS. Unlocks Fury/Rabies. Lasts 30+slvl×3s.',
-                    endgame: 'slvl 20: +90% IAS, +90% move speed for 90s. Fastest melee class.',
-                    maxPts: 20, mana: 10, cd: 20, group: 'buff'
-                },
-                {
-                    id: 'maul', row: 1, col: 1, type: 'active', icon: '🐾', name: 'Maul',
-                    desc: 'Bear: massive swipe (25+slvl×12) + stun 1s. Each consecutive hit adds +15% damage.',
-                    endgame: 'slvl 20: 265 base, stacking to 380+ after 3 hits. Bear DPS machine.',
-                    maxPts: 20, mana: 8, cd: 0, group: 'melee', dmgBase: 25, dmgPerLvl: 12, req: 'bear_form:3'
-                },
-                {
-                    id: 'fury', row: 1, col: 0, type: 'active', icon: '😤', name: 'Fury',
-                    desc: 'Wolf: rapid 3-hit combo at (12+slvl×6) each. Each hit has 20% lifesteal.',
-                    endgame: 'slvl 20: 132 ×3 = 396 total + 79 HP healed. Sustain + DPS.',
-                    maxPts: 20, mana: 12, cd: 0, group: 'melee', dmgBase: 12, dmgPerLvl: 6, req: 'wolf_form:3'
-                },
-                {
-                    id: 'feral_mastery', row: 2, col: 1, type: 'passive', icon: '📈', name: 'Feral Mastery',
-                    desc: '+5% shapeshift damage and +3% attack speed per point.',
-                    endgame: 'slvl 20: +100% dmg, +60% IAS in animal forms. Essential for both builds.',
+                    id: 'feral_mastery', row: 1, col: 0, type: 'passive', icon: '🦁', name: 'Feral Mastery',
+                    desc: 'Passive · +5% damage per point and +2% critical chance per point (applies in all shapeshifted forms). At 10 points, also grants +15% max HP while shapeshifted.',
+                    tip: 'Max lvl (20): +100% form damage · +40% crit · +15% HP at 10pts.',
                     maxPts: 20
                 },
                 {
-                    id: 'rabies', row: 3, col: 0, type: 'active', icon: '🦴', name: 'Rabies',
-                    desc: 'Wolf bite: applies spreading poison (6+slvl×4)/s for 5s. Spreads to nearby enemies from infected.',
-                    endgame: 'slvl 20: 86/s spreading DoT. Infect one → watch it chain through entire pack.',
-                    maxPts: 20, mana: 10, cd: 0, group: 'poison', dmgBase: 6, dmgPerLvl: 4, req: 'fury:5'
+                    id: 'bear_form', row: 1, col: 2, type: 'active', icon: '🐻', name: 'Bear Form',
+                    desc: 'Active (Toggle) · Transform into a massive bear: +200% armor, +40% max HP, and your melee attacks deal 15 + 8 per point physical damage. Heavily defensive — tank form.',
+                    tip: 'Max lvl (20): +215 attack damage in an armored form. The tanking shapeshifted option.',
+                    maxPts: 20, mana: 10, cd: 0
                 },
                 {
-                    id: 'bear_slam', row: 3, col: 2, type: 'active', icon: '💥', name: 'Earth Slam',
-                    desc: 'Bear: slam ground (40+slvl×16) earth AoE. Stuns all 1.5s. Large radius.',
-                    endgame: 'slvl 20: 360 earth AoE + 1.5s mass stun. Bear crowd control ultimate.',
-                    maxPts: 20, mana: 14, cd: 10, group: 'earth', dmgBase: 40, dmgPerLvl: 16, req: 'maul:10',
-                    synergies: [{ from: 'maul', pctPerPt: 4 }]
+                    id: 'maul', row: 2, col: 0, type: 'active', icon: '🐻', name: 'Maul',
+                    desc: 'Active · A devastating bear swipe dealing 35 + 15 per point physical damage and stunning the target for 1 second. Can only be used in Bear Form.',
+                    tip: 'Max lvl (20): 335 physical + 1s stun. Primary bear form attack.',
+                    maxPts: 20, mana: 8, cd: 3, group: 'melee', dmgBase: 35, dmgPerLvl: 15, req: 'bear_form:1'
                 },
                 {
-                    id: 'primal_rage', row: 4, col: 1, type: 'active', icon: '🔥', name: 'Primal Rage',
-                    desc: 'Ultimate: both forms active simultaneously for 15s. Bear HP + Wolf speed. All shapeshifting skills usable.',
-                    endgame: 'slvl 20: 15s of being a fast bear-wolf hybrid with access to all abilities. True endgame form.',
-                    maxPts: 20, mana: 25, cd: 120, group: 'buff', req: 'feral_mastery:15'
+                    id: 'bear_slam', row: 2, col: 2, type: 'active', icon: '💥', name: 'Bear Slam',
+                    desc: 'Active · Rear up and crash down in a massive shockwave AoE dealing 25 + 10 per point physical damage to all enemies in range and stunning them for 1.5s. Bear Form only.',
+                    tip: 'Max lvl (20): 225 AoE + 1.5s stun. Best bear AoE crowd control.',
+                    maxPts: 20, mana: 12, cd: 8, group: 'melee', dmgBase: 25, dmgPerLvl: 10, req: 'maul:5'
+                },
+                {
+                    id: 'rabies', row: 3, col: 0, type: 'active', icon: '☣️', name: 'Rabies',
+                    desc: 'Active · Bite a target injecting rabies that deals 6 + 4 per point poison damage per second for 5 seconds AND spreads to nearby enemies on death. Wolf Form only.',
+                    tip: 'Max lvl (20): 86/s × 5s = 430 poison that chains on kills. Great for swarms.',
+                    maxPts: 20, mana: 8, cd: 2, req: 'dire_wolf:5',
+                    synergies: [{ from: 'feral_mastery', pctPerPt: 3 }]
+                },
+                {
+                    id: 'natural_armor', row: 3, col: 2, type: 'passive', icon: '🌿', name: 'Natural Armor',
+                    desc: 'Passive · +6% armor per point from your natural body (stacks with worn armor). Also grants +1 HP regeneration per second per point. Active in both shifted and human form.',
+                    tip: 'Max lvl (20): +120% bonus armor · +20 HP/s regeneration.',
+                    maxPts: 20
                 },
             ]
         },
+
+        // ═══ NATURE — Elemental caster form ═══
         {
-            id: 'elemental_druid', name: 'Elemental', icon: '🌩️', nodes: [
+            id: 'nature', name: 'Nature', icon: '🌿',
+            nodes: [
                 {
-                    id: 'tornado', row: 0, col: 1, type: 'active', icon: '🌪️', name: 'Tornado',
-                    desc: 'Spinning vortex: (12+slvl×8) physical, bounces randomly hitting multiple enemies.',
-                    endgame: 'slvl 20: 172 per bounce, 5-8 bounces. Randomized but high total damage.',
-                    maxPts: 20, mana: 10, cd: 0, group: 'nature', dmgBase: 12, dmgPerLvl: 8
+                    id: 'twister', row: 0, col: 1, type: 'active', icon: '🌪️', name: 'Twister',
+                    desc: 'Active · Launch a spinning tornado in a direction dealing 15 + 8 per point lightning damage to everything in its path and briefly stunning for 0.5s.',
+                    tip: 'Max lvl (20): 175 lightning + stun. Good for hitting enemies in a line.',
+                    maxPts: 20, mana: 10, cd: 1, group: 'lightning', dmgBase: 15, dmgPerLvl: 8
                 },
                 {
-                    id: 'fissure', row: 0, col: 0, type: 'active', icon: '🌍', name: 'Fissure',
-                    desc: 'Open earth crack: (20+slvl×10) fire+earth line damage + 3s burning ground.',
-                    endgame: 'slvl 20: 220 line + ground fire. Zone control for corridors.',
-                    maxPts: 20, mana: 12, cd: 4, group: 'earth', dmgBase: 20, dmgPerLvl: 10
-                },
-                {
-                    id: 'cyclone_armor', row: 1, col: 2, type: 'active', icon: '🛡️', name: 'Cyclone Armor',
-                    desc: 'Wind shield absorbs (30+slvl×12) elemental damage. Lasts until depleted.',
-                    endgame: 'slvl 20: absorbs 270 elemental dmg. Refreshable. Key survivability buff.',
-                    maxPts: 20, mana: 8, cd: 0, group: 'buff', dmgBase: 30, dmgPerLvl: 12
-                },
-                {
-                    id: 'hurricane', row: 2, col: 1, type: 'active', icon: '🌀', name: 'Hurricane',
-                    desc: 'AoE wind around you for (10+slvl×1)s: (8+slvl×5) cold/s to all nearby + slows by 35%.',
-                    endgame: 'slvl 20: 108/s for 30s = 3240 AoE total with 35% slow. Walk through packs.',
-                    maxPts: 20, mana: 18, cd: 30, group: 'cold', dmgBase: 8, dmgPerLvl: 5, req: 'tornado:10',
-                    synergies: [{ from: 'tornado', pctPerPt: 4 }]
-                },
-                {
-                    id: 'nature_mastery', row: 2, col: 0, type: 'passive', icon: '📈', name: 'Nature Mastery',
-                    desc: '+6% elemental damage per point. At 10pts: Tornado gains 2 extra bounces.',
-                    endgame: 'slvl 20: +120% elem dmg. Tornado hits 10+ times per cast.',
+                    id: 'nature_mastery', row: 1, col: 0, type: 'passive', icon: '🌿', name: 'Nature Mastery',
+                    desc: 'Passive · +3% fire, cold, AND lightning damage per point. At 10 points, nature damage spells have a 10% chance to root the target for 2 seconds automatically.',
+                    tip: 'Max lvl (20): +60% elemental damage · chance to root at 10pts.',
                     maxPts: 20
                 },
                 {
-                    id: 'volcano', row: 3, col: 0, type: 'active', icon: '🌋', name: 'Volcano',
-                    desc: 'Eruption: (40+slvl×18) fire+earth at impact point + periodic eruptions for 10s.',
-                    endgame: 'slvl 20: 400 impact + periodic bursts. Zone lockdown skill.',
-                    maxPts: 20, mana: 20, cd: 15, group: 'fire', dmgBase: 40, dmgPerLvl: 18, req: 'fissure:10'
+                    id: 'vine', row: 1, col: 2, type: 'active', icon: '🌱', name: 'Vine',
+                    desc: 'Active · Summon magical vines from the earth that root a target for 3 seconds, preventing movement and making them take +15% damage from all sources.',
+                    tip: 'A 3s root + damage amp. Excellent opener or escape from dangerous enemies.',
+                    maxPts: 20, mana: 8, cd: 6
                 },
                 {
-                    id: 'twister', row: 3, col: 2, type: 'active', icon: '🌪️', name: 'Twister',
-                    desc: 'Mini tornadoes stun enemies for 0.5s and deal (5+slvl×3). Fires constantly during Hurricane.',
-                    endgame: 'slvl 20: 65 dmg twisters with 0.5s stun. Auto-cast during Hurricane = perma-stun.',
-                    maxPts: 20, mana: 4, cd: 0, group: 'nature', dmgBase: 5, dmgPerLvl: 3, req: 'hurricane:5'
+                    id: 'hurricane', row: 2, col: 1, type: 'active', icon: '🌀', name: 'Hurricane',
+                    desc: 'Active · Summon a hurricane at target location lasting 6 seconds. Deals 12 + 6 per point cold/wind damage per second and slows all caught enemies by 35%. Great zone denial.',
+                    tip: 'Max lvl (20): 132/s × 6s = 792 cold + perma-slow. Combine with Vine for locked-down enemies.',
+                    maxPts: 20, mana: 20, cd: 12, group: 'cold', dmgBase: 12, dmgPerLvl: 6,
+                    synergies: [{ from: 'nature_mastery', pctPerPt: 4 }]
                 },
                 {
-                    id: 'armageddon', row: 4, col: 1, type: 'active', icon: '☄️', name: 'Armageddon',
-                    desc: 'Ultimate: combined fire rain + hurricane for 20s. (15+slvl×8) mixed AoE per hit, random targets, 3 hits/s.',
-                    endgame: 'slvl 20: 175/hit × 3/s × 20s = 10500 total. Walk-through-everything endgame spell.',
-                    maxPts: 20, mana: 28, cd: 60, group: 'fire', dmgBase: 15, dmgPerLvl: 8, req: 'hurricane:10',
+                    id: 'raven', row: 3, col: 0, type: 'active', icon: '🐦', name: 'Raven',
+                    desc: 'Active · Summon a raven companion that attacks enemies for 10 + 4 per point physical damage per hit and has a 10% chance to blind targets for 2 seconds. Persistent companion.',
+                    tip: 'Max lvl (20): Raven deals 90 per hit with free blinds.',
+                    maxPts: 20, mana: 15, cd: 5, req: 'twister:3'
+                },
+                {
+                    id: 'armageddon', row: 3, col: 2, type: 'active', icon: '☄️', name: 'Armageddon',
+                    desc: 'Active · Rain flaming meteors across the entire screen for 10 seconds dealing 30 + 12 per point fire damage per impact. Dozens of impacts per second on random targets.',
+                    tip: 'Max lvl (20): 270/impact in a 10s storm. The ultimate nature devastation spell.',
+                    maxPts: 20, mana: 40, cd: 60, group: 'fire', dmgBase: 30, dmgPerLvl: 12, req: 'hurricane:10',
                     synergies: [{ from: 'nature_mastery', pctPerPt: 5 }]
                 },
             ]
         },
+
+        // ═══ HEALING — Restoration caster ═══
         {
-            id: 'summoning_druid', name: 'Summoning', icon: '🌿', nodes: [
+            id: 'healing', name: 'Healing', icon: '💚',
+            nodes: [
                 {
-                    id: 'summon_wolf', row: 0, col: 1, type: 'active', icon: '🐺', name: 'Summon Dire Wolf',
-                    desc: 'Call a dire wolf. Max (1+slvl/5). Wolves: (10+slvl×5) dmg, (30+slvl×10) HP.',
-                    endgame: 'slvl 20: 5 wolves, each 110 dmg, 230 HP. Pack of 5 = 550 DPS.',
-                    maxPts: 20, mana: 16, cd: 5
+                    id: 'healing_touch', row: 0, col: 1, type: 'active', icon: '💚', name: 'Healing Touch',
+                    desc: 'Active · Touch an ally to heal them for 35 + 15 per point HP instantly. The most healing per mana of any skill. Core emergency heal.',
+                    tip: 'Max lvl (20): Heals 335 HP. Best raw healing in the game.',
+                    maxPts: 20, mana: 15, cd: 0
                 },
                 {
-                    id: 'spirit_wolf', row: 1, col: 0, type: 'passive', icon: '👻', name: 'Spirit Wolf',
-                    desc: '+15% wolf HP and damage per point. At 10pts: wolves gain shadow dodge (20% evade).',
-                    endgame: 'slvl 20: +300% wolf stats + evasion. Wolves become truly dangerous.',
-                    maxPts: 20
+                    id: 'rejuvenation', row: 1, col: 0, type: 'active', icon: '🌱', name: 'Rejuvenation',
+                    desc: 'Active · Apply a healing-over-time effect that restores 10 + 4 per point HP per second to an ally for 8 seconds. Stacks with Healing Touch for combined burst+sustain.',
+                    tip: 'Max lvl (20): 90 HP/s × 8s = 720 total healing. Great for ongoing sustain.',
+                    maxPts: 20, mana: 12, cd: 0
                 },
                 {
-                    id: 'raven', row: 1, col: 2, type: 'active', icon: '🐦‍⬛', name: 'Summon Raven',
-                    desc: 'Call (1+slvl/4) ravens. Each attacks for (5+slvl×3) and blinds targets (10% hit reduction).',
-                    endgame: 'slvl 20: 6 ravens, 65 dmg each with blind. Utility + supplemental damage.',
-                    maxPts: 20, mana: 8, cd: 3, req: 'summon_wolf:1'
+                    id: 'regrowth', row: 1, col: 2, type: 'active', icon: '🌿', name: 'Regrowth',
+                    desc: 'Active · Apply a combination heal: instant 50 + 20 per point HP followed by 8 + 4 per point HP per second for 15 seconds. Two heals in one. Great for longer fights.',
+                    tip: 'Max lvl (20): 450 instant + 108/s × 15s = 2,070 total. Best value heal.',
+                    maxPts: 20, mana: 20, cd: 2, req: 'healing_touch:3'
                 },
                 {
-                    id: 'oak_sage', row: 2, col: 1, type: 'active', icon: '🌲', name: 'Oak Sage',
-                    desc: 'Spirit: all party members gain +(20+slvl×2)% max HP. Only 1 spirit active.',
-                    endgame: 'slvl 20: +60% max HP for entire party. The best HP buff in the game.',
-                    maxPts: 20, mana: 14, cd: 60, req: 'summon_wolf:5'
+                    id: 'tranquility', row: 2, col: 1, type: 'active', icon: '☮️', name: 'Tranquility',
+                    desc: 'Active · Channel for 8 seconds healing ALL nearby allies for 20 + 8 per point HP per second. You cannot move or attack while channeling. Powerful mass-heal in emergencies.',
+                    tip: 'Max lvl (20): 180 HP/s to ALL allies for 8s. Use when the whole group is dying.',
+                    maxPts: 20, mana: 30, cd: 45, req: 'rejuvenation:5'
                 },
                 {
-                    id: 'heart_of_wolverine', row: 2, col: 0, type: 'active', icon: '🐾', name: 'Heart of Wolverine',
-                    desc: 'Spirit: party gains +(20+slvl×2)% damage and +10% IAS. Replaces Oak Sage.',
-                    endgame: 'slvl 20: +60% dmg + IAS for party. Offensive spirit alternative.',
-                    maxPts: 20, mana: 14, cd: 60, req: 'oak_sage:3'
-                },
-                {
-                    id: 'vine', row: 3, col: 0, type: 'active', icon: '🌿', name: 'Spirit Vine',
-                    desc: 'Vine roots target 3s, drains (4+slvl×2) HP/s healing the vine. Max 2 vines.',
-                    endgame: 'slvl 20: 3s root + 44/s drain. Crowd control + sustained damage.',
-                    maxPts: 20, mana: 8, cd: 6
-                },
-                {
-                    id: 'grizzly', row: 3, col: 2, type: 'active', icon: '🐻', name: 'Summon Grizzly',
-                    desc: 'Massive grizzly bear: (150+slvl×30) HP, (15+slvl×8) damage, taunts enemies.',
-                    endgame: 'slvl 20: 750 HP tank, 175 dmg with taunt. Your personal tank companion.',
-                    maxPts: 20, mana: 28, cd: 60, req: 'summon_wolf:10',
-                    synergies: [{ from: 'spirit_wolf', pctPerPt: 5 }]
-                },
-                {
-                    id: 'stampede', row: 4, col: 1, type: 'active', icon: '🦬', name: 'Stampede',
-                    desc: 'Ultimate: ALL summoned creatures charge a target simultaneously, each dealing +(100+slvl×10)% damage.',
-                    endgame: 'slvl 20: all pets charge with +300% dmg. 5 wolves + grizzly + ravens = one-shot burst.',
-                    maxPts: 20, mana: 30, cd: 60, req: 'grizzly:10',
-                    synergies: [{ from: 'spirit_wolf', pctPerPt: 4 }]
+                    id: 'wild_growth', row: 3, col: 1, type: 'active', icon: '🌻', name: 'Wild Growth',
+                    desc: 'Active · Instantly grant rapid regeneration to up to 5 nearby allies, healing each for 15 + 6 per point HP per second for 7 seconds. No target selection needed — auto-hits lowest-HP allies.',
+                    tip: 'Max lvl (20): 135 HP/s × 7s × 5 targets. The ultimate mass triage skill.',
+                    maxPts: 20, mana: 35, cd: 30, req: 'tranquility:3',
+                    synergies: [{ from: 'rejuvenation', pctPerPt: 3 }]
                 },
             ]
         },
