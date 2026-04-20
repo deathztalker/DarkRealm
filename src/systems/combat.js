@@ -510,23 +510,23 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
             target.armorDebuff = (target.armorDebuff || 0) + 50;
         }
     }
-}
 
 
 
-// ----- Divine Shield damage absorption -----
-if (target.isPlayer && target.divineShield > 0) {
-    const absorbed = Math.min(finalDealt, target.divineShield);
-    target.divineShield -= absorbed;
-    if (target.divineShield <= 0) {
-        target.divineShield = 0;
-        bus.emit('combat:log', { text: 'Divine Shield shattered!', cls: 'log-dmg' });
+
+    // ----- Divine Shield damage absorption -----
+    if (target.isPlayer && target.divineShield > 0) {
+        const absorbed = Math.min(finalDealt, target.divineShield);
+        target.divineShield -= absorbed;
+        if (target.divineShield <= 0) {
+            target.divineShield = 0;
+            bus.emit('combat:log', { text: 'Divine Shield shattered!', cls: 'log-dmg' });
+        }
     }
+
+    return dealt;
+
 }
-
-return dealt;
-
-
 
 /**
  * Handles logic that triggers when an entity is killed.
