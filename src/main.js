@@ -30,6 +30,7 @@ import { campaign } from './systems/campaignSystem.js';
 
 // Expose globals for external modules
 window.loot = loot;
+window.fx = fx;
 window.Vendor = Vendor;
 window.VendorUI = VendorUI;
 window.calculateSellPrice = calculateSellPrice;
@@ -39,6 +40,9 @@ window.hideTooltip = hideTooltip;
 window.renderInventory = renderInventory;
 window.updateHud = updateHud;
 window.addCombatLog = addCombatLog;
+window.addSocialRequest = addSocialRequest;
+window.showSpeechBubble = showSpeechBubble;
+window.GameObjectClass = GameObject;
 
 import { RUNEWORDS } from './data/runes.js';
 import { getSynergyTooltipHtml } from './systems/synergyEngine.js';
@@ -1220,30 +1224,29 @@ function gameLoop(timestamp) {
             if (e !== player) {
                 const req = pendingRequests.find(r => r.fromName === e.charName);
                 if (req) {
-                    const screen = renderer.camera.toWorld(e.x, e.y - 25); // Use camera transformation
-                    const sx = (e.x - renderer.camera.x) * renderer.camera.zoom + renderer.width / 2;
-                    const sy = (e.y - 25 - renderer.camera.y) * renderer.camera.zoom + renderer.height / 2;
+                    const sx = (e.x - camera.x) * camera.zoom + renderer.width / 2;
+                    const sy = (e.y - 25 - camera.y) * camera.zoom + renderer.height / 2;
                     
-                    ctx.save();
-                    ctx.fillStyle = 'rgba(0,0,0,0.85)';
-                    ctx.strokeStyle = '#ffd700';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.roundRect(sx - 45, sy - 30, 90, 28, 4);
-                    ctx.fill();
-                    ctx.stroke();
+                    renderer.ctx.save();
+                    renderer.ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                    renderer.ctx.strokeStyle = '#ffd700';
+                    renderer.ctx.lineWidth = 1;
+                    renderer.ctx.beginPath();
+                    renderer.ctx.roundRect(sx - 45, sy - 30, 90, 28, 4);
+                    renderer.ctx.fill();
+                    renderer.ctx.stroke();
 
-                    ctx.fillStyle = '#fff';
-                    ctx.font = 'bold 9px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(`${req.type.toUpperCase()}?`, sx, sy - 18);
+                    renderer.ctx.fillStyle = '#fff';
+                    renderer.ctx.font = 'bold 9px Arial';
+                    renderer.ctx.textAlign = 'center';
+                    renderer.ctx.fillText(`${req.type.toUpperCase()}?`, sx, sy - 18);
                     
-                    ctx.font = '8px Arial';
-                    ctx.fillStyle = '#4f4';
-                    ctx.fillText('[Y] Accept', sx - 22, sy - 8);
-                    ctx.fillStyle = '#f44';
-                    ctx.fillText('[N] No', sx + 22, sy - 8);
-                    ctx.restore();
+                    renderer.ctx.font = '8px Arial';
+                    renderer.ctx.fillStyle = '#4f4';
+                    renderer.ctx.fillText('[Y] Accept', sx - 22, sy - 8);
+                    renderer.ctx.fillStyle = '#f44';
+                    renderer.ctx.fillText('[N] No', sx + 22, sy - 8);
+                    renderer.ctx.restore();
                 }
             }
 
@@ -1253,26 +1256,34 @@ function gameLoop(timestamp) {
                 const sx = (e.x - camera.x) * camera.zoom + renderer.width / 2;
                 const sy = (e.y - 45 - camera.y) * camera.zoom + renderer.height / 2;
                 
-                ctx.save();
-                ctx.font = 'bold 10px Arial';
-                const metrics = ctx.measureText(bubble.text);
+                renderer.ctx.save();
+                renderer.ctx.font = 'bold 10px Arial';
+                const metrics = renderer.ctx.measureText(bubble.text);
                 const bw = metrics.width + 12;
                 const bh = 16;
                 
                 // Bubble bg
-                ctx.fillStyle = 'white';
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.roundRect(sx - bw/2, sy - bh, bw, bh, 4);
-                ctx.fill();
-                ctx.stroke();
+                renderer.ctx.fillStyle = 'white';
+                renderer.ctx.strokeStyle = '#000';
+                renderer.ctx.lineWidth = 1;
+                renderer.ctx.beginPath();
+                renderer.ctx.roundRect(sx - bw/2, sy - bh, bw, bh, 4);
+                renderer.ctx.fill();
+                renderer.ctx.stroke();
                 
                 // Tail
-                ctx.beginPath();
-                ctx.moveTo(sx - 4, sy);
-                ctx.lineTo(sx + 4, sy);
-                ctx.lineTo(sx, sy + 4);
+                renderer.ctx.beginPath();
+                renderer.ctx.moveTo(sx - 4, sy);
+                renderer.ctx.lineTo(sx + 4, sy);
+                renderer.ctx.lineTo(sx, sy + 4);
+                renderer.ctx.fill();
+                renderer.ctx.stroke();
+
+                renderer.ctx.fillStyle = '#000';
+                renderer.ctx.textAlign = 'center';
+                renderer.ctx.fillText(bubble.text, sx, sy - 5);
+                renderer.ctx.restore();
+            }
                 ctx.fill();
                 ctx.stroke();
 
@@ -1781,12 +1792,14 @@ function checkDeaths() {
                     const r = Math.random();
                     const rarity = r < 0.05 ? 'unique' : (r < 0.15 ? 'set' : (r < 0.4 ? 'rare' : 'magic'));
                     const bossItem = loot.generate(zoneLevel, rarity);
-                    bossItem.x = e.x + (Math.random() - 0.5) * 40;
-                    bossItem.y = e.y + (Math.random() - 0.5) * 40;
-                    droppedItems.push(bossItem);
+                    if (bossItem) {
+                        bossItem.x = e.x + (Math.random() - 0.5) * 40;
+                        bossItem.y = e.y + (Math.random() - 0.5) * 40;
+                        droppedItems.push(bossItem);
 
-                    const beamColors = { rare: '#ffff00', unique: '#ff8000', set: '#00ff00', magic: '#8080ff' };
-                    if (beamColors[bossItem.rarity]) fx.emitBurst(bossItem.x, bossItem.y - 10, beamColors[bossItem.rarity], 8, 1);
+                        const beamColors = { rare: '#ffff00', unique: '#ff8000', set: '#00ff00', magic: '#8080ff' };
+                        if (beamColors[bossItem.rarity]) fx.emitBurst(bossItem.x, bossItem.y - 10, beamColors[bossItem.rarity], 8, 1);
+                    }
                 }
 
                 // CEREMONIAL VICTORY
@@ -3156,11 +3169,18 @@ function updateSkillBar() {
             newSi.innerHTML = '';
         }
 
-        // Open Picker on Click
+        // Click Handling
         newSi.addEventListener('click', (e) => {
             if (draggedSkill) return;
             e.stopPropagation();
-            openSkillPicker(i, e.clientX, e.clientY);
+            
+            // If ALT is held OR slot is empty, open picker
+            if (e.altKey || !skillId) {
+                openSkillPicker(i, e.clientX, e.clientY);
+            } else {
+                // Otherwise, USE the skill
+                bus.emit(`skill:use:${i}`, { mouse: { x: player.x, y: player.y } });
+            }
         });
 
         // Right-click to clear

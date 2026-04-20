@@ -1461,17 +1461,9 @@ export class LootSystem {
     }
 
     _pickUnique(baseId, ilvl) {
-        // If baseId is provided, try to match it. If null (Test mode), pick ANY unique.
-        let matches = UNIQUES.filter(u => (!baseId || u.base === baseId) && u.dropLvl <= ilvl);
-        
-        // --- TEST MODE VARIETY ---
-        // If we forced 100% unique but no unique for this base exists at this level,
-        // pick ANY unique regardless of base or level for total variety.
-        if (matches.length === 0) {
-            matches = UNIQUES; 
-        }
-
-        return matches.length > 0 ? matches[Math.floor(Math.random() * matches.length)] : null;
+        // --- TEST MODE: TOTAL VARIETY ---
+        // Pick any unique from the entire database for testing purposes
+        return UNIQUES[Math.floor(Math.random() * UNIQUES.length)];
     }
 
     _pickSetItem(baseId, ilvl) {

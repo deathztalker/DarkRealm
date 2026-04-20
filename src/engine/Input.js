@@ -168,10 +168,7 @@ export class Input {
         const activeEl = document.activeElement;
         const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
         
-        return isTyping ||
-               document.querySelectorAll('.panel:not(.hidden)').length > 0 || 
-               document.getElementById('dialogue-ui')?.classList.contains('active') ||
-               document.getElementById('stash-panel')?.classList.contains('active');
+        return isTyping;
     }
 
     _onKeyDown(e) {
