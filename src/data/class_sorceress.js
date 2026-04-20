@@ -234,11 +234,7 @@ export const SORCERESS_CLASS = {
                     tip: 'Max lvl (20): Absolute control over a large area.',
                     maxPts: 20, mana: 30, cd: 30, group: 'buff', req: 'thunder_storm:5'
                 }
-                ]
-        },
-    ]
-};
-           ]
+            ]
         },
     ]
 };
