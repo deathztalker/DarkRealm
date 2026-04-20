@@ -20,33 +20,33 @@ export const PALADIN_CLASS = {
             nodes: [
                 {
                     id: 'might_aura', row: 0, col: 1, type: 'toggle', icon: '💪', name: 'Aura: Might',
-                    desc: 'Toggle Aura · Increases Physical/Earth Dmg by <span style="color:#fff;">(40 + Slvl*15)%</span>. <br><br>★ Synergies: <span style="color:#0cf;">+2% Dmg per point in Fanaticism.</span>',
-                    tip: 'Max lvl (20): +340% Physical/Earth Dmg.',
-                    maxPts: 20, mana: 5, cd: 0, group: 'aura', scaleStat: 'str', synergies: [{ from: 'fanaticism', pctPerPt: 2 }]
+                    desc: 'Toggle Aura · Emit an aura of divine might that increases all nearby allies\' weapon damage by 20 + 2% per point.',
+                    tip: 'Max lvl (20): +60% weapon damage to entire party.',
+                    maxPts: 20, mana: 0, cd: 0, group: 'aura'
                 },
                 {
                     id: 'prayer_aura', row: 1, col: 0, type: 'toggle', icon: '🙏', name: 'Aura: Prayer',
-                    desc: 'Toggle Aura · Restores <span style="color:#fff;">(2 + Slvl*3) HP/sec</span>. <br><br>★ Synergies: <span style="color:#0cf;">+5% Heal per point in Conviction.</span>',
-                    tip: 'Max lvl (20): +62 HP/s.',
-                    maxPts: 20, mana: 5, cd: 0, group: 'aura', scaleStat: 'int', synergies: [{ from: 'conviction', pctPerPt: 5 }]
+                    desc: 'Toggle Aura · Emit a healing aura that restores 2 + 1 per point HP per second to you and all nearby allies.',
+                    tip: 'Max lvl (20): +22 HP/s for entire party.',
+                    maxPts: 20, mana: 0, cd: 0, group: 'aura'
                 },
                 {
                     id: 'aura_mastery', row: 1, col: 2, type: 'passive', icon: '⭐', name: 'Aura Mastery',
-                    desc: 'Passive · +5% holy damage per point and aura radius increases by +4% per point. Enhances all aura effectiveness.',
-                    tip: 'Max lvl (20): +100% holy damage · huge area.',
+                    desc: 'Passive · +5% holy damage per point and aura radius increases by +4% per point.',
+                    tip: 'Max lvl (20): +100% holy damage · aura covers a huge area.',
                     maxPts: 20
                 },
                 {
                     id: 'holy_fire_aura', row: 2, col: 0, type: 'toggle', icon: '🔥', name: 'Aura: Holy Fire',
-                    desc: 'Toggle Aura · Deals <span style="color:#fff;">(3 + Slvl*5) Fire Dmg/sec</span>. <br><br>★ Synergies: <span style="color:#0cf;">+5% Dmg per point in Conviction.</span>',
-                    tip: 'Max lvl (20): 103 Fire Dmg/sec.',
-                    maxPts: 20, mana: 10, cd: 0, group: 'aura', req: 'might_aura:3', scaleStat: 'int', synergies: [{ from: 'conviction', pctPerPt: 5 }]
+                    desc: 'Toggle Aura · Emit a fiery holy aura that passively damages all nearby enemies for 3 + 2 per point fire/holy damage every second.',
+                    tip: 'Max lvl (20): 43 damage/s to all enemies in range.',
+                    maxPts: 20, mana: 0, cd: 0, group: 'aura', req: 'might_aura:3'
                 },
                 {
                     id: 'fanaticism', row: 3, col: 1, type: 'toggle', icon: '⚡', name: 'Aura: Fanaticism',
-                    desc: 'Toggle Aura · Increases Atk Speed/Dmg by <span style="color:#fff;">(20 + Slvl*5)%</span>. <br><br>★ Synergies: <span style="color:#0cf;">+3% IAS per point in Might.</span>',
-                    tip: 'Max lvl (20): +120% IAS & Dmg.',
-                    maxPts: 20, mana: 15, cd: 0, group: 'aura', req: 'holy_fire_aura:5', scaleStat: 'dex', synergies: [{ from: 'might_aura', pctPerPt: 3 }]
+                    desc: 'Toggle Aura · Grants all nearby allies +30 + 1.5% per point attack speed AND +30 + 2% per point damage.',
+                    tip: 'Max lvl (20): +60% IAS · +70% damage. Best DPS aura.',
+                    maxPts: 20, mana: 0, cd: 0, group: 'aura', req: 'holy_fire_aura:5'
                 },
                 {
                     id: 'conviction', row: 4, col: 1, type: 'toggle', icon: '🔴', name: 'Aura: Conviction',
