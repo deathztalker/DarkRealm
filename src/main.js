@@ -3433,6 +3433,16 @@ for (let i = 0; i < 4; i++) {
     });
 }
 
+// ——— SKILL EVENTS ———
+for (let i = 0; i < 5; i++) {
+    bus.on(`skill:use:${i}`, (data) => {
+        if (player && player.hp > 0 && state === 'GAME') {
+            player._useSkill(i, data);
+            updateHud();
+        }
+    });
+}
+
 // ——— INPUT EVENTS ———
 bus.on('input:click', p => { input.click = { x: p.screenX, y: p.screenY }; });
 bus.on('input:rightclick', p => {
