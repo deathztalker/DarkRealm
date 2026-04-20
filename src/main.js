@@ -1649,7 +1649,7 @@ function checkDeaths() {
 
             // --- MMO Respawn Queue ---
             if (worldZones[zoneLevel]) {
-                const respawnDelay = (e.type === 'boss' || e.isBoss) ? 300000 : 60000;
+                const respawnDelay = (e.type === 'boss' || e.isBoss) ? 60000 : 10000;
                 worldZones[zoneLevel].respawnQueue.push({
                     spawn: { x: e.homeX, y: e.homeY, level: e.level, type: e.type, icon: e.icon, name: e.name, isBoss: e.isBoss },
                     respawnAt: now + respawnDelay
@@ -7091,8 +7091,8 @@ function openSkillPicker(slotIdx, x, y) {
     const grid = document.createElement('div');
     grid.className = 'skill-picker-grid';
 
-    // Get all learned active skills
-    const skills = Object.values(player.skillMap).filter(s => s.type === 'active' && player.talents.baseLevel(s.id) > 0);
+    // Get all learned active/toggle skills
+    const skills = Object.values(player.skillMap).filter(s => (s.type === 'active' || s.type === 'toggle') && player.talents.baseLevel(s.id) > 0);
 
     if (skills.length === 0) {
         grid.innerHTML = `<div style="grid-column: span 4; text-align: center; color: #666; font-size: 11px; padding: 20px;">No active skills learned yet.<br>Spend Talent Points first!</div>`;
@@ -7291,7 +7291,11 @@ window.addEventListener('DOMContentLoaded', () => {
                     else if (text.startsWith('/duel ')) network.sendDuelInvite(text.replace('/duel ', '').trim());
                     else if (text === '/duel accept') network.acceptDuel();
                     else if (text === '/ah') { togglePanel('auction'); refreshAuctions(); }
-                    else network.sendChat(text);
+                    else {
+                        network.sendChat(text);
+                        // Local Echo: show immediately so player knows it sent
+                        addChatMessage(player.charName || 'Me', text, 'general');
+                    }
                 }
                 chatInput.value = ''; chatInput.blur(); e.stopPropagation();
             }

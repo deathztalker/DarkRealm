@@ -303,34 +303,51 @@ export class Dungeon {
             zone: 0
         });
 
-        // Spawn NPCs
-        this.npcSpawns.push({
-            id: "akara",
-            name: "Akara the Elder",
-            type: "elder",
-            x: (cx - 3) * this.tileSize,
-            y: (cy - 4) * this.tileSize,
-            icon: "npc_akara",
-            dialogue: "Greetings, traveler. I sense a great darkness rising."
-        });
+        // --- ACT-SPECIFIC NPC SPAWNS ---
+        const addNpc = (id, name, type, dx, dy, icon, dialogue) => {
+            this.npcSpawns.push({
+                id, name, type,
+                x: (cx + dx) * this.tileSize,
+                y: (cy + dy) * this.tileSize,
+                icon, dialogue
+            });
+        };
 
-        this.npcSpawns.push({
-            id: "gheed",
-            name: "Gheed the Merchant",
-            type: "merchant",
-            x: (cx + 3) * this.tileSize,
-            y: (cy - 4) * this.tileSize,
-            icon: "npc_ormus",
-            dialogue: "Looking for a deal? My prices are mostly fair."
-        });
+        // Deckard Cain is in EVERY town
+        addNpc("deckard_cain", "Deckard Cain", "elder", -2, -6, "npc_deckard_cain", "Stay a while and listen!");
 
-        this.npcSpawns.push({
-            id: "kashya",
-            name: "Kashya",
-            type: "mercenary_hire",
-            x: (cx - 4) * this.tileSize, y: (cy + 2) * this.tileSize, icon: "npc_akara", dialogue: "Need a fighter?" });
-        this.npcSpawns.push({ id: "warriv", name: "Warriv", type: "waypoint", x: (cx + 4) * this.tileSize, y: (cy + 2) * this.tileSize, icon: "npc_larzuk", dialogue: "To the East." });
-        this.npcSpawns.push({ id: "charsi", name: "Charsi", type: "merchant", x: (cx + 5) * this.tileSize, y: (cy - 3) * this.tileSize, icon: "npc_akara", dialogue: "Need a new blade?" });
+        if (zoneLevel === 0) {
+            // Act 1: Rogue Encampment
+            addNpc("akara", "Akara the Elder", "elder", -4, -4, "npc_akara", "Greetings, traveler. I sense a great darkness rising.");
+            addNpc("charsi", "Charsi the Blacksmith", "merchant", 5, -3, "npc_akara", "Need a new blade? I can repair anything.");
+            addNpc("kashya", "Kashya", "mercenary_hire", -5, 2, "npc_akara", "My rogues are at your service.");
+            addNpc("gheed", "Gheed", "merchant", 4, -4, "npc_ormus", "Looking for a deal? My prices are mostly fair.");
+            addNpc("warriv", "Warriv", "waypoint", 4, 3, "npc_larzuk", "Ready to travel to the East?");
+        } else if (zoneLevel === 6) {
+            // Act 2: Lut Gholein
+            addNpc("fara", "Fara", "elder", -4, -4, "npc_akara", "I am Fara. I can heal you and repair your gear.");
+            addNpc("greiz", "Greiz", "mercenary_hire", -5, 2, "npc_larzuk", "I lead the Desert Mercenaries.");
+            addNpc("drognan", "Drognan", "merchant", 6, -3, "npc_ormus", "Looking for a powerful staff or tome?");
+            addNpc("lysander", "Lysander", "merchant", 5, 2, "npc_akara", "Mind your step, I'm working with volatile potions!");
+            addNpc("meshif", "Meshif", "waypoint", 4, 4, "npc_larzuk", "The Kurast docks are waiting.");
+        } else if (zoneLevel === 11) {
+            // Act 3: Kurast Docks
+            addNpc("ormus", "Ormus", "elder", -4, -4, "npc_ormus", "Ormus has a magic item for you.");
+            addNpc("asheara", "Asheara", "mercenary_hire", -5, 2, "npc_akara", "The Iron Wolves are the finest blades in Kehjistan.");
+            addNpc("hratli", "Hratli", "merchant", 6, -3, "npc_larzuk", "Exquisite metalwork is my specialty.");
+            addNpc("alkor", "Alkor", "merchant", 5, -5, "npc_akara", "Back from the jungle? Need a brew?");
+        } else if (zoneLevel === 16) {
+            // Act 4: Pandemonium Fortress
+            addNpc("tyrael", "Tyrael", "elder", 0, -5, "npc_tyrael", "The Prime Evils must be stopped at any cost!");
+            addNpc("jamella", "Jamella", "merchant", -5, -3, "npc_akara", "The Light welcomes you.");
+            addNpc("halbu", "Halbu", "merchant", 5, -3, "npc_larzuk", "May your weapon strike true.");
+        } else if (zoneLevel === 21) {
+            // Act 5: Harrogath
+            addNpc("malah", "Malah", "elder", -4, -4, "npc_akara", "Let me mend your wounds, hero.");
+            addNpc("qual_kehk", "Qual-Kehk", "mercenary_hire", -5, 2, "npc_larzuk", "My barbarians fight with the strength of the mountain.");
+            addNpc("larzuk", "Larzuk", "merchant", 6, -3, "npc_larzuk", "Need a socket for that legendary blade?");
+            addNpc("anya", "Anya", "merchant", 5, 3, "npc_akara", "Thank you for rescuing me from the frozen depths.");
+        }
 
         // Town Objects: Stash & Cube
         this.objectSpawns.push({ id: 'stash', type: 'stash', name: 'Alijo (Stash)', x: (cx - 6) * this.tileSize, y: cy * this.tileSize, icon: 'obj_chest' });
