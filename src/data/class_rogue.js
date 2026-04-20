@@ -86,6 +86,12 @@ export const ROGUE_CLASS = {
                     desc: 'Active · Create a shadowy duplicate of yourself that mimics your attacks and abilities at 50% effectiveness for 10s. Also copies weapon procs.',
                     tip: 'Max lvl (20): Duplicate your burst window.',
                     maxPts: 20, mana: 25, cd: 120, group: 'buff', req: 'blade_dance:5'
+                },
+                {
+                    id: 'assassinate', row: 6, col: 1, type: 'passive', icon: '🎯', name: 'Assassinate',
+                    desc: 'Passive · You have a 1% + 0.5% per point chance to instantly kill non-boss enemies below 20% health. Against bosses, deals 500% damage instead.',
+                    tip: 'Max lvl (20): 11% execute chance. The ultimate finisher.',
+                    maxPts: 20, req: 'shadow_clone:1'
                 }
             ]
         },
@@ -140,7 +146,13 @@ export const ROGUE_CLASS = {
                     synergies: [{ from: 'envenom', pctPerPt: 10 }]
                 },
                 {
-                    id: 'rupture', row: 5, col: 1, type: 'active', icon: '🩸', name: 'Rupture',
+                    id: 'poison_sentry', row: 5, col: 0, type: 'active', icon: '☣️', name: 'Poison Sentry',
+                    desc: 'Active · Deploy a sentry that sprays poison in a cone, dealing 10 + 6 per point damage per second and reducing enemy damage by 20%.',
+                    tip: 'Max lvl (20): 130/s AoE poison + debuff.',
+                    maxPts: 20, mana: 25, cd: 5, req: 'plague:3'
+                },
+                {
+                    id: 'rupture', row: 5, col: 2, type: 'active', icon: '🩸', name: 'Rupture',
                     desc: 'Active · Consume all Combo Points to tear the target open, dealing 20 + 10 per point physical bleed damage per second for 8s. Damage scales massively with CPs.',
                     tip: 'Max lvl (20): The ultimate DoT finisher.',
                     maxPts: 20, mana: 10, cd: 0, group: 'melee', dmgBase: 20, dmgPerLvl: 10, req: 'plague:5'

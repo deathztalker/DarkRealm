@@ -171,10 +171,15 @@ export const DB = {
 
     async sendMessage(content, receiverId = null, isWhisper = false) {
         if (!this.isLoggedIn()) return false;
+        
+        // Get character name from global player object if available
+        const senderName = window.player?.charName || 'Me';
+
         const { error } = await this.client
             .from('messages')
             .insert({
                 sender_id: this.session.user.id,
+                sender_name: senderName,
                 receiver_id: receiverId,
                 content: content,
                 is_whisper: isWhisper

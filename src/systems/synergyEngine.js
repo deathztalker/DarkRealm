@@ -113,6 +113,13 @@ export const LEGENDARY_SYNERGIES = {
             desc: '+30% Meteor damage, synergy with Inferno'
         },
         {
+            label: '🔥 Overpower (Warrior)',
+            condition: (p) => p.classId === 'warrior' && _hasTalent(p, 'overpower', 1),
+            mult: 1.25, chanceBonus: 0.05,
+            bonusEffects: [],
+            desc: '+25% proc damage and +5% chance (Overpower)'
+        },
+        {
             label: '🔥 Ember Charm equipped',
             condition: (p) => _hasCharm(p, 'charm_cinders_heart'),
             mult: 1.35, chanceBonus: 0.10,
@@ -123,6 +130,13 @@ export const LEGENDARY_SYNERGIES = {
 
     // ── VAL'ANYR ──────────────────────────────────────────────────
     valanyr: [
+        {
+            label: '💛 Zeal (Paladin)',
+            condition: (p) => p.classId === 'paladin' && _hasTalent(p, 'zeal', 1),
+            mult: 1.20, chanceBonus: 0.05,
+            bonusEffects: [],
+            desc: '+20% shield capacity, +5% chance (Zeal)'
+        },
         {
             label: '💛 Divine Protection (Paladin)',
             condition: (p) => p.classId === 'paladin' && _hasTalent(p, 'divine_protection', 1),

@@ -156,6 +156,18 @@ export const NECROMANCER_CLASS = {
                     desc: 'Active · Revive a monster corpse as a servant that retains all abilities.',
                     tip: 'Max lvl (20): 13 minute duration.',
                     maxPts: 20, mana: 45, cd: 2, req: 'decrepify:5'
+                },
+                {
+                    id: 'bone_prison', row: 4, col: 0, type: 'active', icon: '🦴', name: 'Bone Prison',
+                    desc: 'Active · Create a ring of bone walls around the target, trapping them for 6 + 0.5 per point seconds.',
+                    tip: 'Max lvl (20): 16s area denial and entrapment.',
+                    maxPts: 20, mana: 20, cd: 15, req: 'revive_elite:1'
+                },
+                {
+                    id: 'curse_mastery', row: 5, col: 1, type: 'passive', icon: '🔮', name: 'Curse Mastery',
+                    desc: 'Passive · You can now apply up to 2 different curses to the same enemy. Additionally, curse durations are increased by 50%.',
+                    tip: 'Max lvl (1): Stack Amplify Damage and Decrepify for ultimate carnage.',
+                    maxPts: 1, req: 'revive_elite:5'
                 }
             ]
         },

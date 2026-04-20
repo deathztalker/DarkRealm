@@ -229,10 +229,22 @@ export const SORCERESS_CLASS = {
                     synergies: [{ from: 'lightning_mastery', pctPerPt: 4 }]
                 },
                 {
-                    id: 'slow_time', row: 6, col: 1, type: 'active', icon: '⏳', name: 'Slow Time',
+                    id: 'arcane_shield', row: 6, col: 0, type: 'passive', icon: '🛡️', name: 'Arcane Shield',
+                    desc: 'Passive · Every time you cast a spell, you gain a shield that absorbs 5 + 3 per point damage for 10s. Stacks up to 5 times.',
+                    tip: 'Max lvl (20): Shield of 65 per cast, up to 325 total. Core survival.',
+                    maxPts: 20, req: 'energy_shield:5'
+                },
+                {
+                    id: 'chain_lightning_mastery', row: 6, col: 2, type: 'passive', icon: '🌩️', name: 'Storm Mastery',
+                    desc: 'Passive · Chain Lightning bounces 1 + 0.1 per point more times and Nova deals +5% damage per point.',
+                    tip: 'Max lvl (20): +3 bounces, +100% Nova damage.',
+                    maxPts: 20, req: 'thunder_storm:5'
+                },
+                {
+                    id: 'slow_time', row: 7, col: 1, type: 'active', icon: '⏳', name: 'Slow Time',
                     desc: 'Active · Create a bubble that slows enemy movement and attack speed by 50% for 10s.',
                     tip: 'Max lvl (20): Absolute control over a large area.',
-                    maxPts: 20, mana: 30, cd: 30, group: 'buff', req: 'thunder_storm:5'
+                    maxPts: 20, mana: 30, cd: 30, group: 'buff', req: 'chain_lightning_mastery:1'
                 }
             ]
         },

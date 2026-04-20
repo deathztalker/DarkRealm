@@ -113,6 +113,24 @@ export const PALADIN_CLASS = {
                     desc: 'Active · Grow wings of light: +20 + 2% per point damage and healing for 20 seconds. 120s cooldown.',
                     tip: 'Max lvl (20): +60% damage/healing burst.',
                     maxPts: 20, mana: 15, cd: 120, group: 'buff', req: 'exorcism:5'
+                },
+                {
+                    id: 'holy_shock', row: 6, col: 0, type: 'active', icon: '🌩️', name: 'Holy Shock',
+                    desc: 'Active · Instantly blast an enemy for 40 + 20 per point holy damage, or heal an ally for 60 + 30 HP. 6s cooldown.',
+                    tip: 'Max lvl (20): 440 damage or 660 heal. Versatile burst.',
+                    maxPts: 20, mana: 12, cd: 6, group: 'holy', dmgBase: 40, dmgPerLvl: 20, req: 'avenging_wrath:1'
+                },
+                {
+                    id: 'zeal', row: 6, col: 2, type: 'active', icon: '⚔️', name: 'Zeal',
+                    desc: 'Active · An rapid attack that strikes 3 + 0.2 per point times in quick succession. Each hit deals 100% weapon damage.',
+                    tip: 'Max lvl (20): 7 hits in a single attack. Procs weapon effects 7 times!',
+                    maxPts: 20, mana: 8, cd: 4, group: 'melee', req: 'avenging_wrath:1'
+                },
+                {
+                    id: 'lay_on_hands', row: 7, col: 1, type: 'active', icon: '🤲', name: 'Lay on Hands',
+                    desc: 'Active · Instantly restore 100% of the target\'s maximum health and 25% mana. 300s cooldown.',
+                    tip: 'Max lvl (1): The ultimate emergency save.',
+                    maxPts: 1, mana: 0, cd: 300, req: 'holy_shock:5'
                 }
             ]
         },
@@ -147,6 +165,12 @@ export const PALADIN_CLASS = {
                     synergies: [{ from: 'holy_shield', pctPerPt: 5 }]
                 },
                 {
+                    id: 'blessing_of_kings', row: 2, col: 0, type: 'toggle', icon: '👑', name: 'Blessing of Kings',
+                    desc: 'Toggle Aura · Grants the entire party +5 + 0.5% per point bonus to all core attributes (Str, Dex, Vit, Int).',
+                    tip: 'Max lvl (20): +15% total stats to everyone.',
+                    maxPts: 20, mana: 0, cd: 0, group: 'aura', req: 'prot_mastery:3'
+                },
+                {
                     id: 'hammer_righteous', row: 3, col: 0, type: 'active', icon: '🔨', name: 'Hammer of Righteous',
                     desc: 'Active · Strike for 40% weapon damage as holy and hitting nearby targets.',
                     tip: 'Max lvl (20): Holy cleave generator.',
@@ -161,7 +185,13 @@ export const PALADIN_CLASS = {
                     synergies: [{ from: 'consecration', pctPerPt: 5 }, { from: 'prot_mastery', pctPerPt: 5 }]
                 },
                 {
-                    id: 'guardian_of_ancient_kings', row: 4, col: 1, type: 'active', icon: '👑', name: 'Guardian of Kings',
+                    id: 'holy_wrath', row: 4, col: 0, type: 'active', icon: '☀️', name: 'Holy Wrath',
+                    desc: 'Active · Emit a blast of holy light dealing 30 + 15 per point damage to all nearby enemies. Undead and Demons are stunned for 3s.',
+                    tip: 'Max lvl (20): 330 AoE damage + 3s CC.',
+                    maxPts: 20, mana: 15, cd: 12, group: 'holy', dmgBase: 30, dmgPerLvl: 15, req: 'hammer_righteous:5'
+                },
+                {
+                    id: 'guardian_of_ancient_kings', row: 5, col: 1, type: 'active', icon: '👑', name: 'Guardian of Kings',
                     desc: 'Active · Summon a guardian that reduces all damage you take by 50% for 12 seconds. 180s cooldown.',
                     tip: 'Max lvl (20): The ultimate defensive cooldown.',
                     maxPts: 20, mana: 20, cd: 180, group: 'buff', req: 'shield_of_righteousness:5'

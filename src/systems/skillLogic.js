@@ -72,6 +72,14 @@ export const SkillLogic = {
             target.resDebuff = Math.max(target.resDebuff || 0, 50);
             applyStatus(target, 'curse', 10 + slvl * 0.5);
         }
+        if (skillId === 'lower_resist') {
+            target.resDebuff = Math.max(target.resDebuff || 0, 30 + slvl);
+            applyStatus(target, 'curse', 10 + slvl);
+        }
+        if (skillId === 'bone_prison') {
+            applyStatus(target, 'rooted', 6 + slvl * 0.5);
+            bus.emit('combat:log', { text: "Bone Prison!", cls: 'log-info' });
+        }
         if (skillId === 'poison_nova') {
             applyDot(target, 5 + slvl * 3, 'poison', 5, 'necro_pois');
         }

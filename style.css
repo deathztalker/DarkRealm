@@ -3289,7 +3289,7 @@ body.socketing-mode .inv-item:not(.unidentified) {
   border-radius: 4px;
   font-family: 'Crimson Text', serif;
   transition: background 0.3s, border 0.3s;
-  pointer-events: none;
+  pointer-events: auto; /* Permite clics en la caja de chat */
 }
 
 .chat-container:focus-within,
@@ -3302,7 +3302,17 @@ body.socketing-mode .inv-item:not(.unidentified) {
   border: 2px dashed rgba(191, 100, 47, 0.8) !important;
   cursor: move;
   box-shadow: 0 0 15px rgba(191, 100, 47, 0.4);
-  pointer-events: auto;
+}
+
+#game-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  cursor: crosshair;
+  z-index: 1; /* Asegura que esté al fondo */
 }
 
 .chat-container.unlocked::before {

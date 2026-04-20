@@ -217,6 +217,18 @@ export const WARRIOR_CLASS = {
                     synergies: [{ from: 'combat_mastery', pctPerPt: 5 }]
                 },
                 {
+                    id: 'blood_rage', row: 4, col: 0, type: 'active', icon: '🩸', name: 'Blood Rage',
+                    desc: 'Active · Sacrifice 20% of your current HP to enter a blood frenzy, increasing all physical damage dealt by 20% + 2% per point for 10s.',
+                    tip: 'Max lvl (20): +60% damage multiplier at a cost of blood.',
+                    maxPts: 20, mana: 0, cd: 30, group: 'buff', req: 'battle_orders:3'
+                },
+                {
+                    id: 'piercing_howl', row: 4, col: 2, type: 'active', icon: '🐺', name: 'Piercing Howl',
+                    desc: 'Active · Let out a piercing howl, slowing all nearby enemies by 50% and reducing their armor by 10 + 2% per point for 8s.',
+                    tip: 'Max lvl (20): 50% slow and -50% armor AoE.',
+                    maxPts: 20, mana: 10, cd: 15, group: 'melee', dmgBase: 0, dmgPerLvl: 0, req: 'battle_orders:3'
+                },
+                {
                     id: 'avatar_of_war', row: 5, col: 1, type: 'active', icon: '⚡', name: 'Avatar of War',
                     desc: 'Active · Transform into a towering war titan for 15s: grow to double size, gain 50 + 5% per point bonus damage, and ALL shouts are automatically refreshed.',
                     tip: 'Max lvl (20): +150% damage · refreshes Warcry, Shout, and Battle Orders.',
