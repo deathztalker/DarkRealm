@@ -7456,11 +7456,12 @@ function updatePartyHUD(members) {
     hud.classList.remove('hidden');
     hud.innerHTML = '';
     members.forEach(m => {
-        if (m.id === (DB.session?.user?.id || null)) return;
+        // Use charName to filter local player since ID could be socket.id
+        if (player && m.name === player.charName) return;
         const el = document.createElement('div');
         el.className = 'party-member-card';
-        const hpPct = (m.hp / m.maxHp) * 100;
-        const mpPct = (m.mp / m.maxMp) * 100;
+        const hpPct = m.maxHp ? (m.hp / m.maxHp) * 100 : 100;
+        const mpPct = m.maxMp ? (m.mp / m.maxMp) * 100 : 100;
         el.innerHTML = '<div class="party-member-stats">' +
             '<div class="party-member-name">' + m.name + '</div>' +
             '<div class="party-bar"><div class="party-hp-fill" style="width:' + hpPct + '%"></div></div>' +

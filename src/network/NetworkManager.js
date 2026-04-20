@@ -387,7 +387,15 @@ export class NetworkManager {
     }
 
     sendMovement(x, y, animState, facingDir) {
-        if (this.isConnected) this.socket.emit('move', { x, y, animState, facingDir });
+        if (this.isConnected && this.game.player) {
+            const p = this.game.player;
+            this.socket.emit('move', { 
+                x, y, animState, facingDir,
+                hp: p.hp, maxHp: p.maxHp,
+                mp: p.mp, maxMp: p.maxMp,
+                activeAura: p.activeAura
+            });
+        }
     }
 
     sendEnemyDamaged(enemyId, damage) {
@@ -453,7 +461,7 @@ export class NetworkManager {
     acceptPartyInvite(fromId) {
         if (this.isConnected) {
             this.socket.emit('party_accept', fromId);
-            this.refreshPartyState();
+            // No longer calling refreshPartyState here so we don't clobber socket IDs with Supabase UUIDs
         }
     }
     // --- Inspect Logic ---
