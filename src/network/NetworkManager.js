@@ -158,14 +158,19 @@ export class NetworkManager {
         });
 
         this.socket.on('trade_invite', (data) => {
+            window.addSocialRequest?.(data.fromId, data.from, 'trade');
+            this.game.onChatMessage?.({ sender: 'System', text: `${data.from} wants to trade.`, isSystem: true });
+        });
+
+        this.socket.on('player_moved', (data) => {
             const player = this.otherPlayers.get(data.id);
             if (player) {
                 Object.assign(player, data);
                 if (data.name) player.charName = data.name;
                 
                 // If in party, update HUD stats
-                if (this.currentParty && this.currentParty.members.some(m => m.name === player.charName)) {
-                    const member = this.currentParty.members.find(m => m.name === player.charName);
+                if (this.currentParty && this.currentParty.members.some(m => m.id === player.id)) {
+                    const member = this.currentParty.members.find(m => m.id === player.id);
                     member.x = data.x;
                     member.y = data.y;
                     window.updatePartyHUD?.(this.currentParty.members);

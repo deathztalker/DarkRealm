@@ -857,13 +857,33 @@ export class Player {
     _useSkill(slotIdx, data) {
         const skillId = this.hotbar[slotIdx];
         if (!skillId) return;
-        if (this.cooldowns[slotIdx] > 0) return;
+        
         const skill = this.skillMap[skillId];
-        if (!skill || (skill.type !== 'active' && skill.type !== 'toggle')) return;
-        if (this.mp < (skill.mana || 0)) return;
+        if (!skill) return;
+
+        if (this.cooldowns[slotIdx] > 0) {
+            bus.emit('combat:log', { text: `${skill.name} is on cooldown!`, cls: 'log-dmg' });
+            return;
+        }
+        
+        if (skill.type !== 'active' && skill.type !== 'toggle') {
+            bus.emit('combat:log', { text: `Cannot use passive skill: ${skill.name}`, cls: 'log-dmg' });
+            return;
+        }
+        
+        if (this.mp < (skill.mana || 0)) {
+            bus.emit('combat:log', { text: `Not enough mana for ${skill.name}`, cls: 'log-mp' });
+            return;
+        }
+        
         const slvl = this.effectiveSkillLevel(skillId);
-        if (slvl <= 0) return;
-        this.mp -= (skill.mana || 0); this.cooldowns[slotIdx] = skill.cd || 0;
+        if (slvl <= 0) {
+            bus.emit('combat:log', { text: `You haven't learned ${skill.name} yet!`, cls: 'log-dmg' });
+            return;
+        }
+        
+        this.mp -= (skill.mana || 0); 
+        this.cooldowns[slotIdx] = skill.cd || 0;
 
         const isSummon = skill.group === 'summon' || ['summon_', 'imp', 'infernal', 'companion_', 'raven', 'grizzly', 'oak_sage', 'golem', 'skeleton_mage', 'revive', 'spirit_wolf', 'vine', 'voidwalker', 'succubus', 'ancestral_'].some(k => skillId.startsWith(k));
         const target = this.attackTarget || this._nearestEnemy();

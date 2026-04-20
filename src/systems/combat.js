@@ -279,11 +279,6 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
         }
     }
 
-    if (!target.isPlayer && target.lifeStealPct && dealt > 0 && attacker.isPlayer) {
-        // This is weirdly handled, usually life steal is for the ATTACKER.
-        // If the ENEMY has life steal and hits the player, that's in its own attack logic or here.
-    }
-
     // Correct handle: If the ENEMY is the attacker and has lifeStealPct
     if (!attacker.isPlayer && attacker.lifeStealPct && dealt > 0) {
         const heal = Math.round(dealt * attacker.lifeStealPct / 100);
@@ -296,13 +291,11 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
         bus.emit('entity:death', { entity: target, killer: attacker });
     }
 
-
     // ═══════════════════════════════════════════════════
     // ★ WoW LEGENDARY PROC ENGINE ★
     // Fires onHit effects from equipped weapons/offhand
     // ═══════════════════════════════════════════════════
-    if (attacker.isPlayer && finalDealt > 0 && attacker.equipment) {
-        // --- Spells, Auras, and Melee can now PROC! ---
+    if (attacker.isPlayer && dealt > 0 && attacker.equipment) {
         const slots = ['mainhand', 'offhand'];
         
         for (const slot of slots) {
@@ -310,14 +303,12 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
             if (weapon && weapon.onHit) {
                 const proc = weapon.onHit;
 
-                // ── SYNERGY ENGINE: boost proc based on talents & charms ──────────
                 const { mult: synMult, chanceBonus: synChance, bonusEffects: synFX, labels: synLabels }
                     = evaluateSynergies(attacker, proc, weapon.id || '');
 
-                // Effective proc chance = base + synergy bonus
                 const effectiveProcChance = (proc.chance || 0) + synChance;
 
-                // --- Phase 39: Stat-based Scaling for PROCS ---
+                // --- Stat-based Scaling ---
                 let procScaleStat = 'str';
                 if (['chain_lightning', 'arcane_burst', 'soul_rip', 'consecration'].includes(proc.effect)) procScaleStat = 'int';
                 else if (['blade_dance', 'stellar_arrow'].includes(proc.effect)) procScaleStat = 'dex';
@@ -327,16 +318,13 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
                 const procStatMult = 1 + (procStatValue / 100);
                 const finalProcMult = synMult * procStatMult;
 
-                // ----- SOUL STACK (Shadowmourne / Bonereaver's Edge) -----
                 if (proc.effect === 'soul_stack') {
                     if (!attacker._shadowmourneStacks) attacker._shadowmourneStacks = 0;
                     attacker._shadowmourneStacks++;
 
-                    // Armor shred (Bonereaver's Edge synergy)
                     if (proc.armorShred && target._statuses) {
-                        const stackCount = synFX.includes('armor_shred_stack') ? 999 : 3;
                         const shreds = target._statuses.filter(s => s.type === 'armor_shred').length;
-                        if (shreds < stackCount) {
+                        if (shreds < (synFX.includes('armor_shred_stack') ? 999 : 3)) {
                             target._statuses.push({ type: 'armor_shred', duration: 12, value: proc.armorShredAmt || -80 });
                             target.armorDebuff = (target.armorDebuff || 0) + Math.abs(proc.armorShredAmt || 80);
                         }
@@ -357,11 +345,8 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
                         if (fx) { fx.emitBurst(target.x, target.y, '#8800cc', 80, 6); fx.shake(600, 12); }
                         if (synFX.includes('spawn_revenant')) bus.emit('proc:army_of_dead', { x: attacker.x, y: attacker.y, count: 2, duration: 15 });
                         bus.emit('combat:log', { text: '★ SOUL REND!', cls: 'log-crit' });
-                    } else {
-                        if (fx) fx.emitBurst(target.x, target.y, '#660088', 6, 2);
-                    }
+                    } else if (fx) fx.emitBurst(target.x, target.y, '#660088', 6, 2);
                 } else if (Math.random() < effectiveProcChance) {
-                    // ----- CHAIN LIGHTNING (Thunderfury / Doomhammer) -----
                     if (proc.effect === 'chain_lightning') {
                         bus.emit('combat:log', { text: '⚡ Chain Lightning proc!', cls: 'log-crit' });
                         let lastPos = { x: target.x, y: target.y };
@@ -378,8 +363,7 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
                                     e.hp = Math.max(0, e.hp - chainDmg);
                                     if (fx && fx.emitLightning) fx.emitLightning(lastPos.x, lastPos.y, e.x, e.y, 3);
                                     lastPos = { x: e.x, y: e.y };
-                                    hitSet.add(e);
-                                    bounced++;
+                                    hitSet.add(e); bounced++;
                                     if (synFX.includes('paralysis') || synFX.includes('chain_overload')) {
                                         if (e._statuses) e._statuses.push({ type: 'stun', duration: 0.5, value: 0 });
                                     }
@@ -388,13 +372,12 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
                         }
                     } else if (proc.effect === 'meteor_drop') {
                         bus.emit('combat:log', { text: '🔥 Meteor proc!', cls: 'log-crit' });
-                        const mx = target.x, my = target.y;
                         const meteorDmg = Math.round((proc.damage || 350) * finalProcMult);
                         const meteorRadius = (proc.radius || 120) * (synFX.includes('aoe_expand') ? 1.5 : 1);
-                        if (fx) { fx.emitBurst(mx, my, '#ff4400', 60, 5); fx.shake(800, 15); }
+                        if (fx) { fx.emitBurst(target.x, target.y, '#ff4400', 60, 5); fx.shake(800, 15); }
                         if (window.enemies) {
                             window.enemies.forEach(e => {
-                                if (e.hp > 0 && Math.hypot(e.x-mx, e.y-my) < meteorRadius) {
+                                if (e.hp > 0 && Math.hypot(e.x-target.x, e.y-target.y) < meteorRadius) {
                                     e.hp = Math.max(0, e.hp - meteorDmg);
                                     if (synFX.includes('burn_dot')) { if (e._statuses) e._statuses.push({ type: 'burn', duration: 5, value: 150 }); }
                                 }
@@ -457,7 +440,7 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
                                 if (e.hp > 0) {
                                     const ex = e.x - attacker.x, ey = e.y - attacker.y;
                                     const dot = ex * nx + ey * ny;
-                                    if (dot > 0 && Math.abs(ex * ny - ey * nx) < 40) e.hp = Math.max(0, e.hp - (proc.damage || 120) * procStatMult);
+                                    if (dot > 0 && Math.abs(ex * ny - ey * nx) < 40) e.hp = Math.max(0, e.hp - (proc.damage || 120) * finalProcMult);
                                 }
                             });
                         }
@@ -481,10 +464,9 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
                         if (fx) fx.emitBurst(attacker.x, attacker.y, '#334466', 50, 5);
                     }
 
-                    // --- Phase 38: Handle unique weapon 'extraEffect' tags ---
                     if (proc.extraEffect === 'lightning_overload' && Math.random() < 0.3) {
                         if (fx) fx.emitLightning?.(target.x, target.y, target.x, target.y - 100, 2);
-                        target.hp = Math.max(0, target.hp - Math.round(finalDealt * 0.5));
+                        target.hp = Math.max(0, target.hp - Math.round(dealt * 0.5));
                     }
                     if (proc.extraEffect === 'dragon_breath') {
                         if (fx) fx.emitBurst(target.x, target.y, '#ff8800', 20, 4);
@@ -494,7 +476,7 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
                         attacker._statuses?.push({ type: 'shielded', duration: 4, value: 200 });
                     }
                     if (proc.extraEffect === 'void_wound') {
-                        applyDot(target, 150, 'shadow', 5, 'void_reaper');
+                        applyDot(target, Math.round(150 * finalProcMult), 'shadow', 5, 'void_reaper');
                     }
                     if (proc.extraEffect === 'bone_shatter') {
                         target.armorDebuff = (target.armorDebuff || 0) + 50;

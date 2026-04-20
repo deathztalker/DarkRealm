@@ -186,14 +186,15 @@ export class Input {
         // --- WASD & Combat Hotkeys: Block if typing or UI is open ---
         const isBlocked = this._isInputBlocked();
         const map = {
-            // Potions (1, 2, 3, 4)
-            'Digit1': 'potion:use:0', 'Digit2': 'potion:use:1', 'Digit3': 'potion:use:2', 'Digit4': 'potion:use:3',
-            // Skills (Q, E, R, F, G)
+            // Potions (Shift+1, etc. or just keep Q,W,E,R for pots if 1-5 are skills. Let's use Z,X,C,V for potions)
+            'KeyZ': 'potion:use:0', 'KeyX': 'potion:use:1', 'KeyC': 'potion:use:2', 'KeyV': 'potion:use:3',
+            // Skills (1, 2, 3, 4, 5 AND Q, E, R, F, G)
+            'Digit1': 'skill:use:0', 'Digit2': 'skill:use:1', 'Digit3': 'skill:use:2',
+            'Digit4': 'skill:use:3', 'Digit5': 'skill:use:4',
             'KeyQ': 'skill:use:0', 'KeyE': 'skill:use:1', 'KeyR': 'skill:use:2',
             'KeyF': 'skill:use:3', 'KeyG': 'skill:use:4',
 
             'KeyP': 'action:town_portal',
-            'KeyX': 'action:weapon_swap',
             'Space': 'action:interact',
         };
 
