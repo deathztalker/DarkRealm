@@ -1168,6 +1168,32 @@ function gameLoop(timestamp) {
                 lastTime
             );
 
+            // --- MMO AURAS RENDER ---
+            if (op.activeAura) {
+                const auraRadius = 16 + Math.sin(lastTime * 0.004) * 2;
+                const auraColors = {
+                    'might_aura': '#ffcc00',
+                    'holy_fire_aura': '#ff4400',
+                    'prayer_aura': '#00ffcc',
+                    'thorns_aura': '#cc00ff',
+                    'holy_freeze_aura': '#00ccff',
+                    'fanaticism_aura': '#ff0000',
+                    'conviction_aura': '#aaff00'
+                };
+                const auraColor = auraColors[op.activeAura] || '#ffffff';
+                
+                ctx.save();
+                ctx.strokeStyle = auraColor;
+                ctx.globalAlpha = 0.5;
+                ctx.lineWidth = 1.5;
+                ctx.shadowColor = auraColor;
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.ellipse(op.x, op.y + 2, auraRadius, auraRadius * 0.4, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
             // --- MMO MINIONS & MERCENARY RENDER ---
             if (op.minions && Array.isArray(op.minions)) {
                 op.minions.forEach(m => {

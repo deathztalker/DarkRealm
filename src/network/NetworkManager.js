@@ -15,6 +15,39 @@ export class NetworkManager {
         this.currentParty = null; // { id, leader_id, members: [] }
     }
 
+    initEvents() {
+        // --- LOCAL EVENTS -> NETWORK ---
+        
+        // Sincronizar lanzamiento de proyectiles
+        bus.on('combat:spawnProjectile', ({ proj }) => {
+            if (this.isConnected) {
+                this.socket.emit('projectile_fire', {
+                    x: proj.x,
+                    y: proj.y,
+                    targetX: proj.targetX,
+                    targetY: proj.targetY,
+                    type: proj.type,
+                    speed: proj.speed,
+                    icon: proj.icon,
+                    skillId: proj.skillId
+                });
+            }
+        });
+
+        // Sincronizar efectos de área (AoE)
+        bus.on('combat:spawnAoE', ({ aoe }) => {
+            if (this.isConnected) {
+                this.socket.emit('skill_use', {
+                    skillId: aoe.skillId,
+                    x: aoe.x,
+                    y: aoe.y,
+                    type: aoe.type,
+                    radius: aoe.radius
+                });
+            }
+        });
+    }
+
     async init() {
         // --- Socket.io for High-Speed Movement Sync ---
         if (typeof io !== 'undefined') {
