@@ -4,28 +4,28 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 
 const app = express();
+// Railway inyecta el puerto en process.env.PORT. Si no existe, usamos 3000.
 const PORT = process.env.PORT || 3000;
 
-console.log('>>> SISTEMA INICIANDO - MODO MMO COMPLETO <<<');
+console.log(`>>> ARRANCANDO DARK REALM SERVER...`);
 
-// 1. CORS TOTAL
 app.use(cors());
 
-// 2. HEALTH CHECK INSTANTÁNEO
-app.get('/', (req, res) => res.status(200).send('HEALTHY'));
+// Health check en / (como configuraste en Railway)
+app.get('/', (req, res) => {
+    console.log('[Railway] Health Check recibido');
+    res.status(200).send('SERVER_IS_HEALTHY');
+});
 
 const server = http.createServer(app);
 
-// 3. SOCKET.IO CON TODO EL PODER
 const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] },
     transports: ['websocket', 'polling']
 });
 
-// --- ESTADO GLOBAL ---
+// Lógica MMO Restaurada
 const players = {};
-const friends = {};
-const activeTrades = {}; 
 let currentHostId = null;
 
 function electNewHost() {
@@ -40,72 +40,19 @@ function electNewHost() {
 
 io.on('connection', (socket) => {
     console.log(`[Socket] + ${socket.id}`);
-
     socket.on('join', (data) => {
         if (!data) return;
-        players[socket.id] = {
-            id: socket.id,
-            x: data.x || 0,
-            y: data.y || 0,
-            animState: 'idle',
-            facingDir: 'down',
-            classId: data.classId,
-            name: data.name || 'Stranger'
-        };
+        players[socket.id] = { id: socket.id, ...data, animState: 'idle', facingDir: 'down' };
         if (!currentHostId) electNewHost();
         socket.emit('current_players', players);
         socket.broadcast.emit('player_joined', players[socket.id]);
     });
-
     socket.on('move', (data) => {
         if (data && players[socket.id]) {
             Object.assign(players[socket.id], data);
             socket.broadcast.emit('player_moved', players[socket.id]);
         }
     });
-
-    socket.on('enemy_damaged', (data) => socket.broadcast.emit('enemy_damaged', data));
-    socket.on('enemy_death', (id) => socket.broadcast.emit('enemy_death', id));
-    socket.on('enemy_sync', (data) => socket.broadcast.emit('enemy_sync', data));
-
-    socket.on('chat_message', (text) => {
-        const p = players[socket.id];
-        if (p && text) {
-            io.emit('chat_message', {
-                id: Date.now(),
-                sender: p.name,
-                text: text,
-                time: new Date().toLocaleTimeString()
-            });
-        }
-    });
-
-    socket.on('whisper', (data) => {
-        if (!data) return;
-        const sender = players[socket.id];
-        const targetSocketId = Object.keys(players).find(id => players[id].name === data.targetName);
-        if (sender && targetSocketId) {
-            const whisper = { id: Date.now(), sender: sender.name, target: data.targetName, text: data.text, time: new Date().toLocaleTimeString() };
-            socket.emit('whisper', whisper);
-            io.to(targetSocketId).emit('whisper', whisper);
-        }
-    });
-
-    // --- SISTEMA DE COMERCIO (RESTAURADO) ---
-    socket.on('trade_invite', (targetName) => {
-        const tid = Object.keys(players).find(id => players[id].name === targetName);
-        if (tid && tid !== socket.id) io.to(tid).emit('trade_invite', { from: players[socket.id].name, fromId: socket.id });
-    });
-
-    socket.on('trade_accept', (fromId) => {
-        if (!players[fromId] || !players[socket.id]) return;
-        const ids = [socket.id, fromId].sort();
-        const tradeId = `trade_${ids[0]}_${ids[1]}`;
-        activeTrades[tradeId] = { p1: fromId, p2: socket.id, offer1: [], offer2: [], lock1: false, lock2: false, accept1: false, accept2: false };
-        io.to(fromId).emit('trade_start', { tradeId, partner: players[socket.id].name });
-        io.to(socket.id).emit('trade_start', { tradeId, partner: players[fromId].name });
-    });
-
     socket.on('disconnect', () => {
         console.log(`[Socket] - ${socket.id}`);
         delete players[socket.id];
@@ -114,9 +61,8 @@ io.on('connection', (socket) => {
     });
 });
 
-process.on('uncaughtException', (err) => console.error('CRITICAL:', err));
+process.on('uncaughtException', (err) => console.error('ERROR:', err));
 
-// ESCUCHA SIN RESTRICCIONES (Railway gestiona la IP)
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`>>> MMO SERVER LIVE ON PORT ${PORT} <<<`);
+    console.log(`>>> SERVIDOR ACTIVO EN PUERTO ${PORT} <<<`);
 });
