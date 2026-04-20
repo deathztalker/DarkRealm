@@ -763,17 +763,27 @@ function gameLoop(timestamp) {
         if (network && network.isConnected) {
             network.sendMovement(player.x, player.y, player.animState, player.facingDir);
             
-            // Host-only: Sync all enemies
-            if (network.isHost && enemies.length > 0) {
-                const enemyData = enemies.map(e => ({
-                    id: e.syncId,
-                    x: e.x,
-                    y: e.y,
-                    hp: e.hp,
-                    anim: e.animState,
-                    dir: e.facingDir
-                }));
-                network.sendEnemySync(enemyData);
+            // Host-only: Sync all enemies & NPCs
+            if (network.isHost) {
+                if (enemies.length > 0) {
+                    const enemyData = enemies.map(e => ({
+                        id: e.syncId,
+                        x: e.x,
+                        y: e.y,
+                        hp: e.hp,
+                        anim: e.animState,
+                        dir: e.facingDir
+                    }));
+                    network.sendEnemySync(enemyData);
+                }
+                if (npcs.length > 0) {
+                    const npcData = npcs.map(n => ({
+                        id: n.id,
+                        x: n.x,
+                        y: n.y
+                    }));
+                    network.socket.emit('npc_sync', npcData);
+                }
             }
 
             // Sync minions & mercenary stats

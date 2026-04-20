@@ -135,18 +135,60 @@ export class NetworkManager {
         this.socket.on('enemy_death', (enemyId) => {
             const enemy = this.game.enemies?.find(e => e.syncId === enemyId);
             if (enemy) enemy.hp = 0;
-        });
-
-        this.socket.on('enemy_sync', (enemiesData) => {
+        this.socket.on('enemy_sync', (data) => {
             if (!this.isHost) {
-                enemiesData.forEach(data => {
-                    const enemy = this.game.enemies?.find(e => e.syncId === data.id);
+                data.forEach(ed => {
+                    const enemy = this.game.enemies?.find(e => e.syncId === ed.id);
                     if (enemy) {
-                        enemy.x = data.x; enemy.y = data.y;
-                        enemy.hp = data.hp; enemy.animState = data.anim;
-                        enemy.facingDir = data.dir;
+                        enemy.x = ed.x;
+                        enemy.y = ed.y;
+                        enemy.hp = ed.hp;
+                        enemy.animState = ed.anim;
+                        enemy.facingDir = ed.dir;
                     }
                 });
+            }
+        });
+
+        this.socket.on('npc_sync', (data) => {
+            if (!this.isHost) {
+                data.forEach(nd => {
+                    const npc = this.game.npcs?.find(n => n.id === nd.id);
+                    if (npc) {
+                        npc.x = nd.x;
+                        npc.y = nd.y;
+                    }
+                });
+            }
+        });
+
+        // --- MMO TOTAL SYNC: Objects, Projectiles & Loot ---
+        this.socket.on('object_update', (data) => {
+            const obj = this.game.gameObjects?.find(o => o.id === data.id);
+            if (obj) {
+                obj.isOpen = data.isOpen;
+                if (obj.isOpen) obj.icon = (obj.type === 'shrine') ? 'obj_shrine_used' : 'obj_chest_open';
+            }
+        });
+
+        this.socket.on('projectile_spawn', (data) => {
+            // Trigger a visual-only projectile for other players
+            if (this.game.spawnRemoteProjectile) {
+                this.game.spawnRemoteProjectile(data);
+            }
+        });
+
+        this.socket.on('loot_spawn', (data) => {
+            // Add item to global dropped items list
+            if (this.game.onRemoteLootSpawn) {
+                this.game.onRemoteLootSpawn(data);
+            }
+        });
+
+        this.socket.on('loot_pickup', (lootId) => {
+            // Remove item from global dropped items list
+            if (this.game.onRemoteLootPickup) {
+                this.game.onRemoteLootPickup(lootId);
             }
         });
 

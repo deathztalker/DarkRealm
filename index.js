@@ -84,9 +84,25 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('enemy_damaged', (data) => socket.broadcast.emit('enemy_damaged', data));
-    socket.on('enemy_death', (id) => socket.broadcast.emit('enemy_death', id));
     socket.on('enemy_sync', (data) => socket.broadcast.emit('enemy_sync', data));
+    socket.on('npc_sync', (data) => socket.broadcast.emit('npc_sync', data));
+
+    // --- MMO TOTAL SYNC: Objects, Projectiles & Loot ---
+    socket.on('object_interact', (data) => {
+        socket.broadcast.emit('object_update', data);
+    });
+
+    socket.on('projectile_fire', (data) => {
+        socket.broadcast.emit('projectile_spawn', { ownerId: socket.id, ...data });
+    });
+
+    socket.on('loot_spawn', (data) => {
+        socket.broadcast.emit('loot_spawn', data);
+    });
+
+    socket.on('loot_pickup', (lootId) => {
+        socket.broadcast.emit('loot_pickup', lootId);
+    });
 
     socket.on('chat_message', (text) => {
         const p = players[socket.id];
