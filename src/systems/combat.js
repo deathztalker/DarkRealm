@@ -293,13 +293,15 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
 
     // ═══════════════════════════════════════════════════
     // ★ WoW LEGENDARY PROC ENGINE ★
-    // Fires onHit effects from equipped weapons/offhand
+    // Fires onHit effects from equipped weapons/offhand/gear
     // ═══════════════════════════════════════════════════
-    if (attacker.isPlayer && dealt > 0 && attacker.equipment) {
-        const slots = ['mainhand', 'offhand'];
+    const isHero = attacker.isPlayer || (attacker.type === 'mercenary' || attacker.id === 'mercenary' || attacker.name === window.mercenary?.name);
+    
+    if (isHero && dealt > 0 && attacker.equipment) {
+        // Collect all potential proccing items (weapons, offhands, charms, etc)
+        const items = Object.values(attacker.equipment);
         
-        for (const slot of slots) {
-            const weapon = attacker.equipment[slot];
+        for (const weapon of items) {
             if (weapon && weapon.onHit) {
                 const proc = weapon.onHit;
 
@@ -317,6 +319,13 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
                 const procStatValue = attacker[procScaleStat] || 10;
                 const procStatMult = 1 + (procStatValue / 100);
                 const finalProcMult = synMult * procStatMult;
+
+                if (Math.random() < effectiveProcChance) {
+                     // ... rest of proc logic (this block remains)
+                }
+            }
+        }
+    }
 
                 if (proc.effect === 'soul_stack') {
                     if (!attacker._shadowmourneStacks) attacker._shadowmourneStacks = 0;
@@ -347,6 +356,12 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
                         bus.emit('combat:log', { text: '★ SOUL REND!', cls: 'log-crit' });
                     } else if (fx) fx.emitBurst(target.x, target.y, '#660088', 6, 2);
                 } else if (Math.random() < effectiveProcChance) {
+                    // --- Universal Proc Log ---
+                    bus.emit('combat:log', { 
+                        text: `✨ Legendary Effect: ${proc.effect.replace('_', ' ').toUpperCase()}!`, 
+                        cls: 'log-crit' 
+                    });
+
                     if (proc.effect === 'chain_lightning') {
                         bus.emit('combat:log', { text: '⚡ Chain Lightning proc!', cls: 'log-crit' });
                         let lastPos = { x: target.x, y: target.y };
