@@ -2567,18 +2567,28 @@ function updateHud() {
     if (bb) {
         bb.innerHTML = '';
 
-        const createStatusIcon = (id, iconChar, color, titleText) => {
+        const createStatusIcon = (id, iconChar, color, titleText, buffData = null) => {
             const el = document.createElement('div');
             el.className = 'status-icon';
             el.style.cssText = `width:28px;height:28px;border:1px solid ${color};background:rgba(0,0,0,0.6);border-radius:4px;display:flex;justify-content:center;align-items:center;font-size:14px;color:${color};position:relative;cursor:help;pointer-events:auto;box-shadow:inset 0 0 5px ${color};`;
             el.textContent = iconChar;
-            el.title = titleText;
+            
+            // Mouse Events for custom tooltips
+            el.addEventListener('mouseenter', (e) => {
+                showBuffTooltip(id, titleText, buffData, e.clientX, e.clientY);
+            });
+            el.addEventListener('mousemove', (e) => {
+                moveTooltip(e.clientX, e.clientY);
+            });
+            el.addEventListener('mouseleave', hideTooltip);
+            
             bb.appendChild(el);
         };
 
         // Active Aura
         if (player.activeAura) {
-            createStatusIcon(player.activeAura, '🕯️', '#ffd700', `Aura: ${player.activeAura.replace('_', ' ').toUpperCase()}`);
+            const auraName = player.activeAura.replace('_', ' ').toUpperCase();
+            createStatusIcon(player.activeAura, '🕯️', '#ffd700', `Aura: ${auraName}`, { type: 'aura', name: auraName, id: player.activeAura });
         }
 
         // Shrine / Skill Buffs
@@ -2591,7 +2601,8 @@ function updateHud() {
             else if (bid.includes('resist')) { icon = '🔮'; color = '#ff00ff'; }
             else if (bid.includes('exp')) { icon = '✨'; color = '#ffffcc'; }
 
-            createStatusIcon(bid, icon, color, `${bid.replace('shrine_', '').toUpperCase()}: ${Math.ceil(b.duration || 0)}s`);
+            const label = bid.replace('shrine_', '').toUpperCase();
+            createStatusIcon(bid, icon, color, `${label}: ${Math.ceil(b.duration || 0)}s`, { ...b, type: 'buff', name: label });
         }
 
         // Debuffs (Slows, DoTs, Curses)
@@ -4875,6 +4886,49 @@ function setupTooltip(el, item) {
     el.addEventListener('mouseenter', (e) => showTooltip(item, e.clientX, e.clientY));
     el.addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
     el.addEventListener('mouseleave', hideTooltip);
+}
+
+function showBuffTooltip(id, titleText, data, x, y) {
+    const tt = $('custom-tooltip');
+    if (!tt) return;
+
+    let html = `<div class="tooltip-header" style="color:#00ff00; font-weight:bold;">${data?.name || titleText}</div>`;
+    html += `<div class="tooltip-rarity" style="color:#666;">— Active Effect —</div>`;
+    
+    let stats = "";
+    if (data?.type === 'aura') {
+        const slvl = player._auraSlvl || 1;
+        if (id === 'might_aura') stats = `<div style="color:#fff;">+${40 + slvl * 15}% Physical Damage</div>`;
+        else if (id === 'holy_fire_aura') stats = `<div style="color:#fff;">${3 + slvl * 2} Fire Dmg per second</div>`;
+        else if (id === 'fanaticism') stats = `<div style="color:#fff;">+${20 + slvl * 5}% Atk Speed & Damage</div>`;
+        else if (id === 'conviction') stats = `<div style="color:#fff;">-${30 + slvl * 2}% Enemy Resist & Armor</div>`;
+        else if (id === 'prayer_aura') stats = `<div style="color:#fff;">+${2 + slvl} HP Regen per second</div>`;
+        else if (id === 'vigor') stats = `<div style="color:#fff;">+${10 + slvl * 2}% Move Speed</div>`;
+        
+        html += `<div class="tooltip-stats" style="color:#ffd700; margin-top:8px;">★ Aura Active</div>`;
+        if (stats) html += `<div class="tooltip-stats" style="margin-bottom:5px;">${stats}</div>`;
+        html += `<div class="tooltip-desc" style="color:#ccc; font-size:11px;">Benefiting yourself and all allies in range.</div>`;
+    } else {
+        const bid = id || "";
+        if (bid.includes('speed')) stats = `<div style="color:#fff;">+50% Movement Speed</div>`;
+        else if (bid.includes('damage')) stats = `<div style="color:#fff;">+100% Damage</div>`;
+        else if (bid.includes('resist')) stats = `<div style="color:#fff;">+75% All Resistances</div>`;
+        else if (bid.includes('mana')) stats = `<div style="color:#fff;">+200% Mana Regeneration</div>`;
+        else if (bid.includes('exp')) stats = `<div style="color:#fff;">+50% Experience Gain</div>`;
+        else if (bid === 'berserk') stats = `<div style="color:#fff;">+70% Atk Speed, -30% Armor</div>`;
+        else if (bid === 'bloodlust') stats = `<div style="color:#fff;">+40% Atk Speed & Cast Speed</div>`;
+        else if (bid === 'divine_shield_proc') stats = `<div style="color:#fff;">Absorbing damage (Shield active)</div>`;
+
+        if (data?.duration) {
+            html += `<div class="tooltip-stats" style="color:#fff; margin-top:8px;">Remaining: <span style="color:#0cf;">${Math.ceil(data.duration)}s</span></div>`;
+        }
+        if (stats) html += `<div class="tooltip-stats" style="margin-top:5px; border-top:1px solid #444; padding-top:5px;">${stats}</div>`;
+        html += `<div class="tooltip-desc" style="color:#ccc; font-size:11px; margin-top:5px;">Currently augmenting your battle capabilities.</div>`;
+    }
+
+    tt.innerHTML = html;
+    tt.style.display = 'block';
+    moveTooltip(x, y);
 }
 
 function showTooltip(item, x, y) {
