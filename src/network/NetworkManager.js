@@ -135,6 +135,24 @@ export class NetworkManager {
             }
         });
 
+        this.socket.on('chat_message', (msg) => {
+            this.game.onChatMessage?.(msg);
+        });
+
+        this.socket.on('whisper', (msg) => {
+            msg.isWhisper = true;
+            this.game.onChatMessage?.(msg);
+        });
+
+        this.socket.on('system_message', (text) => {
+            this.game.onChatMessage?.({
+                sender: 'System',
+                text: text,
+                time: new Date().toLocaleTimeString(),
+                isSystem: true
+            });
+        });
+
         this.socket.on('disconnect', () => {
             this.isConnected = false;
             this.otherPlayers.clear();

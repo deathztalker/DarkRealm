@@ -758,6 +758,12 @@ function gameLoop(timestamp) {
 
     if (player) {
         player.update(dt, input, enemies, dungeon, (aoe) => aoeZones.push(aoe));
+        
+        // --- MMO POSITION SYNC ---
+        if (network && network.isConnected) {
+            network.sendMovement(player.x, player.y, player.animState, player.facingDir);
+        }
+
         fx.update(dt * 1000); // Particle update expects ms
 
         // HP Regen out of combat (passive) + gear-based regen (always active)
