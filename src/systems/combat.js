@@ -19,6 +19,10 @@ export const DMG_TYPE = {
     EARTH: 'earth',
 };
 
+// ─────────────────────────────────────────────────────────────
+//  CORE DAMAGE CALCULATION
+// ─────────────────────────────────────────────────────────────
+
 /**
  * Core damage calculation.
  * @param {object} attacker - player or enemy stat snapshot
@@ -33,101 +37,400 @@ export function calcDamage(attacker, baseDmg, type, defender) {
     if (isBlinded(attacker) && Math.random() < 0.5) {
         return { dealt: 0, isCrit: false, type, missed: true };
     }
+
     let dmg = Number(baseDmg) || 0;
 
-    // --- Attacker bonuses ---
-    const armorStatName = `pct${cap(type)}Dmg`;
-    const pct = (attacker[armorStatName] || 0)
-        + (attacker.pctDmg || 0);
+    // Attacker bonuses
+    const pct = (attacker[`pct${cap(type)}Dmg`] || 0) + (attacker.pctDmg || 0);
     dmg *= 1 + pct / 100;
 
-    // --- Critical hit ---
+    // Critical hit
     const critChance = attacker.critChance || 0;
     const isCrit = Math.random() * 100 < critChance;
-    if (isCrit) {
-        dmg *= 1 + (attacker.critMulti || 150) / 100;
-    }
+    if (isCrit) dmg *= 1 + (attacker.critMulti || 150) / 100;
 
-    // --- Flat min damage bonus ---
+    // Flat min damage bonus
     dmg += attacker.flatMinDmg || 0;
 
-    // --- Crushing Blow (D2 classic) ---
+    // Crushing Blow (D2 classic)
     if (attacker.crushingBlow > 0 && Math.random() * 100 < attacker.crushingBlow) {
         const reductionPct = defender.type === 'boss' ? 0.10 : 0.25;
-        const cbDmg = Math.round(defender.hp * reductionPct);
-        dmg += cbDmg;
-        bus.emit('combat:log', { text: `CRUSHING BLOW! (-${Math.round(reductionPct * 100)}% HP)`, cls: 'log-crit' });
+        dmg += Math.round(defender.hp * reductionPct);
+        bus.emit('combat:log', {
+            text: `CRUSHING BLOW! (-${Math.round(reductionPct * 100)}% HP)`,
+            cls: 'log-crit',
+        });
         if (fx) fx.emitHolyBurst(defender.x, defender.y);
     }
 
-    // --- Defender resistance (magic & holy bypass) ---
+    // Defender resistance (magic & holy bypass)
     if (defender[`${type}Immune`]) {
         dmg = 0;
     } else if (type !== DMG_TYPE.MAGIC && type !== DMG_TYPE.HOLY) {
         let res = (defender[`${type}Res`] || 0) - (defender.resDebuff || 0);
-        res = Math.min(75, Math.max(-100, res)); // cap at 75%, floor at -100%
+        res = Math.min(75, Math.max(-100, res));
         dmg *= 1 - res / 100;
     }
 
-    // --- Armor reduction (physical only) ---
+    // Armor reduction (physical only)
     if (type === DMG_TYPE.PHYSICAL) {
         const armor = Math.max(0, (defender.armor || 0) - (defender.armorDebuff || 0));
-        const attackerLevel = Math.max(1, attacker.level || 1);
-        const divisor = armor + 5 * attackerLevel * 10;
+        const atkLevel = Math.max(1, attacker.level || 1);
+        const divisor = armor + 5 * atkLevel * 10;
         const reduction = divisor > 0 ? armor / divisor : 0;
         dmg *= 1 - Math.min(0.75, reduction);
     }
 
-    // --- Percentage damage reduction (D2 Shaft, Doombringer, etc.) ---
-    if (defender.pctDmgReduce) {
-        dmg *= 1 - Math.min(50, defender.pctDmgReduce) / 100; // Cap at 50%
-    }
+    // Percentage damage reduction
+    if (defender.pctDmgReduce) dmg *= 1 - Math.min(50, defender.pctDmgReduce) / 100;
 
-    // --- Flat damage reduction ---
+    // Flat damage reduction
     if (type === DMG_TYPE.MAGIC && defender.magicDmgReduce) {
         dmg -= defender.magicDmgReduce;
     } else if (defender.flatDmgReduce) {
         dmg -= defender.flatDmgReduce;
     }
 
-    // --- Damage Taken Multiplier (Mark for Death / Amplify Damage) ---
-    if (defender.dmgTakenMult) {
-        dmg *= defender.dmgTakenMult;
-    }
+    // Damage Taken Multiplier (Mark for Death / Amplify Damage)
+    if (defender.dmgTakenMult) dmg *= defender.dmgTakenMult;
 
     dmg = Math.max(defender[`${type}Immune`] ? 0 : 1, Math.round(dmg));
-    if (isNaN(dmg)) dmg = 1; // Last resort fallback
+    if (isNaN(dmg)) dmg = 1;
+
     return { dealt: dmg, isCrit, type };
 }
+
+// ─────────────────────────────────────────────────────────────
+//  DAMAGE-OVER-TIME
+// ─────────────────────────────────────────────────────────────
 
 /**
  * Register a DoT (damage over time) on a target.
  */
 export function applyDot(target, dmgPerSec, type, durationSec, source) {
-    const dot = {
-        id: `dot_${Date.now()}_${Math.random()}`,
-        dmgPerSec, type, remaining: durationSec, source,
-        tick: 0,
-    };
     if (!target._dots) target._dots = [];
     // Remove existing same-source dot (refresh)
     target._dots = target._dots.filter(d => d.source !== source);
-    target._dots.push(dot);
+    target._dots.push({
+        id: `dot_${Date.now()}_${Math.random()}`,
+        dmgPerSec, type, remaining: durationSec, source, tick: 0,
+    });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  PROC HANDLERS  (one function per proc effect)
+// ─────────────────────────────────────────────────────────────
+
+function handleSoulStack(attacker, target, proc, synFX, finalProcMult) {
+    if (!attacker._shadowmourneStacks) attacker._shadowmourneStacks = 0;
+    attacker._shadowmourneStacks++;
+
+    // Armor shred stacking
+    if (proc.armorShred && target._statuses) {
+        const shreds = target._statuses.filter(s => s.type === 'armor_shred').length;
+        const shredCap = synFX.includes('armor_shred_stack') ? 999 : 3;
+        if (shreds < shredCap) {
+            const shredAmt = proc.armorShredAmt || 80;
+            target._statuses.push({ type: 'armor_shred', duration: 12, value: -shredAmt });
+            target.armorDebuff = (target.armorDebuff || 0) + shredAmt;
+        }
+    }
+
+    const stackMax = synFX.includes('faster_stacks') ? 6 : (proc.maxStacks || 10);
+    if (attacker._shadowmourneStacks >= stackMax) {
+        attacker._shadowmourneStacks = 0;
+        const explodeDmg = Math.round((proc.explodeDmg || 500) * finalProcMult);
+
+        window.enemies?.forEach(e => {
+            if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < 200) {
+                e.hp = Math.max(0, e.hp - explodeDmg);
+                if (synFX.includes('soul_drain_aoe'))
+                    attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.round(explodeDmg * 0.2));
+            }
+        });
+
+        if (fx) { fx.emitBurst(target.x, target.y, '#8800cc', 80, 6); fx.shake(600, 12); }
+        if (synFX.includes('spawn_revenant'))
+            bus.emit('proc:army_of_dead', { x: attacker.x, y: attacker.y, count: 2, duration: 15 });
+        bus.emit('combat:log', { text: '★ SOUL REND!', cls: 'log-crit' });
+    } else if (fx) {
+        fx.emitBurst(target.x, target.y, '#660088', 6, 2);
+    }
+}
+
+function handleChainLightning(attacker, target, proc, synFX, finalProcMult) {
+    bus.emit('combat:log', { text: '⚡ Chain Lightning proc!', cls: 'log-crit' });
+    let lastPos = { x: target.x, y: target.y };
+    const maxBounces = (proc.targets || 3) + (synFX.includes('extra_bounce') ? 2 : 0);
+    const chainDmg = Math.round((proc.damage || 80) * finalProcMult);
+    const hitSet = new Set([target]);
+    let bounced = 0;
+
+    if (window.enemies) {
+        const sorted = window.enemies
+            .filter(e => e.hp > 0 && !hitSet.has(e))
+            .sort((a, b) =>
+                Math.hypot(a.x - lastPos.x, a.y - lastPos.y) -
+                Math.hypot(b.x - lastPos.x, b.y - lastPos.y)
+            );
+
+        for (const e of sorted) {
+            if (bounced >= maxBounces) break;
+            if (Math.hypot(e.x - lastPos.x, e.y - lastPos.y) < 280) {
+                e.hp = Math.max(0, e.hp - chainDmg);
+                if (fx?.emitLightning) fx.emitLightning(lastPos.x, lastPos.y, e.x, e.y, 3);
+                lastPos = { x: e.x, y: e.y };
+                hitSet.add(e);
+                bounced++;
+                if (synFX.includes('paralysis') || synFX.includes('chain_overload'))
+                    e._statuses?.push({ type: 'stun', duration: 0.5, value: 0 });
+            }
+        }
+    }
+}
+
+function handleMeteorDrop(target, proc, synFX, finalProcMult) {
+    bus.emit('combat:log', { text: '🔥 Meteor proc!', cls: 'log-crit' });
+    const meteorDmg = Math.round((proc.damage || 350) * finalProcMult);
+    const meteorRadius = (proc.radius || 120) * (synFX.includes('aoe_expand') ? 1.5 : 1);
+
+    if (fx) { fx.emitBurst(target.x, target.y, '#ff4400', 60, 5); fx.shake(800, 15); }
+
+    window.enemies?.forEach(e => {
+        if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < meteorRadius) {
+            e.hp = Math.max(0, e.hp - meteorDmg);
+            if (synFX.includes('burn_dot'))
+                e._statuses?.push({ type: 'burn', duration: 5, value: 150 });
+        }
+    });
+}
+
+function handleDivineShield(attacker, proc, synFX, finalProcMult) {
+    bus.emit('combat:log', { text: '💛 Divine Shield proc!', cls: 'log-crit' });
+    const dsDur = proc.duration || 8;
+    attacker.divineShield = (attacker.divineShield || 0) + Math.round((proc.shieldHp || 800) * finalProcMult);
+    attacker._divineShieldTimer = dsDur;
+
+    if (attacker._buffs) {
+        const ext = attacker._buffs.find(b => b.id === 'divine_shield_proc');
+        if (ext) ext.duration = dsDur;
+        else attacker._buffs.push({ id: 'divine_shield_proc', type: 'divine_shield_proc', duration: dsDur, name: 'Divine Shield' });
+    }
+
+    if (synFX.includes('reflect_dmg')) attacker._divineShieldReflect = 0.3;
+    if (synFX.includes('heal_party')) bus.emit('proc:heal_party', { x: attacker.x, y: attacker.y, amount: 200, radius: 150 });
+    if (fx) fx.emitHolyBurst?.(attacker.x, attacker.y);
+}
+
+function handleArcaneBurst(attacker, target, proc, synFX, finalProcMult) {
+    bus.emit('combat:log', { text: '✨ Arcane Burst!', cls: 'log-crit' });
+    const arcDmg = Math.round((proc.damage || 200) * finalProcMult);
+    const arcRad = (proc.radius || 80) * (synFX.includes('aoe_expand') ? 1.5 : 1);
+
+    if (fx) fx.emitBurst(target.x, target.y, '#aa44ff', 40, 4);
+
+    window.enemies?.forEach(e => {
+        if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < arcRad) {
+            e.hp = Math.max(0, e.hp - arcDmg);
+            if (proc.manaShred && e.mp !== undefined)
+                e.mp = Math.max(0, (e.mp || 0) - (proc.manaShredAmt || 120));
+        }
+    });
+
+    if (synFX.includes('mana_storm'))
+        attacker.mp = Math.min(attacker.maxMp, (attacker.mp || 0) + Math.round(attacker.maxMp * 0.15));
+}
+
+function handleSoulRip(attacker, target, proc, synFX, finalProcMult) {
+    bus.emit('combat:log', { text: '❄️ Soul Rip!', cls: 'log-crit' });
+    const ripDmg = Math.round((proc.damage || 150) * finalProcMult);
+
+    if (proc.aoe) {
+        window.enemies?.forEach(e => {
+            if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < (proc.aoeRadius || 100))
+                e.hp = Math.max(0, e.hp - Math.round(ripDmg * 0.6));
+        });
+    }
+
+    target.hp = Math.max(0, target.hp - ripDmg);
+    attacker.hp = Math.min(attacker.maxHp, attacker.hp + ripDmg * 0.5);
+
+    if (proc.freeze && target._statuses)
+        target._statuses.push({
+            type: 'frozen',
+            duration: (proc.freezeDuration || 3) + (synFX.includes('deep_freeze') ? 3 : 0),
+            value: 0,
+        });
+
+    if (fx) fx.emitBurst(target.x, target.y, '#44eeff', 30, 3);
+}
+
+function handleBladeDance(target, proc, synFX, finalProcMult) {
+    bus.emit('combat:log', { text: '🌀 Blade Dance!', cls: 'log-crit' });
+    const hits = (proc.hits || 3) + (synFX.includes('extra_hit') ? 1 : 0);
+    const hitDmg = Math.round((proc.damage || 60) * finalProcMult);
+
+    for (let i = 0; i < hits; i++) {
+        setTimeout(() => {
+            if (target.hp <= 0) return;
+            target.hp = Math.max(0, target.hp - hitDmg);
+            if (fx) fx.emitSlash?.(target.x, target.y, Math.random() * Math.PI * 2, '#00ff88', 30);
+            if (proc.poisonOnHit)
+                target._statuses?.push({ type: 'poison', duration: 6, value: Math.round(50 * finalProcMult) });
+        }, i * 80);
+    }
+}
+
+function handleStellarArrow(attacker, target, proc, finalProcMult) {
+    bus.emit('combat:log', { text: '⭐ Stellar Arrow!', cls: 'log-crit' });
+    if (fx) fx.emitBurst(target.x, target.y, '#ffffaa', 20, 3);
+
+    if (window.enemies) {
+        const dx = target.x - attacker.x, dy = target.y - attacker.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = dx / len, ny = dy / len;
+
+        window.enemies.forEach(e => {
+            if (e.hp <= 0) return;
+            const ex = e.x - attacker.x, ey = e.y - attacker.y;
+            const dot = ex * nx + ey * ny;
+            if (dot > 0 && Math.abs(ex * ny - ey * nx) < 40)
+                e.hp = Math.max(0, e.hp - (proc.damage || 120) * finalProcMult);
+        });
+    }
+}
+
+function handleConsecration(attacker, proc, synFX, finalProcMult) {
+    bus.emit('combat:log', { text: '✝️ Consecration!', cls: 'log-crit' });
+    const cDmg = Math.round((proc.damage || 100) * finalProcMult);
+    const cRad = (proc.radius || 90) * (synFX.includes('aoe_expand') ? 1.5 : 1);
+
+    window.enemies?.forEach(e => {
+        if (e.hp > 0 && Math.hypot(e.x - attacker.x, e.y - attacker.y) < cRad) {
+            e.hp = Math.max(0, e.hp - cDmg);
+            if (synFX.includes('holy_fire'))
+                e._statuses?.push({ type: 'burn', duration: 6, value: Math.round(cDmg * 0.4) });
+        }
+    });
+
+    attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.round((proc.healPlayer || 50) * finalProcMult));
+    if (fx) fx.emitHolyBurst?.(attacker.x, attacker.y);
+}
+
+function handleArmyOfTheDead(attacker, proc) {
+    bus.emit('combat:log', { text: '💀 Army of the Dead!', cls: 'log-crit' });
+    bus.emit('proc:army_of_dead', { x: attacker.x, y: attacker.y, count: proc.count || 3, duration: proc.duration || 12 });
+    if (fx) fx.emitBurst(attacker.x, attacker.y, '#334466', 50, 5);
+}
+
+/** Handle secondary/extra effects on a proc entry. */
+function handleExtraEffect(attacker, target, proc, finalProcMult, dealt) {
+    switch (proc.extraEffect) {
+        case 'lightning_overload':
+            if (Math.random() < 0.3) {
+                fx?.emitLightning?.(target.x, target.y, target.x, target.y - 100, 2);
+                target.hp = Math.max(0, target.hp - Math.round(dealt * 0.5));
+            }
+            break;
+        case 'dragon_breath':
+            if (fx) fx.emitBurst(target.x, target.y, '#ff8800', 20, 4);
+            target._statuses?.push({ type: 'burn', duration: 3, value: Math.round(100 * finalProcMult) });
+            break;
+        case 'blizzard_veil':
+            attacker._statuses?.push({ type: 'shielded', duration: 4, value: 200 });
+            if (attacker._buffs) {
+                const ext = attacker._buffs.find(b => b.id === 'blizzard_veil_proc');
+                if (ext) ext.duration = 4;
+                else attacker._buffs.push({ id: 'blizzard_veil_proc', type: 'blizzard_veil_proc', duration: 4, name: 'Blizzard Veil' });
+            }
+            break;
+        case 'void_wound':
+            applyDot(target, Math.round(150 * finalProcMult), 'shadow', 5, 'void_reaper');
+            break;
+        case 'bone_shatter':
+            target.armorDebuff = (target.armorDebuff || 0) + 50;
+            break;
+    }
 }
 
 /**
- * Apply damage to a target entity.
- * Handles life steal, floating numbers, death check.
+ * Fire all on-hit legendary proc effects from attacker's equipment.
+ * Called internally by applyDamage.
+ */
+function fireEquipmentProcs(attacker, target, dealt) {
+    const isHero = attacker.isPlayer
+        || attacker.type === 'mercenary'
+        || attacker.id === 'mercenary'
+        || attacker.name === window.mercenary?.name;
+
+    if (!isHero || dealt <= 0 || !attacker.equipment) return;
+
+    for (const weapon of Object.values(attacker.equipment)) {
+        if (!weapon?.onHit) continue;
+
+        const proc = weapon.onHit;
+
+        const { mult: synMult, chanceBonus: synChance, bonusEffects: synFX }
+            = evaluateSynergies(attacker, proc, weapon.id || '');
+
+        const effectiveProcChance = (proc.chance || 0) + synChance;
+
+        // Stat-based scaling
+        let procScaleStat = 'str';
+        if (['chain_lightning', 'arcane_burst', 'soul_rip', 'consecration'].includes(proc.effect)) procScaleStat = 'int';
+        else if (['blade_dance', 'stellar_arrow'].includes(proc.effect)) procScaleStat = 'dex';
+        else if (proc.type === 'shadow' || proc.type === 'fire') procScaleStat = 'int';
+
+        const procStatValue = attacker[procScaleStat] || 10;
+        const finalProcMult = synMult * (1 + procStatValue / 100);
+
+        // ── Soul Stack (special: tracks per-weapon, fires at threshold) ────
+        if (proc.effect === 'soul_stack') {
+            handleSoulStack(attacker, target, proc, synFX, finalProcMult);
+            handleExtraEffect(attacker, target, proc, finalProcMult, dealt);
+            continue; // soul_stack has its own proc-chance gate inside the handler
+        }
+
+        // ── Standard proc chance gate ──────────────────────────────────────
+        if (Math.random() >= effectiveProcChance) continue;
+
+        bus.emit('combat:log', {
+            text: `✨ Legendary Effect: ${proc.effect.replace(/_/g, ' ').toUpperCase()}!`,
+            cls: 'log-crit',
+        });
+
+        switch (proc.effect) {
+            case 'chain_lightning': handleChainLightning(attacker, target, proc, synFX, finalProcMult); break;
+            case 'meteor_drop': handleMeteorDrop(target, proc, synFX, finalProcMult); break;
+            case 'divine_shield': handleDivineShield(attacker, proc, synFX, finalProcMult); break;
+            case 'arcane_burst': handleArcaneBurst(attacker, target, proc, synFX, finalProcMult); break;
+            case 'soul_rip': handleSoulRip(attacker, target, proc, synFX, finalProcMult); break;
+            case 'blade_dance': handleBladeDance(target, proc, synFX, finalProcMult); break;
+            case 'stellar_arrow': handleStellarArrow(attacker, target, proc, finalProcMult); break;
+            case 'consecration': handleConsecration(attacker, proc, synFX, finalProcMult); break;
+            case 'army_of_the_dead': handleArmyOfTheDead(attacker, proc); break;
+        }
+
+        handleExtraEffect(attacker, target, proc, finalProcMult, dealt);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  APPLY DAMAGE  (main entry point)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Apply a calcDamage result to a target entity.
+ * Handles shields, life steal, knockback, procs, and death.
  */
 export function applyDamage(attacker, target, dmgResult, skillId = null) {
     const { dealt, isCrit, type } = dmgResult;
 
-    // --- Block logic ---
+    // ── Block ──────────────────────────────────────────────────────────────
     if (target.blockChance && type === DMG_TYPE.PHYSICAL && dealt > 0) {
-        const blockCap = 75;
-        if (Math.random() * 100 < Math.min(blockCap, target.blockChance)) {
+        if (Math.random() * 100 < Math.min(75, target.blockChance)) {
             bus.emit('combat:damage', { attacker, target, dealt: 'Blocked!', isCrit: false, type: 'physical', worldX: target.x, worldY: target.y });
-            return; // No damage taken
+            return;
         }
     }
 
@@ -138,7 +441,7 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
 
     let finalDealt = dealt;
 
-    // --- Bone Armor (Necro) ---
+    // ── Bone Armor (Necro) ─────────────────────────────────────────────────
     if (target.boneArmor > 0 && type === DMG_TYPE.PHYSICAL) {
         const absorb = Math.min(finalDealt, target.boneArmor);
         target.boneArmor -= absorb;
@@ -146,81 +449,80 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
         bus.emit('combat:log', { text: `Absorbed! (${target.boneArmor} left)`, cls: 'log-info' });
         if (target.boneArmor <= 0) {
             target._statuses = target._statuses?.filter(s => s.type !== 'bone_armor');
-            bus.emit('combat:log', { text: "Bone Armor Shattered!", cls: 'log-dmg' });
+            bus.emit('combat:log', { text: 'Bone Armor Shattered!', cls: 'log-dmg' });
         }
     }
 
-    // --- Energy Shield (Sorc) ---
+    // ── Energy Shield (Sorc) ───────────────────────────────────────────────
     const es = target._statuses?.find(s => s.type === 'energy_shield');
     if (es && finalDealt > 0) {
         const pct = es.value / 100;
         const toMana = Math.floor(finalDealt * pct);
-        const manaCost = Math.floor(toMana * 0.75); // ES efficiency
+        const manaCost = Math.floor(toMana * 0.75);
         if (target.mp >= manaCost) {
             target.mp -= manaCost;
             finalDealt -= toMana;
-            bus.emit('combat:log', { text: "Mana Transferred!", cls: 'log-mp' });
+            bus.emit('combat:log', { text: 'Mana Transferred!', cls: 'log-mp' });
         } else {
-            // Mana empty, shield breaks
             target._statuses = target._statuses.filter(s => s.type !== 'energy_shield');
-            bus.emit('combat:log', { text: "Energy Shield Collapsed!", cls: 'log-dmg' });
+            bus.emit('combat:log', { text: 'Energy Shield Collapsed!', cls: 'log-dmg' });
         }
     }
 
+    // ── Divine Shield (defender) ───────────────────────────────────────────
+    if (target.isPlayer && target.divineShield > 0) {
+        const absorbed = Math.min(finalDealt, target.divineShield);
+        target.divineShield -= absorbed;
+        finalDealt -= absorbed;
+        if (target.divineShield <= 0) {
+            target.divineShield = 0;
+            bus.emit('combat:log', { text: 'Divine Shield shattered!', cls: 'log-dmg' });
+        }
+    }
+
+    // ── Apply HP loss ──────────────────────────────────────────────────────
     target.hp = Math.max(0, target.hp - finalDealt);
 
-    // --- PvP Friendly Duel Protection ---
-    const isDuel = window.network?.duelOpponentId && (target.id === window.network.duelOpponentId || target.syncId === window.network.duelOpponentId);
+    // ── PvP Duel Protection ────────────────────────────────────────────────
+    const isDuel = window.network?.duelOpponentId &&
+        (target.id === window.network.duelOpponentId || target.syncId === window.network.duelOpponentId);
     if (isDuel && target.hp < 1) {
         target.hp = 1;
-        bus.emit('combat:log', { text: "DUEL FINISHED!", cls: 'log-level' });
-        if (window.network) window.network.socket.emit('duel_end', { winner: attacker.charName });
+        bus.emit('combat:log', { text: 'DUEL FINISHED!', cls: 'log-level' });
+        window.network?.socket.emit('duel_end', { winner: attacker.charName });
     }
 
-    if (finalDealt > 0) {
-        target.lastAttacker = attacker.name || attacker.charName || 'Unknown';
-    }
+    if (finalDealt > 0) target.lastAttacker = attacker.name || attacker.charName || 'Unknown';
 
-    // Phase 21: Sensory Feedback
+    // ── Sensory Feedback ───────────────────────────────────────────────────
     if (dealt > 0) {
-        target.hitFlashTimer = 0.12; // Trigger flash
+        target.hitFlashTimer = 0.12;
         if (fx) {
-            if (isCrit) fx.shake(250, 5); // Intense shake for crits
-
-            const dx = target.x - attacker.x;
-            const dy = target.y - attacker.y;
-            const angle = Math.atan2(dy, dx);
-
-            if (type === DMG_TYPE.PHYSICAL || type === DMG_TYPE.HOLY) {
-                fx.emitBlood(target.x, target.y, angle);
-            } else {
-                fx.emitHitImpact(target.x, target.y, type);
-            }
+            if (isCrit) fx.shake(250, 5);
+            const angle = Math.atan2(target.y - attacker.y, target.x - attacker.x);
+            if (type === DMG_TYPE.PHYSICAL || type === DMG_TYPE.HOLY) fx.emitBlood(target.x, target.y, angle);
+            else fx.emitHitImpact(target.x, target.y, type);
         }
     }
 
-    // Life steal
-    if (attacker.isPlayer && attacker.lifeStealPct) {
-        const stolen = Math.round(dealt * attacker.lifeStealPct / 100);
-        attacker.hp = Math.min(attacker.maxHp, attacker.hp + stolen);
+    // ── Life / Mana Steal (player) ─────────────────────────────────────────
+    if (attacker.isPlayer) {
+        if (attacker.lifeStealPct)
+            attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.round(dealt * attacker.lifeStealPct / 100));
+        if (attacker.manaStealPct)
+            attacker.mp = Math.min(attacker.maxMp, (attacker.mp || 0) + Math.round(dealt * attacker.manaStealPct / 100));
     }
 
-    // Mana steal
-    if (attacker.isPlayer && attacker.manaStealPct) {
-        const stolen = Math.round(dealt * attacker.manaStealPct / 100);
-        attacker.mp = Math.min(attacker.maxMp, (attacker.mp || 0) + stolen);
-    }
-
-    // Thorns (reflect damage back to melee attackers)
+    // ── Thorns ─────────────────────────────────────────────────────────────
     if (target.isPlayer && target.thorns && type === DMG_TYPE.PHYSICAL && !attacker.isPlayer) {
-        const reflected = target.thorns;
-        attacker.hp = Math.max(0, attacker.hp - reflected);
-        bus.emit('combat:damage', { attacker: target, target: attacker, dealt: reflected, isCrit: false, type: 'physical', worldX: attacker.x, worldY: attacker.y });
+        attacker.hp = Math.max(0, attacker.hp - target.thorns);
+        bus.emit('combat:damage', { attacker: target, target: attacker, dealt: target.thorns, isCrit: false, type: 'physical', worldX: attacker.x, worldY: attacker.y });
     }
-    // --- Durability loss ---
+
+    // ── Durability Loss ────────────────────────────────────────────────────
     if (attacker.isPlayer && attacker.equipment?.mainhand) {
         const item = attacker.equipment.mainhand;
-        const isIndestructible = item.mods && item.mods.some(m => m.stat === 'indestructible');
+        const isIndestructible = item.mods?.some(m => m.stat === 'indestructible');
         if (!isIndestructible && item.maxDurability > 0 && item.durability > 0 && Math.random() < 0.1) {
             item.durability--;
             if (item.durability === 0) bus.emit('item:broken', { item, slot: 'mainhand' });
@@ -237,41 +539,24 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
         }
     }
 
-    // --- Knockback logic ---
-    const threshold = target.maxHp * 0.1;
-    if (finalDealt > threshold || attacker.knockback) {
+    // ── Knockback ──────────────────────────────────────────────────────────
+    const kbThreshold = target.maxHp * 0.1;
+    if (finalDealt > kbThreshold || attacker.knockback) {
         const force = attacker.knockbackForce || 20;
         const dx = target.x - attacker.x;
         const dy = target.y - attacker.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const kbX = (dx / dist) * force;
-        const kbY = (dy / dist) * force;
-        // Player uses pushX/pushY, enemies use vx/vy
-        if (target.isPlayer) {
-            target.pushX = kbX;
-            target.pushY = kbY;
-        } else {
-            target.vx = kbX;
-            target.vy = kbY;
-        }
+        if (target.isPlayer) { target.pushX = (dx / dist) * force; target.pushY = (dy / dist) * force; }
+        else { target.vx = (dx / dist) * force; target.vy = (dy / dist) * force; }
     }
 
-    bus.emit('combat:damage', {
-        attacker, target, dealt, isCrit, type, skillId,
-        worldX: target.x, worldY: target.y,
-    });
+    // ── Broadcast damage event ─────────────────────────────────────────────
+    bus.emit('combat:damage', { attacker, target, dealt, isCrit, type, skillId, worldX: target.x, worldY: target.y });
+    if (isCrit && fx) fx.shake(200, 3);
 
-    if (isCrit && fx) {
-        fx.shake(200, 3); // Light shake for crits
-    }
-
-    // --- Phase 18: Elite Affixes: Electrified & Vampiric ---
+    // ── Lightning Enchanted Elite recoil ───────────────────────────────────
     if (target.isLightningEnchanted && dealt > 0 && !attacker.isPlayerImmuneToEnchant) {
-        if (fx && fx.emitLightning) {
-            // Revenge sparks towards the attacker
-            fx.emitLightning(target.x, target.y, attacker.x, attacker.y, 3);
-        }
-        // Small recoil damage to player if they are nearby
+        fx?.emitLightning?.(target.x, target.y, attacker.x, attacker.y, 3);
         if (attacker.isPlayer) {
             const recoil = Math.max(1, Math.round(dealt * 0.05));
             attacker.hp = Math.max(0, attacker.hp - recoil);
@@ -279,283 +564,51 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
         }
     }
 
-    // Correct handle: If the ENEMY is the attacker and has lifeStealPct
+    // ── Enemy life steal ───────────────────────────────────────────────────
     if (!attacker.isPlayer && attacker.lifeStealPct && dealt > 0) {
-        const heal = Math.round(dealt * attacker.lifeStealPct / 100);
-        attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
+        attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.round(dealt * attacker.lifeStealPct / 100));
         if (fx) fx.emitHeal(attacker.x, attacker.y);
     }
 
+    // ── Death check ────────────────────────────────────────────────────────
     if (target.hp <= 0) {
         onKillLogic(attacker, target);
         bus.emit('entity:death', { entity: target, killer: attacker });
     }
 
-    // ═══════════════════════════════════════════════════
-    // ★ WoW LEGENDARY PROC ENGINE ★
-    // Fires onHit effects from equipped weapons/offhand/gear
-    // ═══════════════════════════════════════════════════
-    const isHero = attacker.isPlayer || (attacker.type === 'mercenary' || attacker.id === 'mercenary' || attacker.name === window.mercenary?.name);
-
-    if (isHero && dealt > 0 && attacker.equipment) {
-        // Collect all potential proccing items (weapons, offhands, charms, etc)
-        const items = Object.values(attacker.equipment);
-
-        for (const weapon of items) {
-            if (weapon && weapon.onHit) {
-                const proc = weapon.onHit;
-
-                const { mult: synMult, chanceBonus: synChance, bonusEffects: synFX, labels: synLabels }
-                    = evaluateSynergies(attacker, proc, weapon.id || '');
-
-                const effectiveProcChance = (proc.chance || 0) + synChance;
-
-                // --- Stat-based Scaling ---
-                let procScaleStat = 'str';
-                if (['chain_lightning', 'arcane_burst', 'soul_rip', 'consecration'].includes(proc.effect)) procScaleStat = 'int';
-                else if (['blade_dance', 'stellar_arrow'].includes(proc.effect)) procScaleStat = 'dex';
-                else if (proc.type === 'shadow' || proc.type === 'fire') procScaleStat = 'int';
-
-                const procStatValue = attacker[procScaleStat] || 10;
-                const procStatMult = 1 + (procStatValue / 100);
-                const finalProcMult = synMult * procStatMult;
-
-                if (Math.random() < effectiveProcChance) {
-                    // ... rest of proc logic (this block remains)
-                }
-            }
-        }
-    }
-
-    if (proc.effect === 'soul_stack') {
-        if (!attacker._shadowmourneStacks) attacker._shadowmourneStacks = 0;
-        attacker._shadowmourneStacks++;
-
-        if (proc.armorShred && target._statuses) {
-            const shreds = target._statuses.filter(s => s.type === 'armor_shred').length;
-            if (shreds < (synFX.includes('armor_shred_stack') ? 999 : 3)) {
-                target._statuses.push({ type: 'armor_shred', duration: 12, value: proc.armorShredAmt || -80 });
-                target.armorDebuff = (target.armorDebuff || 0) + Math.abs(proc.armorShredAmt || 80);
-            }
-        }
-
-        const stackMax = synFX.includes('faster_stacks') ? 6 : (proc.maxStacks || 10);
-        if (attacker._shadowmourneStacks >= stackMax) {
-            attacker._shadowmourneStacks = 0;
-            const explodeDmg = Math.round((proc.explodeDmg || 500) * finalProcMult);
-            if (window.enemies) {
-                window.enemies.forEach(e => {
-                    if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < 200) {
-                        e.hp = Math.max(0, e.hp - explodeDmg);
-                        if (synFX.includes('soul_drain_aoe')) attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.round(explodeDmg * 0.2));
-                    }
-                });
-            }
-            if (fx) { fx.emitBurst(target.x, target.y, '#8800cc', 80, 6); fx.shake(600, 12); }
-            if (synFX.includes('spawn_revenant')) bus.emit('proc:army_of_dead', { x: attacker.x, y: attacker.y, count: 2, duration: 15 });
-            bus.emit('combat:log', { text: '★ SOUL REND!', cls: 'log-crit' });
-        } else if (fx) fx.emitBurst(target.x, target.y, '#660088', 6, 2);
-    } else if (Math.random() < effectiveProcChance) {
-        // --- Universal Proc Log ---
-        bus.emit('combat:log', {
-            text: `✨ Legendary Effect: ${proc.effect.replace('_', ' ').toUpperCase()}!`,
-            cls: 'log-crit'
-        });
-
-        if (proc.effect === 'chain_lightning') {
-            bus.emit('combat:log', { text: '⚡ Chain Lightning proc!', cls: 'log-crit' });
-            let lastPos = { x: target.x, y: target.y };
-            const maxBounces = (proc.targets || 3) + (synFX.includes('extra_bounce') ? 2 : 0);
-            const chainDmg = Math.round((proc.damage || 80) * finalProcMult);
-            const hitSet = new Set([target]);
-            let bounced = 0;
-            if (window.enemies) {
-                const sorted = window.enemies.filter(e => e.hp > 0 && !hitSet.has(e))
-                    .sort((a, b) => Math.hypot(a.x - lastPos.x, a.y - lastPos.y) - Math.hypot(b.x - lastPos.x, b.y - lastPos.y));
-                for (const e of sorted) {
-                    if (bounced >= maxBounces) break;
-                    if (Math.hypot(e.x - lastPos.x, e.y - lastPos.y) < 280) {
-                        e.hp = Math.max(0, e.hp - chainDmg);
-                        if (fx && fx.emitLightning) fx.emitLightning(lastPos.x, lastPos.y, e.x, e.y, 3);
-                        lastPos = { x: e.x, y: e.y };
-                        hitSet.add(e); bounced++;
-                        if (synFX.includes('paralysis') || synFX.includes('chain_overload')) {
-                            if (e._statuses) e._statuses.push({ type: 'stun', duration: 0.5, value: 0 });
-                        }
-                    }
-                }
-            }
-        } else if (proc.effect === 'meteor_drop') {
-            bus.emit('combat:log', { text: '🔥 Meteor proc!', cls: 'log-crit' });
-            const meteorDmg = Math.round((proc.damage || 350) * finalProcMult);
-            const meteorRadius = (proc.radius || 120) * (synFX.includes('aoe_expand') ? 1.5 : 1);
-            if (fx) { fx.emitBurst(target.x, target.y, '#ff4400', 60, 5); fx.shake(800, 15); }
-            if (window.enemies) {
-                window.enemies.forEach(e => {
-                    if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < meteorRadius) {
-                        e.hp = Math.max(0, e.hp - meteorDmg);
-                        if (synFX.includes('burn_dot')) { if (e._statuses) e._statuses.push({ type: 'burn', duration: 5, value: 150 }); }
-                    }
-                });
-            }
-        } else if (proc.effect === 'divine_shield') {
-            bus.emit('combat:log', { text: "💛 Divine Shield proc!", cls: 'log-crit' });
-            const dsDur = proc.duration || 8;
-            attacker.divineShield = (attacker.divineShield || 0) + Math.round((proc.shieldHp || 800) * finalProcMult);
-            attacker._divineShieldTimer = dsDur;
-
-            if (attacker._buffs) {
-                const ext = attacker._buffs.find(b => b.id === 'divine_shield_proc');
-                if (ext) ext.duration = dsDur;
-                else attacker._buffs.push({ id: 'divine_shield_proc', type: 'divine_shield_proc', duration: dsDur, name: 'Divine Shield' });
-            }
-
-            if (synFX.includes('reflect_dmg')) attacker._divineShieldReflect = 0.3;
-            if (synFX.includes('heal_party')) bus.emit('proc:heal_party', { x: attacker.x, y: attacker.y, amount: 200, radius: 150 });
-            if (fx) fx.emitHolyBurst?.(attacker.x, attacker.y);
-        } else if (proc.effect === 'arcane_burst') {
-            bus.emit('combat:log', { text: '✨ Arcane Burst!', cls: 'log-crit' });
-            const arcDmg = Math.round((proc.damage || 200) * finalProcMult);
-            const arcRad = (proc.radius || 80) * (synFX.includes('aoe_expand') ? 1.5 : 1);
-            if (fx) fx.emitBurst(target.x, target.y, '#aa44ff', 40, 4);
-            if (window.enemies) {
-                window.enemies.forEach(e => {
-                    if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < arcRad) {
-                        e.hp = Math.max(0, e.hp - arcDmg);
-                        if (proc.manaShred && e.mp !== undefined) e.mp = Math.max(0, (e.mp || 0) - (proc.manaShredAmt || 120));
-                    }
-                });
-            }
-            if (synFX.includes('mana_storm')) attacker.mp = Math.min(attacker.maxMp, (attacker.mp || 0) + Math.round(attacker.maxMp * 0.15));
-        } else if (proc.effect === 'soul_rip') {
-            bus.emit('combat:log', { text: '❄️ Soul Rip!', cls: 'log-crit' });
-            const ripDmg = Math.round((proc.damage || 150) * finalProcMult);
-            if (proc.aoe && window.enemies) {
-                window.enemies.forEach(e => {
-                    if (e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < (proc.aoeRadius || 100)) e.hp = Math.max(0, e.hp - Math.round(ripDmg * 0.6));
-                });
-            }
-            target.hp = Math.max(0, target.hp - ripDmg);
-            attacker.hp = Math.min(attacker.maxHp, attacker.hp + ripDmg * 0.5);
-            if (proc.freeze && target._statuses) target._statuses.push({ type: 'frozen', duration: (proc.freezeDuration || 3) + (synFX.includes('deep_freeze') ? 3 : 0), value: 0 });
-            if (fx) fx.emitBurst(target.x, target.y, '#44eeff', 30, 3);
-        } else if (proc.effect === 'blade_dance') {
-            bus.emit('combat:log', { text: '🌀 Blade Dance!', cls: 'log-crit' });
-            const hits = (proc.hits || 3) + (synFX.includes('extra_hit') ? 1 : 0);
-            const hitDmg = Math.round((proc.damage || 60) * finalProcMult);
-            for (let i = 0; i < hits; i++) {
-                setTimeout(() => {
-                    if (target.hp > 0) {
-                        target.hp = Math.max(0, target.hp - hitDmg);
-                        if (fx) fx.emitSlash?.(target.x, target.y, Math.random() * Math.PI * 2, '#00ff88', 30);
-                        if (proc.poisonOnHit && target._statuses) target._statuses.push({ type: 'poison', duration: 6, value: Math.round(50 * finalProcMult) });
-                    }
-                }, i * 80);
-            }
-        } else if (proc.effect === 'stellar_arrow') {
-            bus.emit('combat:log', { text: "⭐ Stellar Arrow!", cls: 'log-crit' });
-            if (fx) fx.emitBurst(target.x, target.y, '#ffffaa', 20, 3);
-            if (window.enemies) {
-                const dx = target.x - attacker.x, dy = target.y - attacker.y;
-                const len = Math.hypot(dx, dy) || 1;
-                const nx = dx / len, ny = dy / len;
-                window.enemies.forEach(e => {
-                    if (e.hp > 0) {
-                        const ex = e.x - attacker.x, ey = e.y - attacker.y;
-                        const dot = ex * nx + ey * ny;
-                        if (dot > 0 && Math.abs(ex * ny - ey * nx) < 40) e.hp = Math.max(0, e.hp - (proc.damage || 120) * finalProcMult);
-                    }
-                });
-            }
-        } else if (proc.effect === 'consecration') {
-            bus.emit('combat:log', { text: '✝️ Consecration!', cls: 'log-crit' });
-            const cDmg = Math.round((proc.damage || 100) * finalProcMult);
-            const cRad = (proc.radius || 90) * (synFX.includes('aoe_expand') ? 1.5 : 1);
-            if (window.enemies) {
-                window.enemies.forEach(e => {
-                    if (e.hp > 0 && Math.hypot(e.x - attacker.x, e.y - attacker.y) < cRad) {
-                        e.hp = Math.max(0, e.hp - cDmg);
-                        if (synFX.includes('holy_fire') && e._statuses) e._statuses.push({ type: 'burn', duration: 6, value: Math.round(cDmg * 0.4) });
-                    }
-                });
-            }
-            attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.round((proc.healPlayer || 50) * finalProcMult));
-            if (fx) fx.emitHolyBurst?.(attacker.x, attacker.y);
-        } else if (proc.effect === 'army_of_the_dead') {
-            bus.emit('combat:log', { text: '💀 Army of the Dead!', cls: 'log-crit' });
-            bus.emit('proc:army_of_dead', { x: attacker.x, y: attacker.y, count: proc.count || 3, duration: proc.duration || 12 });
-            if (fx) fx.emitBurst(attacker.x, attacker.y, '#334466', 50, 5);
-        }
-
-        if (proc.extraEffect === 'lightning_overload' && Math.random() < 0.3) {
-            if (fx) fx.emitLightning?.(target.x, target.y, target.x, target.y - 100, 2);
-            target.hp = Math.max(0, target.hp - Math.round(dealt * 0.5));
-        }
-        if (proc.extraEffect === 'dragon_breath') {
-            if (fx) fx.emitBurst(target.x, target.y, '#ff8800', 20, 4);
-            if (target._statuses) target._statuses.push({ type: 'burn', duration: 3, value: Math.round(100 * finalProcMult) });
-        }
-        if (proc.extraEffect === 'blizzard_veil') {
-            attacker._statuses?.push({ type: 'shielded', duration: 4, value: 200 });
-            if (attacker._buffs) {
-                const ext = attacker._buffs.find(b => b.id === 'blizzard_veil_proc');
-                if (ext) ext.duration = 4;
-                else attacker._buffs.push({ id: 'blizzard_veil_proc', type: 'blizzard_veil_proc', duration: 4, name: 'Blizzard Veil' });
-            }
-        }
-        if (proc.extraEffect === 'void_wound') {
-            applyDot(target, Math.round(150 * finalProcMult), 'shadow', 5, 'void_reaper');
-        }
-        if (proc.extraEffect === 'bone_shatter') {
-            target.armorDebuff = (target.armorDebuff || 0) + 50;
-        }
-    }
-
-
-    if (target.isPlayer && target.divineShield > 0) {
-        const absorbed = Math.min(finalDealt, target.divineShield);
-        target.divineShield -= absorbed;
-        if (target.divineShield <= 0) {
-            target.divineShield = 0;
-            bus.emit('combat:log', { text: 'Divine Shield shattered!', cls: 'log-dmg' });
-        }
-    }
+    // ── Legendary Equipment Procs ──────────────────────────────────────────
+    fireEquipmentProcs(attacker, target, dealt);
 
     return dealt;
 }
 
-/**
- * Handles logic that triggers when an entity is killed.
- */
+// ─────────────────────────────────────────────────────────────
+//  KILL LOGIC
+// ─────────────────────────────────────────────────────────────
+
 function onKillLogic(killer, victim) {
     if (!killer || !victim) return;
 
     // Rogue Death Mark CD Reset
-    if (victim._statuses?.some(s => s.type === 'death_mark')) {
-        if (killer.isPlayer && killer.cooldowns) {
-            for (let i = 0; i < killer.cooldowns.length; i++) {
-                killer.cooldowns[i] = 0;
-            }
-            bus.emit('combat:log', { text: "DEATH MARK RESET!", cls: 'log-crit' });
-        }
+    if (victim._statuses?.some(s => s.type === 'death_mark') && killer.isPlayer && killer.cooldowns) {
+        killer.cooldowns.fill(0);
+        bus.emit('combat:log', { text: 'DEATH MARK RESET!', cls: 'log-crit' });
     }
-
-    // Universal Mana/Life after kill (handled in main.js listener, but could be here)
 }
+
+// ─────────────────────────────────────────────────────────────
+//  STATUS EFFECTS
+// ─────────────────────────────────────────────────────────────
 
 /**
  * Apply a status effect to a target.
  * Types: 'chill' (slows), 'frozen' (stops), 'burn' (DoT), 'stun' (stops), 'weaken' (less dmg).
  */
 export function applyStatus(target, type, duration, value = 0, source = null) {
-    // --- Cannot be Frozen check ---
-    if (target.isPlayer && target.cannotBeFrozen && (type === 'chill' || type === 'frozen')) {
-        return;
-    }
+    if (target.isPlayer && target.cannotBeFrozen && (type === 'chill' || type === 'frozen')) return;
 
     if (!target._statuses) target._statuses = [];
 
-    // Refresh existing status of same type
     const existing = target._statuses.find(s => s.type === type);
     if (existing) {
         existing.duration = Math.max(existing.duration, duration);
@@ -569,7 +622,7 @@ export function applyStatus(target, type, duration, value = 0, source = null) {
 /** Update all statuses and DoTs on all entities each frame. */
 export function updateStatuses(entities, dt) {
     for (const ent of entities) {
-        // Friction / Velocity decay for knockback
+        // Velocity decay (knockback friction)
         if (ent.vx || ent.vy) {
             ent.x += (ent.vx || 0) * dt;
             ent.y += (ent.vy || 0) * dt;
@@ -581,7 +634,7 @@ export function updateStatuses(entities, dt) {
 
         if (!ent._statuses?.length && !ent._dots?.length) continue;
 
-        // Update Dots
+        // Tick DoTs
         if (ent._dots) {
             ent._dots = ent._dots.filter(dot => {
                 dot.remaining -= dt;
@@ -597,7 +650,7 @@ export function updateStatuses(entities, dt) {
             });
         }
 
-        // Update Statuses
+        // Tick statuses
         if (ent._statuses) {
             ent._statuses = ent._statuses.filter(s => {
                 s.duration -= dt;
@@ -607,39 +660,35 @@ export function updateStatuses(entities, dt) {
     }
 }
 
-/** Helper to check if entity is CC'd (Crowed Controlled: Stunned or Frozen) */
+// ─────────────────────────────────────────────────────────────
+//  ENTITY STATE HELPERS
+// ─────────────────────────────────────────────────────────────
+
 export function isCCd(ent) {
-    if (!ent._statuses) return false;
-    return ent._statuses.some(s => s.type === 'stun' || s.type === 'frozen');
+    return ent._statuses?.some(s => s.type === 'stun' || s.type === 'frozen') ?? false;
 }
 
-/** Helper to get current slow factor (0 to 1, where 0.3 means 30% slow) */
 export function getSlowFactor(ent) {
-    if (!ent._statuses) return 0;
-    const chills = ent._statuses.filter(s => s.type === 'chill');
-    if (chills.length === 0) return 0;
+    const chills = ent._statuses?.filter(s => s.type === 'chill');
+    if (!chills?.length) return 0;
     return Math.max(...chills.map(s => s.value));
 }
 
-/** Helper to check if entity is blinded */
 export function isBlinded(ent) {
-    if (!ent._statuses) return false;
-    return ent._statuses.some(s => s.type === 'blind');
+    return ent._statuses?.some(s => s.type === 'blind') ?? false;
 }
 
-/** Helper to check if entity is feared */
 export function isFeared(ent) {
-    if (!ent._statuses) return false;
-    return ent._statuses.some(s => s.type === 'fear');
+    return ent._statuses?.some(s => s.type === 'fear') ?? false;
 }
 
-/** Helper to check if entity is rooted */
 export function isRooted(ent) {
-    if (!ent._statuses) return false;
-    return ent._statuses.some(s => s.type === 'root');
+    return ent._statuses?.some(s => s.type === 'root') ?? false;
 }
 
-// ---- Skill execution helpers ----
+// ─────────────────────────────────────────────────────────────
+//  SKILL HELPERS
+// ─────────────────────────────────────────────────────────────
 
 export function skillDamage(skill, effectiveLevel, synergyBonus, stats) {
     if (!skill) return 0;
@@ -658,6 +707,10 @@ export function skillType(skill) {
     };
     return groupToType[skill?.group] || DMG_TYPE.PHYSICAL;
 }
+
+// ─────────────────────────────────────────────────────────────
+//  INTERNAL UTILITIES
+// ─────────────────────────────────────────────────────────────
 
 function cap(str) {
     if (!str || typeof str !== 'string') return '';
