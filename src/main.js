@@ -1157,6 +1157,28 @@ function gameLoop(timestamp) {
                 op.animState || 'idle', op.facingDir || 'south',
                 lastTime
             );
+
+            // --- MMO MINIONS & MERCENARY RENDER ---
+            if (op.minions && Array.isArray(op.minions)) {
+                op.minions.forEach(m => {
+                    renderer.drawAnim(m.icon || 'enemy_skeleton', m.x, m.y - 4, 14, 'idle', 'south', lastTime);
+                    // Tiny health bar for remote minions
+                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                    ctx.fillRect(m.x - 5, m.y - 12, 10, 1.5);
+                    ctx.fillStyle = '#4caf50';
+                    ctx.fillRect(m.x - 5, m.y - 12, (m.hp / m.maxHp) * 10, 1.5);
+                });
+            }
+            if (op.mercenary && op.mercenary.hp > 0) {
+                const merc = op.mercenary;
+                renderer.drawAnim(merc.icon || 'class_rogue', merc.x, merc.y - 4, 16, 'idle', 'south', lastTime);
+                // Tiny health bar for remote mercenary
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(merc.x - 6, merc.y - 14, 12, 2);
+                ctx.fillStyle = '#4caf50';
+                ctx.fillRect(merc.x - 6, merc.y - 14, (merc.hp / merc.maxHp) * 12, 2);
+            }
+
             // Nameplate
             ctx.font = 'bold 7px Cinzel, serif';
             ctx.textAlign = 'center';
