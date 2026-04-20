@@ -385,8 +385,16 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
                         }
                     } else if (proc.effect === 'divine_shield') {
                         bus.emit('combat:log', { text: "💛 Divine Shield proc!", cls: 'log-crit' });
+                        const dsDur = proc.duration || 8;
                         attacker.divineShield = (attacker.divineShield || 0) + Math.round((proc.shieldHp || 800) * finalProcMult);
-                        attacker._divineShieldTimer = proc.duration || 8;
+                        attacker._divineShieldTimer = dsDur;
+                        
+                        if (attacker._buffs) {
+                            const ext = attacker._buffs.find(b => b.id === 'divine_shield_proc');
+                            if (ext) ext.duration = dsDur;
+                            else attacker._buffs.push({ id: 'divine_shield_proc', type: 'divine_shield_proc', duration: dsDur, name: 'Divine Shield' });
+                        }
+
                         if (synFX.includes('reflect_dmg')) attacker._divineShieldReflect = 0.3;
                         if (synFX.includes('heal_party')) bus.emit('proc:heal_party', { x: attacker.x, y: attacker.y, amount: 200, radius: 150 });
                         if (fx) fx.emitHolyBurst?.(attacker.x, attacker.y);
@@ -474,6 +482,11 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
                     }
                     if (proc.extraEffect === 'blizzard_veil') {
                         attacker._statuses?.push({ type: 'shielded', duration: 4, value: 200 });
+                        if (attacker._buffs) {
+                            const ext = attacker._buffs.find(b => b.id === 'blizzard_veil_proc');
+                            if (ext) ext.duration = 4;
+                            else attacker._buffs.push({ id: 'blizzard_veil_proc', type: 'blizzard_veil_proc', duration: 4, name: 'Blizzard Veil' });
+                        }
                     }
                     if (proc.extraEffect === 'void_wound') {
                         applyDot(target, Math.round(150 * finalProcMult), 'shadow', 5, 'void_reaper');

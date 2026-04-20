@@ -260,8 +260,14 @@ export class Player {
         this.goldFind = (s.goldFind || 0) + diffMF;
 
         const wep = (this.equipment && this.equipment.mainhand);
-        this.wepMin = wep ? (wep.minDmg || 1) + (s.flatMinDmg || 0) : 1 + (s.flatMinDmg || 0);
-        this.wepMax = wep ? (wep.maxDmg || 3) + (s.flatMaxDmg || 0) : 3 + (s.flatMaxDmg || 0);
+        let baseMin = wep ? (wep.minDmg || 1) + (s.flatMinDmg || 0) : 1 + (s.flatMinDmg || 0);
+        let baseMax = wep ? (wep.maxDmg || 3) + (s.flatMaxDmg || 0) : 3 + (s.flatMaxDmg || 0);
+        
+        const statBonus = 1 + (this.str / 100);
+        const dmgBonus = 1 + (this.pctDmg / 100);
+        
+        this.wepMin = Math.round(baseMin * statBonus * dmgBonus);
+        this.wepMax = Math.round(baseMax * statBonus * dmgBonus);
         
         let baseAtkSpd = (wep?.atkSpd || 1.0) * (1 + (this.pctIAS || 0) / 100);
         this.atkSpd = baseAtkSpd * (this._auraSlowFactor < 1 ? (1 - (1 - this._auraSlowFactor) * 0.5) : 1);
@@ -878,7 +884,7 @@ export class Player {
         
         const slvl = this.effectiveSkillLevel(skillId);
         if (slvl <= 0) {
-            bus.emit('combat:log', { text: `You haven't learned ${skill.name} yet!`, cls: 'log-dmg' });
+            bus.emit('combat:log', { text: `You haven't learned ${skill.name} yet! (Lv ${slvl})`, cls: 'log-dmg' });
             return;
         }
         

@@ -2600,6 +2600,8 @@ function updateHud() {
             else if (bid.includes('mana')) { icon = '💧'; color = '#3366ff'; }
             else if (bid.includes('resist')) { icon = '🔮'; color = '#ff00ff'; }
             else if (bid.includes('exp')) { icon = '✨'; color = '#ffffcc'; }
+            else if (bid === 'divine_shield_proc') { icon = '💛'; color = '#ffd700'; }
+            else if (bid === 'blizzard_veil_proc') { icon = '❄️'; color = '#80d0ff'; }
 
             const label = bid.replace('shrine_', '').toUpperCase();
             createStatusIcon(bid, icon, color, `${label}: ${Math.ceil(b.duration || 0)}s`, { ...b, type: 'buff', name: label });
@@ -4918,6 +4920,7 @@ function showBuffTooltip(id, titleText, data, x, y) {
         else if (bid === 'berserk') stats = `<div style="color:#fff;">+70% Atk Speed, -30% Armor</div>`;
         else if (bid === 'bloodlust') stats = `<div style="color:#fff;">+40% Atk Speed & Cast Speed</div>`;
         else if (bid === 'divine_shield_proc') stats = `<div style="color:#fff;">Absorbing damage (Shield active)</div>`;
+        else if (bid === 'blizzard_veil_proc') stats = `<div style="color:#fff;">Shielded by cold magic</div>`;
 
         if (data?.duration) {
             html += `<div class="tooltip-stats" style="color:#fff; margin-top:8px;">Remaining: <span style="color:#0cf;">${Math.ceil(data.duration)}s</span></div>`;
