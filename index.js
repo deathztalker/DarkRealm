@@ -64,6 +64,26 @@ io.on('connection', (socket) => {
         }
     });
 
+    // --- MMO ENHANCED SYNC: Skills & Minions ---
+    socket.on('skill_use', (data) => {
+        // Broadcasst skill action to other players
+        socket.broadcast.emit('player_skill', { id: socket.id, ...data });
+    });
+
+    socket.on('minion_sync', (minions) => {
+        if (players[socket.id]) {
+            players[socket.id].minions = minions;
+            socket.broadcast.emit('player_minions_sync', { id: socket.id, minions });
+        }
+    });
+
+    socket.on('merc_sync', (mercData) => {
+        if (players[socket.id]) {
+            players[socket.id].mercenary = mercData;
+            socket.broadcast.emit('player_merc_sync', { id: socket.id, mercenary: mercData });
+        }
+    });
+
     socket.on('enemy_damaged', (data) => socket.broadcast.emit('enemy_damaged', data));
     socket.on('enemy_death', (id) => socket.broadcast.emit('enemy_death', id));
     socket.on('enemy_sync', (data) => socket.broadcast.emit('enemy_sync', data));

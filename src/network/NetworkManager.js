@@ -87,20 +87,35 @@ export class NetworkManager {
         this.socket.on('player_moved', (data) => {
             const player = this.otherPlayers.get(data.id);
             if (player) {
-                player.x = data.x;
-                player.y = data.y;
-                player.animState = data.animState;
-                player.facingDir = data.facingDir;
+                Object.assign(player, data);
                 
                 // If in party, update HUD stats
                 if (this.currentParty && this.currentParty.members.some(m => m.name === player.name)) {
                     const member = this.currentParty.members.find(m => m.name === player.name);
                     member.x = data.x;
                     member.y = data.y;
-                    // In a real system, we'd also sync HP/MP via Socket.io for low latency
                     window.updatePartyHUD?.(this.currentParty.members);
                 }
             }
+        });
+
+        this.socket.on('player_skill', (data) => {
+            const player = this.otherPlayers.get(data.id);
+            if (player) {
+                // Trigger visual effect for the skill on other player's position
+                // (This requires a hook into the FX system)
+                window.fx?.triggerSkillEffect?.(data.skillId, data.x, data.y, data.targetX, data.targetY);
+            }
+        });
+
+        this.socket.on('player_minions_sync', (data) => {
+            const player = this.otherPlayers.get(data.id);
+            if (player) player.minions = data.minions;
+        });
+
+        this.socket.on('player_merc_sync', (data) => {
+            const player = this.otherPlayers.get(data.id);
+            if (player) player.mercenary = data.mercenary;
         });
 
         this.socket.on('player_left', (id) => {
@@ -207,14 +222,16 @@ export class NetworkManager {
     async handleIncomingDbMessage(msg, isHistory = false) {
         const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
+        // Determinar el nombre del remitente real
         const isMe = msg.sender_id === DB.session?.user.id;
-        const senderName = isMe ? this.game.player.charName : 'Other Player'; 
+        const senderName = isMe ? (this.game.player?.charName || 'Me') : (msg.sender_name || 'Other Player');
 
         if (msg.is_whisper) {
             if (isMe || msg.receiver_id === DB.session?.user.id) {
+                const targetName = msg.receiver_name || 'Recipient';
                 this.game.onWhisper?.({
-                    sender: isMe ? this.game.player.charName : 'Player',
-                    target: isMe ? 'Recipient' : this.game.player.charName,
+                    sender: senderName,
+                    target: targetName,
                     text: msg.content,
                     time: time
                 });

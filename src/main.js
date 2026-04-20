@@ -762,6 +762,28 @@ function gameLoop(timestamp) {
         // --- MMO POSITION SYNC ---
         if (network && network.isConnected) {
             network.sendMovement(player.x, player.y, player.animState, player.facingDir);
+            
+            // Host-only: Sync all enemies
+            if (network.isHost && enemies.length > 0) {
+                const enemyData = enemies.map(e => ({
+                    id: e.syncId,
+                    x: e.x,
+                    y: e.y,
+                    hp: e.hp,
+                    anim: e.animState,
+                    dir: e.facingDir
+                }));
+                network.sendEnemySync(enemyData);
+            }
+
+            // Sync minions & mercenary stats
+            if (player.minions.length > 0) {
+                const minionData = player.minions.map(m => ({ x: m.x, y: m.y, icon: m.icon, hp: m.hp, maxHp: m.maxHp }));
+                network.socket.emit('minion_sync', minionData);
+            }
+            if (mercenary && mercenary.hp > 0) {
+                network.socket.emit('merc_sync', { x: mercenary.x, y: mercenary.y, icon: mercenary.icon, hp: mercenary.hp, maxHp: mercenary.maxHp });
+            }
         }
 
         fx.update(dt * 1000); // Particle update expects ms
