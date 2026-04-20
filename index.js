@@ -104,6 +104,10 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('loot_pickup', lootId);
     });
 
+    socket.on('zone_theme_sync', (theme) => {
+        socket.broadcast.emit('zone_theme_sync', theme);
+    });
+
     socket.on('chat_message', (text) => {
         const p = players[socket.id];
         if (p && text) {

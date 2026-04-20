@@ -135,6 +135,8 @@ export class NetworkManager {
         this.socket.on('enemy_death', (enemyId) => {
             const enemy = this.game.enemies?.find(e => e.syncId === enemyId);
             if (enemy) enemy.hp = 0;
+        });
+
         this.socket.on('enemy_sync', (data) => {
             if (!this.isHost) {
                 data.forEach(ed => {
@@ -189,6 +191,14 @@ export class NetworkManager {
             // Remove item from global dropped items list
             if (this.game.onRemoteLootPickup) {
                 this.game.onRemoteLootPickup(lootId);
+            }
+        });
+
+        this.socket.on('zone_theme_sync', (theme) => {
+            if (!this.isHost) {
+                console.log(`[MMO] Syncing zone theme to: ${theme}`);
+                window.currentTheme = theme;
+                // Note: Changing theme visually might require a redraw/re-emit of particles
             }
         });
 
