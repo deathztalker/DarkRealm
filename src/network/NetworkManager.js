@@ -140,11 +140,24 @@ export class NetworkManager {
 
         // --- Social Invites ---
         this.socket.on('party_invite', (data) => {
+            console.log('[Network] Party invite received:', data);
             window.addSocialRequest?.(data.fromId, data.from, 'party');
-            this.game.onChatMessage?.({ sender: 'System', text: `${data.from} has invited you to a party!`, isSystem: true });
+            this.game.onChatMessage?.({ 
+                sender: 'System', 
+                text: `${data.from} has invited you to a party!`, 
+                time: new Date().toLocaleTimeString(),
+                isSystem: true 
+            });
         });
 
-        this.socket.on('player_moved', (data) => {
+        this.socket.on('party_joined', (party) => {
+            console.log('[Network] Party joined:', party);
+            this.currentParty = party;
+            window.addCombatLog?.(`Joined party led by ${party.members.find(m => m.id === party.leaderId)?.name || 'Leader'}`, 'log-info');
+            window.updatePartyHUD?.(party.members);
+        });
+
+        this.socket.on('trade_invite', (data) => {
             const player = this.otherPlayers.get(data.id);
             if (player) {
                 Object.assign(player, data);

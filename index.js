@@ -146,6 +146,33 @@ io.on('connection', (socket) => {
         io.to(socket.id).emit('trade_start', { tradeId, partner: players[fromId].name });
     });
 
+    // --- SISTEMA DE GRUPO (PARTY) ---
+    socket.on('party_invite', (targetName) => {
+        const targetId = Object.keys(players).find(id => players[id].name === targetName);
+        if (targetId && targetId !== socket.id) {
+            io.to(targetId).emit('party_invite', { 
+                from: players[socket.id].name, 
+                fromId: socket.id 
+            });
+        }
+    });
+
+    socket.on('party_accept', (fromId) => {
+        if (players[fromId] && players[socket.id]) {
+            // Broadcast to both players that they are now in a party
+            // (In a more complex app we'd manage party rooms)
+            const partyData = {
+                leaderId: fromId,
+                members: [
+                    { id: fromId, name: players[fromId].name },
+                    { id: socket.id, name: players[socket.id].name }
+                ]
+            };
+            io.to(fromId).emit('party_joined', partyData);
+            io.to(socket.id).emit('party_joined', partyData);
+        }
+    });
+
     socket.on('disconnect', () => {
         console.log(`[Socket] - Jugador desconectado: ${socket.id}`);
         
