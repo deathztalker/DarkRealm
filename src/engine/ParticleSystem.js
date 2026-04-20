@@ -115,6 +115,35 @@ export class ParticleSystem {
         this.shakeIntensity = 0;
     }
 
+    triggerSkillEffect(skillId, x, y, tx, ty) {
+        if (!skillId) return;
+        
+        // Match skill colors and effects (simple version)
+        if (['fireball', 'meteor', 'fire_nova'].some(k => skillId.includes(k))) {
+            this.emitBurst(x, y, '#ff4400', 15, 2.5);
+            if (tx) this.emitBurst(tx, ty, '#ff6600', 30, 3.5);
+        } else if (['blizzard', 'frozen', 'cold'].some(k => skillId.includes(k))) {
+            this.emitBurst(x, y, '#44eeff', 15, 2.5);
+            if (tx) this.emitBurst(tx, ty, '#88ffff', 25, 3.0);
+        } else if (['lightning', 'thunder', 'holy_shock'].some(k => skillId.includes(k))) {
+            this.emitBurst(x, y, '#ffff00', 12, 3.0);
+            if (tx) this.emitBurst(tx, ty, '#ffffaa', 20, 4.0);
+        } else if (['poison', 'venom', 'pandemic'].some(k => skillId.includes(k))) {
+            this.emitPoisonCloud(x, y, 20);
+            if (tx) this.emitPoisonCloud(tx, ty, 35);
+        } else if (['shadow', 'void', 'dark'].some(k => skillId.includes(k))) {
+            this.emitShadow(x, y);
+            if (tx) this.emitShadow(tx, ty);
+        } else if (['holy', 'divine', 'consecration'].some(k => skillId.includes(k))) {
+            this.emitHolyBurst(x, y);
+            if (tx) this.emitHolyBurst(tx, ty);
+        } else if (['whirlwind', 'bladestorm', 'zeal'].some(k => skillId.includes(k))) {
+            for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) this.emitSlash(x, y, a, '#ccc', 25);
+        } else {
+            this.emitBurst(x, y, '#ffffff', 10, 2.0);
+        }
+    }
+
     emitBurst(x, y, color, count = 10, speed = 2) {
         for (let i = 0; i < count; i++) {
             const angle = Math.random() * Math.PI * 2;

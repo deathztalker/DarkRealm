@@ -1480,7 +1480,15 @@ export class LootSystem {
     }
 
     _pickUnique(baseId, ilvl) {
-        const matches = UNIQUES.filter(u => u.base === baseId && u.dropLvl <= ilvl);
+        let matches = UNIQUES.filter(u => u.base === baseId && u.dropLvl <= ilvl);
+        
+        // --- TEST MODE VARIETY ---
+        // If we forced 100% unique but no unique for this base exists at this level,
+        // pick ANY unique close to this level so we don't just drop nothing/fallback to rare.
+        if (matches.length === 0) {
+            matches = UNIQUES.filter(u => u.dropLvl <= ilvl + 5);
+        }
+
         return matches.length > 0 ? matches[Math.floor(Math.random() * matches.length)] : null;
     }
 

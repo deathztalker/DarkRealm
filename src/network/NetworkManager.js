@@ -122,6 +122,20 @@ export class NetworkManager {
         this.socket.on('player_joined', (player) => {
             player.charName = player.name || 'Other Player';
             this.otherPlayers.set(player.id, player);
+            this.game.onChatMessage?.({ sender: 'System', text: `${player.charName} has entered the realm.`, isSystem: true });
+        });
+
+        // --- MMO: Portals & Synced Objects ---
+        this.socket.on('portal_spawn', (data) => {
+            // Check if portal already exists locally
+            const existing = this.game.gameObjects?.find(o => o.id === data.id);
+            if (!existing) {
+                const tp = new this.game.GameObjectClass('portal', data.x, data.y, 'obj_portal', data.id);
+                tp.targetZone = data.targetZone;
+                tp.name = data.name || 'Town Portal';
+                this.game.gameObjects?.push(tp);
+                if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 40, 3);
+            }
         });
 
         // --- Social Invites ---
@@ -250,12 +264,22 @@ export class NetworkManager {
         });
 
         this.socket.on('chat_message', (msg) => {
-            this.game.onChatMessage?.(msg);
+            console.log('[Network] Socket chat:', msg);
+            this.game.onChatMessage?.({
+                sender: msg.sender || 'Stranger',
+                text: msg.text || msg.content || '',
+                time: msg.time || new Date().toLocaleTimeString()
+            });
         });
 
         this.socket.on('whisper', (msg) => {
-            msg.isWhisper = true;
-            this.game.onChatMessage?.(msg);
+            console.log('[Network] Socket whisper:', msg);
+            this.game.onChatMessage?.({
+                sender: msg.sender || 'Stranger',
+                text: msg.text || msg.content || '',
+                time: msg.time || new Date().toLocaleTimeString(),
+                isWhisper: true
+            });
         });
 
         this.socket.on('system_message', (text) => {
@@ -361,6 +385,7 @@ export class NetworkManager {
     }
 
     async sendChat(text) {
+        if (this.isConnected) this.socket.emit('chat_message', text);
         await DB.sendMessage(text);
     }
 

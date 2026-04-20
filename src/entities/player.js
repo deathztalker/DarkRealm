@@ -897,8 +897,17 @@ export class Player {
         const isTeleport = skill.group === 'teleport';
 
         if (isAura) {
-            if (this.activeAura === skillId) this.activeAura = null;
-            else { this.activeAura = skillId; this._auraSlvl = slvl; if (fx) fx.emitHolyBurst(this.x, this.y); }
+            if (this.activeAura === skillId) {
+                this.activeAura = null;
+                bus.emit('combat:log', { text: `${skill.name} Deactivated`, cls: 'log-info' });
+            } else {
+                this.activeAura = skillId;
+                this._auraSlvl = slvl;
+                if (fx) fx.emitHolyBurst(this.x, this.y);
+                bus.emit('combat:log', { text: `${skill.name} Activated`, cls: 'log-info' });
+            }
+            this._statsDirty = true;
+            this._recalcStats();
             this._setAnimState('cast'); this.attackCd = 0.3; bus.emit('skill:used', { skillId, slotIdx }); return;
         } else if (skillId === 'holy_shock') {
             const hRange = 250;
@@ -921,7 +930,20 @@ export class Player {
             if (fx) fx.emitBurst(this.x, this.y, '#b0b0ff', 12, 2);
             this._setAnimState('cast'); this.attackCd = 0.3; bus.emit('skill:used', { skillId, slotIdx }); return;
         } else if (isBuff) {
-            this._buffs.push({ id: skillId, duration: 15 + slvl, base: totalBase });
+            // --- NEW: Toggle Logic ---
+            if (skill.type === 'toggle') {
+                const existingIdx = this._buffs.findIndex(b => b.id === skillId);
+                if (existingIdx !== -1) {
+                    this._buffs.splice(existingIdx, 1);
+                    bus.emit('combat:log', { text: `${skill.name} Deactivated`, cls: 'log-info' });
+                } else {
+                    this._buffs.push({ id: skillId, duration: 999999, base: totalBase }); // Indefinite
+                    bus.emit('combat:log', { text: `${skill.name} Activated`, cls: 'log-info' });
+                }
+            } else {
+                this._buffs.push({ id: skillId, duration: 15 + slvl, base: totalBase });
+            }
+            
             this._recalcStats();
             if (fx) {
                 if (skillId.includes('holy') || skillId.includes('divine')) fx.emitHolyBurst(this.x, this.y);

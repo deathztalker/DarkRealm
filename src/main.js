@@ -99,6 +99,14 @@ window._corpses = []; // For skills like Corpse Explosion
 
 // --- Phase 34: Social Requests System ---
 let pendingRequests = []; // { fromId, fromName, type, expires }
+let speechBubbles = new Map(); // name -> { text, expires }
+
+function showSpeechBubble(name, text) {
+    speechBubbles.set(name, {
+        text: text.length > 50 ? text.substring(0, 47) + '...' : text,
+        expires: Date.now() + 5000 // 5 seconds
+    });
+}
 
 function addSocialRequest(fromId, fromName, type) {
     // Only one request of each type from the same person
@@ -1238,6 +1246,41 @@ function gameLoop(timestamp) {
                     ctx.restore();
                 }
             }
+
+            // --- DRAW SPEECH BUBBLE ABOVE HEAD ---
+            const bubble = speechBubbles.get(e.charName || e.name);
+            if (bubble && Date.now() < bubble.expires) {
+                const sx = (e.x - renderer.camera.x) * renderer.camera.zoom + renderer.width / 2;
+                const sy = (e.y - 45 - renderer.camera.y) * renderer.camera.zoom + renderer.height / 2;
+                
+                ctx.save();
+                ctx.font = 'bold 10px Arial';
+                const metrics = ctx.measureText(bubble.text);
+                const bw = metrics.width + 12;
+                const bh = 16;
+                
+                // Bubble bg
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.roundRect(sx - bw/2, sy - bh, bw, bh, 4);
+                ctx.fill();
+                ctx.stroke();
+                
+                // Tail
+                ctx.beginPath();
+                ctx.moveTo(sx - 4, sy);
+                ctx.lineTo(sx + 4, sy);
+                ctx.lineTo(sx, sy + 4);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#000';
+                ctx.textAlign = 'center';
+                ctx.fillText(bubble.text, sx, sy - 5);
+                ctx.restore();
+            }
         } else {
             e.render(renderer, lastTime);
         }
@@ -2145,6 +2188,15 @@ function finishZoneLoad() {
     player.y = dungeon.playerStart.y;
     player.path = [];
     player.attackTarget = null;
+
+    // --- Phase 36: Return Portal Auto-Spawn ---
+    if (zoneLevel === 0 && portalReturnZone !== null) {
+        const tp = new GameObject('portal_return', player.x + 40, player.y, 'obj_portal');
+        tp.targetZone = portalReturnZone;
+        tp.name = `Portal to Zone ${portalReturnZone}`;
+        gameObjects.push(tp);
+        if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 40, 3);
+    }
 
     // Spawn appropriate entities
     if (zoneLevel === 0) {
@@ -3810,11 +3862,25 @@ function tryCastTownPortal() {
 
     // Portal is now a built-in ability for all heroes
     portalReturnZone = zoneLevel;
-    const tp = new GameObject('portal', player.x, player.y - 40, 'obj_portal');
+    const portalId = `tp_${player.charName}_${Date.now()}`;
+    const tp = new GameObject('portal', player.x, player.y - 10, 'obj_portal', portalId);
     tp.targetZone = 0; // Go to town
+    tp.name = `${player.charName}'s Portal`;
     gameObjects.push(tp);
+
     if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 50, 4);
     addCombatLog('Town Portal Opened!', 'log-level');
+
+    // --- MMO SYNC ---
+    if (network.isConnected) {
+        network.socket.emit('portal_spawn', {
+            id: tp.id,
+            x: tp.x,
+            y: tp.y,
+            targetZone: tp.targetZone,
+            name: tp.name
+        });
+    }
 }
 
 // Town Portal
@@ -7534,37 +7600,49 @@ function initDraggableChat() {
 }
 
 function addChatMessage(sender, text, type = 'general') {
+    console.log(`[Chat] Incoming: from=${sender}, text=${text}, type=${type}`);
     const container = document.getElementById('chat-messages');
-    if (!container) return;
-    
+    if (!container) {
+        console.error('Chat container not found!');
+        return;
+    }
+
+    if (!text) return;
+
     const div = document.createElement('div');
     div.className = `chat-msg chat-msg-${type}`;
     div.dataset.channel = type; // Store channel for filtering
-    
+
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     let html = `<span class="chat-msg-time">[${time}]</span>`;
-    
-    if (type === 'whisper') html += `<span class="chat-msg-sender">[From ${sender}]:</span>`;
+
+    const displaySender = sender || 'Stranger';
+
+    if (type === 'whisper') html += `<span class="chat-msg-sender">[From ${displaySender}]:</span>`;
     else if (type === 'system') html += `<span class="chat-msg-sender">[System]:</span>`;
-    else if (sender) html += `<span class="chat-msg-sender">${sender}:</span>`;
-    
+    else html += `<span class="chat-msg-sender">${displaySender}:</span>`;
+
     html += `<span class="chat-msg-text">${text}</span>`;
     div.innerHTML = html;
-    
+
     // Filter logic: only show if channel matches current tab or if 'all'
     if (currentChatChannel !== 'all' && currentChatChannel !== type) {
         div.style.display = 'none';
     }
-    
+
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
-    
+
+    // Trigger Speech Bubble over character head
+    if (type === 'general' || type === 'whisper') {
+        showSpeechBubble(sender, text);
+    }
+
     // Auto-limit messages to prevent lag (WoW style)
     while (container.children.length > 100) {
         container.removeChild(container.firstChild);
     }
 }
-
 function setChatChannel(channel) {
     currentChatChannel = channel;
     const container = document.getElementById('chat-messages');
