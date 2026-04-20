@@ -101,9 +101,6 @@ export class Player {
             this._auraSlow = d.factor;
             this._auraSlowTimer = d.duration;
         });
-        for (let i = 0; i < 5; i++) {
-            bus.on(`skill:use:${i}`, d => this._useSkill(i, d));
-        }
 
         this._recalcStats();
         this.hp = this.maxHp;
