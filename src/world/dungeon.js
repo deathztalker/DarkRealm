@@ -30,6 +30,8 @@ export class Dungeon {
     }
 
     generate(zoneLevel = 1, theme = 'cathedral') {
+        if (zoneLevel >= 26) return this.generateRift(zoneLevel);
+
         if (zoneLevel === 0 || zoneLevel === 6 || zoneLevel === 11 || zoneLevel === 16 || zoneLevel === 21) {
              return this.generateTown(theme, zoneLevel);
         }

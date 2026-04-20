@@ -97,6 +97,36 @@ let dragSourceIdx = null;
 let minimapZoom = 1.0; // 1.0, 1.5, 2.0
 window._corpses = []; // For skills like Corpse Explosion
 
+// --- Phase 34: Social Requests System ---
+let pendingRequests = []; // { fromId, fromName, type, expires }
+
+function addSocialRequest(fromId, fromName, type) {
+    // Only one request of each type from the same person
+    pendingRequests = pendingRequests.filter(r => !(r.fromId === fromId && r.type === type));
+    pendingRequests.push({
+        fromId, fromName, type,
+        expires: Date.now() + 30000 // 30s expiry
+    });
+}
+
+function handleSocialInput(key) {
+    if (pendingRequests.length === 0) return false;
+    const req = pendingRequests[pendingRequests.length - 1]; // Get most recent
+    
+    if (key === 'y') {
+        addCombatLog(`Accepted ${req.type} from ${req.fromName}`, 'log-info');
+        if (req.type === 'trade') network.acceptTrade();
+        else if (req.type === 'duel') network.acceptDuel();
+        else if (req.type === 'party') network.acceptPartyInvite?.(req.fromId);
+    } else {
+        addCombatLog(`Declined ${req.type} from ${req.fromName}`, 'log-dmg');
+    }
+    
+    // Remove request
+    pendingRequests = pendingRequests.filter(r => r !== req);
+    return true;
+}
+
 function syncInteractionStates() {
     document.body.classList.toggle('identifying-mode', !!window.isIdentifying);
     document.body.classList.toggle('socketing-mode', socketingGemIndex !== -1 || isLarzukSocketing);
@@ -996,6 +1026,11 @@ function gameLoop(timestamp) {
     if (activePet) {
         activePet.update(dt, player, droppedGold, droppedItems);
     }
+    
+    // --- Social Requests Expiry & Cleanup ---
+    const nowMs = Date.now();
+    pendingRequests = pendingRequests.filter(r => r.expires > nowMs);
+
     // Secondary cleanup for items picked by pet
     for (let i = droppedGold.length - 1; i >= 0; i--) {
         if (droppedGold[i]._pickedByPet) {
@@ -1172,6 +1207,37 @@ function gameLoop(timestamp) {
 
             renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 18, e.animState, e.facingDir, lastTime, null, e.equipment, e.hitFlashTimer);
             e.renderMinions(renderer, lastTime);
+
+            // --- DRAW SOCIAL REQUEST UI ABOVE HEAD ---
+            if (e !== player) {
+                const req = pendingRequests.find(r => r.fromName === e.charName);
+                if (req) {
+                    const screen = renderer.camera.toWorld(e.x, e.y - 25); // Use camera transformation
+                    const sx = (e.x - renderer.camera.x) * renderer.camera.zoom + renderer.width / 2;
+                    const sy = (e.y - 25 - renderer.camera.y) * renderer.camera.zoom + renderer.height / 2;
+                    
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                    ctx.strokeStyle = '#ffd700';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.roundRect(sx - 45, sy - 30, 90, 28, 4);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 9px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${req.type.toUpperCase()}?`, sx, sy - 18);
+                    
+                    ctx.font = '8px Arial';
+                    ctx.fillStyle = '#4f4';
+                    ctx.fillText('[Y] Accept', sx - 22, sy - 8);
+                    ctx.fillStyle = '#f44';
+                    ctx.fillText('[N] No', sx + 22, sy - 8);
+                    ctx.restore();
+                }
+            }
         } else {
             e.render(renderer, lastTime);
         }
@@ -5162,6 +5228,18 @@ function renderDialoguePicker(npc) {
         options.push({ label: 'Gamble', action: () => { openGambleShop(); menu.remove(); activeDialogueNpc = null; } });
     }
 
+    // Special: Infernal Rift (Deckard Cain)
+    if (npc.id === 'deckard_cain') {
+        options.push({
+            label: 'Enter Infernal Rift', action: () => {
+                addCombatLog('Entering the Infernal Rift...', 'log-crit');
+                nextZone(26); // Zone 26 is Infinite Rift
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+    }
+
     // Special: Imbue (Charsi)
     if (npc.id === 'charsi' && player.hasImbue) {
         options.push({
@@ -7291,9 +7369,27 @@ window.addEventListener('DOMContentLoaded', () => {
                     else if (text.startsWith('/duel ')) network.sendDuelInvite(text.replace('/duel ', '').trim());
                     else if (text === '/duel accept') network.acceptDuel();
                     else if (text === '/ah') { togglePanel('auction'); refreshAuctions(); }
-                    else {
+                    if (text.startsWith('/')) {
+                        const parts = text.split(' ');
+                        const cmd = parts[0].toLowerCase();
+                        const arg = parts.slice(1).join(' ');
+
+                        if (cmd === '/p' || cmd === '/party') {
+                            if (!arg) addCombatLog('Usage: /party [name]', 'log-info');
+                            else network.sendPartyInvite(arg);
+                        } else if (cmd === '/trade') {
+                            if (!arg) addCombatLog('Usage: /trade [name]', 'log-info');
+                            else network.sendTradeInvite(arg);
+                        } else if (cmd === '/duel') {
+                            if (!arg) addCombatLog('Usage: /duel [name]', 'log-info');
+                            else network.sendDuelInvite(arg);
+                        } else if (cmd === '/rift') {
+                            nextZone(26);
+                        } else {
+                            addCombatLog('Unknown command.', 'log-dmg');
+                        }
+                    } else {
                         network.sendChat(text);
-                        // Local Echo: show immediately so player knows it sent
                         addChatMessage(player.charName || 'Me', text, 'general');
                     }
                 }
@@ -7302,6 +7398,12 @@ window.addEventListener('DOMContentLoaded', () => {
         });
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && document.activeElement !== chatInput && state === 'GAME') { chatInput.focus(); e.preventDefault(); }
+            if (e.key.toLowerCase() === 'y' && document.activeElement !== chatInput && state === 'GAME') {
+                if (handleSocialInput('y')) e.preventDefault();
+            }
+            if (e.key.toLowerCase() === 'n' && document.activeElement !== chatInput && state === 'GAME') {
+                if (handleSocialInput('n')) e.preventDefault();
+            }
             if (e.key.toLowerCase() === 'o' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('social');
             if (e.key.toLowerCase() === 'p' && state === 'GAME' && document.activeElement !== chatInput) bus.emit('action:town_portal');
             if (e.key.toLowerCase() === 'm' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('mercenary');

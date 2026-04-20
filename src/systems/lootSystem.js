@@ -1475,25 +1475,8 @@ export class LootSystem {
     }
 
     _rollRarity(enemy, magicFind = 0) {
-        const isJewelry = Math.random() < 0.15; // Placeholder check if we were rolling for type before rarity
-        const r = Math.random();
-        const boost = enemy.type === 'boss' ? 0.35 : (enemy.type === 'unique' ? 0.2 : (enemy.type === 'rare' ? 0.1 : (enemy.type === 'champion' ? 0.05 : 0)));
-        const effectiveMF = magicFind * 250 / (magicFind + 250);
-        const mfBoost = effectiveMF / 100;
-
-        let targetRarity = RARITY.NORMAL;
-        // MF Impact: D2-style diminishing returns but more pronounced for this game's pace
-        const uniqueChance = 0.005 + boost * 0.4 + mfBoost * 0.025;
-        const setChance = 0.015 + boost * 0.3 + mfBoost * 0.045;
-        const rareChance = 0.10 + boost * 0.2 + mfBoost * 0.15;
-        const magicChance = 0.45 + boost * 0.1 + mfBoost * 0.25;
-
-        if (r < uniqueChance) targetRarity = RARITY.UNIQUE;
-        else if (r < uniqueChance + setChance) targetRarity = RARITY.SET;
-        else if (r < uniqueChance + setChance + rareChance) targetRarity = RARITY.RARE;
-        else if (r < uniqueChance + setChance + rareChance + magicChance) targetRarity = RARITY.MAGIC;
-
-        return targetRarity;
+        // --- TEST MODE: 100% UNIQUE DROP ---
+        return RARITY.UNIQUE;
     }
 
     _pickUnique(baseId, ilvl) {

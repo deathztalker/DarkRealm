@@ -105,7 +105,13 @@ export class NetworkManager {
 
         this.socket.on('current_players', (players) => {
             for (const id in players) {
-                if (id !== this.socket.id) this.otherPlayers.set(id, players[id]);
+                if (id !== this.socket.id) {
+                    const pData = players[id];
+                    this.otherPlayers.set(id, {
+                        ...pData,
+                        charName: pData.name || 'Other Player'
+                    });
+                }
             }
             if (this.otherPlayers.size === 0) {
                 this.isHost = true;
@@ -114,17 +120,25 @@ export class NetworkManager {
         });
 
         this.socket.on('player_joined', (player) => {
+            player.charName = player.name || 'Other Player';
             this.otherPlayers.set(player.id, player);
+        });
+
+        // --- Social Invites ---
+        this.socket.on('party_invite', (data) => {
+            window.addSocialRequest?.(data.fromId, data.from, 'party');
+            this.game.onChatMessage?.({ sender: 'System', text: `${data.from} has invited you to a party!`, isSystem: true });
         });
 
         this.socket.on('player_moved', (data) => {
             const player = this.otherPlayers.get(data.id);
             if (player) {
                 Object.assign(player, data);
+                if (data.name) player.charName = data.name;
                 
                 // If in party, update HUD stats
-                if (this.currentParty && this.currentParty.members.some(m => m.name === player.name)) {
-                    const member = this.currentParty.members.find(m => m.name === player.name);
+                if (this.currentParty && this.currentParty.members.some(m => m.name === player.charName)) {
+                    const member = this.currentParty.members.find(m => m.name === player.charName);
                     member.x = data.x;
                     member.y = data.y;
                     window.updatePartyHUD?.(this.currentParty.members);
