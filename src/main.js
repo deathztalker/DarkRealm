@@ -763,6 +763,17 @@ function gameLoop(timestamp) {
         if (network && network.isConnected) {
             network.sendMovement(player.x, player.y, player.animState, player.facingDir);
             
+            // Sync current active aura
+            if (player.activeAura) {
+                network.socket.emit('move', { 
+                    x: player.x, 
+                    y: player.y, 
+                    animState: player.animState, 
+                    facingDir: player.facingDir,
+                    activeAura: player.activeAura 
+                });
+            }
+            
             // Host-only: Sync all enemies & NPCs
             if (network.isHost) {
                 if (enemies.length > 0) {
@@ -1098,10 +1109,40 @@ function gameLoop(timestamp) {
     }
 
     const entities = [...(enemies || []), player].filter(e => e).sort((a, b) => a.y - b.y);
+
+    // --- MMO AURAS: Buff Check for Local Player ---
+    let receivedAuraColor = null;
+    if (network && network.isConnected && player) {
+        const AURA_RANGE_SQ = 150 * 150; 
+        network.otherPlayers.forEach(op => {
+            if (op.activeAura) {
+                const dx = op.x - player.x, dy = op.y - player.y;
+                if (dx*dx + dy*dy < AURA_RANGE_SQ) {
+                    const colors = { might_aura:'#ffd700', prayer_aura:'#40c040', holy_fire_aura:'#ff4000', conviction:'#a040ff', resist_all:'#4080ff' };
+                    receivedAuraColor = colors[op.activeAura] || '#ffe880';
+                }
+            }
+        });
+    }
+
     for (const e of entities) {
         if (e.isPlayer) {
             renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)';
             renderer.ctx.beginPath(); renderer.ctx.ellipse(e.x, e.y + 6, 8, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
+
+            // Visual feedback for receiving someone else's aura
+            if (receivedAuraColor) {
+                renderer.ctx.save();
+                const pulse = 0.5 + Math.sin(lastTime * 0.008) * 0.25;
+                renderer.ctx.globalAlpha = pulse;
+                renderer.ctx.strokeStyle = receivedAuraColor;
+                renderer.ctx.setLineDash([3, 3]); 
+                renderer.ctx.lineWidth = 1;
+                renderer.ctx.beginPath();
+                renderer.ctx.arc(e.x, e.y + 2, 10, 0, Math.PI * 2);
+                renderer.ctx.stroke();
+                renderer.ctx.restore();
+            }
 
             // Draw aura ring if active
             if (e.activeAura) {
