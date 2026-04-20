@@ -1284,14 +1284,6 @@ function gameLoop(timestamp) {
                 renderer.ctx.fillText(bubble.text, sx, sy - 5);
                 renderer.ctx.restore();
             }
-                ctx.fill();
-                ctx.stroke();
-
-                ctx.fillStyle = '#000';
-                ctx.textAlign = 'center';
-                ctx.fillText(bubble.text, sx, sy - 5);
-                ctx.restore();
-            }
         } else {
             e.render(renderer, lastTime);
         }
