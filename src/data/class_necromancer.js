@@ -8,148 +8,155 @@ export const NECROMANCER_CLASS = {
     stats: { str: 15, dex: 15, vit: 15, int: 25 },
     trees: [
 
-        // ═══ SUMMONING — Army of Darkness build ═══
+        // ═══ SUMMONING — Army build ═══
         {
             id: 'summoning', name: 'Summoning', icon: '💀',
             nodes: [
                 {
                     id: 'raise_skeleton', row: 0, col: 1, type: 'active', icon: '🦴', name: 'Raise Skeleton',
-                    desc: 'Active · Raise a skeleton warrior from a nearby corpse. Skeleton deals 8 + 4 per point damage. You can have 1 skeleton per 2 points invested (max 10). Each skeleton persists until killed.',
-                    tip: 'Max lvl (20): 10 skeletons each dealing 88 damage. Scales with Skeleton Mastery.',
-                    maxPts: 20, mana: 12, cd: 0
+                    desc: 'Active · Raise a skeleton warrior dealing 8 + 4 per point damage.',
+                    tip: 'Max lvl (20): 10 skeletons each dealing 88 damage.',
+                    maxPts: 20, mana: 12, cd: 0,
+                    synergies: [
+                        { from: 'skeletal_mage', pctPerPt: 5 },
+                        { from: 'clay_golem', pctPerPt: 5 }
+                    ]
                 },
                 {
-                    id: 'skeleton_mastery', row: 1, col: 0, type: 'passive', icon: '💪', name: 'Skeleton Mastery',
-                    desc: 'Passive · Each point gives all your minions +15% damage and +10% max HP. The single most important necromancer passive — invest heavily.',
-                    tip: 'Max lvl (20): +300% minion damage · +200% minion HP.',
+                    id: 'skeletal_mage', row: 1, col: 0, type: 'active', icon: '🧙', name: 'Skeletal Mage',
+                    desc: 'Active · Raise a skeleton mage that deals elemental damage.',
+                    tip: 'Max lvl (20): Ranged elemental support army.',
+                    maxPts: 20, mana: 15, cd: 0, req: 'raise_skeleton:3',
+                    synergies: [
+                        { from: 'raise_skeleton', pctPerPt: 5 }
+                    ]
+                },
+                {
+                    id: 'skeleton_mastery', row: 1, col: 2, type: 'passive', icon: '💪', name: 'Skeleton Mastery',
+                    desc: 'Passive · Each point gives all minions +15% damage and +10% max HP.',
+                    tip: 'Max lvl (20): +300% minion damage · +200% HP.',
                     maxPts: 20
                 },
                 {
-                    id: 'golem', row: 1, col: 2, type: 'active', icon: '🗿', name: 'Clay Golem',
-                    desc: 'Active · Animate a hulking clay golem with 200 + 50 per point HP that slows every enemy it hits by 25%. Only one golem at a time. Tough frontline tank.',
-                    tip: 'Max lvl (20): 1,200 HP golem · 25% slow on all hits.',
-                    maxPts: 20, mana: 35, cd: 5
+                    id: 'clay_golem', row: 2, col: 1, type: 'active', icon: '🗿', name: 'Clay Golem',
+                    desc: 'Active · Summon a golem with 200 + 50 per point HP that slows enemies.',
+                    tip: 'Max lvl (20): 1,200 HP tank.',
+                    maxPts: 20, mana: 35, cd: 5, req: 'skeleton_mastery:5',
+                    synergies: [
+                        { from: 'blood_golem', pctPerPt: 10 }
+                    ]
                 },
                 {
-                    id: 'golem_mastery', row: 2, col: 0, type: 'passive', icon: '🏔️', name: 'Golem Mastery',
-                    desc: 'Passive · Increases all your golems\' HP by +20% per point and their damage by +5% per point. At 10 points, golems gain life regeneration. Pairs with any golem type.',
-                    tip: 'Max lvl (20): +400% golem HP · +100% golem damage · regen at 10pts.',
-                    maxPts: 20
+                    id: 'blood_golem', row: 3, col: 0, type: 'active', icon: '🩸', name: 'Blood Golem',
+                    desc: 'Active · Summon a golem that shares life with you. When it deals damage, you heal.',
+                    tip: 'Max lvl (20): Life-stealing tank golem.',
+                    maxPts: 40, mana: 40, cd: 10, req: 'clay_golem:3',
+                    synergies: [
+                        { from: 'clay_golem', pctPerPt: 10 }
+                    ]
                 },
                 {
-                    id: 'revive', row: 2, col: 2, type: 'active', icon: '✨', name: 'Revive',
-                    desc: 'Active · Revive a monster corpse as a servant that retains ALL of its original abilities and attacks. Lasts 3 + 0.5 per point minutes. Can revive bosses.',
-                    tip: 'Max lvl (20): 13 minute duration. Reviving elites creates powerful temporary allies.',
-                    maxPts: 20, mana: 45, cd: 2, req: 'raise_skeleton:5'
+                    id: 'minion_instability', row: 3, col: 2, type: 'passive', icon: '💥', name: 'Minion Instability',
+                    desc: 'Passive · When your minions die, they explode for 10% of their max HP as shadow damage.',
+                    tip: 'Max lvl (20): 10% HP explosion per point.',
+                    maxPts: 20, req: 'skeleton_mastery:10'
                 },
                 {
-                    id: 'summon_resist', row: 3, col: 0, type: 'passive', icon: '🛡️', name: 'Summon Resistance',
-                    desc: 'Passive · All your minions gain +5% elemental resistance per point. You personally also gain +2% all resistances per point. Makes your army durable in endgame content.',
-                    tip: 'Max lvl (20): Minions +100% res · you +40% all res.',
-                    maxPts: 20
-                },
-                {
-                    id: 'army_of_dead', row: 3, col: 2, type: 'active', icon: '⚔️', name: 'Army of the Dead',
-                    desc: 'Active · Instantly summon 5 skeleton warriors at your feet, bypassing the need for corpses. They last for 15 + 1 per point seconds. Perfect for boss fights with no corpses.',
-                    tip: 'Max lvl (20): 5 skeletons that last 35s. Emergency summon button.',
-                    maxPts: 20, mana: 60, cd: 45, req: 'raise_skeleton:10'
-                },
-                {
-                    id: 'iron_golem', row: 4, col: 1, type: 'active', icon: '⚙️', name: 'Iron Golem',
-                    desc: 'Active · Sacrifice a metal item from your inventory to create a golem that KEEPS all the item\'s stats. Higher quality items create stronger golems. Unique items create devastating golems.',
-                    tip: 'Sacrifice a legendary item to create a godlike golem that inherits its procs.',
-                    maxPts: 20, mana: 65, cd: 10, req: 'golem_mastery:10',
-                    synergies: [{ from: 'golem_mastery', pctPerPt: 5 }]
-                },
+                    id: 'death_commander', row: 4, col: 1, type: 'active', icon: '👑', name: 'Death Commander',
+                    desc: 'Active · For 15 seconds, your minions deal 100% more damage and attack 50% faster. 120s cooldown.',
+                    tip: 'Max lvl (20): Ultimate army burst.',
+                    maxPts: 20, mana: 50, cd: 120, group: 'buff', req: 'minion_instability:5'
+                }
             ]
         },
 
-        // ═══ BONE — Direct damage spells ═══
+        // ═══ BONE & POISON — Direct damage ═══
         {
-            id: 'bone', name: 'Bone', icon: '🦴',
+            id: 'bone', name: 'Bone/Poison', icon: '🦴',
             nodes: [
                 {
                     id: 'bone_spear', row: 0, col: 1, type: 'active', icon: '🔱', name: 'Bone Spear',
-                    desc: 'Active · Launch a bone spear that pierces through all enemies in a line dealing 20 + 10 per point shadow damage. Reliable single-target DPS at range.',
-                    tip: 'Max lvl (20): 220 shadow damage, hits every enemy in the line.',
-                    maxPts: 20, mana: 11, cd: 0, group: 'shadow', dmgBase: 20, dmgPerLvl: 10
-                },
-                {
-                    id: 'bone_armor', row: 1, col: 0, type: 'active', icon: '🦴', name: 'Bone Armor',
-                    desc: 'Active · Surround yourself with revolving bone shards, absorbing 20 + 15 per point damage before any reaches your HP. Instantly breaks when absorption is consumed — recast to refresh.',
-                    tip: 'Max lvl (20): 320 damage absorbed. Recast frequently.',
-                    maxPts: 20, mana: 12, cd: 0
-                },
-                {
-                    id: 'bone_mastery', row: 1, col: 2, type: 'passive', icon: '🟣', name: 'Bone Mastery',
-                    desc: 'Passive · +5% shadow and bone spell damage per point. Each point also reduces bone spell cooldowns by 0.3 seconds. The core bone-build passive.',
-                    tip: 'Max lvl (20): +100% bone damage · -6s total cooldown.',
-                    maxPts: 20
-                },
-                {
-                    id: 'bone_wall', row: 2, col: 0, type: 'active', icon: '🏯', name: 'Bone Wall',
-                    desc: 'Active · Erect a wall of bones at target location, blocking movement for 3 + 0.2 per point seconds. Enemies that attempt to pass take 15 + 6 per point damage.',
-                    tip: 'Max lvl (20): 7s wall + 135 damage on contact. Use to split enemy groups.',
-                    maxPts: 20, mana: 15, cd: 8, dmgBase: 15, dmgPerLvl: 6, req: 'bone_armor:3'
-                },
-                {
-                    id: 'bone_spirit', row: 3, col: 1, type: 'active', icon: '👻', name: 'Bone Spirit',
-                    desc: 'Active · Release a homing spirit that tracks the nearest enemy dealing 50 + 15 per point shadow damage. Always hits — no skill shot required. ★ Synergy: +4% per Bone Spear point.',
-                    tip: 'Max lvl (20): 350 damage · guaranteed hit. Boss assassin.',
-                    maxPts: 20, mana: 18, cd: 0, group: 'shadow', dmgBase: 50, dmgPerLvl: 15, req: 'bone_spear:5',
-                    synergies: [{ from: 'bone_spear', pctPerPt: 4 }]
-                },
-                {
-                    id: 'bone_nova', row: 4, col: 1, type: 'active', icon: '💥', name: 'Bone Nova',
-                    desc: 'Active · Fire a ring of 10 bone spirits simultaneously in all directions, each dealing 30 + 12 per point shadow damage. Devastating at close range against grouped enemies.',
-                    tip: 'Max lvl (20): 10 × 270 = 2,700 total potential. Melee-range nuke.',
-                    maxPts: 20, mana: 30, cd: 8, group: 'shadow', dmgBase: 30, dmgPerLvl: 12, req: 'bone_spirit:10',
+                    desc: 'Active · Launch a spear dealing 20 + 10 per point shadow damage.',
+                    tip: 'Max lvl (20): 220 shadow damage piercing.',
+                    maxPts: 20, mana: 11, cd: 0, group: 'shadow', dmgBase: 20, dmgPerLvl: 10,
                     synergies: [{ from: 'bone_mastery', pctPerPt: 5 }]
                 },
+                {
+                    id: 'poison_nova', row: 1, col: 0, type: 'active', icon: '🤢', name: 'Poison Nova',
+                    desc: 'Active · Emit a ring of poison dealing 15 + 8 per point damage per second for 5s.',
+                    tip: 'Max lvl (20): 175/s poison AoE.',
+                    maxPts: 20, mana: 20, cd: 3, group: 'poison', dmgBase: 15, dmgPerLvl: 8, req: 'bone_spear:3',
+                    synergies: [{ from: 'poison_blade', pctPerPt: 4 }]
+                },
+                {
+                    id: 'bone_armor', row: 1, col: 2, type: 'active', icon: '🦴', name: 'Bone Armor',
+                    desc: 'Active · Surround yourself with bone shards, absorbing 20 + 15 per point damage.',
+                    tip: 'Max lvl (20): 320 damage absorbed.',
+                    maxPts: 20, mana: 12, cd: 0, group: 'buff'
+                },
+                {
+                    id: 'toxic_spores', row: 2, col: 1, type: 'passive', icon: '🍄', name: 'Toxic Spores',
+                    desc: 'Passive · Your poison spells now also reduce enemy healing by 5% per point.',
+                    tip: 'Max lvl (20): 100% healing reduction.',
+                    maxPts: 20, req: 'poison_nova:5'
+                },
+                {
+                    id: 'corpse_explosion', row: 3, col: 1, type: 'active', icon: '💥', name: 'Corpse Explosion',
+                    desc: 'Active · Explode a nearby corpse dealing 10% to 20% of the target\'s max HP as shadow/physical damage.',
+                    tip: 'Max lvl (20): The ultimate clearing skill.',
+                    maxPts: 20, mana: 25, cd: 1, group: 'shadow', req: 'toxic_spores:3',
+                    synergies: [{ from: 'bone_mastery', pctPerPt: 3 }]
+                },
+                {
+                    id: 'blood_mastery', row: 4, col: 1, type: 'passive', icon: '💉', name: 'Blood Mastery',
+                    desc: 'Passive · Increases your maximum HP by 2% per point and your Life Steal by 0.5% per point.',
+                    tip: 'Max lvl (20): +40% HP · +10% Life Steal.',
+                    maxPts: 20, req: 'corpse_explosion:5'
+                },
+                {
+                    id: 'bone_spirit', row: 5, col: 1, type: 'active', icon: '👻', name: 'Bone Spirit',
+                    desc: 'Active · Release a homing spirit that seeks a target dealing 80 + 35 per point shadow damage. Costs 10% of your current HP instead of mana.',
+                    tip: 'Max lvl (20): 780 homing shadow damage.',
+                    maxPts: 20, mana: 0, cd: 2, group: 'shadow', dmgBase: 80, dmgPerLvl: 35, req: 'blood_mastery:5',
+                    synergies: [{ from: 'bone_spear', pctPerPt: 8 }]
+                }
             ]
         },
 
-        // ═══ CURSES — Debuf war machine ═══
+        // ═══ CURSES — Debuffs ═══
         {
             id: 'curses', name: 'Curses', icon: '🔴',
             nodes: [
                 {
                     id: 'weaken', row: 0, col: 1, type: 'active', icon: '⬇️', name: 'Weaken',
-                    desc: 'Active · Curse a target reducing their damage output by 33% for 4 + 0.5 per point seconds. A cheap, effective debuff for tough enemies.',
-                    tip: 'Max lvl (20): -33% damage, lasts 14s.',
+                    desc: 'Active · Curse a target reducing their damage output by 33%.',
+                    tip: 'Max lvl (20): -33% damage debuff.',
                     maxPts: 20, mana: 4, cd: 0
                 },
                 {
                     id: 'amplify_damage', row: 1, col: 0, type: 'active', icon: '🔺', name: 'Amplify Damage',
-                    desc: 'Active · Remove any curse and instead cause the target to take +100% physical damage from all sources for 4 + 0.5 per point seconds. Pairs devastatingly with melee allies.',
-                    tip: 'Max lvl (20): +100% physical damage taken for 14s. Best party debuff vs physical targets.',
-                    maxPts: 20, mana: 6, cd: 0
+                    desc: 'Active · Target takes +100% physical damage from all sources.',
+                    tip: 'Max lvl (20): +100% physical vuln.',
+                    maxPts: 20, mana: 6, cd: 0, req: 'weaken:3'
                 },
                 {
-                    id: 'mass_curse', row: 1, col: 2, type: 'active', icon: '📢', name: 'Mass Curse',
-                    desc: 'Active · Apply your currently active curse to ALL visible enemies simultaneously. Requires another curse to be active. Use Weaken or Amplify Damage first, then cast this.',
-                    tip: 'Instant AoE debuff — one of the most powerful utility skills in the game.',
-                    maxPts: 20, mana: 25, cd: 5, req: 'weaken:3'
+                    id: 'decrepify', row: 1, col: 2, type: 'active', icon: '🐢', name: 'Decrepify',
+                    desc: 'Active · Slows movement/attack speed by 50% and reduces physical res by 50%.',
+                    tip: 'Max lvl (20): The ultimate debuff.',
+                    maxPts: 20, mana: 12, cd: 0, req: 'weaken:3'
                 },
                 {
-                    id: 'iron_maiden', row: 2, col: 0, type: 'active', icon: '⚔️', name: 'Iron Maiden',
-                    desc: 'Active · Curse a target: all physical damage they deal is reflected back for 100% of the original damage. Devastating vs melee bosses and large groups.',
-                    tip: 'A boss that deals 500 physical damage will take 500 reflected per hit. Melts physical attackers.',
-                    maxPts: 20, mana: 8, cd: 0, req: 'weaken:5'
+                    id: 'iron_maiden', row: 2, col: 1, type: 'active', icon: '⚔️', name: 'Iron Maiden',
+                    desc: 'Active · Curse a target: all physical damage they deal is reflected back.',
+                    tip: 'Max lvl (20): Reflect 100% damage.',
+                    maxPts: 20, mana: 8, cd: 0, req: 'amplify_damage:3'
                 },
                 {
-                    id: 'decrepify', row: 2, col: 2, type: 'active', icon: '🐢', name: 'Decrepify',
-                    desc: 'Active · Curse a target: slows movement and attack speed by 50%, reduces physical resistance by 50%, and halves their life regeneration. The ultimate all-in-one debuff.',
-                    tip: 'Combined with Bone Spear, Decrepify enemies take 50% more damage AND are slowed to a crawl.',
-                    maxPts: 20, mana: 12, cd: 0, req: 'amplify_damage:5'
-                },
-                {
-                    id: 'plague', row: 3, col: 1, type: 'active', icon: '☠️', name: 'Plague',
-                    desc: 'Active · Inflict a virulent plague on a target dealing 10 + 5 per point shadow damage per second. The plague SPREADS to nearby enemies on death, infecting up to 3 others.',
-                    tip: 'Max lvl (20): 110/s shadow DoT that spreads on kill. Excellent for clearing packs.',
-                    maxPts: 20, mana: 14, cd: 2, req: 'decrepify:5',
-                    synergies: [{ from: 'bone_mastery', pctPerPt: 3 }]
-                },
+                    id: 'revive_elite', row: 3, col: 1, type: 'active', icon: '✨', name: 'Revive',
+                    desc: 'Active · Revive a monster corpse as a servant that retains all abilities.',
+                    tip: 'Max lvl (20): 13 minute duration.',
+                    maxPts: 20, mana: 45, cd: 2, req: 'decrepify:5'
+                }
             ]
         },
     ]

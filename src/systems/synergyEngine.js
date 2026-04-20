@@ -57,8 +57,8 @@ export const LEGENDARY_SYNERGIES = {
     // ── SHADOWMOURNE ─────────────────────────────────────────────
     shadowmourne: [
         {
-            label: '💀 Army of Dead (Necromancer)',
-            condition: (p) => p.classId === 'necromancer' && _hasTalent(p, 'army_of_dead', 1),
+            label: '💀 Death Commander (Necromancer)',
+            condition: (p) => p.classId === 'necromancer' && _hasTalent(p, 'death_commander', 1),
             mult: 1.50,
             chanceBonus: 0,
             bonusEffects: ['spawn_revenant'],  // each soul also spawns a skeleton
@@ -124,22 +124,22 @@ export const LEGENDARY_SYNERGIES = {
     // ── VAL'ANYR ──────────────────────────────────────────────────
     valanyr: [
         {
-            label: '💛 Divine Shield (Paladin)',
-            condition: (p) => p.classId === 'paladin' && _hasTalent(p, 'divine_shield', 1),
+            label: '💛 Divine Protection (Paladin)',
+            condition: (p) => p.classId === 'paladin' && _hasTalent(p, 'divine_protection', 1),
             mult: 1.0, chanceBonus: 0.15,
             bonusEffects: ['reflect_dmg'],  // shield reflects 30% of absorbed damage
             desc: '+15% proc chance; shield reflects 30% absorbed damage to attackers'
         },
         {
-            label: '💛 Holy Mastery (Paladin)',
-            condition: (p) => p.classId === 'paladin' && _hasTalent(p, 'holy_mastery', 3),
+            label: '💛 Protection Mastery (Paladin)',
+            condition: (p) => p.classId === 'paladin' && _hasTalent(p, 'prot_mastery', 3),
             mult: 1.50, chanceBonus: 0.10,
             bonusEffects: [],
             desc: '+50% Divine Shield capacity, +10% proc chance'
         },
         {
-            label: '💛 Holy Light (Paladin)',
-            condition: (p) => p.classId === 'paladin' && _hasTalent(p, 'holy_light', 1),
+            label: '💛 Consecration (Paladin)',
+            condition: (p) => p.classId === 'paladin' && _hasTalent(p, 'consecration', 1),
             mult: 1.0, chanceBonus: 0,
             bonusEffects: ['heal_party'],  // shield proc also heals nearby allies
             desc: 'Divine Shield also heals nearby party members for 200 HP'
@@ -245,11 +245,11 @@ export const LEGENDARY_SYNERGIES = {
     // ── THORI'DAL ─────────────────────────────────────────────────
     thoridal: [
         {
-            label: '⭐ Ranger — Expert Aim',
-            condition: (p) => p.classId === 'ranger' && _hasTalent(p, 'expert_aim', 2),
+            label: '⭐ Ranger — Bow Mastery',
+            condition: (p) => p.classId === 'ranger' && _hasTalent(p, 'bow_mastery', 2),
             mult: 1.50, chanceBonus: 0.10,
             bonusEffects: ['crit_arrow'],  // stellar arrow always crits
-            desc: "Stellar Arrow always critically strikes (Expert Aim)"
+            desc: "Stellar Arrow always critically strikes (Bow Mastery)"
         },
         {
             label: '⭐ Ranger — Multi-Shot',

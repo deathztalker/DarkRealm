@@ -3083,8 +3083,21 @@ function skillTooltipText(skillId) {
         t += `<div style="color:${dmgColors[dmgType] || '#fff'}; font-weight:bold; margin-top:4px;">Damage: ${finalDmg} ${dmgType}</div>`;
 
         if (synBonus > 0) {
-            t += `<div style="color:#00ff00; font-size:11px;">+${Math.round(synBonus * 100)}% from Synergies</div>`;
+            t += `<div style="color:#00ff00; font-size:11px;">+${Math.round(synBonus * 100)}% from Active Synergies</div>`;
         }
+    }
+
+    if (skill.synergies && skill.synergies.length > 0) {
+        t += `<div style="margin-top:8px; padding-top:6px; border-top:1px dashed #555;">`;
+        t += `<div style="color:#ffd700; font-size:11px; margin-bottom:2px;">★ Synergies:</div>`;
+        for (const syn of skill.synergies) {
+            const fromSkill = player.skillMap[syn.from];
+            const slvl = player.talents.points ? (player.talents.points[syn.from] || 0) : 0;
+            const activeBonus = slvl * syn.pctPerPt;
+            const color = slvl > 0 ? '#00ff00' : '#888';
+            t += `<div style="color:${color}; font-size:10px; margin-left:6px;">• ${fromSkill ? fromSkill.name : syn.from}: +${syn.pctPerPt}% per point (+${activeBonus}% active)</div>`;
+        }
+        t += `</div>`;
     }
 
     t += `</div></div>`;

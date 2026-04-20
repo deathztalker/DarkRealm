@@ -15,26 +15,32 @@ export const SkillLogic = {
 
         // ══════════════ WARRIOR ══════════════
         if (skillId === 'bash') {
-            if (Math.random() < 0.1) applyStatus(target, 'stun', 0.5);
+            if (Math.random() < 0.2) applyStatus(target, 'stun', 0.8);
         }
         if (skillId === 'shield_bash') {
             applyStatus(target, 'stun', 1.5 + slvl * 0.05);
         }
-        if (skillId === 'rend') {
+        if (skillId === 'colossus_strike') {
+            target.armorDebuff = Math.max(target.armorDebuff || 0, (target.armor || 0) * 0.5);
+            applyStatus(target, 'sundered', 8);
+        }
+        if (skillId === 'mortal_strike') {
+            target.healDebuff = 0.5; // Reduce healing by 50%
+            applyStatus(target, 'curse', 10);
+            bus.emit('combat:log', { text: "Healing Reduced!", cls: 'log-dmg' });
+        }
+        if (skillId === 'shockwave') {
+            applyStatus(target, 'stun', 2.0);
+        }
+        if (skillId === 'rend' || skillId === 'lacerate') {
             applyDot(target, 4 + slvl * 3, 'physical', 5, 'warrior_bleed');
         }
         if (skillId === 'execute') {
             if (target.hp / target.maxHp < 0.3) {
-                // Triple damage logic is handled in the skill's damage calculation usually, 
-                // but we can apply it here as an extra burst if needed.
-                // For now, visual feedback:
-                if (fx) {
-                    fx.emitBurst(target.x, target.y, '#ff0000', 20);
-                    fx.shake(300, 6);
-                }
+                if (fx) { fx.emitBurst(target.x, target.y, '#ff0000', 20); fx.shake(300, 6); }
             }
         }
-        if (skillId === 'leap_attack' || skillId === 'slam') {
+        if (skillId === 'leap_attack' || skillId === 'slam' || skillId === 'heroic_leap') {
             applyStatus(target, 'stun', 0.5);
         }
 
@@ -48,151 +54,71 @@ export const SkillLogic = {
         }
         if (['ice_bolt', 'blizzard', 'frozen_orb', 'frost_nova', 'absolute_zero'].includes(skillId)) {
             applyStatus(target, 'chill', 2.5 + slvl * 0.1, 40);
-            if (skillId === 'ice_blast') applyStatus(target, 'frozen', 1.0 + slvl * 0.05);
-            if (skillId === 'absolute_zero') {
-                applyStatus(target, 'frozen', 2.0 + slvl * 0.1);
-                fx.emitBurst(target.x, target.y, '#ffffff', 20, 2);
-                fx.shake(250, 5);
-            }
-        }
-        if (['charged_bolt', 'chain_lightning', 'nova', 'thunder_storm'].includes(skillId)) {
-            if (Math.random() < 0.1) applyStatus(target, 'stun', 0.3);
-            if (['nova', 'thunder_storm'].includes(skillId)) {
-                fx.emitLightning(attacker.x, attacker.y, target.x, target.y, 4);
-                fx.shake(150, 3);
-            }
+            if (skillId === 'ice_blast' || skillId === 'ice_trap') applyStatus(target, 'frozen', 1.5);
         }
 
         // ══════════════ NECROMANCER ══════════════
         if (skillId === 'amplify_damage') {
-            target.dmgTakenMult = Math.max(target.dmgTakenMult || 1, 2.0 + slvl * 0.05);
+            target.dmgTakenMult = Math.max(target.dmgTakenMult || 1, 2.0);
             applyStatus(target, 'curse', 10 + slvl);
         }
         if (skillId === 'weaken') {
-            target.damageDebuff = Math.max(target.damageDebuff || 0, 30 + slvl);
+            target.damageDebuff = Math.max(target.damageDebuff || 0, 33);
             applyStatus(target, 'curse', 10 + slvl);
         }
         if (skillId === 'decrepify') {
-            applyStatus(target, 'chill', 10, 50); // Massive slow
-            target.damageDebuff = Math.max(target.damageDebuff || 0, 30);
-            target.resDebuff = Math.max(target.resDebuff || 0, 25);
+            applyStatus(target, 'chill', 10, 50); 
+            target.damageDebuff = Math.max(target.damageDebuff || 0, 50);
+            target.resDebuff = Math.max(target.resDebuff || 0, 50);
             applyStatus(target, 'curse', 10 + slvl * 0.5);
         }
-        if (skillId === 'lower_resist') {
-            target.resDebuff = Math.max(target.resDebuff || 0, 35 + slvl * 2);
-            applyStatus(target, 'curse', 15);
-        }
         if (skillId === 'poison_nova') {
-            applyDot(target, 5 + slvl * 3, 'poison', 4, 'necro_pois');
-        }
-        if (skillId === 'bone_prison') {
-            applyStatus(target, 'root', 3 + slvl * 0.2);
+            applyDot(target, 5 + slvl * 3, 'poison', 5, 'necro_pois');
         }
 
         // ══════════════ ROGUE ══════════════
-        if (skillId === 'shadow_strike') {
+        if (skillId === 'claw_strike' || skillId === 'shiv') {
             attacker.comboPoints = Math.min(attacker.maxComboPoints || 5, (attacker.comboPoints || 0) + 1);
-            applyDot(target, baseDmg * 0.3, 'shadow', 3, 'rogue_shadow');
-            bus.emit('combat:log', { text: `Combo Points: ${attacker.comboPoints}`, cls: 'log-info' });
-        }
-        if (skillId === 'backstab') {
-            attacker.comboPoints = Math.min(attacker.maxComboPoints || 5, (attacker.comboPoints || 0) + 2);
-            if (Math.random() < 0.3) applyStatus(target, 'stun', 1.0);
             bus.emit('combat:log', { text: `Combo Points: ${attacker.comboPoints}`, cls: 'log-info' });
         }
         if (skillId === 'ambush') {
             attacker.comboPoints = Math.min(attacker.maxComboPoints || 5, (attacker.comboPoints || 0) + 3);
             bus.emit('combat:log', { text: `Combo Points: ${attacker.comboPoints}`, cls: 'log-info' });
         }
-        if (skillId === 'eviscerate') {
+        if (skillId === 'eviscerate' || skillId === 'blade_dance' || skillId === 'rupture') {
             const cp = attacker.comboPoints || 0;
-            const finisherDmg = baseDmg * (1 + cp * 0.5); // +50% per CP
-            applyDamage(attacker, target, { dealt: finisherDmg, isCrit: cp >= 3, type: 'physical' }, 'eviscerate_finisher');
             attacker.comboPoints = 0;
-            if (fx) {
-                fx.emitSlash(target.x, target.y, Math.random() * Math.PI, '#ff0000', 30);
-                fx.emitBlood(target.x, target.y, 0, 20);
+            if (skillId === 'rupture') {
+                applyDot(target, baseDmg * (1 + cp), 'physical', 8, 'rogue_rupture');
             }
-            bus.emit('combat:log', { text: `EVISCERATE! (${cp} CP)`, cls: 'log-crit' });
+            bus.emit('combat:log', { text: `Finisher! (${cp} CP)`, cls: 'log-crit' });
         }
         if (skillId === 'death_mark') {
-            target.dmgTakenMult = Math.max(target.dmgTakenMult || 1, 1.4 + slvl * 0.03);
+            target.dmgTakenMult = Math.max(target.dmgTakenMult || 1, 2.0);
             applyStatus(target, 'death_mark', 10);
-        }
-        if (skillId === 'poison_blade' || skillId === 'envenom' || skillId === 'plague' || skillId === 'noxious_cloud') {
-            applyDot(target, 5 + slvl * 3, 'poison', 4, 'rogue_pois');
-        }
-        if (skillId === 'shock_trap') {
-            applyStatus(target, 'stun', 0.5);
-        }
-
-        // ══════════════ PALADIN ══════════════
-        if (skillId === 'smite') {
-            applyStatus(target, 'stun', 1.0);
-        }
-        if (skillId === 'holy_smite') {
-            applyStatus(target, 'blind', 2.0);
-        }
-        if (skillId === 'judgment') {
-            if (target.group === 'undead') {
-                // Triple damage vs undead is handled in combat.js if we pass a mult, 
-                // but for now we apply an extra burst.
-                const extra = baseDmg * 2;
-                target.hp = Math.max(0, target.hp - extra);
-            }
-        }
-
-        // ══════════════ SHAMAN ══════════════
-        if (skillId === 'thunder_strike' || skillId === 'earthquake') {
-            applyStatus(target, 'stun', skillId === 'earthquake' ? 1.2 : 0.6);
         }
 
         // ══════════════ DRUID ══════════════
-        if (skillId === 'maul' || skillId === 'bear_slam' || skillId === 'twister') {
-            applyStatus(target, 'stun', skillId === 'bear_slam' ? 1.5 : (skillId === 'maul' ? 1.0 : 0.5));
+        if (skillId === 'maul' || skillId === 'bear_slam') {
+            applyStatus(target, 'stun', skillId === 'bear_slam' ? 1.5 : 1.0);
         }
-        if (skillId === 'rabies') {
-            applyDot(target, 6 + slvl * 4, 'poison', 5, 'druid_rabies');
-            // Rabies infection spread logic is handle in enemy.js or a separate pulse
+        if (skillId === 'shred') {
+            // Shred deals 30% more damage if the target is bleeding
+            const isBleeding = target._dots && target._dots.some(d => d.type === 'physical');
+            if (isBleeding) {
+                applyDamage(attacker, target, { dealt: baseDmg * 0.3, isCrit: false, type: 'physical' }, 'shred_bonus');
+            }
         }
-        if (skillId === 'hurricane') {
-            applyStatus(target, 'chill', 1.0, 35);
-        }
-        if (skillId === 'raven') {
-            if (Math.random() < 0.1) applyStatus(target, 'blind', 2.0);
-        }
-        if (skillId === 'vine') {
-            applyStatus(target, 'root', 3.0);
+        if (skillId === 'solar_beam') {
+            applyStatus(target, 'silence', 3.0);
         }
 
-        // ══════════════ WARLOCK ══════════════
-        if (skillId === 'corruption' || skillId === 'seed') {
-            applyDot(target, 8 + slvl * 4, 'shadow', 6, 'warlock_dot');
-        }
-        if (skillId === 'haunt') {
-            applyDot(target, 10 + slvl * 6, 'shadow', 8, 'warlock_haunt');
-        }
-        if (skillId === 'agony') {
-            applyDot(target, 2 + slvl * 1, 'shadow', 12, 'warlock_agony');
-        }
-
-        // ══════════════ RANGER ══════════════
-        if (skillId === 'ensnare') {
-            applyStatus(target, 'root', 2 + slvl * 0.1);
-        }
-        if (skillId === 'viper_arrow') {
-            applyDot(target, 5 + slvl * 3, 'poison', 5, 'ranger_poison');
-        }
-        if (skillId === 'mark_death') {
-            target.dmgTakenMult = Math.max(target.dmgTakenMult || 1, 1.5 + slvl * 0.03);
-            applyStatus(target, 'curse', 10);
-        }
-        if (skillId === 'companion_hawk') {
-            if (Math.random() < 0.2) applyStatus(target, 'blind', 3.0);
-        }
-        if (skillId === 'ice_trap') {
-            applyStatus(target, 'frozen', 1.5);
-            applyStatus(target, 'chill', 4.0, 50);
+        // ══════════════ PALADIN ══════════════
+        if (skillId === 'holy_wrath') {
+            if (target.type === 'undead' || target.type === 'demon' || target.id.includes('skeleton') || target.id.includes('zombie')) {
+                applyStatus(target, 'stun', 3.0);
+                if (fx) fx.emitHolyBurst(target.x, target.y);
+            }
         }
     },
 
@@ -200,57 +126,51 @@ export const SkillLogic = {
      * Triggered on skill cast (cooldown start).
      */
     onCast(attacker, skillId, slvl, targetX, targetY, allEnemies) {
-        // ══════════════ SHAMAN STATIC FIELD ══════════════
-        if (skillId === 'static_field') {
-            const range = 250 + slvl * 10;
-            const reduction = 0.25 + slvl * 0.01;
-            allEnemies.forEach(e => {
-                const d = Math.hypot(e.x - attacker.x, e.y - attacker.y);
-                if (d < range && e.hp > 1) {
-                    const dmg = Math.floor(e.hp * reduction);
-                    e.hp = Math.max(1, e.hp - dmg);
-                    bus.emit('combat:damage', { attacker, target: e, dealt: dmg, isCrit: false, type: 'lightning', worldX: e.x, worldY: e.y });
-                    if (fx) fx.emitLightning(attacker.x, attacker.y, e.x, e.y);
+        if (skillId === 'bone_armor' || skillId === 'cyclone_armor' || skillId === 'ignore_pain') {
+            const absorb = skillId === 'ignore_pain' ? 100 + slvl * 40 : 20 + slvl * 15;
+            attacker.boneArmor = (attacker.boneArmor || 0) + absorb;
+            applyStatus(attacker, 'shielded', 3600);
+            bus.emit('combat:log', { text: `Absorb Shield (${absorb})`, cls: 'log-info' });
+        }
+        
+        if (skillId === 'cloak_of_shadows') {
+            attacker._dots = []; // clear all dots
+            attacker.magicImmune = true;
+            applyStatus(attacker, 'shielded', 3 + slvl * 0.1);
+            setTimeout(() => { attacker.magicImmune = false; }, (3 + slvl * 0.1) * 1000);
+            bus.emit('combat:log', { text: "Cloak of Shadows!", cls: 'log-info' });
+        }
+
+        if (skillId === 'arcane_power') {
+            applyStatus(attacker, 'arcane_power', 15);
+            bus.emit('combat:log', { text: "Arcane Power!", cls: 'log-crit' });
+        }
+
+        if (skillId === 'mirror_image') {
+            // Usually spawns minions, we can just emit log
+            bus.emit('combat:log', { text: "Mirror Images!", cls: 'log-info' });
+        }
+
+        if (skillId === 'bloodlust') {
+            applyStatus(attacker, 'bloodlust', 15);
+            bus.emit('combat:log', { text: "BLOODLUST!", cls: 'log-crit' });
+        }
+
+        if (skillId === 'lay_on_hands') {
+            const healAmount = attacker.maxHp;
+            attacker.hp = attacker.maxHp;
+            attacker.mp = Math.min(attacker.maxMp, attacker.mp + 10 + slvl * 2);
+            if (fx) fx.emitHeal(attacker.x, attacker.y);
+            bus.emit('combat:log', { text: "Lay on Hands!", cls: 'log-crit' });
+        }
+
+        if (skillId === 'preparation') {
+            if (attacker.cooldowns) {
+                for (let i = 0; i < attacker.cooldowns.length; i++) {
+                    attacker.cooldowns[i] = 0;
                 }
-            });
-            bus.emit('combat:log', { text: "Static Field!", cls: 'log-info' });
-        }
-
-        // ══════════════ SORCERESS ══════════════
-        if (skillId === 'teleport') {
-            if (fx) fx.emitBurst(attacker.x, attacker.y, '#8080ff', 15);
-            attacker.x = targetX;
-            attacker.y = targetY;
-            if (fx) fx.emitBurst(attacker.x, attacker.y, '#b0b0ff', 15);
-        }
-        if (skillId === 'energy_shield') {
-            const pct = 60 + slvl * 2;
-            applyStatus(attacker, 'energy_shield', 3600, pct); // Long duration buff
-            bus.emit('combat:log', { text: `Energy Shield Active (${pct}%)!`, cls: 'log-info' });
-        }
-        if (skillId === 'enchant') {
-            applyStatus(attacker, 'enchant', 144, slvl);
-            bus.emit('combat:log', { text: "Weapons Enchanted!", cls: 'log-info' });
-        }
-
-        // ══════════════ NECROMANCER ══════════════
-        if (skillId === 'bone_armor') {
-            attacker.boneArmor = (attacker.boneArmor || 0) + (20 + slvl * 15);
-            applyStatus(attacker, 'bone_armor', 3600);
-            bus.emit('combat:log', { text: `Bone Armor (${attacker.boneArmor})`, cls: 'log-info' });
-        }
-
-        // ══════════════ WARLOCK ══════════════
-        if (skillId === 'dark_pact') {
-            const cost = attacker.hp * 0.2;
-            attacker.hp = Math.max(1, attacker.hp - cost);
-            attacker.nextSpellMult = 2.0 + slvl * 0.05;
-            if (fx) fx.emitBurst(attacker.x, attacker.y, '#ff00ff', 10);
-            bus.emit('combat:log', { text: "Dark Pact!", cls: 'log-dmg' });
-        }
-        if (skillId === 'metamorphosis') {
-            applyStatus(attacker, 'metamorphosis', 30 + slvl, slvl);
-            bus.emit('combat:log', { text: "METAMORPHOSIS!", cls: 'log-crit' });
+            }
+            bus.emit('combat:log', { text: "Preparation: Cooldowns Reset!", cls: 'log-info' });
         }
     }
 };
