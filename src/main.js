@@ -1110,19 +1110,30 @@ function gameLoop(timestamp) {
 
     const entities = [...(enemies || []), player].filter(e => e).sort((a, b) => a.y - b.y);
 
-    // --- MMO AURAS: Buff Check for Local Player ---
-    let receivedAuraColor = null;
-    if (network && network.isConnected && player) {
-        const AURA_RANGE_SQ = 150 * 150; 
-        network.otherPlayers.forEach(op => {
-            if (op.activeAura) {
-                const dx = op.x - player.x, dy = op.y - player.y;
-                if (dx*dx + dy*dy < AURA_RANGE_SQ) {
-                    const colors = { might_aura:'#ffd700', prayer_aura:'#40c040', holy_fire_aura:'#ff4000', conviction:'#a040ff', resist_all:'#4080ff' };
-                    receivedAuraColor = colors[op.activeAura] || '#ffe880';
+    // --- MMO AURAS: Combined Aura Logic (Own + Received) ---
+    const allActiveAuraColors = [];
+    if (player) {
+        const auraColors = { might_aura: '#ffd700', prayer_aura: '#40c040', holy_fire_aura: '#ff4000', resist_all: '#4080ff', vigor: '#ffffff', fanaticism: '#ffa000', conviction: '#a040ff' };
+        
+        // 1. Check own aura
+        if (player.activeAura) allActiveAuraColors.push(auraColors[player.activeAura] || '#ffe880');
+        
+        // 2. Check item/runeword auras (if implemented in future)
+        if (player.itemAuras) player.itemAuras.forEach(id => allActiveAuraColors.push(auraColors[id] || '#ffe880'));
+        
+        // 3. Check received auras from others
+        if (network && network.isConnected) {
+            const AURA_RANGE_SQ = 150 * 150;
+            network.otherPlayers.forEach(op => {
+                if (op.activeAura) {
+                    const dSq = (op.x - player.x)**2 + (op.y - player.y)**2;
+                    if (dSq < AURA_RANGE_SQ) {
+                        const c = auraColors[op.activeAura] || '#ffe880';
+                        if (!allActiveAuraColors.includes(c)) allActiveAuraColors.push(c);
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 
     for (const e of entities) {
@@ -1130,34 +1141,28 @@ function gameLoop(timestamp) {
             renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)';
             renderer.ctx.beginPath(); renderer.ctx.ellipse(e.x, e.y + 6, 8, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
 
-            // Visual feedback for receiving someone else's aura
-            if (receivedAuraColor) {
-                renderer.ctx.save();
-                const pulse = 0.5 + Math.sin(lastTime * 0.008) * 0.25;
-                renderer.ctx.globalAlpha = pulse;
-                renderer.ctx.strokeStyle = receivedAuraColor;
-                renderer.ctx.setLineDash([3, 3]); 
-                renderer.ctx.lineWidth = 1;
-                renderer.ctx.beginPath();
-                renderer.ctx.arc(e.x, e.y + 2, 10, 0, Math.PI * 2);
-                renderer.ctx.stroke();
-                renderer.ctx.restore();
+            // --- UNIFIED AURA RENDERING (Style of the Paladin) ---
+            const targetAuras = e === player ? allActiveAuraColors : (e.activeAura ? [('#ffd700')] : []); // Simplified for others, detailed for self
+            
+            // For other players, we use their specific aura color
+            let displayColor = '#ffe880';
+            if (e === player && allActiveAuraColors.length > 0) {
+                // Rotate through colors every 1.5s
+                const colorIdx = Math.floor(lastTime / 1500) % allActiveAuraColors.length;
+                displayColor = allActiveAuraColors[colorIdx];
+            } else if (e.activeAura) {
+                const auraColors = { might_aura: '#ffd700', prayer_aura: '#40c040', holy_fire_aura: '#ff4000', resist_all: '#4080ff', vigor: '#ffffff', fanaticism: '#ffa000', conviction: '#a040ff' };
+                displayColor = auraColors[e.activeAura] || '#ffe880';
             }
 
-            // Draw aura ring if active
-            if (e.activeAura) {
-                const auraColors = {
-                    might_aura: '#ffd700', prayer_aura: '#40c040', holy_fire_aura: '#ff4000',
-                    resist_all: '#4080ff', vigor: '#ffffff', fanaticism: '#ffa000', conviction: '#a040ff'
-                };
-                const auraColor = auraColors[e.activeAura] || '#ffe880';
+            if ((e === player && allActiveAuraColors.length > 0) || (e !== player && e.activeAura)) {
                 const pulse = 0.3 + Math.sin(lastTime * 0.004) * 0.15;
                 const auraRadius = 25 + Math.sin(lastTime * 0.003) * 3;
                 renderer.ctx.save();
                 renderer.ctx.globalAlpha = pulse;
-                renderer.ctx.strokeStyle = auraColor;
+                renderer.ctx.strokeStyle = displayColor;
                 renderer.ctx.lineWidth = 1.5;
-                renderer.ctx.shadowColor = auraColor;
+                renderer.ctx.shadowColor = displayColor;
                 renderer.ctx.shadowBlur = 8;
                 renderer.ctx.beginPath();
                 renderer.ctx.ellipse(e.x, e.y + 2, auraRadius, auraRadius * 0.4, 0, 0, Math.PI * 2);
