@@ -107,10 +107,21 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        console.log(`[Socket] - ${socket.id}`);
-        delete players[socket.id];
-        if (socket.id === currentHostId) electNewHost();
+        console.log(`[Socket] - Jugador desconectado: ${socket.id}`);
+        
+        // Broadcast a todos que el jugador se fue ANTES de borrarlo
         io.emit('player_left', socket.id);
+        
+        // Limpiar de todos los mapas globales
+        if (players[socket.id]) {
+            console.log(`[MMO] Limpiando estado del jugador: ${players[socket.id].name}`);
+            delete players[socket.id];
+        }
+        
+        if (socket.id === currentHostId) {
+            console.log('[MMO] El Host se ha ido, eligiendo nuevo Host...');
+            electNewHost();
+        }
     });
 });
 
