@@ -605,4 +605,38 @@ export class NetworkManager {
         else if (latency < 250) pingDot.style.backgroundColor = '#ffc107';
         else pingDot.style.backgroundColor = '#f44336';
     }
+
+    async getLeaderboardData(filter = 'global') {
+        try {
+            let query = DB.client.from('save_slots')
+                .select('charName, classId, isHardcore, extra_data')
+                .order('extra_data->riftLevel', { ascending: false })
+                .limit(20);
+
+            if (filter === 'class' && this.game.player) query = query.eq('classId', this.game.player.classId);
+            if (filter === 'hardcore') query = query.eq('isHardcore', true);
+
+            const { data, error } = await query;
+            if (error) throw error;
+            return data;
+        } catch (e) {
+            console.error("Leaderboard Query Error:", e);
+            return [];
+        }
+    }
+
+    joinZone(zoneId) {
+        if (!this.isConnected || !this.game.player) return;
+        
+        // --- Strict Mode Isolation (Layering) ---
+        const modePrefix = this.game.player.isHardcore ? 'hc_' : 'std_';
+        const roomName = `${modePrefix}zone_${zoneId}`;
+
+        console.log(`[Network] Joining Layer: ${roomName}`);
+        this.socket.emit('join_zone', { 
+            zoneId, 
+            roomName, // Server uses this to isolate players
+            playerData: this.game.player.serialize() 
+        });
+    }
 }

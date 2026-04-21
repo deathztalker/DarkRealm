@@ -148,6 +148,7 @@ function syncInteractionStates() {
 let timeScale = 1.0;
 let uiActiveBoss = null;
 let lastBossWarnTime = 0;
+let _lastPortalEntry = 0; // Fixed: Global debounce timer for zone transitions
 
 // ——— RIFT GLOBALS ———
 window.riftProgress = 0; // 0-100
@@ -423,7 +424,21 @@ function showClassInfo(classId) {
     if (nameEl) nameEl.innerHTML = `<i class="ra ${getIconForClass(cls.id)}" style="font-size:24px;vertical-align:middle;color:var(--gold);"></i> ${cls.name}`;
     if (descEl) descEl.textContent = cls.desc;
     const statsHtml = ['str', 'dex', 'vit', 'int'].map(s => `<div class="class-stat-bar"><span>${s.toUpperCase()}</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${cls.statBars[s]}%"></div></div></div>`).join('');
-    if (statsEl) statsEl.innerHTML = statsHtml;
+    if (statsEl) {
+        statsEl.innerHTML = statsHtml;
+        
+        // --- Hardcore Toggle ---
+        const hcContainer = document.createElement('div');
+        hcContainer.style.cssText = 'margin-top:15px; display:flex; align-items:center; gap:10px; padding:8px; background:rgba(255,0,0,0.05); border:1px solid rgba(255,0,0,0.2); border-radius:4px;';
+        hcContainer.innerHTML = `
+            <input type="checkbox" id="hc-mode-checkbox" style="cursor:pointer; width:16px; height:16px;">
+            <div style="flex:1;">
+                <label for="hc-mode-checkbox" style="color:#f44; font-family:Cinzel; font-weight:bold; font-size:11px; cursor:pointer;">HARDCORE MODE</label>
+                <div style="font-size:9px; color:#888;">Death is permanent! Isolated Layer.</div>
+            </div>
+        `;
+        statsEl.appendChild(hcContainer);
+    }
 }
 
 // ——— START GAME ———

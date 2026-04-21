@@ -1418,11 +1418,9 @@ export class Player {
             const flap = Math.sin(time * 6) * 5;
             ctx.fillStyle = `rgba(255, 255, 200, ${0.4 + glowPulse * 0.2})`;
             ctx.beginPath();
-            // Left Wing
             ctx.moveTo(this.x - 2, this.y - 10);
             ctx.quadraticCurveTo(this.x - 20, this.y - 30 + flap, this.x - 25, this.y - 5 + flap);
             ctx.lineTo(this.x - 5, this.y - 5);
-            // Right Wing
             ctx.moveTo(this.x + 2, this.y - 10);
             ctx.quadraticCurveTo(this.x + 20, this.y - 30 + flap, this.x + 25, this.y - 5 + flap);
             ctx.lineTo(this.x + 5, this.y - 5);
@@ -1435,6 +1433,29 @@ export class Player {
                     y: this.y - 15,
                     vy: -0.8 - Math.random() * 1.2,
                     life: 1.2, color: '#ffd700', type: 'glory'
+                });
+            }
+            ctx.restore();
+        }
+
+        // --- Hardcore Champion Radiance (#1 HC Visual) ---
+        if (this._isTopHardcore) {
+            ctx.save();
+            const darkPulse = Math.sin(time * 2) * 0.5 + 0.5;
+            ctx.shadowBlur = 10 + darkPulse * 5;
+            ctx.shadowColor = '#a040ff';
+            ctx.strokeStyle = `rgba(160, 64, 255, ${0.2 + darkPulse * 0.3})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(this.x, this.y, 25, 0, Math.PI * 2); ctx.stroke();
+
+            // Rising Shadow Souls
+            if (Math.random() < 0.1) {
+                this._auraParticles = this._auraParticles || [];
+                this._auraParticles.push({
+                    x: this.x + (Math.random() - 0.5) * 30,
+                    y: this.y + 5,
+                    vy: -0.4 - Math.random() * 0.6,
+                    life: 1.5, color: '#a040ff', type: 'shadow_soul'
                 });
             }
             ctx.restore();
@@ -1493,6 +1514,9 @@ export class Player {
                     ctx.fillRect(p.x, p.y, 2, 2);
                 } else if (p.type === 'glory') {
                     ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill();
+                } else if (p.type === 'shadow_soul') {
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+                    ctx.shadowBlur = 5; ctx.shadowColor = '#fff';
                 } else {
                     ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI*2); ctx.fill();
                 }
