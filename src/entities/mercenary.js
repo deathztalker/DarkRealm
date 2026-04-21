@@ -225,9 +225,19 @@ export class Mercenary {
         const dmg = this.totalDmg;
 
         if (this.className === 'Barbarian') {
-            const bLvl = slvl('bash');
-            if (bLvl > 0 && Math.random() < 0.4) {
-                applyDamage(this, target, { dealt: dmg * (1.6 + bLvl * 0.12), isCrit: true, type: 'physical' });
+            const wwLvl = slvl('whirlwind');
+            if (wwLvl > 0 && Math.random() < 0.2) {
+                // WHIRLWIND AREA ATTACK
+                bus.emit('combat:log', { text: `${this.name} uses WHIRLWIND!`, type: 'log-crit' });
+                this.animState = 'attack'; // Reuse attack for spin
+                fx.emitShockwave(this.x, this.y, 80, 'rgba(255,255,255,0.2)');
+                window.enemies?.forEach(e => {
+                    if (e.hp > 0 && Math.hypot(e.x - this.x, e.y - this.y) < 100) {
+                        applyDamage(this, e, { dealt: dmg * (1.2 + wwLvl * 0.15), isCrit: Math.random() < 0.2, type: 'physical' });
+                    }
+                });
+            } else if (slvl('bash') > 0 && Math.random() < 0.4) {
+                applyDamage(this, target, { dealt: dmg * (1.6 + slvl('bash') * 0.12), isCrit: true, type: 'physical' });
                 const dx = target.x - this.x, dy = target.y - this.y;
                 const d = Math.hypot(dx, dy) || 1;
                 target.vx = (dx / d) * 18; target.vy = (dy / d) * 18; 
@@ -251,16 +261,25 @@ export class Mercenary {
         else if (this.className === 'Iron Wolf') {
             const fL = slvl('fire_bolt'), cL = slvl('glacial_spike'), lL = slvl('charged_bolt');
             const type = fL >= cL && fL >= lL ? 'fire' : (cL >= lL ? 'cold' : 'lightning');
-            const boltLvl = Math.max(fL, cL, lL, 1);
+            const sLvl = Math.max(fL, cL, lL, 1);
             const color = type === 'fire' ? '#f40' : (type === 'cold' ? '#0af' : '#ff0');
-            const proj = new Projectile(this.x, this.y, target.x, target.y, 340, 'ra-circle', dmg * (1 + boltLvl * 0.25), type, this);
+            
+            // Special: Static Field (Lightning Synergy)
+            if (type === 'lightning' && slvl('static_field') > 0 && Math.random() < 0.2) {
+                fx.emitBurst(target.x, target.y, '#ff0', 40, 3);
+                target.hp -= target.hp * 0.20; // 20% current HP damage
+                bus.emit('combat:log', { text: `${this.name} uses STATIC FIELD!`, type: 'log-info' });
+            }
+
+            const proj = new Projectile(this.x, this.y, target.x, target.y, 340, 'ra-circle', dmg * (1 + sLvl * 0.25), type, this);
             bus.emit('combat:spawnProjectile', { proj });
             fx.emitBurst(this.x, this.y, color, 15, 1.5);
         }
         else { // Rogue
             const fA = slvl('fire_arrow'), cA = slvl('cold_arrow');
             const type = fA > cA ? 'fire' : (cA > 0 ? 'cold' : 'physical');
-            const proj = new Projectile(this.x, this.y, target.x, target.y, 450, 'ra-arrow', dmg * (1 + Math.max(fA, cA) * 0.18), type, this);
+            const pLvl = Math.max(fA, cA);
+            const proj = new Projectile(this.x, this.y, target.x, target.y, 450, 'ra-arrow', dmg * (1 + pLvl * 0.18), type, this);
             bus.emit('combat:spawnProjectile', { proj });
 
             if (slvl('inner_sight') > 0 && Math.random() < 0.3) {

@@ -3966,7 +3966,6 @@ window.addMercTalent = (skillId) => {
         bus.emit('ui:click');
     }
 };
-}
 
 function renderBountyBoard() {
     const list = $('bounty-list');
