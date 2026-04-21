@@ -1412,20 +1412,29 @@ export class Player {
             ctx.shadowColor = '#ffd700';
             ctx.strokeStyle = `rgba(255, 215, 0, ${0.3 + glowPulse * 0.2})`;
             ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, 20, 0, Math.PI * 2);
-            ctx.stroke();
+            ctx.beginPath(); ctx.arc(this.x, this.y, 20, 0, Math.PI * 2); ctx.stroke();
             
-            // Rising Glory Sparks
+            // --- ARCHANGEL WINGS ---
+            const flap = Math.sin(time * 6) * 5;
+            ctx.fillStyle = `rgba(255, 255, 200, ${0.4 + glowPulse * 0.2})`;
+            ctx.beginPath();
+            // Left Wing
+            ctx.moveTo(this.x - 2, this.y - 10);
+            ctx.quadraticCurveTo(this.x - 20, this.y - 30 + flap, this.x - 25, this.y - 5 + flap);
+            ctx.lineTo(this.x - 5, this.y - 5);
+            // Right Wing
+            ctx.moveTo(this.x + 2, this.y - 10);
+            ctx.quadraticCurveTo(this.x + 20, this.y - 30 + flap, this.x + 25, this.y - 5 + flap);
+            ctx.lineTo(this.x + 5, this.y - 5);
+            ctx.fill();
+            
             if (Math.random() < 0.15) {
                 this._auraParticles = this._auraParticles || [];
                 this._auraParticles.push({
-                    x: this.x + (Math.random() - 0.5) * 20,
-                    y: this.y,
+                    x: this.x + (Math.random() - 0.5) * 40,
+                    y: this.y - 15,
                     vy: -0.8 - Math.random() * 1.2,
-                    life: 1.2,
-                    color: '#ffd700',
-                    type: 'glory'
+                    life: 1.2, color: '#ffd700', type: 'glory'
                 });
             }
             ctx.restore();

@@ -33,7 +33,7 @@ export class Dungeon {
         if (zoneLevel >= 26) return this.generateRift(zoneLevel);
 
         if (zoneLevel === 0 || zoneLevel === 6 || zoneLevel === 11 || zoneLevel === 16 || zoneLevel === 21) {
-             return this.generateTown(theme, zoneLevel);
+            return this.generateTown(theme, zoneLevel);
         }
         if (zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0)) return this.generateBossRoom(theme, zoneLevel);
 
@@ -63,7 +63,7 @@ export class Dungeon {
             let iterations = 6;
             if (theme === 'desert') iterations = 4; // Fewer, larger rooms
             if (theme === 'hell') iterations = 7; // More, smaller fractured rooms
-            
+
             const leaves = this._bsp(root, 0, iterations);
 
             // Carve rooms in leaves
@@ -210,7 +210,7 @@ export class Dungeon {
                         const s3 = { ...spawn, name: "Korlic the Protector", x: spawn.x - 40, isAncient: true };
                         this.enemySpawns.push(s2, s3);
                         // Inject Altar nearby
-                        this.objectSpawns.push({ id: 'ancients_altar', type: 'ancients_altar', name: 'Altar of the Heavens', x: spawn.x, y: spawn.y - 60, icon: 'obj_altar' });  
+                        this.objectSpawns.push({ id: 'ancients_altar', type: 'ancients_altar', name: 'Altar of the Heavens', x: spawn.x, y: spawn.y - 60, icon: 'obj_altar' });
                     }
                 }
 
@@ -355,32 +355,19 @@ export class Dungeon {
         } else if (zoneLevel === 16) {
             // Act 4: Pandemonium Fortress
             addNpc("tyrael", "Tyrael", "elder", 0, -6, "npc_tyrael", "The Light shall guide you against Diablo.");
+            addNpc("jamella", "Jamella", "merchant", -5, -3, "npc_akara", "The Light welcomes you.");
             addNpc("halbu", "Halbu", "merchant", 5, 2, "npc_larzuk", "I craft the armor of legends.");
         } else if (zoneLevel === 21) {
             // Act 5: Harrogath
             addNpc("malah", "Malah", "elder", -4, -5, "npc_akara", "It is cold, but my heart is warm for you.");
             addNpc("larzuk", "Larzuk", "merchant", 6, -1, "npc_larzuk", "Ready to put holes in your gear?");
             addNpc("qual_kehk", "Qual-Kehk", "mercenary_hire", -7, 4, "npc_larzuk", "The sons of Arreat fight for gold.");
-        }
-            addNpc("ormus", "Ormus", "elder", -4, -4, "npc_ormus", "Ormus has a magic item for you.");
-            addNpc("asheara", "Asheara", "mercenary_hire", -5, 2, "npc_akara", "The Iron Wolves are the finest blades in Kehjistan.");
-            addNpc("hratli", "Hratli", "merchant", 6, -3, "npc_larzuk", "Exquisite metalwork is my specialty.");
-            addNpc("alkor", "Alkor", "merchant", 5, -5, "npc_akara", "Back from the jungle? Need a brew?");
-        } else if (zoneLevel === 16) {
-            // Act 4: Pandemonium Fortress
-            addNpc("tyrael", "Tyrael", "elder", 0, -5, "npc_tyrael", "The Prime Evils must be stopped at any cost!");
-            addNpc("jamella", "Jamella", "merchant", -5, -3, "npc_akara", "The Light welcomes you.");
-            addNpc("halbu", "Halbu", "merchant", 5, -3, "npc_larzuk", "May your weapon strike true.");
-        } else if (zoneLevel === 21) {
-            // Act 5: Harrogath
-            addNpc("malah", "Malah", "elder", -4, -4, "npc_akara", "Let me mend your wounds, hero.");
-            addNpc("qual_kehk", "Qual-Kehk", "mercenary_hire", -5, 2, "npc_larzuk", "My barbarians fight with the strength of the mountain.");
-            addNpc("larzuk", "Larzuk", "merchant", 6, -3, "npc_larzuk", "Need a socket for that legendary blade?");
-            addNpc("anya", "Anya", "merchant", 5, 3, "npc_akara", "Thank you for rescuing me from the frozen depths.");
+            addNpc("anya", "Anya", "merchant", 5, 3, "npc_akara", "Thank you for rescuing me.");
         }
 
         // Town Objects: Stash & Cube
         this.objectSpawns.push({ id: 'stash', type: 'stash', name: 'Alijo (Stash)', x: (cx - 6) * this.tileSize, y: cy * this.tileSize, icon: 'obj_chest' });
+        this.objectSpawns.push({ id: 'cube', type: 'cube', name: 'Horadric Cube', x: (cx - 8) * this.tileSize, y: cy * this.tileSize, icon: 'item_horadric_fragment' });
 
         return this;
     }
@@ -400,7 +387,7 @@ export class Dungeon {
         // Circular-ish Arena
         for (let y = cy - radius; y <= cy + radius; y++) {
             for (let x = cx - radius; x <= cx + radius; x++) {
-                if ((x - cx)**2 + (y - cy)**2 <= radius**2) {
+                if ((x - cx) ** 2 + (y - cy) ** 2 <= radius ** 2) {
                     this.grid[y][x] = theme === 'catacombs' ? TILE.PATH : TILE.FLOOR;
                 }
             }
@@ -467,7 +454,7 @@ export class Dungeon {
 
     _generateAutomata() {
         // Initial random fill
-        let grid = Array.from({ length: this.height }, () => 
+        let grid = Array.from({ length: this.height }, () =>
             Array.from({ length: this.width }, () => Math.random() < 0.45 ? TILE.WALL : TILE.FLOOR)
         );
 
@@ -519,7 +506,7 @@ export class Dungeon {
         if (this.rooms.length === 0) {
             this.rooms.push({ x: 5, y: 5, w: this.width - 10, h: this.height - 10 });
         }
-        }
+    }
 
     _carveRoom(leaf) {
         const margin = 2;
@@ -601,8 +588,8 @@ export class Dungeon {
         const ts = this.tileSize;
         const camLeft = Math.max(0, Math.floor(camera.x / ts));
         const camTop = Math.max(0, Math.floor(camera.y / ts));
-        const camRight = Math.min(this.width, Math.ceil((camera.x + camera.w/camera.zoom) / ts) + 1);
-        const camBottom = Math.min(this.height, Math.ceil((camera.y + camera.h/camera.zoom) / ts) + 1);
+        const camRight = Math.min(this.width, Math.ceil((camera.x + camera.w / camera.zoom) / ts) + 1);
+        const camBottom = Math.min(this.height, Math.ceil((camera.y + camera.h / camera.zoom) / ts) + 1);
 
         const TILE_SPRITES = {
             [TILE.FLOOR]: 'env_floor', [TILE.WALL]: 'env_wall', [TILE.DOOR]: 'env_door',
