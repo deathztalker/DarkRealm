@@ -252,11 +252,10 @@ function checkRuneword(item) {
     if (item.socketed.length !== item.sockets) return;
     if (item.rarity !== 'normal') return; // Must be white/grey base
 
-    const weaponTypes = ['sword', 'axe', 'mace', 'staff', 'orb', 'bow', 'dagger', 'totem', 'wand'];
+    const weaponTypes = ['sword', 'axe', 'mace', 'staff', 'orb', 'bow', 'dagger', 'totem', 'wand', 'polearm'];
     const isWeapon = weaponTypes.includes(item.type);
 
     for (const rw of RUNEWORDS) {
-        // Match structure: rw.runes (Array of ids), rw.allowedTypes (Array of string)
         const validMatch = rw.allowedTypes.includes(item.type) || 
                           (rw.allowedTypes.includes('weapon') && isWeapon) ||
                           (rw.allowedTypes.includes('armor') && item.slot === 'chest') ||
@@ -271,19 +270,22 @@ function checkRuneword(item) {
         }
 
         if (match) {
-            // Success! Become a runeword
-            item.rarity = 'unique'; // Visual/Logic treat as unique
+            item.rarity = 'unique';
             item.isRuneword = true;
             item.rwName = rw.name;
             const baseName = items[item.baseId]?.name || item.name;
             item.name = `${rw.name} (${baseName})`; 
             
-            // Apply unique RW bonuses
             if (!item.mods) item.mods = [];
-            for (const [stat, value] of Object.entries(rw.bonuses)) {
-                item.mods.push({ stat, value });
+            for (const [stat, v] of Object.entries(rw.bonuses)) {
+                let finalVal = v;
+                // Handle variable rolls (min/max object)
+                if (typeof v === 'object' && v.min !== undefined) {
+                    finalVal = Math.floor(Math.random() * (v.max - v.min + 1)) + v.min;
+                }
+                item.mods.push({ stat, value: finalVal });
             }
-            addCombatLog(`RUNEWORD COMPLETED: ${rw.name}!`, 'log-crit');
+            addCombatLog(`★ RUNEWORD COMPLETED: ${rw.name}!`, 'log-crit');
             fx.emitHolyBurst(player.x, player.y);
             updateHud();
             return;
@@ -4095,6 +4097,8 @@ function openRuneCodex() {
         });
     };
     countRunesIn(player.inventory);
+    countRunesIn(stash);
+    countRunesIn(cube);
     if (sharedStashTabs) {
         sharedStashTabs.forEach(tab => countRunesIn(tab.items));
     }
@@ -4104,7 +4108,7 @@ function openRuneCodex() {
             <h2 style="margin:0; color:#ffd700;">📜 RUNE CODEX</h2>
             <button onclick="this.parentElement.parentElement.remove()" style="background:none; border:1px solid #bf642f; color:#bf642f; cursor:pointer; padding:5px 10px;">CLOSE</button>
         </div>
-        <p style="font-size:12px; margin-bottom:15px; color:#aaa;">Browse formulas. Highlighted cards indicate you have the runes. Click forge to apply to a valid white item in inventory.</p>
+        <p style="font-size:12px; margin-bottom:15px; color:#aaa;">Owned runes are highlighted with a golden glow. Forge requires a white base item in your inventory.</p>
         <div id="runeword-list" style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
     `;
 
@@ -4112,23 +4116,29 @@ function openRuneCodex() {
         const countsNeeded = {}; rw.runes.forEach(r => countsNeeded[r] = (countsNeeded[r] || 0) + 1);
         const canCraft = Object.entries(countsNeeded).every(([r, count]) => (runeCounts[r] || 0) >= count);
 
-        const cardStyle = canCraft ? 'border-color:#ffd700; background:rgba(214, 176, 104, 0.08);' : 'opacity:0.6;';
-        const nameColor = canCraft ? '#ffd700' : '#888';
+        const cardStyle = canCraft ? 'border-color:#ffd700; background:rgba(214, 176, 104, 0.08); box-shadow: 0 0 15px rgba(191, 100, 47, 0.2);' : 'opacity:0.7;';
+        const nameColor = canCraft ? '#ffd700' : '#d6b068';
 
         html += `
-            <div class="rw-card" style="border:1px solid #444; padding:12px; border-radius:4px; ${cardStyle}">
+            <div class="rw-card" style="border:1px solid #444; padding:12px; border-radius:4px; transition: all 0.3s; ${cardStyle}">
                 <div style="color:${nameColor}; font-weight:bold; font-size:16px; margin-bottom:5px; text-shadow: 0 0 5px rgba(0,0,0,0.5);">${rw.name}</div>
                 <div style="font-size:10px; color:#aaa; margin-bottom:8px;">Base: ${rw.allowedTypes.join('/')} (${rw.runes.length} Sockets)</div>
                 <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
                     ${rw.runes.map(r => {
                         const has = (runeCounts[r] || 0) > 0;
-                        return `<span style="border:1px solid ${has?'#ffd700':'#444'}; padding:2px 6px; font-size:10px; border-radius:2px; background:${has?'#1a150a':'#111'}; color:${has?'#ffd700':'#666'};">${r.toUpperCase()}</span>`;
+                        const runeStyle = has 
+                            ? 'background:#2a2010; color:#ffd700; border-color:#ffd700; box-shadow: 0 0 8px #bf642f;' 
+                            : 'background:#111; color:#444; border-color:#333;';
+                        return `<span style="border:1px solid; padding:3px 8px; font-size:11px; border-radius:3px; font-weight:bold; ${runeStyle}">${r.toUpperCase()}</span>`;
                     }).join('')}
                 </div>
-                <div style="font-size:10px; color:#d6b068; margin-bottom:12px; font-style:italic;">
-                    ${Object.entries(rw.bonuses).map(([k,v]) => `${k.replace('pct', '%').replace('flat', '+')}: ${v}`).join(', ')}
+                <div style="font-size:11px; color:#d6b068; margin-bottom:12px; font-style:italic; line-height:1.4;">
+                    ${Object.entries(rw.bonuses).map(([k,v]) => {
+                        const label = k.replace('pct', '%').replace('flat', '+').replace('Res', ' Res');
+                        return `<span style="display:inline-block; margin-right:8px;">${label}: ${v}</span>`;
+                    }).join('')}
                 </div>
-                ${canCraft ? `<button onclick="forgeRuneword('${rw.id}')" style="width:100%; padding:6px; background:#bf642f; color:#fff; border:none; border-radius:2px; cursor:pointer; font-weight:bold; font-size:11px;">FORGE ON VALID BASE</button>` : ''}
+                ${canCraft ? `<button onclick="forgeRuneword('${rw.id}')" style="width:100%; padding:8px; background:#bf642f; color:#fff; border:1px solid #ffd700; border-radius:2px; cursor:pointer; font-weight:bold; font-size:12px; text-transform:uppercase; letter-spacing:1px;">FORGE ON VALID BASE</button>` : ''}
             </div>
         `;
     });
@@ -4195,34 +4205,28 @@ window.forgeRuneword = (rwId) => {
 
     // Add Codex button to HUD
     function injectCodexButton() {
-    const existing = document.getElementById('btn-rune-codex');
-    if (existing) existing.remove();
+        const existing = document.getElementById('btn-rune-codex');
+        if (existing) existing.remove();
 
-    const hud = document.getElementById('hud-bottom-right') || document.body;
-    const btn = document.createElement('button');
-    btn.id = 'btn-rune-codex';
-    btn.innerHTML = '📜';
-    btn.title = 'Rune Codex (Recipes)';
-    btn.style.cssText = `
-        width: 36px; height: 36px; background: #0a0805; border: 2px solid #bf642f;
-        color: #ffd700; border-radius: 4px; cursor: pointer; font-size: 18px;
-        display: flex; align-items: center; justify-content: center; 
-        box-shadow: 0 0 10px rgba(0,0,0,0.5); transition: all 0.2s;
-        margin-right: 5px;
-    `;
-    btn.onmouseover = () => btn.style.borderColor = '#ffd700';
-    btn.onmouseout = () => btn.style.borderColor = '#bf642f';
-    btn.onclick = openRuneCodex;
+        const hud = document.getElementById('hud-buttons');
+        if (!hud) return;
 
-    if (hud === document.body) {
-        btn.style.position = 'fixed';
-        btn.style.bottom = '85px';
-        btn.style.right = '20px';
-        btn.style.zIndex = '100';
-    }
-    hud.appendChild(btn);
+        const btn = document.createElement('button');
+        btn.id = 'btn-rune-codex';
+        btn.className = 'hud-btn';
+        btn.innerHTML = '📜';
+        btn.title = 'Rune Codex (R)';
+        btn.onclick = openRuneCodex;
+        hud.appendChild(btn);
     }
     injectCodexButton();
+
+    // Also bind R key to Codex
+    window.addEventListener('keydown', (e) => {
+        if (e.key.toLowerCase() === 'r' && !document.activeElement.tagName.match(/INPUT|TEXTAREA/)) {
+            openRuneCodex();
+        }
+    });
 // ——— QUEST LOG ———
 function renderQuestJournal() {
     const list = $('quest-list');
@@ -5254,9 +5258,20 @@ function itemTooltipText(item, isComparison = false) {
 
     t += `<div class="tooltip-stats" style="color:#fff;">`;
     if (item.minDmg) {
-        const avg = (item.minDmg + item.maxDmg) / 2;
+        let min = item.minDmg, max = item.maxDmg;
+        const localED = item.mods?.reduce((acc, m) => m.stat === 'pctDmg' ? acc + m.value : acc, 0) || 0;
+        const localFlat = item.mods?.reduce((acc, m) => m.stat === 'flatMinDmg' ? acc + m.value : acc, 0) || 0;
+        
+        if (localED > 0 || localFlat > 0) {
+            min = Math.floor(min * (1 + localED / 100)) + localFlat;
+            max = Math.floor(max * (1 + localED / 100)) + localFlat;
+        }
+
+        const avg = (min + max) / 2;
         const compAvg = compareItem ? (compareItem.minDmg + compareItem.maxDmg) / 2 : avg;
-        t += `<div style="color:${getCompareColor(avg, compAvg)}">Damage: ${item.minDmg}–${item.maxDmg}${getDiffText(avg, compAvg)}</div>`;
+        const dmgColor = (localED > 0 || localFlat > 0) ? '#4850b8' : getCompareColor(avg, compAvg);
+        
+        t += `<div style="color:${dmgColor}; font-weight:${(localED>0)?'bold':'normal'}">Damage: ${min}–${max}${getDiffText(avg, compAvg)}</div>`;
     }
     if (item.armor) t += `<div style="color:${getCompareColor(item.armor, compareItem?.armor)}">Armor: ${item.armor}${getDiffText(item.armor, compareItem?.armor)}</div>`;
     if (item.block) t += `<div style="color:${getCompareColor(item.block, compareItem?.block)}">Block: ${item.block}%${getDiffText(item.block, compareItem?.block)}</div>`;
@@ -6255,7 +6270,7 @@ function saveGame() {
         cube,
         mercenary,
         difficulty,
-        waypoints,
+        waypoints: unlockedWaypoints, // Fixed variable name
         campaign
     });
 }
