@@ -608,7 +608,7 @@ export class NetworkManager {
 
     async getLeaderboardData(filter = 'global') {
         try {
-            let query = DB.client.from('save_slots')
+            let query = DB.client.from('saves')
                 .select('charName, classId, isHardcore, extra_data')
                 .order('extra_data->riftLevel', { ascending: false })
                 .limit(20);
