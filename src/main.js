@@ -1461,6 +1461,21 @@ function gameLoop(timestamp) {
             renderer.ctx.fill();
             renderer.ctx.restore();
         }
+
+        // --- Rift Portal Suction FX ---
+        if (obj.isRiftPortal || obj.id === 'rift_portal') {
+            const pColor = '#0ff';
+            for(let i=0; i<2; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 30 + Math.random() * 20;
+                const px = obj.x + Math.cos(angle) * dist;
+                const py = obj.y + Math.sin(angle) * dist;
+                // Particles fly TOWARDS the center
+                if (fx && fx.emitParticle) {
+                    fx.emitParticle(px, py, (obj.x - px)*0.08, (obj.y - py)*0.08, pColor, 0.4);
+                }
+            }
+        }
     }
     for (const obj of gameObjects) obj.render(renderer, lastTime);
 
