@@ -309,29 +309,45 @@ export class Mercenary {
     }
 
     attack(target) {
-        const dmg = this.baseDmg + Math.floor(Math.random() * (this.level * 2));
+        const slvl = this.effectiveSkillLevel || 1;
+        const dmg = this.baseDmg;
         
         if (this.className === 'Iron Wolf') {
-            // Spellcast
+            // Elemental Bolt - High scaling with level
             const spells = [
-                { type: 'fire', color: '#ff4000', life: 1.2, speed: 250 },
-                { type: 'cold', color: '#4080ff', life: 1.5, speed: 220 },
-                { type: 'lightning', color: '#ffff40', life: 1.0, speed: 400 }
+                { type: 'fire', color: '#ff4000', speed: 250 },
+                { type: 'cold', color: '#4080ff', speed: 220 },
+                { type: 'lightning', color: '#ffff40', speed: 400 }
             ];
             const s = spells[Math.floor(Math.random() * spells.length)];
-            const proj = new Projectile(this.x, this.y, target.x, target.y, s.speed, 'ra-circle', dmg * 1.5, s.type, this, false, 15, 0, 0, 'bolt');
+            const finalDmg = dmg * (1 + slvl * 0.15);
+            const proj = new Projectile(this.x, this.y, target.x, target.y, s.speed, 'ra-circle', finalDmg, s.type, this, false, 15, 0, 0, 'bolt');
             bus.emit('combat:spawnProjectile', { proj });
             fx.emitBurst(this.x, this.y, s.color, 15, 1.5);
+            bus.emit('combat:log', { text: `${this.name} casts Elemental Bolt (Lvl ${slvl})`, type: 'log-info' });
         } else if (this.className === 'Desert Warrior') {
-            // Melee Poke
-            import('../systems/combat.js').then(c => {
-                c.applyDamage(this, target, { dealt: dmg * 1.2, isCrit: Math.random() < 0.1, type: 'physical' });
-            });
-            fx.emitSlash(this.x, this.y, Math.atan2(target.y - this.y, target.x - this.x), '#cccccc', 40);
+            // Jab - Triple strike logic
+            bus.emit('combat:log', { text: `${this.name} uses Jab (Lvl ${slvl})`, type: 'log-info' });
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    if (target && target.hp > 0) {
+                        import('../systems/combat.js').then(c => {
+                            c.applyDamage(this, target, { dealt: dmg * (0.8 + slvl * 0.05), isCrit: Math.random() < 0.1, type: 'physical' });
+                        });
+                        fx.emitSlash(this.x, this.y, Math.atan2(target.y - this.y, target.x - this.x), '#cccccc', 30);
+                    }
+                }, i * 150);
+            }
         } else {
-            // Default Rogue Archer
-            const proj = new Projectile(this.x, this.y, target.x, target.y, 350, 'ra-arrow', dmg, 'physical', this, false, 8, 0, 0, 'arrow');
+            // Rogue Archer - Inner Sight + Guided-style Arrow
+            const finalDmg = dmg * (1 + slvl * 0.1);
+            const proj = new Projectile(this.x, this.y, target.x, target.y, 400, 'ra-arrow', finalDmg, 'physical', this, false, 8, 0, 0, 'arrow');
             bus.emit('combat:spawnProjectile', { proj });
+            if (Math.random() < 0.2) {
+                bus.emit('combat:log', { text: `${this.name} uses Inner Sight (Lvl ${slvl})`, type: 'log-info' });
+                fx.emitBurst(target.x, target.y, '#ffffff', 20, 2);
+                import('../systems/combat.js').then(c => { c.applyStatus(target, 'inner_sight', 10, slvl * 5); });
+            }
         }
     }
 
