@@ -258,15 +258,20 @@ export class Player {
                         s.pctFireDmg = (s.pctFireDmg || 0) + (scaledLvl * 3);
                         this._holyFireLvl = scaledLvl;
                         break;
+                    case 'ashbringer':
+                        this.itemAuras.set('ashbringer', (this.itemAuras.get('ashbringer') || 0) + scaledLvl);
+                        break;
                     case 'frostmourne':
                         this._hasDrainAura = true;
                         this._drainType = 'cold';
                         this._drainLvl = scaledLvl;
+                        this.itemAuras.set('frostmourne', (this.itemAuras.get('frostmourne') || 0) + scaledLvl);
                         break;
                     case 'shadowmourne':
                         this._hasDrainAura = true;
                         this._drainType = 'shadow';
                         this._drainLvl = scaledLvl;
+                        this.itemAuras.set('shadowmourne', (this.itemAuras.get('shadowmourne') || 0) + scaledLvl);
                         break;
                 }
             }

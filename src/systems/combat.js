@@ -733,10 +733,63 @@ export function skillType(skill) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  INTERNAL UTILITIES
-// ─────────────────────────────────────────────────────────────
+// --- Environment / Aura Pulsar (Run every 1s) ---
+processAuraPulsar(player, enemies, dt) {
+    this._auraTimer = (this._auraTimer || 0) + dt;
+    if (this._auraTimer < 1.0) return;
+    this._auraTimer = 0;
 
-function cap(str) {
-    if (!str || typeof str !== 'string') return '';
+    const isAshbringer = !!player.itemAuras.has('ashbringer');
+    const isShadowmourne = !!player.itemAuras.has('shadowmourne');
+    const isFrostmourne = !!player.itemAuras.has('frostmourne');
+
+    // Resonance Bonuses
+    let resonanceMult = 1.0;
+    if (isFrostmourne && isShadowmourne) resonanceMult = 2.5; // Lich King synergy
+    if (isAshbringer && (isFrostmourne || isShadowmourne)) resonanceMult = 1.8; // Twilight synergy
+
+    const drainBase = (10 + player.level * 3) * (player._drainMult || 1) * resonanceMult;
+
+    for (const e of enemies) {
+        if (e.hp <= 0 || e.state === 'dead') continue;
+        const dist = Math.hypot(e.x - player.x, e.y - player.y);
+        if (dist > 150) continue;
+
+        // 1. Ashbringer Holy Pulse
+        if (isAshbringer) {
+            if (e.type === 'undead' || e.type === 'demon' || e.isBoss) {
+                const holyDmg = drainBase * 2;
+                this.applyDamage(player, e, { dealt: holyDmg, isCrit: false, type: DMG_TYPE.HOLY }, 'aura_ashbringer');
+                if (fx) fx.emitHolyBurst(e.x, e.y, 8);
+            }
+            // Heal player
+            const heal = player.maxHp * 0.02;
+            player.hp = Math.min(player.maxHp, player.hp + heal);
+            if (fx) fx.emitHeal(player.x, player.y);
+        }
+
+        // 2. Drain Auras (Frost/Shadow)
+        if (player._hasDrainAura) {
+            const dmg = drainBase;
+            const type = player._drainType === 'shadow' ? DMG_TYPE.SHADOW : DMG_TYPE.COLD;
+            this.applyDamage(player, e, { dealt: dmg, isCrit: false, type: type }, 'aura_drain');
+
+            // Visual Soul/Ice Fragments
+            if (fx) {
+                const color = type === DMG_TYPE.SHADOW ? '#a040ff' : '#6af';
+                fx.emitBurst(e.x, e.y, color, 4, 1.2);
+                // Special logic for Shadowmourne stacking dmg
+                if (isShadowmourne) {
+                    player._soulFragments = (player._soulFragments || 0) + 1;
+                    if (player._soulFragments > 50) player._soulFragments = 50;
+                }
+                // Special logic for Frostmourne Bone Armor
+                if (isFrostmourne) {
+                    player.boneArmor = Math.min(player.maxHp, (player.boneArmor || 0) + dmg * 0.2);
+                }
+            }
+        }
+    }
+}    if (!str || typeof str !== 'string') return '';
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
