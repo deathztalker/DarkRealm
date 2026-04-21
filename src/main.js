@@ -238,10 +238,17 @@ function spawnRiftGuardian() {
         import('./engine/audio.js').then(a => a.playZoneTransition());
         fx.emitHolyBurst(tx, ty);
         fx.emitBurst(tx, ty, '#f0f', 60, 5);
-        fx.shake(1200, 20);
+        
+        // --- Rift Guardian Arrival FX ---
+        fx.shake(2000, 25); // Violent tremor for 2s
+        for(let i=0; i<8; i++) {
+            setTimeout(() => {
+                fx.emitBurst(tx + (Math.random()-0.5)*100, ty + (Math.random()-0.5)*100, '#333', 20, 3); // Dust clouds
+            }, i * 200);
+        }
+        addCombatLog('THE EARTH TREMBLES... A RIFT GUARDIAN HAS ARRIVED!', 'log-crit');
     }
 
-    addCombatLog('THE RIFT GUARDIAN HAS ARRIVED!', 'log-crit');
     const bossBar = $('boss-hp-bar');
     if (bossBar) {
         bossBar.classList.remove('hidden');
@@ -1454,33 +1461,52 @@ function gameLoop(timestamp) {
 
     bus.emit('render:effects', { renderer, lastTime });
 
-    // --- Phase 20: Narrative Vision: Atmospheric Lighting Pass ---
+    // --- Phase 20: Narrative Vision: Atmospheric Lighting & Climate ---
     if (player && renderer && camera) {
-        // Use the camera's source of truth for screen positioning
         const screen = camera.toScreen(player.x, player.y - 15);
-        const sx = screen.x;
-        const sy = screen.y;
+        const baseRadius = (160 + (player.lightRadius || 0));
+        let flicker = Math.sin(Date.now() / 150) * 8;
 
-        // Base radius and flicker (Tightened for a distinct circle effect)
-        const baseRadius = (150 + (player.lightRadius || 0));
-        const flicker = Math.sin(Date.now() / 150) * 8;
-
-        let ambient = 'rgba(0, 0, 0, 0.85)'; // Default
-
-        if (zoneLevel === 0) {
-            // Very subtle ambient in town to let the "player light" still show a bit
-            ambient = 'rgba(0, 0, 4, 0.15)';
-        } else if (zoneLevel <= 3) {
-            ambient = 'rgba(8, 12, 18, 0.70)'; // Blood Moor
-        } else if (zoneLevel === 4) {
-            ambient = 'rgba(10, 20, 10, 0.85)'; // Catacombs
-        } else if (zoneLevel >= 5 && zoneLevel <= 25) {
-            ambient = 'rgba(20, 4, 4, 0.90)'; // Hell
-        } else if (zoneLevel === 100) {
-            ambient = 'rgba(60, 0, 0, 0.95)'; // Uber
+        let ambient = 'rgba(0, 0, 0, 0.88)';
+        
+        // --- Act-Specific Climate & Lighting ---
+        if (zoneLevel === 0) ambient = 'rgba(0, 0, 10, 0.15)'; // Town 1
+        else if (zoneLevel >= 1 && zoneLevel <= 5) {
+            // Act 1: Rainy/Stormy
+            ambient = 'rgba(5, 5, 20, 0.75)';
+            if (Math.random() < 0.005) { // Lightning strike
+                ambient = 'rgba(200, 200, 255, 0.1)';
+                flicker = 500;
+            }
+            if (Math.random() < 0.4) fx.emitBurst(camera.x + Math.random()*camera.w, camera.y - 20, '#55a', 1, 0.5); // Rain
+        }
+        else if (zoneLevel >= 6 && zoneLevel <= 10) {
+            // Act 2: Sandstorm
+            ambient = 'rgba(25, 15, 0, 0.70)';
+            if (Math.random() < 0.3) fx.emitBurst(camera.x + camera.w + 20, camera.y + Math.random()*camera.h, '#dcb', 1, 0.8); // Sand
+        }
+        else if (zoneLevel >= 11 && zoneLevel <= 15) {
+            // Act 3: Foggy Jungle
+            ambient = 'rgba(10, 25, 10, 0.80)';
+            if (Math.random() < 0.1) fx.emitBurst(camera.x + Math.random()*camera.w, camera.y + Math.random()*camera.h, '#8f8', 1, 1.2); // Fireflies
+        }
+        else if (zoneLevel >= 16 && zoneLevel <= 20) {
+            // Act 4: Hell Fire
+            ambient = 'rgba(35, 5, 0, 0.85)';
+            if (Math.random() < 0.2) fx.emitBurst(camera.x + Math.random()*camera.w, camera.y + camera.h + 10, '#f40', 1, 1.5); // Embers
+        }
+        else if (zoneLevel >= 21 && zoneLevel <= 25) {
+            // Act 5: Blizzard
+            ambient = 'rgba(15, 20, 35, 0.75)';
+            if (Math.random() < 0.5) fx.emitBurst(camera.x + camera.w + 50, camera.y + Math.random()*camera.h, '#fff', 1, 0.4); // Snow wind
+        }
+        else if (zoneLevel >= 7 || window.riftLevel > 0) {
+            // Rift: Void particles
+            ambient = 'rgba(20, 0, 30, 0.90)';
+            if (Math.random() < 0.1) fx.emitBurst(camera.x + Math.random()*camera.w, camera.y + Math.random()*camera.h, '#a0f', 1, 2.0);
         }
 
-        renderer.applyLighting(sx, sy, (baseRadius + flicker) * camera.zoom, ambient);
+        renderer.applyLighting(screen.x, screen.y, (baseRadius + flicker) * camera.zoom, ambient);
     }
 
     camera.reset(renderer.ctx);
@@ -1980,19 +2006,6 @@ function checkDeaths() {
                     }
                 }, 2000);
 
-                const tp = new GameObject('portal', e.x, e.y - 40, 'obj_portal');
-                // Act Transitions: 5->6 (Act 2 Town), 10->11 (Act 3), 15->16 (Act 4), 20->21 (Act 5), 25->0 (Back to Town)
-                const actTransitions = { 5: 6, 10: 11, 15: 16, 20: 21, 25: 0 };
-                tp.targetZone = actTransitions[zoneLevel] || zoneLevel + 1;
-                gameObjects.push(tp);
-
-                if (actTransitions[zoneLevel] !== undefined) {
-                    discoveredWaypoints.add(actTransitions[zoneLevel]);
-                    addCombatLog(`Victory! The path to the next Act is open.`, 'log-crit');
-                } else {
-                    addCombatLog(`The Realm Portal has opened!`, 'log-crit');
-                }
-
                 if (unlockedDiff) {
                     let diffName = '';
                     if (player.maxDifficulty === 1) diffName = 'Nightmare';
@@ -2004,12 +2017,7 @@ function checkDeaths() {
                     }
                 }
 
-                // Phase 33: Always save after boss kill
-                SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
-                    difficulty,
-                    waypoints: Array.from(discoveredWaypoints),
-                    mercenary: mercenary ? mercenary.serialize() : null
-                });
+                saveGame();
             }
         }
     }
@@ -2091,6 +2099,11 @@ function spawnFloatingText(x, y, text, type = 'physical', isCrit = false) {
 
 function nextZone(targetZone = null) {
     if (isTransitioning) return;
+    
+    // Safety check: Don't allow another transition for 3 seconds
+    if (Date.now() - _lastPortalEntry < 3000) return;
+    _lastPortalEntry = Date.now();
+
     isTransitioning = true;
 
     const overlay = document.getElementById('transition-overlay');
@@ -4304,6 +4317,10 @@ window.forgeRuneword = (rwId) => {
     // Sync shared stash if needed
     SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
     };
+
+    // Add Leaderboard button to HUD
+    const lbBtn = document.getElementById('btn-leaderboard');
+    if (lbBtn) lbBtn.onclick = renderLeaderboard;
 
     // Add Codex button to HUD
     function injectCodexButton() {
@@ -7218,13 +7235,36 @@ window.addEventListener('DOMContentLoaded', () => {
         startGame(null, null, charName);
     });
 
-    // Difficulty selection wiring
-    document.querySelectorAll('.diff-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        });
+function renderDifficultySelection() {
+    const container = document.getElementById('difficulty-selector');
+    if (!container) return;
+
+    const maxUnlocked = player?.maxDifficulty || 0;
+    container.innerHTML = '';
+
+    DIFFICULTY_NAMES.forEach((name, idx) => {
+        const isLocked = idx > maxUnlocked;
+        const btn = document.createElement('button');
+        btn.className = `diff-btn ${difficulty === idx ? 'active' : ''} ${isLocked ? 'locked' : ''}`;
+        btn.dataset.diff = idx;
+        btn.disabled = isLocked;
+        
+        btn.innerHTML = `
+            <div class="diff-name">${name}</div>
+            ${isLocked ? '<div class="diff-lock">🔒 LOCKED</div>' : `<div class="diff-mult">${window.DIFFICULTY_MULT[idx]}x Monsters</div>`}
+        `;
+
+        if (!isLocked) {
+            btn.onclick = () => {
+                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                window._difficulty = idx;
+                difficulty = idx;
+            };
+        }
+        container.appendChild(btn);
     });
+}
 
     // Death Screen
     $('btn-respawn').addEventListener('click', () => {
@@ -7556,71 +7596,103 @@ window.addEventListener('mouseup', (e) => {
     setTimeout(() => { if (draggedItem) clearDrag(); }, 20);
 });
 
-// --- Phase 30: Pantheon UI ---
-function renderPantheonList() {
-    const legacies = SaveSystem.getPantheon();
+// --- Phase 30: Pantheon / Leaderboard UI ---
+async function renderLeaderboard(filter = 'global') {
+    let overlay = $('pantheon-overlay');
+    if (overlay) overlay.remove();
 
-    const overlay = document.createElement('div');
+    overlay = document.createElement('div');
     overlay.id = 'pantheon-overlay';
     overlay.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center;
-        z-index: 2000; font-family: 'Cinzel', serif; backdrop-filter: blur(5px);
+        background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center;
+        z-index: 2000; font-family: 'Cinzel', serif; backdrop-filter: blur(8px);
     `;
 
-    const container = document.createElement('div');
-    container.style.cssText = `
-        width: 600px; max-height: 80%; background: #0a0805; border: 2px solid #bf642f;
-        padding: 30px; box-shadow: 0 0 50px rgba(191, 100, 47, 0.3); border-radius: 8px;
-        display: flex; flex-direction: column; color: #ba9158; overflow: hidden;
+    overlay.innerHTML = `
+        <div style="width: 600px; background: #0a0805; border: 2px solid #bf642f; padding: 30px; box-shadow: 0 0 60px rgba(191, 100, 47, 0.5); border-radius: 8px; color: #ba9158;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #bf642f; padding-bottom:10px; margin-bottom:15px;">
+                <h2 style="margin:0; color:#ffd700; text-shadow:0 0 10px rgba(255,215,0,0.3);">🏆 THE PANTHEON 🏆</h2>
+                <button onclick="document.getElementById('pantheon-overlay').remove()" style="background:none; border:none; color:#bf642f; font-size:24px; cursor:pointer;">✕</button>
+            </div>
+            
+            <!-- Leaderboard Tabs -->
+            <div style="display:flex; gap:5px; margin-bottom:20px;">
+                <button onclick="renderLeaderboard('global')" style="flex:1; padding:8px; background:${filter === 'global' ? '#bf642f' : '#111'}; color:${filter === 'global' ? '#fff' : '#888'}; border:1px solid #444; cursor:pointer; font-size:10px;">GLOBAL</button>
+                <button onclick="renderLeaderboard('class')" style="flex:1; padding:8px; background:${filter === 'class' ? '#bf642f' : '#111'}; color:${filter === 'class' ? '#fff' : '#888'}; border:1px solid #444; cursor:pointer; font-size:10px;">MY CLASS</button>
+                <button onclick="renderLeaderboard('hardcore')" style="flex:1; padding:8px; background:${filter === 'hardcore' ? '#bf642f' : '#111'}; color:${filter === 'hardcore' ? '#fff' : '#888'}; border:1px solid #444; cursor:pointer; font-size:10px;">HARDCORE</button>
+            </div>
+
+            <div style="max-height:350px; overflow-y:auto; padding-right:10px;">
+                <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                    <thead>
+                        <tr style="color:#ffd700; border-bottom:1px solid #444; text-align:left;">
+                            <th style="padding:10px;">RANK</th>
+                            <th style="padding:10px;">HERO</th>
+                            <th style="padding:10px;">CLASS</th>
+                            <th style="padding:10px; text-align:right;">DEPTH</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <tr><td colspan="4" style="text-align:center; padding:40px; color:#666;">Querying the heavens...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     `;
 
-    const title = document.createElement('h2');
-    title.textContent = "THE PANTHEON OF HEROES";
-    title.style.cssText = "text-align: center; color: #ffd700; margin-bottom: 20px; text-shadow: 0 0 10px rgba(255,215,0,0.5);";
-    container.appendChild(title);
-
-    const list = document.createElement('div');
-    list.style.cssText = "flex: 1; overflow-y: auto; padding-right: 10px;";
-
-    if (legacies.length === 0) {
-        list.innerHTML = "<div style='text-align:center; padding: 40px; color: #666;'>No heroes have fallen... yet.</div>";
-    } else {
-        legacies.sort((a, b) => b.level - a.level).forEach(hero => {
-            const entry = document.createElement('div');
-            entry.style.cssText = `
-                display: flex; justify-content: space-between; align-items: center;
-                padding: 12px; margin-bottom: 8px; background: rgba(186, 145, 88, 0.05);
-                border: 1px solid #333; border-radius: 4px; transition: background 0.2s;
-            `;
-            entry.onmouseover = () => entry.style.background = "rgba(186, 145, 88, 0.1)";
-            entry.onmouseout = () => entry.style.background = "rgba(186, 145, 88, 0.05)";
-
-            entry.innerHTML = `
-                <div>
-                    <span style="color: #ffd700; font-weight: bold;">[${hero.level}] ${hero.name}</span>
-                    <div style="font-size: 12px; color: #888;">${hero.className} | Slayed by ${hero.killer || 'the shadows'}</div>
-                </div>
-                <div style="text-align: right; font-size: 12px;">
-                    <div style="color: #bf642f;">${hero.gold} Gold</div>
-                    <div style="color: #666;">${new Date(hero.date).toLocaleDateString()}</div>
-                </div>
-            `;
-            list.appendChild(entry);
-        });
-    }
-    container.appendChild(list);
-
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = "CLOSE";
-    closeBtn.className = "inventory-btn";
-    closeBtn.style.marginTop = "20px";
-    closeBtn.onclick = () => overlay.remove();
-    container.appendChild(closeBtn);
-
-    overlay.appendChild(container);
     document.body.appendChild(overlay);
+
+    try {
+        let query = SaveSystem.DB.from('save_slots')
+            .select('charName, classId, isHardcore, extra_data')
+            .order('extra_data->riftLevel', { ascending: false })
+            .limit(20);
+
+        if (filter === 'class' && player) query = query.eq('classId', player.classId);
+        if (filter === 'hardcore') query = query.eq('isHardcore', true);
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const body = $('leaderboard-body');
+        body.innerHTML = '';
+
+        if (data.length === 0) {
+            body.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:40px; color:#666;">No heroes have been etched here yet.</td></tr>`;
+        }
+
+        data.forEach((row, i) => {
+            const extra = row.extra_data || {};
+            const depth = extra.riftLevel || 0;
+            const isMe = player && row.charName === player.charName;
+            
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #222';
+            if (isMe) tr.style.background = 'rgba(191, 100, 47, 0.2)';
+            
+            let rankDisp = (i + 1);
+            if (i === 0) rankDisp = '🥇';
+            if (i === 1) rankDisp = '🥈';
+            if (i === 2) rankDisp = '🥉';
+
+            tr.innerHTML = `
+                <td style="padding:12px 10px; color:${isMe ? '#ffd700' : '#888'}; font-weight:bold;">${rankDisp}</td>
+                <td style="padding:12px 10px; color:${isMe ? '#ffd700' : '#fff'};">
+                    ${row.charName} ${row.isHardcore ? '<span style="color:#f44; font-size:9px; margin-left:5px;">[HC]</span>' : ''}
+                </td>
+                <td style="padding:12px 10px; color:#aaa; font-size:11px; text-transform:uppercase;">${row.classId}</td>
+                <td style="padding:12px 10px; text-align:right; color:#c080ff; font-weight:bold;">DEPTH ${depth}</td>
+            `;
+            body.appendChild(tr);
+        });
+    } catch (e) {
+        console.error("Leaderboard Error:", e);
+        $('leaderboard-body').innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#f66;">Failed to connect to the Pantehon.</td></tr>`;
+    }
 }
+
+function renderPantheonList() { renderLeaderboard(); }
 
 function returnToMainMenu() {
     // Save current character before leaving
@@ -7750,6 +7822,10 @@ function clearSkillDrag() {
 }
 
 function handleBossDeath(boss) {
+    // Prevent double execution
+    if (boss._handledDeath) return;
+    boss._handledDeath = true;
+
     let actNum = 0;
     let actName = 'I';
     let actSubtitle = 'The Sightless Eye';
@@ -7768,23 +7844,45 @@ function handleBossDeath(boss) {
         campaign.completeAct(actNum);
         showActCleared(actName, actSubtitle);
 
+        // --- Victory Effects ---
+        fx.emitLightning?.(boss.x, boss.y - 600, boss.x, boss.y, 10);
+        fx.emitHolyBurst(boss.x, boss.y);
+        fx.shake(1500, 30);
+
+        // Unlock next difficulty on Baal death
+        if (boss.isBaal) {
+            const currentMax = player.maxDifficulty || 0;
+            if (difficulty === currentMax) {
+                player.maxDifficulty = currentMax + 1;
+                const diffNames = ['Nightmare', 'Hell', 'Rift Mode'];
+                const unlocked = diffNames[currentMax];
+                if (unlocked) addCombatLog(`⭐ VICTORY! ${unlocked.toUpperCase()} DIFFICULTY UNLOCKED! ⭐`, 'log-unique');
+            }
+        }
+
         const portal = new GameObject('portal', boss.x + 40, boss.y, 'obj_portal');
-        portal.targetZone = 0;
+        const actNextTown = { 1: 6, 2: 11, 3: 16, 4: 21, 5: 0 };
+        portal.targetZone = actNextTown[actNum] || 0;
         portal.isActPortal = true;
         gameObjects.push(portal);
 
-        fx.emitHolyBurst(portal.x, portal.y);
-    }
+        addCombatLog(`⚡ HEAVEN'S WRATH HAS FALLEN UPON ${boss.name.toUpperCase()}! ⚡`, 'log-level');
 
-    // --- Rift Guardian Global Announcement ---
-    if (boss.isRiftGuardian && (window.riftLevel >= 50)) {
-        const msg = `⚡ GLOBAL: ${player.charName} has defeated the Depth ${window.riftLevel} Guardian! ⚡`;
-        if (window.networkManager && networkManager.socket) {
-            networkManager.socket.emit('system_message', msg);
-        }
-        addCombatLog(msg, 'log-unique');
+        // Immediate Cloud Save
+        saveGame();
     }
-}
+        // Rift Guardian Global Announcement
+        if (boss.isRiftGuardian && window.riftLevel >= 50) {
+        let msg = "";
+        if (window.partyId && window.partyMembers && window.partyMembers.length > 1) {
+            msg = `⚡ GLOBAL: A Party has defeated the Depth ${window.riftLevel} Guardian! ⚡`;
+        } else {
+            msg = `⚡ GLOBAL: ${player.charName} has defeated the Depth ${window.riftLevel} Guardian! (SOLO) ⚡`;
+        }
+
+        if (window.networkManager?.socket) networkManager.socket.emit('system_message', msg);
+        addCombatLog(msg, 'log-unique');
+        }}
 
 function showActCleared(name, subtitle) {
     const splash = document.getElementById('act-splash-container');

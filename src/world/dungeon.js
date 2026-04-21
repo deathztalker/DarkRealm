@@ -331,25 +331,37 @@ export class Dungeon {
             });
         };
 
-        // Deckard Cain is in EVERY town
         addNpc("deckard_cain", "Deckard Cain", "elder", -2, -6, "npc_deckard_cain", "Stay a while and listen!");
 
         if (zoneLevel === 0) {
             // Act 1: Rogue Encampment
-            addNpc("akara", "Akara the Elder", "elder", -4, -4, "npc_akara", "Greetings, traveler. I sense a great darkness rising.");
-            addNpc("charsi", "Charsi the Blacksmith", "merchant", 5, -3, "npc_akara", "Need a new blade? I can repair anything.");
-            addNpc("kashya", "Kashya", "mercenary_hire", -5, 2, "npc_akara", "My rogues are at your service.");
             addNpc("gheed", "Gheed", "merchant", 4, -4, "npc_ormus", "Looking for a deal? My prices are mostly fair.");
             addNpc("warriv", "Warriv", "waypoint", 4, 3, "npc_larzuk", "Ready to travel to the East?");
+            addNpc("akara", "Akara", "elder", -4, -4, "npc_akara", "Greetings, traveler.");
+            addNpc("charsi", "Charsi", "merchant", 5, -3, "npc_akara", "Need a repair?");
+            addNpc("kashya", "Kashya", "mercenary_hire", -5, 2, "npc_akara", "My rogues are ready.");
         } else if (zoneLevel === 6) {
             // Act 2: Lut Gholein
-            addNpc("fara", "Fara", "elder", -4, -4, "npc_akara", "I am Fara. I can heal you and repair your gear.");
-            addNpc("greiz", "Greiz", "mercenary_hire", -5, 2, "npc_larzuk", "I lead the Desert Mercenaries.");
-            addNpc("drognan", "Drognan", "merchant", 6, -3, "npc_ormus", "Looking for a powerful staff or tome?");
             addNpc("lysander", "Lysander", "merchant", 5, 2, "npc_akara", "Mind your step, I'm working with volatile potions!");
             addNpc("meshif", "Meshif", "waypoint", 4, 4, "npc_larzuk", "The Kurast docks are waiting.");
+            addNpc("fara", "Fara", "elder", -4, -4, "npc_akara", "I can heal and repair.");
+            addNpc("greiz", "Greiz", "mercenary_hire", -5, 2, "npc_larzuk", "Desert mercenaries at your service.");
+            addNpc("drognan", "Drognan", "merchant", 6, -3, "npc_ormus", "Magic flows through these walls.");
         } else if (zoneLevel === 11) {
             // Act 3: Kurast Docks
+            addNpc("ormus", "Ormus", "elder", -5, -4, "npc_ormus", "Ormus speaks to you, traveler.");
+            addNpc("hratli", "Hratli", "merchant", 6, -2, "npc_larzuk", "The jungle is dangerous, take a good blade.");
+            addNpc("asheara", "Asheara", "mercenary_hire", -6, 3, "npc_akara", "My Iron Wolves will aid you.");
+        } else if (zoneLevel === 16) {
+            // Act 4: Pandemonium Fortress
+            addNpc("tyrael", "Tyrael", "elder", 0, -6, "npc_tyrael", "The Light shall guide you against Diablo.");
+            addNpc("halbu", "Halbu", "merchant", 5, 2, "npc_larzuk", "I craft the armor of legends.");
+        } else if (zoneLevel === 21) {
+            // Act 5: Harrogath
+            addNpc("malah", "Malah", "elder", -4, -5, "npc_akara", "It is cold, but my heart is warm for you.");
+            addNpc("larzuk", "Larzuk", "merchant", 6, -1, "npc_larzuk", "Ready to put holes in your gear?");
+            addNpc("qual_kehk", "Qual-Kehk", "mercenary_hire", -7, 4, "npc_larzuk", "The sons of Arreat fight for gold.");
+        }
             addNpc("ormus", "Ormus", "elder", -4, -4, "npc_ormus", "Ormus has a magic item for you.");
             addNpc("asheara", "Asheara", "mercenary_hire", -5, 2, "npc_akara", "The Iron Wolves are the finest blades in Kehjistan.");
             addNpc("hratli", "Hratli", "merchant", 6, -3, "npc_larzuk", "Exquisite metalwork is my specialty.");
@@ -492,9 +504,22 @@ export class Dungeon {
 
         this.grid = grid;
 
-        // Fake a "room" for spawning logic
-        this.rooms = [{ x: 5, y: 5, w: this.width - 10, h: this.height - 10 }];
-    }
+        // --- Critical: Populate virtual rooms for enemy spawning ---
+        // CA maps are mostly open, so we create virtual room chunks to trigger the spawn loop
+        this.rooms = [];
+        const chunkSize = 15;
+        for (let r = 2; r < this.height - chunkSize; r += chunkSize) {
+            for (let c = 2; c < this.width - chunkSize; c += chunkSize) {
+                if (this.grid[r + 5][c + 5] === TILE.FLOOR || this.grid[r + 5][c + 5] === TILE.SAND || this.grid[r + 5][c + 5] === TILE.SNOW || this.grid[r + 5][c + 5] === TILE.GRASS) {
+                    this.rooms.push({ x: c, y: r, w: chunkSize - 2, h: chunkSize - 2 });
+                }
+            }
+        }
+
+        if (this.rooms.length === 0) {
+            this.rooms.push({ x: 5, y: 5, w: this.width - 10, h: this.height - 10 });
+        }
+        }
 
     _carveRoom(leaf) {
         const margin = 2;

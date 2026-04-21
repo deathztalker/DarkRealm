@@ -93,6 +93,7 @@ export class NetworkManager {
         this.socket.on('connect', () => {
             console.log('Connected to game server. ID:', this.socket.id);
             this.isConnected = true;
+            this.startPingLoop();
             if (this.game.player) {
                 this.socket.emit('join', {
                     x: this.game.player.x,
@@ -569,5 +570,39 @@ export class NetworkManager {
         if (this.isConnected && this.currentTradeId) {
             this.socket.emit('trade_confirm', { tradeId: this.currentTradeId });
         }
+    }
+
+    startPingLoop() {
+        if (!this.socket) return;
+        
+        this.socket.on('pong', (startTime) => {
+            const latency = Math.round(performance.now() - startTime);
+            this.updatePingUI(latency);
+        });
+
+        setInterval(() => {
+            if (this.isConnected) {
+                this.socket.emit('ping', performance.now());
+            } else {
+                this.updatePingUI(null);
+            }
+        }, 5000);
+    }
+
+    updatePingUI(latency) {
+        const pingDot = document.getElementById('ping-dot');
+        const pingVal = document.getElementById('ping-value');
+        if (!pingDot || !pingVal) return;
+
+        if (latency === null) {
+            pingDot.style.backgroundColor = '#666';
+            pingVal.textContent = 'Offline';
+            return;
+        }
+
+        pingVal.textContent = `${latency}ms`;
+        if (latency < 100) pingDot.style.backgroundColor = '#4caf50';
+        else if (latency < 250) pingDot.style.backgroundColor = '#ffc107';
+        else pingDot.style.backgroundColor = '#f44336';
     }
 }

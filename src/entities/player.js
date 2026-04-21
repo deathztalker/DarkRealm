@@ -1404,6 +1404,33 @@ export class Player {
     gainXp(amt) { this.addXp(amt); }
 
     render(ctx, renderer, time) {
+        // --- Champion Radiance (#1 Rank Visual) ---
+        if (this._isTopRanker) {
+            const glowPulse = Math.sin(time * 3) * 0.5 + 0.5;
+            ctx.save();
+            ctx.shadowBlur = 15 + glowPulse * 10;
+            ctx.shadowColor = '#ffd700';
+            ctx.strokeStyle = `rgba(255, 215, 0, ${0.3 + glowPulse * 0.2})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 20, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Rising Glory Sparks
+            if (Math.random() < 0.15) {
+                this._auraParticles = this._auraParticles || [];
+                this._auraParticles.push({
+                    x: this.x + (Math.random() - 0.5) * 20,
+                    y: this.y,
+                    vy: -0.8 - Math.random() * 1.2,
+                    life: 1.2,
+                    color: '#ffd700',
+                    type: 'glory'
+                });
+            }
+            ctx.restore();
+        }
+
         // --- Legendary Aura Stacking Visuals & Particles ---
         if (this.itemAuras) {
             let radiusOffset = 0;
@@ -1455,6 +1482,8 @@ export class Player {
                     ctx.fillText('💀', p.x - 4, p.y);
                 } else if (p.type === 'ice') {
                     ctx.fillRect(p.x, p.y, 2, 2);
+                } else if (p.type === 'glory') {
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill();
                 } else {
                     ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI*2); ctx.fill();
                 }
@@ -1471,7 +1500,8 @@ export class Player {
 
     serialize() {
         return {
-            classId: this.classId, level: this.level, xp: this.xp, charName: this.charName, isHardcore: this.isHardcore, maxDifficulty: this.maxDifficulty,
+            classId: this.classId, level: this.level, xp: this.xp, charName: this.charName, isHardcore: this.isHardcore, 
+            maxDifficulty: this.maxDifficulty || 0,
             x: this.x, y: this.y, hp: this.hp, mp: this.mp, baseStr: this.baseStr, baseDex: this.baseDex, baseVit: this.baseVit, baseInt: this.baseInt,
             statPoints: this.statPoints, gold: this.gold, totalMonstersSlain: this.totalMonstersSlain, totalGoldCollected: this.totalGoldCollected,
             talents: this.talents.serialize(), equipment: this.equipment, secondaryEquipment: this.secondaryEquipment, activeWeaponSet: this.activeWeaponSet,

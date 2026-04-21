@@ -1254,7 +1254,14 @@ export class Enemy {
             }
         }
 
-        renderer.drawAnim(this.icon, this.x, this.y - 4, baseSize, this.animState, this.facingDir, time, aggroFilter || null, null, this.hitFlashTimer);
+        // --- Hit Flash Logic ---
+        let finalFilter = aggroFilter;
+        if (this._hitFlashTimer > 0) {
+            finalFilter = 'brightness(3) contrast(2) white-balance(1) ' + aggroFilter;
+            this._hitFlashTimer -= (1/60); // 1 frame at 60fps
+        }
+
+        renderer.drawAnim(this.icon, this.x, this.y - 4, baseSize, this.animState, this.facingDir, time, finalFilter || null, null);
 
         // HP Bar
         const barW = 20;

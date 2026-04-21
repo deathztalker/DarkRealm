@@ -250,6 +250,10 @@
       </div>
 
       <div id="hud-right">
+        <div id="ping-container" style="position:absolute; bottom:5px; right:100px; display:flex; align-items:center; gap:5px; background:rgba(0,0,0,0.5); padding:2px 6px; border-radius:10px; border:1px solid #333; font-family:monospace; font-size:10px; pointer-events:none; z-index:100;">
+          <div id="ping-dot" style="width:6px; height:6px; background-color:#4caf50; border-radius:50%;"></div>
+          <span id="ping-value" style="color:#aaa;">0ms</span>
+        </div>
         <div class="orb-container">
           <div id="mp-orb" class="orb mp-orb">
             <div id="mp-fill" class="orb-fill"></div>
@@ -264,6 +268,7 @@
       <div id="broken-gear-warning" class="hidden" title="You have broken equipment! Stats are disabled."
         style="width: 32px; height: 32px; background: rgba(255,0,0,0.2); border: 1px solid #f00; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-bottom: 5px; color: #f00; font-size: 18px; cursor: help;">
         ⚠</div>
+      <button class="hud-btn" id="btn-leaderboard" title="Leaderboard (L)">🏆</button>
       <button class="hud-btn" id="btn-inventory" title="Inventory (I)">🎒</button>
       <button class="hud-btn" id="btn-talents" title="Talents (T)">✨</button>
       <button class="hud-btn" id="btn-character" title="Character (C)">📊</button>
@@ -273,7 +278,7 @@
       <button class="hud-btn" id="btn-stash" title="Stash (N)">📦</button>
       <button class="hud-btn" id="btn-cube" title="Horadric Cube (U)">🎲</button>
       <button class="hud-btn" id="btn-quests" title="Quests (Q)">📜</button>
-  </div>
+    </div>
 
   <!-- Transition Overlay -->
   <div id="transition-overlay"
