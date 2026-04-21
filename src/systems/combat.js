@@ -44,10 +44,19 @@ export function calcDamage(attacker, baseDmg, type, defender) {
     const pct = (attacker[`pct${cap(type)}Dmg`] || 0) + (attacker.pctDmg || 0);
     dmg *= 1 + pct / 100;
 
-    // Critical hit
+    // Critical hit (standard)
     const critChance = attacker.critChance || 0;
     const isCrit = Math.random() * 100 < critChance;
     if (isCrit) dmg *= 1 + (attacker.critMulti || 150) / 100;
+
+    // Deadly Strike (D2 classic: double physical damage)
+    let isDeadlyStrike = false;
+    if (type === DMG_TYPE.PHYSICAL && attacker.deadlyStrike > 0) {
+        if (Math.random() * 100 < attacker.deadlyStrike) {
+            dmg *= 2;
+            isDeadlyStrike = true;
+        }
+    }
 
     // Flat min damage bonus
     dmg += attacker.flatMinDmg || 0;
@@ -61,6 +70,20 @@ export function calcDamage(attacker, baseDmg, type, defender) {
             cls: 'log-crit',
         });
         if (fx) fx.emitHolyBurst(defender.x, defender.y);
+    }
+
+    // Open Wounds (D2 classic: bleed DoT)
+    if (attacker.openWounds > 0 && Math.random() * 100 < attacker.openWounds) {
+        const bleedDmg = Math.round(10 + (attacker.level || 1) * 2);
+        applyDot(defender, bleedDmg, DMG_TYPE.PHYSICAL, 8, 'open_wounds');
+        bus.emit('combat:log', { text: 'OPEN WOUNDS!', cls: 'log-dmg' });
+    }
+
+    // Open Wounds (D2 classic: bleed DoT)
+    if (attacker.openWounds > 0 && Math.random() * 100 < attacker.openWounds) {
+        const bleedDmg = Math.round(10 + (attacker.level || 1) * 2);
+        applyDot(defender, bleedDmg, DMG_TYPE.PHYSICAL, 8, 'open_wounds');
+        bus.emit('combat:log', { text: 'OPEN WOUNDS!', cls: 'log-dmg' });
     }
 
     // Defender resistance (magic & holy bypass)

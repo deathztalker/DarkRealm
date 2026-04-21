@@ -251,6 +251,20 @@ export const AFFIXES = [
         stat: 'manaStealPct', allowedSlots: WEAPON_SLOTS
     },
 
+    // --- Special D2 Combat Suffixes ---
+    {
+        id: 'crushing_blow', name: 'of Crushing', type: 'suffix', tiers: [{ ilvl: 25, roll: [5, 10] }, { ilvl: 45, roll: [11, 20] }, { ilvl: 70, roll: [21, 35] }],
+        stat: 'crushingBlow', allowedSlots: [...WEAPON_SLOTS, 'gloves']
+    },
+    {
+        id: 'deadly_strike', name: 'of Lethality', type: 'suffix', tiers: [{ ilvl: 30, roll: [5, 15] }, { ilvl: 50, roll: [16, 30] }, { ilvl: 75, roll: [31, 50] }],
+        stat: 'deadlyStrike', allowedSlots: [...WEAPON_SLOTS, 'head']
+    },
+    {
+        id: 'open_wounds', name: 'of Laceration', type: 'suffix', tiers: [{ ilvl: 20, roll: [10, 20] }, { ilvl: 40, roll: [21, 40] }, { ilvl: 65, roll: [41, 60] }],
+        stat: 'openWounds', allowedSlots: [...WEAPON_SLOTS, 'belt']
+    },
+
     // --- Move speed ---
     {
         id: 'move_speed', name: 'of Haste', type: 'suffix', tiers: [{ ilvl: 5, roll: [10, 15] }, { ilvl: 20, roll: [15, 25] }, { ilvl: 35, roll: [25, 40] }],
