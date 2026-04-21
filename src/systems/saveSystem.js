@@ -145,24 +145,57 @@ export const SaveSystem = {
     getSharedStash() {
         try {
             const data = localStorage.getItem(SHARED_STASH_KEY);
-            return data ? JSON.parse(data) : { items: Array(20).fill(null), gold: 0 };
-        } catch { return { items: Array(20).fill(null), gold: 0 }; }
+            // New structure: { tabs: [ {name, items}, ... ], gold: 0 }
+            if (data) {
+                const parsed = JSON.parse(data);
+                // Migración de datos viejos
+                if (Array.isArray(parsed.items)) {
+                    const newTabs = [
+                        { name: 'Shared 1', items: parsed.items.concat(Array(100 - parsed.items.length).fill(null)) },
+                        { name: 'Shared 2', items: Array(100).fill(null) },
+                        { name: 'Shared 3', items: Array(100).fill(null) },
+                        { name: 'Private', items: Array(100).fill(null) }
+                    ];
+                    return { tabs: newTabs, gold: parsed.gold || 0 };
+                }
+                return parsed;
+            }
+            return {
+                tabs: [
+                    { name: 'Shared 1', items: Array(100).fill(null) },
+                    { name: 'Shared 2', items: Array(100).fill(null) },
+                    { name: 'Shared 3', items: Array(100).fill(null) },
+                    { name: 'Private', items: Array(100).fill(null) }
+                ],
+                gold: 0
+            };
+        } catch { 
+            return {
+                tabs: [
+                    { name: 'Shared 1', items: Array(100).fill(null) },
+                    { name: 'Shared 2', items: Array(100).fill(null) },
+                    { name: 'Shared 3', items: Array(100).fill(null) },
+                    { name: 'Private', items: Array(100).fill(null) }
+                ],
+                gold: 0
+            };
+        }
     },
 
-    saveSharedStash(items, gold) {
+    saveSharedStash(stashData) {
         try {
-            localStorage.setItem(SHARED_STASH_KEY, JSON.stringify({ items, gold }));
+            localStorage.setItem(SHARED_STASH_KEY, JSON.stringify(stashData));
 
             // [Supabase] Background Cloud Sync
             if (DB.isLoggedIn()) {
-                DB.upsertSharedStash(items, gold).catch(e => console.error('Cloud stash save failed:', e));
+                DB.upsertSharedStash(stashData.tabs, stashData.gold).catch(e => console.error('Cloud stash save failed:', e));
             }
-
             return true;
-        } catch { return false; }
+        } catch (e) {
+            console.error('Failed to save shared stash:', e);
+            return false;
+        }
     },
-
-    /** Export all save data as a JSON string */
     exportData() {
         try {
             const slots = localStorage.getItem(SLOTS_KEY);

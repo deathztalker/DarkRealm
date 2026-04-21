@@ -419,27 +419,32 @@
     <div id="character-stats-panel"></div>
   </div>
 
-  <div id="panel-mercenary" class="panel hidden" style="width:240px;">
-    <div class="panel-header"><span>Companion (O)</span><button class="panel-close" data-panel="mercenary">✕</button>
-    </div>
-    <div style="padding:10px; text-align:center;">
-      <div id="merc-paperdoll"
-        style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:15px;">
-        <div class="equip-slot merc-slot" data-slot="head" data-label="Helm"
-          style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
-        <div class="equip-slot merc-slot" data-slot="chest" data-label="Armor"
-          style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
-        <div style="display:flex; gap:8px;">
-          <div class="equip-slot merc-slot" data-slot="mainhand" data-label="Weapon"
-            style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
-          <div class="equip-slot merc-slot" data-slot="offhand" data-label="Shield"
-            style="width:40px; height:40px; border:1px solid #444; background:rgba(0,0,0,0.4);"></div>
+  <div id="panel-mercenary" class="panel hidden" style="width: 320px; background: #0a0805; border: 2px solid #bf642f; color: #d6b068;">
+    <div class="panel-header" style="background: #1a1208; border-bottom: 1px solid #bf642f;"><span>Mercenary (O)</span><button class="panel-close" data-panel="mercenary">✕</button></div>
+    <div style="padding:15px; display:flex; flex-direction:column; gap:15px;">
+      
+      <!-- D2 Style Paperdoll -->
+      <div id="merc-paperdoll" style="display:flex; justify-content:center; align-items:center; gap:20px; padding:10px; background: rgba(0,0,0,0.6); border: 1px solid #332;">
+        
+        <!-- Left: Weapon -->
+        <div class="equip-slot merc-slot" data-slot="mainhand" data-label="Weapon" style="width:48px; height:96px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative;"></div>
+        
+        <!-- Middle: Helm & Armor -->
+        <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+          <div class="equip-slot merc-slot" data-slot="head" data-label="Helm" style="width:48px; height:48px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative;"></div>
+          <div class="equip-slot merc-slot" data-slot="chest" data-label="Armor" style="width:48px; height:72px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative;"></div>
         </div>
+
+        <!-- Right: Shield/Offhand -->
+        <div class="equip-slot merc-slot" data-slot="offhand" data-label="Shield" style="width:48px; height:96px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative;"></div>
+      
       </div>
-      <div id="merc-stats-display"
-        style="font-size:11px; text-align:left; color:#aaa; background:rgba(0,0,0,0.3); padding:8px; border-radius:4px;">
+
+      <!-- Stats Display -->
+      <div id="merc-stats-display" style="font-size:12px; font-family: Cinzel, serif; color: #ccc; background:rgba(0,0,0,0.4); padding:10px; border: 1px solid #332; border-radius:4px;">
         <!-- Stats here -->
       </div>
+
     </div>
   </div>
   </div>

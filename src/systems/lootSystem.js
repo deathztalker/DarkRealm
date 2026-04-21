@@ -1537,10 +1537,10 @@ export class LootSystem {
         }
 
         if (rarity === RARITY.MAGIC && base.type !== 'gem' && base.type !== 'potion') {
-            this._addAffixes(item, ilvl, 1, 1);
+            this._addAffixes(item, ilvl, 1, 1); // 1-2 affixes
             item.name = this._buildName(item);
         } else if (rarity === RARITY.RARE && base.type !== 'gem' && base.type !== 'potion') {
-            this._addAffixes(item, ilvl, 2, 3);
+            this._addAffixes(item, ilvl, 3, 3); // Up to 6 affixes (3 prefixes, 3 suffixes)
             item.name = this._buildName(item, true);
         }
 

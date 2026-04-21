@@ -125,7 +125,7 @@ export const DB = {
         if (!this.isLoggedIn()) return null;
         const { data, error } = await this.client
             .from('shared_stash')
-            .select('items, gold')
+            .select('items, gold, tabs')
             .limit(1)
             .single();
         
@@ -134,19 +134,43 @@ export const DB = {
             console.error('Fetch shared stash error:', error);
             return null;
         }
-        return data || { items: Array(20).fill(null), gold: 0 };
+
+        if (!data) return {
+            tabs: [
+                { name: 'Shared 1', items: Array(100).fill(null) },
+                { name: 'Shared 2', items: Array(100).fill(null) },
+                { name: 'Shared 3', items: Array(100).fill(null) },
+                { name: 'Private', items: Array(100).fill(null) }
+            ],
+            gold: 0
+        };
+
+        // If tabs column is empty but items exist (migration)
+        if (!data.tabs && data.items) {
+            return {
+                tabs: [
+                    { name: 'Shared 1', items: data.items.concat(Array(Math.max(0, 100 - data.items.length)).fill(null)) },
+                    { name: 'Shared 2', items: Array(100).fill(null) },
+                    { name: 'Shared 3', items: Array(100).fill(null) },
+                    { name: 'Private', items: Array(100).fill(null) }
+                ],
+                gold: data.gold || 0
+            };
+        }
+
+        return data;
     },
 
-    async upsertSharedStash(items, gold) {
+    async upsertSharedStash(tabs, gold) {
         if (!this.isLoggedIn()) return false;
         const { error } = await this.client
             .from('shared_stash')
             .upsert({
                 user_id: this.session.user.id,
-                items,
+                tabs,
                 gold,
                 updated_at: new Date().toISOString()
-            });
+            }, { onConflict: 'user_id' });
         
         if (error) {
             console.error('Upsert shared stash error:', error);

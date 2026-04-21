@@ -257,30 +257,36 @@ function checkRuneword(item) {
 
     for (const rw of RUNEWORDS) {
         // Match structure: rw.runes (Array of ids), rw.allowedTypes (Array of string)
-        const validMatch = rw.allowedTypes.includes(item.type) || (rw.allowedTypes.includes('weapon') && isWeapon);
+        const validMatch = rw.allowedTypes.includes(item.type) || 
+                          (rw.allowedTypes.includes('weapon') && isWeapon) ||
+                          (rw.allowedTypes.includes('armor') && item.slot === 'chest') ||
+                          (rw.allowedTypes.includes('head') && item.slot === 'head');
+
         if (!validMatch) continue;
         if (rw.runes.length !== item.sockets) continue;
 
         let match = true;
         for (let i = 0; i < rw.runes.length; i++) {
-            if (item.socketed[i].baseId !== `rune_${rw.runes[i]}`) {
-                match = false;
-                break;
-            }
+            if (item.socketed[i].baseId !== `rune_${rw.runes[i]}`) { match = false; break; }
         }
 
         if (match) {
-            item.name = `${rw.name} (${item.name})`; // Classic parenthesis
-            item.rarity = 'runeword';
+            // Success! Become a runeword
+            item.rarity = 'unique'; // Visual/Logic treat as unique
+            item.isRuneword = true;
+            item.rwName = rw.name;
+            const baseName = items[item.baseId]?.name || item.name;
+            item.name = `${rw.name} (${baseName})`; 
+            
+            // Apply unique RW bonuses
             if (!item.mods) item.mods = [];
-
-            // Map bonuses to mods
             for (const [stat, value] of Object.entries(rw.bonuses)) {
                 item.mods.push({ stat, value });
             }
-
-            addCombatLog(`Runeword Manifested: ${rw.name}!`, 'log-crit');
-            break;
+            addCombatLog(`RUNEWORD COMPLETED: ${rw.name}!`, 'log-crit');
+            fx.emitHolyBurst(player.x, player.y);
+            updateHud();
+            return;
         }
     }
 }
@@ -3552,6 +3558,20 @@ $('minimap')?.addEventListener('click', (e) => {
 });
 
 // ——— COMBAT EVENTS ———
+bus.on('combat:floating_text', d => {
+    const colors = {
+        physical: '#ffffff',
+        fire: '#ff6600',
+        cold: '#00ccff',
+        lightning: '#ffff00',
+        poison: '#00ff00',
+        magic: '#ff00ff',
+        shadow: '#a040ff',
+        holy: '#ffd700'
+    };
+    fx.emitText(d.x, d.y, d.text, colors[d.type] || '#ffffff', d.isCrit);
+});
+
 bus.on('combat:damage', d => {
     const colors = {
         physical: '#ffffff',
@@ -3830,6 +3850,7 @@ function renderMercenaryPanel() {
                     mercenary._recalcStats();
                     renderMercenaryPanel();
                     renderInventory();
+                    SaveSystem.save(player, activeSlotId); // Auto-save for cloud sync
                     addCombatLog(`Took ${item.name} from ${mercenary.name}`, 'log-info');
                 } else {
                     addCombatLog('Inventory full!', 'log-dmg');
@@ -3848,18 +3869,38 @@ function renderMercenaryPanel() {
         buffHtml += '</div>';
     }
 
+    const mBaseDmg = Math.round(mercenary.baseDmg);
+    const mMaxDmg = Math.round(mBaseDmg + (mercenary.level * 2));
+    
     $('merc-stats-display').innerHTML = `
-        <div style="color:var(--gold); font-family:Cinzel,serif; margin-bottom:5px; border-bottom:1px solid #444;">${mercenary.name} (Lvl ${mercenary.level} ${mercenary.className})</div>
-        <div>HP: <span style="color:#fff;">${Math.round(mercenary.hp)} / ${mercenary.maxHp}</span></div>
-        <div>Damage: <span style="color:#fff;">${Math.round(mercenary.baseDmg)}</span></div>
-        <div style="margin-top:5px; font-size:9px; color:#888;">Resists: 
-            <span style="color:#f66;">F:${mercenary.resists.fire}%</span> 
-            <span style="color:#6af;">C:${mercenary.resists.cold}%</span> 
-            <span style="color:#ff4;">L:${mercenary.resists.light}%</span> 
-            <span style="color:#6f6;">P:${mercenary.resists.pois}%</span>
+        <div style="color:var(--gold); font-size:14px; font-weight:bold; margin-bottom:8px; border-bottom:1px solid #bf642f; padding-bottom:4px; text-align:center; text-shadow: 0 0 5px rgba(0,0,0,0.8);">
+            ${mercenary.name} - Lvl ${mercenary.level} ${mercenary.className}
         </div>
-        <div class="merc-xp-bar"><div class="merc-xp-fill" style="width:${(mercenary.xp / mercenary.xpToNextLevel * 100).toFixed(1)}%"></div></div>
-        <div style="font-size:8px; text-align:right; color:#66a; margin-top:1px;">XP: ${Math.floor(mercenary.xp)} / ${mercenary.xpToNextLevel}</div>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:x:10px; gap-y:5px; font-size:11px;">
+            <div style="color:#aaa;">Strength: <span style="color:#fff;">${mercenary.str || mercenary.level * 2 + 10}</span></div>
+            <div style="color:#aaa;">Dexterity: <span style="color:#fff;">${mercenary.dex || mercenary.level * 2 + 10}</span></div>
+            
+            <div style="color:#aaa;">Damage: <span style="color:#fff;">${mBaseDmg} - ${mMaxDmg}</span></div>
+            <div style="color:#aaa;">Defense: <span style="color:#fff;">${mercenary.armor || 0}</span></div>
+            
+            <div style="color:#aaa;">Life: <span style="color:#fff;">${Math.round(mercenary.hp)} / ${mercenary.maxHp}</span></div>
+            <div style="color:#aaa;">Experience: <span style="color:#fff;">${Math.floor(mercenary.xp)} / ${mercenary.xpToNextLevel}</span></div>
+        </div>
+
+        <div style="margin-top:10px; border-top:1px solid #444; padding-top:8px;">
+            <div style="color:#aaa; margin-bottom:4px;">Resistances:</div>
+            <div style="display:flex; justify-content:space-between; font-size:11px;">
+                <span style="color:#f66;" title="Fire">🔥 ${mercenary.resists.fire}%</span> 
+                <span style="color:#6af;" title="Cold">❄️ ${mercenary.resists.cold}%</span> 
+                <span style="color:#ff4;" title="Lightning">⚡ ${mercenary.resists.light}%</span> 
+                <span style="color:#6f6;" title="Poison">☠️ ${mercenary.resists.pois}%</span>
+            </div>
+        </div>
+        
+        <div class="merc-xp-bar" style="width:100%; height:4px; background:#111; border:1px solid #333; border-radius:2px; margin-top:10px; overflow:hidden;">
+            <div class="merc-xp-fill" style="width:${(mercenary.xp / mercenary.xpToNextLevel * 100).toFixed(1)}%; height:100%; background:var(--gold);"></div>
+        </div>
         ${buffHtml}
     `;
 }
@@ -4029,6 +4070,140 @@ function toggleTownPanels() {
         $('panel-cube').classList.add('hidden');
     }
 }
+
+// ——— Phase 32: RUNE CODEX SYSTEM ———
+function openRuneCodex() {
+    const existing = document.getElementById('rune-codex-panel');
+    if (existing) { existing.remove(); return; }
+
+    const container = document.createElement('div');
+    container.id = 'rune-codex-panel';
+    container.className = 'inventory-panel';
+    container.style.cssText = `
+        position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+        width: 650px; max-height: 85%; background: #0a0805; border: 2px solid #bf642f;
+        padding: 25px; box-shadow: 0 0 50px rgba(191, 100, 47, 0.3); border-radius: 8px;
+        z-index: 1000; display: flex; flex-direction: column; color: #d6b068;
+        font-family: Cinzel, serif; overflow-y: auto;
+    `;
+
+    // 1. Gather all player runes (Inventory + Shared Stash)
+    const runeCounts = {};
+    const countRunesIn = (arr) => {
+        if (!arr) return;
+        arr.forEach(i => {
+            if (i && (i.type === 'gem' || i.type === 'rune' || i.baseId?.startsWith('rune_'))) {
+                const runeId = i.baseId.replace('rune_', '');
+                runeCounts[runeId] = (runeCounts[runeId] || 0) + 1;
+            }
+        });
+    };
+    countRunesIn(player.inventory);
+    countRunesIn(sharedStash);
+
+    let html = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #444; padding-bottom:10px;">
+            <h2 style="margin:0; color:#ffd700;">📜 RUNE CODEX</h2>
+            <button onclick="this.parentElement.parentElement.remove()" style="background:none; border:1px solid #bf642f; color:#bf642f; cursor:pointer; padding:5px 10px;">CLOSE</button>
+        </div>
+        <p style="font-size:12px; margin-bottom:15px; color:#aaa;">Browse formulas. Highlighted cards indicate you have the runes. Click forge to apply to a valid white item in inventory.</p>
+        <div id="runeword-list" style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+    `;
+
+    RUNEWORDS.forEach(rw => {
+        const countsNeeded = {}; rw.runes.forEach(r => countsNeeded[r] = (countsNeeded[r] || 0) + 1);
+        const canCraft = Object.entries(countsNeeded).every(([r, count]) => (runeCounts[r] || 0) >= count);
+
+        const cardStyle = canCraft ? 'border-color:#ffd700; background:rgba(214, 176, 104, 0.08);' : 'opacity:0.6;';
+        const nameColor = canCraft ? '#ffd700' : '#888';
+
+        html += `
+            <div class="rw-card" style="border:1px solid #444; padding:12px; border-radius:4px; ${cardStyle}">
+                <div style="color:${nameColor}; font-weight:bold; font-size:16px; margin-bottom:5px; text-shadow: 0 0 5px rgba(0,0,0,0.5);">${rw.name}</div>
+                <div style="font-size:10px; color:#aaa; margin-bottom:8px;">Base: ${rw.allowedTypes.join('/')} (${rw.runes.length} Sockets)</div>
+                <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
+                    ${rw.runes.map(r => {
+                        const has = (runeCounts[r] || 0) > 0;
+                        return `<span style="border:1px solid ${has?'#ffd700':'#444'}; padding:2px 6px; font-size:10px; border-radius:2px; background:${has?'#1a150a':'#111'}; color:${has?'#ffd700':'#666'};">${r.toUpperCase()}</span>`;
+                    }).join('')}
+                </div>
+                <div style="font-size:10px; color:#d6b068; margin-bottom:12px; font-style:italic;">
+                    ${Object.entries(rw.bonuses).map(([k,v]) => `${k.replace('pct', '%').replace('flat', '+')}: ${v}`).join(', ')}
+                </div>
+                ${canCraft ? `<button onclick="forgeRuneword('${rw.id}')" style="width:100%; padding:6px; background:#bf642f; color:#fff; border:none; border-radius:2px; cursor:pointer; font-weight:bold; font-size:11px;">FORGE ON VALID BASE</button>` : ''}
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+    document.body.appendChild(container);
+}
+
+window.forgeRuneword = (rwId) => {
+    const rw = RUNEWORDS.find(r => r.id === rwId);
+    if (!rw) return;
+
+    const eligibleItems = player.inventory.filter(i => {
+        if (!i || i.rarity !== 'normal' || i.sockets !== rw.runes.length) return false;
+        const weaponTypes = ['sword', 'axe', 'mace', 'staff', 'orb', 'bow', 'dagger', 'totem', 'wand'];
+        const isWeapon = weaponTypes.includes(i.type);
+        return rw.allowedTypes.includes(i.type) || 
+               (rw.allowedTypes.includes('weapon') && isWeapon) ||
+               (rw.allowedTypes.includes('armor') && i.slot === 'chest') ||
+               (rw.allowedTypes.includes('head') && i.slot === 'head');
+    });
+
+    if (eligibleItems.length === 0) {
+        addCombatLog(`Error: No valid white item with ${rw.runes.length} sockets for ${rw.name} found in inventory.`, 'log-dmg');
+        return;
+    }
+
+    const target = eligibleItems[0];
+    target.socketed = rw.runes.map(rId => {
+        const runeKey = rId.toLowerCase();
+        return { id: `rune_${runeKey}`, baseId: `rune_${runeKey}`, name: runeKey.toUpperCase() + ' Rune', type: 'rune', rarity: 'unique' };
+    });
+    
+    checkRuneword(target);
+            if (it && (it.type === 'gem' || it.type === 'rune' || it.baseId?.startsWith('rune_'))) {
+                const ridx = runesToConsume.indexOf(rid);
+                if (ridx !== -1) {
+                    runesToConsume.splice(ridx, 1);
+                    arr[i] = null;
+                }
+            }
+        }
+    };
+    consumeFrom(player.inventory);
+    consumeFrom(sharedStash);
+    
+    document.getElementById('rune-codex-panel')?.remove();
+    updateHud();
+    renderInventory();
+    renderStash();
+    SaveSystem.save(player, activeSlotId);
+};
+
+// Add Codex button to HUD
+function injectCodexButton() {
+    const btn = document.createElement('button');
+    btn.id = 'btn-rune-codex';
+    btn.innerHTML = '📜';
+    btn.title = 'Rune Codex (Recipes)';
+    btn.style.cssText = `
+        position: fixed; bottom: 85px; right: 20px;
+        width: 44px; height: 44px; background: #0a0805; border: 2px solid #bf642f;
+        color: #ffd700; border-radius: 50%; cursor: pointer; font-size: 24px;
+        display: flex; align-items: center; justify-content: center; z-index: 100;
+        box-shadow: 0 0 15px rgba(0,0,0,0.6); transition: all 0.2s;
+    `;
+    btn.onmouseover = () => btn.style.borderColor = '#ffd700';
+    btn.onmouseout = () => btn.style.borderColor = '#bf642f';
+    btn.onclick = openRuneCodex;
+    document.body.appendChild(btn);
+}
+injectCodexButton();
 
 // ——— QUEST LOG ———
 function renderQuestJournal() {
@@ -5741,10 +5916,15 @@ function renderGambleShop() {
     }
 }
 
-let currentStashTab = 'personal';
+let currentStashTab = 0; // Index 0-3
 let sharedStashData = SaveSystem.getSharedStash();
-let sharedStash = sharedStashData.items;
-let sharedGold = sharedStashData.gold;
+let sharedStashTabs = sharedStashData.tabs || [
+    { name: 'Shared 1', items: Array(100).fill(null) },
+    { name: 'Shared 2', items: Array(100).fill(null) },
+    { name: 'Shared 3', items: Array(100).fill(null) },
+    { name: 'Private', items: Array(100).fill(null) }
+];
+let sharedGold = sharedStashData.gold || 0;
 
 function renderShop() {
     if (document.body.classList.contains('is-mobile') || window.innerWidth < 1024) {
@@ -5930,15 +6110,34 @@ function renderShop() {
     }
 }
 
-// Removal of redundant logic and illegal braces to fix syntax error.
-
 // ——— STASH & CUBE ———
 function renderStash() {
     const grid = $('stash-grid');
+    const tabContainer = $('panel-stash')?.querySelector('.stash-tabs');
     if (!grid) return;
     grid.innerHTML = '';
 
-    const items = currentStashTab === 'personal' ? stash : sharedStash;
+    // Inject Tab container if missing
+    if (!tabContainer) {
+        const p = $('panel-stash');
+        const tc = document.createElement('div');
+        tc.className = 'stash-tabs';
+        tc.style.cssText = 'display:flex; gap:5px; margin-bottom:10px; background:#1a1a1a; padding:5px; border-radius:4px; border:1px solid #444;';
+        p.insertBefore(tc, grid);
+    }
+
+    const tc = $('panel-stash').querySelector('.stash-tabs');
+    tc.innerHTML = '';
+    sharedStashTabs.forEach((tab, idx) => {
+        const btn = document.createElement('button');
+        btn.className = `stash-tab-btn ${currentStashTab === idx ? 'active' : ''}`;
+        btn.style.cssText = `padding:6px 12px; background:${currentStashTab===idx?'#bf642f':'#333'}; color:${currentStashTab===idx?'#fff':'#aaa'}; border:1px solid #444; cursor:pointer; font-family:Cinzel,serif; font-size:11px; flex:1;`;
+        btn.textContent = tab.name;
+        btn.onclick = () => { currentStashTab = idx; renderStash(); };
+        tc.appendChild(btn);
+    });
+
+    const items = sharedStashTabs[currentStashTab].items;
 
     for (let i = 0; i < items.length; i++) {
         const cell = document.createElement('div');
@@ -5948,11 +6147,9 @@ function renderStash() {
         if (item) {
             const div = document.createElement('div');
             div.innerHTML = getItemHtml(item);
-            const innerDiv = div.firstChild;
-            setupTooltip(innerDiv, item);
+            setupTooltip(div.firstChild, item);
 
-            // Drag support (Threshold-based)
-            innerDiv.onmousedown = (e) => {
+            div.firstChild.onmousedown = (e) => {
                 if (e.button !== 0) return;
                 const sx = e.clientX, sy = e.clientY;
                 let d = false;
@@ -5973,71 +6170,39 @@ function renderStash() {
                 const empty = player.inventory.indexOf(null);
                 if (empty !== -1) {
                     player.inventory[empty] = item;
-                    const itemsArr = currentStashTab === 'personal' ? stash : sharedStash;
-                    itemsArr[i] = null;
-                    if (currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
+                    sharedStashTabs[currentStashTab].items[i] = null;
+                    SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
                     addCombatLog(`Took ${item.name} from Stash`, 'log-info');
-                    hideTooltip();
-                    renderStash();
-                    renderInventory();
-                } else {
-                    addCombatLog('Inventory full!', 'log-dmg');
-                }
+                    hideTooltip(); renderStash(); renderInventory();
+                } else { addCombatLog('Inventory full!', 'log-dmg'); }
             };
-            div.addEventListener('click', moveToInv);
-            div.addEventListener('contextmenu', moveToInv);
-            cell.appendChild(div);
+            div.firstChild.onclick = moveToInv;
+            div.firstChild.addEventListener('contextmenu', moveToInv);
+            cell.appendChild(div.firstChild);
         }
         cell.onmouseup = () => handleDrop('stash', i);
         grid.appendChild(cell);
     }
-
-    // Update Gold
-    $('stash-gold-val').textContent = sharedGold;
+    const gVal = $('stash-gold-val');
+    if (gVal) gVal.textContent = sharedGold;
 }
-
-// Wire Stash Tabs
-$('btn-stash-personal')?.addEventListener('click', () => {
-    bus.emit('ui:click');
-    currentStashTab = 'personal';
-    $('btn-stash-personal').classList.add('active');
-    $('btn-stash-shared').classList.remove('active');
-    renderStash();
-});
-$('btn-stash-shared')?.addEventListener('click', () => {
-    bus.emit('ui:click');
-    currentStashTab = 'shared';
-    $('btn-stash-shared').classList.add('active');
-    $('btn-stash-personal').classList.remove('active');
-    renderStash();
-});
 
 // Wire Gold Buttons
 $('btn-stash-deposit')?.addEventListener('click', () => {
     const amt = player.gold;
     if (amt > 0) {
-        bus.emit('ui:click');
-        sharedGold += amt;
-        player.gold = 0;
-        SaveSystem.saveSharedStash(sharedStash, sharedGold);
-        renderStash();
-        updateHud();
-        addCombatLog(`Deposited ${amt} gold into global bank.`, 'log-heal');
+        sharedGold += amt; player.gold = 0;
+        SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+        renderStash(); updateHud(); addCombatLog(`Deposited ${amt} gold.`, 'log-heal');
     }
 });
-
 $('btn-stash-withdraw')?.addEventListener('click', () => {
     if (sharedGold > 0) {
-        bus.emit('ui:click');
-        bus.emit('gold:pickup');
-        const toTake = sharedGold;
-        player.gold += toTake;
-        sharedGold = 0;
-        SaveSystem.saveSharedStash(sharedStash, sharedGold);
-        renderStash();
-        updateHud();
-        addCombatLog(`Withdrew ${toTake} gold from global bank.`, 'log-info');
+        const toTake = sharedGold; player.gold += toTake; sharedGold = 0;
+        SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+        renderStash(); updateHud(); addCombatLog(`Withdrew ${toTake} gold.`, 'log-info');
     }
+});
 });
 
 function sortStash() {
@@ -7089,6 +7254,7 @@ function handleDrop(target, idx) {
             success = true;
             addCombatLog(`Equipped ${itm.name} to ${mercenary.name}`, 'log-info');
             renderMercenaryPanel();
+            SaveSystem.save(player, activeSlotId); // Auto-save for cloud sync
         } else {
             addCombatLog(`${mercenary.name} cannot equip this!`, 'log-dmg');
             bus.emit('ui:error');
@@ -7116,6 +7282,7 @@ function handleDrop(target, idx) {
             mercenary._recalcStats();
             success = true;
             renderMercenaryPanel();
+            SaveSystem.save(player, activeSlotId); // Auto-save for cloud sync
         } else if (target === 'equip') {
             const res = player.equip(itm, idx);
             if (res.success) {
@@ -7123,6 +7290,7 @@ function handleDrop(target, idx) {
                 mercenary._recalcStats();
                 success = true;
                 renderMercenaryPanel();
+                SaveSystem.save(player, activeSlotId); // Auto-save for cloud sync
             } else {
                 addCombatLog(res.error, 'log-dmg');
                 bus.emit('ui:error');

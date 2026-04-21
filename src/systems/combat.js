@@ -55,6 +55,8 @@ export function calcDamage(attacker, baseDmg, type, defender) {
         if (Math.random() * 100 < attacker.deadlyStrike) {
             dmg *= 2;
             isDeadlyStrike = true;
+            bus.emit('combat:log', { text: 'DEADLY STRIKE!', cls: 'log-crit' });
+            bus.emit('combat:floating_text', { x: defender.x, y: defender.y, text: 'DEADLY STRIKE!', type: 'holy', isCrit: true });
         }
     }
 
@@ -69,6 +71,7 @@ export function calcDamage(attacker, baseDmg, type, defender) {
             text: `CRUSHING BLOW! (-${Math.round(reductionPct * 100)}% HP)`,
             cls: 'log-crit',
         });
+        bus.emit('combat:floating_text', { x: defender.x, y: defender.y, text: 'CRUSHING BLOW!', type: 'magic', isCrit: true });
         if (fx) fx.emitHolyBurst(defender.x, defender.y);
     }
 
@@ -77,13 +80,7 @@ export function calcDamage(attacker, baseDmg, type, defender) {
         const bleedDmg = Math.round(10 + (attacker.level || 1) * 2);
         applyDot(defender, bleedDmg, DMG_TYPE.PHYSICAL, 8, 'open_wounds');
         bus.emit('combat:log', { text: 'OPEN WOUNDS!', cls: 'log-dmg' });
-    }
-
-    // Open Wounds (D2 classic: bleed DoT)
-    if (attacker.openWounds > 0 && Math.random() * 100 < attacker.openWounds) {
-        const bleedDmg = Math.round(10 + (attacker.level || 1) * 2);
-        applyDot(defender, bleedDmg, DMG_TYPE.PHYSICAL, 8, 'open_wounds');
-        bus.emit('combat:log', { text: 'OPEN WOUNDS!', cls: 'log-dmg' });
+        bus.emit('combat:floating_text', { x: defender.x, y: defender.y, text: 'OPEN WOUNDS!', type: 'poison' });
     }
 
     // Defender resistance (magic & holy bypass)
