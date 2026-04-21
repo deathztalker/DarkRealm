@@ -115,6 +115,10 @@ export class Player {
         this._recalcStats();
     }
 
+    get activeStatuses() {
+        return new Set((this._statuses || []).map(s => s.type));
+    }
+
     _recalcStats() {
         if (!this._statsDirty) return;
         this._statsDirty = false;
@@ -214,14 +218,26 @@ export class Player {
         // --- Aura Stacking & Item Aura Scanning ---
         this.itemAuras = new Map();
         for (const item of Object.values(this.equipment)) {
-            if (!item || !item.mods) continue;
-            for (const mod of item.mods) {
-                if (mod.stat.endsWith('Aura')) {
-                    const auraId = mod.stat.replace('Aura', '');
-                    this.itemAuras.set(auraId, (this.itemAuras.get(auraId) || 0) + mod.value);
+            if (!item) continue;
+            
+            const lowName = (item.name || "").toLowerCase();
+            if (item.id === 'ashbringer' || lowName.includes('ashbringer')) this.itemAuras.set('ashbringer', 10);
+            if (item.id === 'frostmourne' || lowName.includes('frostmourne')) this.itemAuras.set('frostmourne', 10);
+            if (item.id === 'shadowmourne' || lowName.includes('shadowmourne')) this.itemAuras.set('shadowmourne', 10);
+
+            if (item.mods) {
+                for (const mod of item.mods) {
+                    if (mod.stat.endsWith('Aura')) {
+                        const auraId = mod.stat.replace('Aura', '').toLowerCase();
+                        this.itemAuras.set(auraId, (this.itemAuras.get(auraId) || 0) + mod.value);
+                    }
                 }
             }
         }
+
+        // --- Resonance Check (Trinity of Blades) ---
+        this._lichKingResonance = this.itemAuras.has('frostmourne') && this.itemAuras.has('shadowmourne');
+        this._twilightResonance = this.itemAuras.has('ashbringer') && this.itemAuras.has('shadowmourne');
 
         // Apply Passive Synergies to Auras
         const auraMastery = this.effectiveSkillLevel('aura_mastery') || 0;
@@ -259,19 +275,17 @@ export class Player {
                         this._holyFireLvl = scaledLvl;
                         break;
                     case 'ashbringer':
-                        this.itemAuras.set('ashbringer', (this.itemAuras.get('ashbringer') || 0) + scaledLvl);
+                        // Already handled resonance, but can add stats here
                         break;
                     case 'frostmourne':
                         this._hasDrainAura = true;
                         this._drainType = 'cold';
                         this._drainLvl = scaledLvl;
-                        this.itemAuras.set('frostmourne', (this.itemAuras.get('frostmourne') || 0) + scaledLvl);
                         break;
                     case 'shadowmourne':
                         this._hasDrainAura = true;
                         this._drainType = 'shadow';
                         this._drainLvl = scaledLvl;
-                        this.itemAuras.set('shadowmourne', (this.itemAuras.get('shadowmourne') || 0) + scaledLvl);
                         break;
                 }
             }
@@ -337,23 +351,26 @@ export class Player {
         
         const totalMultiplier = 1 + (statBonusPct + globalED) / 100;
         
-        this.wepMax = Math.round(baseMax * totalMultiplier);
+        let finalMin = Math.round(baseMin * totalMultiplier);
+        let finalMax = Math.round(baseMax * totalMultiplier);
 
         // --- Trinity Resonance Final Multipliers ---
         if (this._lichKingResonance) {
-            this.wepMin = Math.round(this.wepMin * 2.5);
-            this.wepMax = Math.round(this.wepMax * 2.5);
+            finalMin = Math.round(finalMin * 2.5);
+            finalMax = Math.round(finalMax * 2.5);
             this.lifeStealPct = (this.lifeStealPct || 0) + 20;
         }
         if (this._twilightResonance) {
-            this.wepMin = Math.round(this.wepMin * 2.0);
-            this.wepMax = Math.round(this.wepMax * 2.0);
+            finalMin = Math.round(finalMin * 2.0);
+            finalMax = Math.round(finalMax * 2.0);
             this.allRes = (this.allRes || 0) + 50;
-            // Also boost elemental damage
             this.pctFireDmg = (this.pctFireDmg || 0) + 100;
             this.pctColdDmg = (this.pctColdDmg || 0) + 100;
             this.pctLightningDmg = (this.pctLightningDmg || 0) + 100;
         }
+
+        this.wepMin = finalMin;
+        this.wepMax = finalMax;
         
         let baseAtkSpd = (wep?.atkSpd || 1.0) * (1 + (this.pctIAS || 0) / 100);
         this.atkSpd = baseAtkSpd * (this._auraSlowFactor < 1 ? (1 - (1 - this._auraSlowFactor) * 0.5) : 1);

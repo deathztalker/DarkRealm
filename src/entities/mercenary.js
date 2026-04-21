@@ -3,6 +3,7 @@ import { calcDamage, applyDamage, DMG_TYPE, applyStatus } from '../systems/comba
 import { Projectile } from './projectile.js';
 import { fx } from '../engine/ParticleSystem.js';
 import { Pathfinder } from '../world/pathfinding.js';
+import { MERC_TREES } from '../data/mercenary_talents.js';
 
 const pathfinder = new Pathfinder();
 

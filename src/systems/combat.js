@@ -640,7 +640,7 @@ function onKillLogic(killer, victim) {
  * Apply a status effect to a target.
  * Types: 'chill' (slows), 'frozen' (stops), 'burn' (DoT), 'stun' (stops), 'weaken' (less dmg).
  */
-export function applyStatus(target, type, duration, value = 0, source = null) {
+export function applyStatus(target, type, duration, value = 0, metadata = {}) {
     if (target.isPlayer && target.cannotBeFrozen && (type === 'chill' || type === 'frozen')) return;
 
     if (!target._statuses) target._statuses = [];
@@ -649,10 +649,15 @@ export function applyStatus(target, type, duration, value = 0, source = null) {
     if (existing) {
         existing.duration = Math.max(existing.duration, duration);
         existing.value = Math.max(existing.value, value);
+        if (typeof metadata === 'object') Object.assign(existing, metadata);
         return;
     }
 
-    target._statuses.push({ type, duration, value, source });
+    const newStatus = { type, duration, value };
+    if (typeof metadata === 'object') Object.assign(newStatus, metadata);
+    else if (typeof metadata === 'string') newStatus.source = metadata; // legacy support
+    
+    target._statuses.push(newStatus);
 }
 
 /** Update all statuses and DoTs on all entities each frame. */
@@ -762,35 +767,25 @@ export function processAuraPulsar(player, enemies, dt) {
     const shadow = player.itemAuras?.has('shadowmourne');
 
     if (frost && shadow) {
-        // Lich King Synergy: 2.5x total physical dmg + 20% Life Steal
         player._lichKingResonance = true;
-        if (!player._buffs?.some(b => b.id === 'lich_king_synergy')) {
-            player._buffs = player._buffs || [];
-            player._buffs.push({ 
-                id: 'lich_king_synergy', name: 'Lich King Synergy', 
-                duration: 9999, type: 'special_dmg', value: 150, 
-                desc: 'Frostmourne & Shadowmourne resonate! 250% Physical Dmg, 20% Life Steal.' 
-            });
-        }
+        applyStatus(player, 'lich_king_synergy', 2.0, 150, {
+            name: 'Lich King Synergy',
+            desc: 'Frostmourne & Shadowmourne resonate! 250% Physical Dmg, 20% Life Steal.'
+        });
     } else {
         player._lichKingResonance = false;
-        player._buffs = player._buffs?.filter(b => b.id !== 'lich_king_synergy');
+        player._statuses = (player._statuses || []).filter(s => s.type !== 'lich_king_synergy');
     }
 
     if (ash && shadow) {
-        // Twilight Synergy: 2.0x all dmg + 50% All Res
         player._twilightResonance = true;
-        if (!player._buffs?.some(b => b.id === 'twilight_synergy')) {
-            player._buffs = player._buffs || [];
-            player._buffs.push({ 
-                id: 'twilight_synergy', name: 'Twilight Synergy', 
-                duration: 9999, type: 'special_res', value: 50, 
-                desc: 'Ashbringer & Shadowmourne resonate! 200% Damage, +50 All Resistances.' 
-            });
-        }
+        applyStatus(player, 'twilight_synergy', 2.0, 100, {
+            name: 'Twilight Synergy',
+            desc: 'Ashbringer & Shadowmourne resonate! 200% Damage, +50 All Resistances.'
+        });
     } else {
         player._twilightResonance = false;
-        player._buffs = player._buffs?.filter(b => b.id !== 'twilight_synergy');
+        player._statuses = (player._statuses || []).filter(s => s.type !== 'twilight_synergy');
     }
 
     _auraTimer -= dt;
