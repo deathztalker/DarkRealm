@@ -417,7 +417,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         // Loading existing character
         selectedClass = loadPlayerData.classId;
         zoneLevel = loadPlayerData.zoneLevel || 0;
-        activeSlotId = loadPlayerData.slotId;
+        activeSlotId = loadPlayerData.slotId || loadPlayerData.id;
         campaign.deserialize(loadPlayerData.campaign);
     } else {
         // New character
@@ -6821,6 +6821,18 @@ window.addEventListener('DOMContentLoaded', () => {
 async function renderSaveSlots(onlineUsers = {}) {
     const listContainer = document.getElementById('char-selection-list'), screenSelect = document.getElementById('screen-char-select'), screenCreate = document.getElementById('screen-char-create'), btnEnter = document.getElementById('btn-enter-world');
     if (!listContainer) return;
+
+    // Phase 31: Sync Shared Stash from cloud if logged in
+    if (DB.isLoggedIn()) {
+        const cloudStash = await DB.getSharedStash();
+        if (cloudStash) {
+            sharedStash = cloudStash.items;
+            sharedGold = cloudStash.gold;
+            // Update local storage to keep it in sync
+            localStorage.setItem('DARK_REALM_SHARED_STASH', JSON.stringify({ items: sharedStash, gold: sharedGold }));
+        }
+    }
+
     let cloudSlots = []; if (DB.isLoggedIn()) { cloudSlots = await DB.getSaves(); cloudSlots.forEach(s => s._isCloud = true); }
     const localSlots = SaveSystem.listSlots(); localSlots.forEach(s => s._isCloud = false);
     const allSlots = [...cloudSlots, ...localSlots];
