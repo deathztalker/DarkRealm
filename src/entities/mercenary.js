@@ -24,6 +24,9 @@ export class Mercenary {
         this.hp = data.hp || 100;
         this.dmg = 10;
         
+        this.animState = 'idle';
+        this.facingDir = 'south';
+        
         this.isMercenary = true;
         this.isPlayer = true; // For faction targeting
         this.equipment = data.equipment || {
@@ -159,7 +162,7 @@ export class Mercenary {
             this._applyAura(player);
         }
 
-        // Auto-level with player (if lower level)
+        // Auto-level with player
         if (player && player.level > this.level) {
             this.level = player.level;
             this._recalcStats();
@@ -172,7 +175,6 @@ export class Mercenary {
         const md = Math.sqrt(mx * mx + my * my);
         
         // --- LEASHING & FOLLOW LOGIC ---
-        // Hard Leash: Teleport if too far
         if (md > 800) {
             this.x = player.x + (Math.random() - 0.5) * 40;
             this.y = player.y + (Math.random() - 0.5) * 40;
@@ -180,6 +182,7 @@ export class Mercenary {
             return;
         }
 
+        let moved = false;
         const isFar = md > 250;
         const speed = isFar ? 150 : 90;
 
@@ -189,17 +192,19 @@ export class Mercenary {
             if (dungeon.isWalkable(this.x + moveX, this.y + moveY)) {
                 this.x += moveX;
                 this.y += moveY;
+                moved = true;
+                this.facingDir = Math.abs(mx) > Math.abs(my) ? (mx > 0 ? 'right' : 'left') : (my > 0 ? 'down' : 'up');
             }
         }
 
-        if (isFar) return; 
-
         // Combat AI
         let closestEnemy = null, closestDist = (this.className === 'Rogue') ? 350 : (this.className === 'Iron Wolf' ? 300 : 80);
-        for (const e of enemies) {
-            if (e.hp <= 0) continue;
-            const ed = Math.sqrt((e.x - this.x) ** 2 + (e.y - this.y) ** 2);
-            if (ed < closestDist) { closestDist = ed; closestEnemy = e; }
+        if (!isFar) {
+            for (const e of enemies) {
+                if (e.hp <= 0) continue;
+                const ed = Math.hypot(e.x - this.x, e.y - this.y);
+                if (ed < closestDist) { closestDist = ed; closestEnemy = e; }
+            }
         }
 
         if (closestEnemy) {
@@ -207,7 +212,14 @@ export class Mercenary {
             if (this._atkCd <= 0) {
                 this.attack(closestEnemy);
                 this._atkCd = 1 / this.atkSpeed;
+                this.animState = 'attack';
+                const ex = closestEnemy.x - this.x, ey = closestEnemy.y - this.y;
+                this.facingDir = Math.abs(ex) > Math.abs(ey) ? (ex > 0 ? 'right' : 'left') : (ey > 0 ? 'down' : 'up');
+            } else if (this._atkCd < (1 / this.atkSpeed) * 0.7) {
+                this.animState = moved ? 'walk' : 'idle';
             }
+        } else {
+            this.animState = moved ? 'walk' : 'idle';
         }
 
         this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.008 * dt);
@@ -222,7 +234,6 @@ export class Mercenary {
             // Might Aura: +25% Dmg for 4s
             import('../systems/combat.js').then(c => {
                 c.applyStatus(player, 'might', 4, 1.25);
-                bus.emit('log:add', { text: `${this.name}'s Might Aura empowers you!`, type: 'log-info' });
             });
         }
     }
@@ -231,32 +242,23 @@ export class Mercenary {
         if (this.hp <= 0) return;
 
         // Shadow circle
-        renderer.ctx.save();
-        renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        renderer.ctx.beginPath();
-        renderer.ctx.ellipse(this.x, this.y, 8, 4, 0, 0, Math.PI*2);
-        renderer.ctx.fill();
-        renderer.ctx.restore();
+        renderer.drawShadow(this.x, this.y + 4, 8, 0.3);
 
-        // Map facing direction
-        const mx = (this.target ? this.target.x : 0) - this.x;
-        const my = (this.target ? this.target.y : 0) - this.y;
-        let dir = 'south';
-        if (Math.abs(mx) > Math.abs(my)) {
-            dir = mx > 0 ? 'east' : 'west';
-        } else {
-            dir = my > 0 ? 'south' : 'north';
-        }
+        // Render the 7x16 PixelLab spritesheet with correct animation state
+        renderer.drawAnim(this.icon, this.x, this.y - 4, 18, this.animState || 'idle', this.facingDir || 'south', time, null, this.equipment);
         
-        // Render the 7x16 PixelLab spritesheet
-        renderer.drawAnim(this.icon, this.x, this.y - 4, 16, 'idle', dir, time, null, this.equipment);
+        // HP bar above head
+        const bw = 18;
+        renderer.ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        renderer.ctx.fillRect(this.x - bw / 2, this.y - 20, bw, 2);
+        renderer.ctx.fillStyle = '#4caf50';
+        renderer.ctx.fillRect(this.x - bw / 2, this.y - 20, bw * (this.hp / this.maxHp), 2);
         
-        // Clearer HP bar for friendly units
-        const hpPct = this.hp / this.maxHp;
-        renderer.ctx.fillStyle = '#111';
-        renderer.ctx.fillRect(this.x - 12, this.y - 25, 24, 4);
-        renderer.ctx.fillStyle = '#40c040'; // Green for friendlies
-        renderer.ctx.fillRect(this.x - 12, this.y - 25, 24 * hpPct, 4);
+        // Name tag
+        renderer.ctx.font = '5px Cinzel, serif';
+        renderer.ctx.textAlign = 'center';
+        renderer.ctx.fillStyle = '#4caf50';
+        renderer.ctx.fillText(this.name, this.x, this.y - 23);
     }
 
     attack(target) {

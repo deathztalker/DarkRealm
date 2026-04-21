@@ -1191,10 +1191,16 @@ export class Player {
                         const nx = m.x + Math.cos(ang)*m.moveSpeed*dt, ny = m.y + Math.sin(ang)*m.moveSpeed*dt; 
                         if (!dungeon || dungeon.isWalkable(nx, ny)) { m.x = nx; m.y = ny; moved = true; } 
                         m.facingDir = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang)) ? (Math.cos(ang) > 0 ? 'right' : 'left') : (Math.sin(ang) > 0 ? 'down' : 'up');
+                        m.animState = 'walk';
                     }
-                    else if (m.attackCd <= 0) { applyDamage(this, near, calcDamage(this, m.damage, 'physical', near), m.skillId); m.attackCd = m.attackSpeed; m.animState = 'attack'; m.facingDir = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang)) ? (Math.cos(ang) > 0 ? 'right' : 'left') : (Math.sin(ang) > 0 ? 'down' : 'up'); }
-                    if (!moved && m.animState !== 'attack') m.animState = 'idle';
-                    if (moved) m.animState = 'walk';
+                    else if (m.attackCd <= 0) { 
+                        applyDamage(this, near, calcDamage(this, m.damage, 'physical', near), m.skillId); 
+                        m.attackCd = m.attackSpeed; 
+                        m.animState = 'attack'; 
+                        m.facingDir = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang)) ? (Math.cos(ang) > 0 ? 'right' : 'left') : (Math.sin(ang) > 0 ? 'down' : 'up'); 
+                    } else if (m.attackCd < m.attackSpeed * 0.7) {
+                        m.animState = 'idle';
+                    }
                     return true;
                 }
             }

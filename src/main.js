@@ -1319,21 +1319,7 @@ function gameLoop(timestamp) {
 
     // Render mercenary
     if (mercenary && mercenary.hp > 0) {
-        renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        renderer.ctx.beginPath();
-        renderer.ctx.ellipse(mercenary.x, mercenary.y + 6, 6, 3, 0, 0, Math.PI * 2);
-        renderer.ctx.fill();
-        renderer.drawAnim(mercenary.icon || 'class_rogue', mercenary.x, mercenary.y - 4, 18, mercenary.animState || 'idle', mercenary.facingDir || 'south', lastTime, null, mercenary.equipment);
-        // HP bar above head
-        const bw = 18;
-        renderer.ctx.fillStyle = '#333';
-        renderer.ctx.fillRect(mercenary.x - bw / 2, mercenary.y - 14, bw, 2);
-        renderer.ctx.fillStyle = '#4caf50';
-        renderer.ctx.fillRect(mercenary.x - bw / 2, mercenary.y - 14, bw * (mercenary.hp / mercenary.maxHp), 2);
-        renderer.ctx.font = '5px Cinzel, serif';
-        renderer.ctx.textAlign = 'center';
-        renderer.ctx.fillStyle = '#4caf50';
-        renderer.ctx.fillText(mercenary.name, mercenary.x, mercenary.y - 18);
+        mercenary.render(renderer, lastTime);
     }
 
     // ─── RENDER OTHER MMO PLAYERS ───────────────────────────────────────

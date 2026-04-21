@@ -180,5 +180,31 @@ export const SkillLogic = {
             }
             bus.emit('combat:log', { text: "Preparation: Cooldowns Reset!", cls: 'log-info' });
         }
+
+        // ══════════════ RUNES / ITEMS ══════════════
+        if (skillId === 'battle_orders') {
+            const pct = 15 + slvl * 3;
+            attacker._buffs = attacker._buffs || [];
+            attacker._buffs.push({ id: 'bo', type: 'bo', name: 'Battle Orders', duration: 120 + slvl * 10, value: pct });
+            attacker.maxHp *= (1 + pct / 100);
+            attacker.maxMp *= (1 + pct / 100);
+            bus.emit('combat:log', { text: `Battle Orders: +${pct}% Life & Mana!`, cls: 'log-crit' });
+            if (fx) fx.emitBurst(attacker.x, attacker.y, '#ffd700', 30, 2.5);
+        }
+
+        if (skillId === 'battle_command') {
+            attacker._buffs = attacker._buffs || [];
+            attacker._buffs.push({ id: 'bc', type: 'bc', name: 'Battle Command', duration: 120 + slvl * 10, value: 1 });
+            attacker.allSkillBonus = (attacker.allSkillBonus || 0) + 1;
+            bus.emit('combat:log', { text: `Battle Command: +1 All Skills!`, cls: 'log-crit' });
+            if (fx) fx.emitBurst(attacker.x, attacker.y, '#30ccff', 30, 2.5);
+        }
+
+        if (skillId === 'teleport') {
+            attacker.x = targetX;
+            attacker.y = targetY;
+            if (fx) fx.emitBurst(attacker.x, attacker.y, '#30ccff', 20, 2);
+            bus.emit('combat:log', { text: "Teleport!", cls: 'log-info' });
+        }
     }
 };
