@@ -211,24 +211,71 @@ export class Player {
         this.lifeRegenPerSec = s.lifeRegenPerSec || 0;
         this.manaRegenPerSec = s.manaRegenPerSec || 0;
 
-        if (this.activeAura) {
-            const slvl = this._auraSlvl || 1;
-            switch(this.activeAura) {
-                case 'might_aura': s.pctDmg = (s.pctDmg || 0) + (20 + slvl * 2); break;
-                case 'resist_all': s.allRes = (s.allRes || 0) + (5 + slvl * 1.5); break;
-                case 'vigor': this.moveSpeed *= (1 + (20 + slvl * 1.5) / 100); break;
-                case 'fanaticism':
-                    s.pctIAS = (s.pctIAS || 0) + (30 + slvl * 1.5);
-                    s.pctDmg = (s.pctDmg || 0) + (30 + slvl * 2);
-                    break;
-                case 'blessing_of_kings':
-                    const kingsBonus = 5 + (slvl * 0.5);
-                    s.pctStr = (s.pctStr || 0) + kingsBonus;
-                    s.pctDex = (s.pctDex || 0) + kingsBonus;
-                    s.pctVit = (s.pctVit || 0) + kingsBonus;
-                    s.pctInt = (s.pctInt || 0) + kingsBonus;
-                    break;
+        // --- Aura Stacking & Item Aura Scanning ---
+        this.itemAuras = new Map();
+        for (const item of Object.values(this.equipment)) {
+            if (!item || !item.mods) continue;
+            for (const mod of item.mods) {
+                if (mod.stat.endsWith('Aura')) {
+                    const auraId = mod.stat.replace('Aura', '');
+                    this.itemAuras.set(auraId, (this.itemAuras.get(auraId) || 0) + mod.value);
+                }
             }
+        }
+
+        // Apply Passive Synergies to Auras
+        const auraMastery = this.effectiveSkillLevel('aura_mastery') || 0;
+        const auraScale = 1 + (auraMastery * 0.05); // 5% more effective per level
+
+        if (this.activeAura || this.itemAuras.size > 0) {
+            // Combine all auras
+            const allAuras = new Map(this.itemAuras);
+            if (this.activeAura) {
+                const slvl = this._auraSlvl || 1;
+                allAuras.set(this.activeAura, (allAuras.get(this.activeAura) || 0) + slvl);
+            }
+
+            for (const [auraId, level] of allAuras) {
+                const scaledLvl = level * auraScale;
+                switch(auraId) {
+                    case 'might': case 'might_aura': 
+                        s.pctDmg = (s.pctDmg || 0) + (20 + scaledLvl * 2.5);
+                        s.crushingBlow = (s.crushingBlow || 0) + (Math.floor(scaledLvl / 3));
+                        break;
+                    case 'fanaticism':
+                        s.pctIAS = (s.pctIAS || 0) + (30 + scaledLvl * 2);
+                        s.pctDmg = (s.pctDmg || 0) + (30 + scaledLvl * 2.5);
+                        s.deadlyStrike = (s.deadlyStrike || 0) + (Math.floor(scaledLvl / 2.5));
+                        break;
+                    case 'conviction':
+                        this._hasConviction = true;
+                        this._convictionLvl = scaledLvl;
+                        break;
+                    case 'meditation':
+                        s.manaRegenPerSec = (s.manaRegenPerSec || 0) + (this.maxMp * (0.05 + scaledLvl * 0.02));
+                        break;
+                    case 'holy_fire':
+                        s.pctFireDmg = (s.pctFireDmg || 0) + (scaledLvl * 3);
+                        this._holyFireLvl = scaledLvl;
+                        break;
+                    case 'frostmourne':
+                        this._hasDrainAura = true;
+                        this._drainType = 'cold';
+                        this._drainLvl = scaledLvl;
+                        break;
+                    case 'shadowmourne':
+                        this._hasDrainAura = true;
+                        this._drainType = 'shadow';
+                        this._drainLvl = scaledLvl;
+                        break;
+                }
+            }
+        }
+
+        // --- Synergy Scaling for Special Auras ---
+        if (this._hasDrainAura) {
+            const mastery = (this._drainType === 'shadow') ? (this.effectiveSkillLevel('shadow_mastery') || 0) : (this.effectiveSkillLevel('cold_mastery') || 0);
+            this._drainMult = 1 + (mastery * 0.10) + (this.int / 200);
         }
 
         const diff = typeof window !== 'undefined' && window._difficulty ? window._difficulty : 0;

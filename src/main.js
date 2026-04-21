@@ -4079,7 +4079,9 @@ function openRuneCodex() {
         });
     };
     countRunesIn(player.inventory);
-    countRunesIn(sharedStash);
+    if (sharedStashTabs) {
+        sharedStashTabs.forEach(tab => countRunesIn(tab.items));
+    }
 
     let html = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #444; padding-bottom:10px;">
@@ -4162,35 +4164,49 @@ window.forgeRuneword = (rwId) => {
         }
     };
     consumeFrom(player.inventory);
-    consumeFrom(sharedStash);
-    
+    if (sharedStashTabs) {
+        sharedStashTabs.forEach(tab => consumeFrom(tab.items));
+    }
+
     document.getElementById('rune-codex-panel')?.remove();
     updateHud();
     renderInventory();
     renderStash();
     SaveSystem.save(player, activeSlotId);
-};
+    // Sync shared stash if needed
+    SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+    };
 
-// Add Codex button to HUD
-function injectCodexButton() {
+    // Add Codex button to HUD
+    function injectCodexButton() {
+    const existing = document.getElementById('btn-rune-codex');
+    if (existing) existing.remove();
+
+    const hud = document.getElementById('hud-bottom-right') || document.body;
     const btn = document.createElement('button');
     btn.id = 'btn-rune-codex';
     btn.innerHTML = '📜';
     btn.title = 'Rune Codex (Recipes)';
     btn.style.cssText = `
-        position: fixed; bottom: 85px; right: 20px;
-        width: 44px; height: 44px; background: #0a0805; border: 2px solid #bf642f;
-        color: #ffd700; border-radius: 50%; cursor: pointer; font-size: 24px;
-        display: flex; align-items: center; justify-content: center; z-index: 100;
-        box-shadow: 0 0 15px rgba(0,0,0,0.6); transition: all 0.2s;
+        width: 36px; height: 36px; background: #0a0805; border: 2px solid #bf642f;
+        color: #ffd700; border-radius: 4px; cursor: pointer; font-size: 18px;
+        display: flex; align-items: center; justify-content: center; 
+        box-shadow: 0 0 10px rgba(0,0,0,0.5); transition: all 0.2s;
+        margin-right: 5px;
     `;
     btn.onmouseover = () => btn.style.borderColor = '#ffd700';
     btn.onmouseout = () => btn.style.borderColor = '#bf642f';
     btn.onclick = openRuneCodex;
-    document.body.appendChild(btn);
-}
-injectCodexButton();
 
+    if (hud === document.body) {
+        btn.style.position = 'fixed';
+        btn.style.bottom = '85px';
+        btn.style.right = '20px';
+        btn.style.zIndex = '100';
+    }
+    hud.appendChild(btn);
+    }
+    injectCodexButton();
 // ——— QUEST LOG ———
 function renderQuestJournal() {
     const list = $('quest-list');
@@ -6191,7 +6207,7 @@ $('btn-stash-withdraw')?.addEventListener('click', () => {
 });
 
 function sortStash() {
-    const items = currentStashTab === 'personal' ? stash : sharedStash;
+    const items = sharedStashTabs[currentStashTab].items;
     const itemsRef = items.filter(it => it !== null);
 
     const rarityWeights = { unique: 10, set: 9, rare: 8, magic: 7, normal: 6 };
@@ -6214,7 +6230,43 @@ function sortStash() {
     items.fill(null);
     itemsRef.forEach((it, i) => items[i] = it);
 
-    if (currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
+    SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+}
+
+function handleDrop(target, idx) {
+    if (!draggedItem) return;
+    let success = false;
+    let srcArr = null;
+    let tarArr = null;
+
+    if (dragSource === 'inventory') srcArr = player.inventory;
+    else if (dragSource === 'belt') srcArr = player.belt;
+    else if (dragSource === 'stash') srcArr = sharedStashTabs[currentStashTab].items;
+    else if (dragSource === 'cube') srcArr = cube;
+
+    if (target === 'inventory') tarArr = player.inventory;
+    else if (target === 'belt') tarArr = player.belt;
+    else if (target === 'stash') tarArr = sharedStashTabs[currentStashTab].items;
+    else if (target === 'cube') tarArr = cube;
+
+    // ... (rest of function handles swapping)
+    if (tarArr) {
+        const old = tarArr[idx];
+        tarArr[idx] = draggedItem;
+        if (srcArr) srcArr[dragSourceIdx] = old;
+        success = true;
+    }
+
+    if (success) {
+        SaveSystem.save(player, activeSlotId);
+        SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+        updateHud();
+        renderInventory();
+        renderStash();
+        renderCube();
+    }
+    draggedItem = null;
+    dragSource = null;
 }
 
 function sellAllJunk() {
