@@ -1,12 +1,15 @@
-/**
- * Mercenary Entity — Companions that follow and fight for the player.
- * Supports equipment (Helm, Armor, Weapon) and persists between sessions.
- */
 import { bus } from '../engine/EventBus.js';
 import { calcDamage, applyDamage, DMG_TYPE } from '../systems/combat.js';
 import { Projectile } from './projectile.js';
 import { fx } from '../engine/ParticleSystem.js';
+import { Pathfinder } from '../world/pathfinding.js';
 
+const pathfinder = new Pathfinder();
+
+/**
+ * Mercenary Entity — Companions that follow and fight for the player.
+ * Supports equipment (Helm, Armor, Weapon) and persists between sessions.
+ */
 export class Mercenary {
     constructor(data) {
         this.name = data.name || 'Mercenary';
@@ -26,6 +29,8 @@ export class Mercenary {
         
         this.animState = 'idle';
         this.facingDir = 'south';
+        this.path = [];
+        this.target = null;
         
         this.isMercenary = true;
         this.isPlayer = true; // For faction targeting
@@ -153,7 +158,10 @@ export class Mercenary {
     }
 
     update(dt, player, enemies, dungeon) {
-        if (this.hp <= 0) return;
+        if (this.hp <= 0) {
+            this.animState = 'dead';
+            return;
+        }
 
         // --- Wave 3 Mastery: Mercenary Auras ---
         this._auraTimer = (this._auraTimer || 0) - dt;
@@ -172,49 +180,74 @@ export class Mercenary {
         }
 
         const mx = player.x - this.x, my = player.y - this.y;
-        const md = Math.sqrt(mx * mx + my * my);
+        const md = Math.hypot(mx, my);
         
         // --- LEASHING & FOLLOW LOGIC ---
         if (md > 800) {
             this.x = player.x + (Math.random() - 0.5) * 40;
             this.y = player.y + (Math.random() - 0.5) * 40;
+            this.path = [];
             fx.emitBurst(this.x, this.y, '#ffffff', 15, 2);
             return;
         }
 
-        let moved = false;
-        const isFar = md > 250;
-        const speed = isFar ? 150 : 90;
-
-        if (md > 70) {
-            const moveX = (mx / md) * speed * dt;
-            const moveY = (my / md) * speed * dt;
-            if (dungeon.isWalkable(this.x + moveX, this.y + moveY)) {
-                this.x += moveX;
-                this.y += moveY;
-                moved = true;
-                this.facingDir = Math.abs(mx) > Math.abs(my) ? (mx > 0 ? 'right' : 'left') : (my > 0 ? 'down' : 'up');
-            }
-        }
-
-        // Combat AI
-        let closestEnemy = null, closestDist = (this.className === 'Rogue') ? 350 : (this.className === 'Iron Wolf' ? 300 : 80);
-        if (!isFar) {
+        // 1. Target Selection with Line of Sight
+        let closestEnemy = null, closestDist = (this.className === 'Rogue') ? 350 : (this.className === 'Iron Wolf' ? 300 : 100);
+        if (md < 400) { // Only fight if near player
             for (const e of enemies) {
                 if (e.hp <= 0) continue;
                 const ed = Math.hypot(e.x - this.x, e.y - this.y);
-                if (ed < closestDist) { closestDist = ed; closestEnemy = e; }
+                if (ed < closestDist) {
+                    if (dungeon.hasLineOfSight(this.x, this.y, e.x, e.y)) {
+                        closestDist = ed; closestEnemy = e;
+                    }
+                }
+            }
+        }
+        this.target = closestEnemy;
+
+        // 2. Movement Logic (A* Pathfinding if far or blocked)
+        let moved = false;
+        const targetX = this.target ? this.target.x : player.x;
+        const targetY = this.target ? this.target.y : player.y;
+        const tDist = Math.hypot(targetX - this.x, targetY - this.y);
+        const stopDist = this.target ? (this.className === 'Desert Warrior' ? 30 : 200) : 60;
+
+        if (tDist > stopDist) {
+            // Repath if path empty or randomly to handle dynamic targets
+            if (this.path.length === 0 || Math.random() < 0.02) {
+                this.path = pathfinder.find(dungeon.grid, this.x, this.y, targetX, targetY, dungeon.tileSize);
+            }
+
+            if (this.path.length > 0) {
+                const next = this.path[0];
+                const adx = next.x - this.x, ady = next.y - this.y;
+                const adist = Math.hypot(adx, ady);
+                if (adist < 5) {
+                    this.path.shift();
+                } else {
+                    const speed = md > 250 ? 150 : 100;
+                    this.x += (adx / adist) * speed * dt;
+                    this.y += (ady / adist) * speed * dt;
+                    this.facingDir = Math.abs(adx) > Math.abs(ady) ? (adx > 0 ? 'right' : 'left') : (ady > 0 ? 'down' : 'up');
+                    moved = true;
+                }
+            }
+        } else {
+            this.path = [];
+            if (this.target) {
+                const ex = this.target.x - this.x, ey = this.target.y - this.y;
+                this.facingDir = Math.abs(ex) > Math.abs(ey) ? (ex > 0 ? 'right' : 'left') : (ey > 0 ? 'down' : 'up');
             }
         }
 
-        if (closestEnemy) {
+        // 3. Attack Logic
+        if (this.target && tDist < (closestDist + 20)) {
             this._atkCd -= dt;
             if (this._atkCd <= 0) {
-                this.attack(closestEnemy);
+                this.attack(this.target);
                 this._atkCd = 1 / this.atkSpeed;
                 this.animState = 'attack';
-                const ex = closestEnemy.x - this.x, ey = closestEnemy.y - this.y;
-                this.facingDir = Math.abs(ex) > Math.abs(ey) ? (ex > 0 ? 'right' : 'left') : (ey > 0 ? 'down' : 'up');
             } else if (this._atkCd < (1 / this.atkSpeed) * 0.7) {
                 this.animState = moved ? 'walk' : 'idle';
             }
