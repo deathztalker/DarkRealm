@@ -1420,19 +1420,20 @@ export class LootSystem {
      * @param {object} enemy - { level, type:'normal'|'elite'|'boss', classId? }
      * @returns {object|null} item or null (no drop)
      */
-    roll(enemy, playerStats = {}) {
-        // --- TEST MODE: 100% DROP CHANCE ---
-        const dropChance = 1.0; 
-        if (Math.random() > dropChance) return null;
+    roll(enemy, context = {}) {
+        const depth = window.riftLevel || Math.max(0, window.zoneLevel - 6);
+        const riftMF = depth > 0 ? (depth * 25) : 0; 
+        const totalMF = (context.magicFind || 0) + riftMF;
 
-        // Skip gems/potions for testing, force Unique equipment
-        const rarity = RARITY.UNIQUE;
-        const ilvl = Math.max(1, enemy.level + 5);
+        const ilvl = Math.max(1, enemy.level + (enemy.isRiftBoss || enemy.isRiftGuardian ? 10 : 5));
+        const rarity = this._rollRarity(enemy, totalMF);
 
-        // Use _pickUnique with null baseId to get variety
-        const template = this._pickUnique(null, ilvl);
-        if (template) {
-            return this._buildUnique(template);
+        if (rarity === RARITY.UNIQUE) {
+            const template = this._pickUnique(null, ilvl);
+            if (template) return this._buildUnique(template);
+        } else if (rarity === RARITY.SET) {
+            const template = this._pickSetItem(null, ilvl); // Null baseId for variety
+            if (template) return this._buildSetItem(template);
         }
 
         return this.generate(ilvl, rarity);
@@ -1452,14 +1453,31 @@ export class LootSystem {
     }
 
     _dropChance(enemy) {
-        return 1.0; // Force drops for testing
+        if (enemy.isRiftGuardian) return 1.0;
+        if (enemy.type === 'boss') return 0.50;
+        if (enemy.type === 'elite') return 0.25;
+        return 0.12;
     }
 
     _rollRarity(enemy, magicFind = 0) {
-        // --- TEST MODE: 100% UNIQUE DROP ---
-        return RARITY.UNIQUE;
-    }
+        const roll = Math.random() * 10000;
+        const mfMult = 1 + (magicFind / 100);
 
+        // Guardian/Boss Loot Table
+        if (enemy.isRiftGuardian || enemy.isRiftBoss) {
+            if (roll < 800 * mfMult) return RARITY.UNIQUE;
+            if (roll < 2000 * mfMult) return RARITY.SET;
+            if (roll < 4500 * mfMult) return RARITY.RARE;
+            return RARITY.MAGIC;
+        }
+
+        // Standard Table
+        if (roll < 60 * mfMult) return RARITY.UNIQUE;
+        if (roll < 180 * mfMult) return RARITY.SET;
+        if (roll < 800 * mfMult) return RARITY.RARE;
+        if (roll < 2500 * mfMult) return RARITY.MAGIC;
+        return RARITY.NORMAL;
+    }
     _pickUnique(baseId, ilvl) {
         // --- TEST MODE: TOTAL VARIETY ---
         // Pick any unique from the entire database for testing purposes

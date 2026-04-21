@@ -393,57 +393,49 @@ function fireEquipmentProcs(attacker, target, dealt) {
     const isHero = attacker.isPlayer
         || attacker.isMercenary
         || attacker.type === 'mercenary'
-        || attacker.name === window.mercenary?.name;
+        || (window.mercenary && attacker.name === window.mercenary.name);
 
     if (!isHero || dealt <= 0 || !attacker.equipment) return;
 
-    for (const weapon of Object.values(attacker.equipment)) {
-        if (!weapon?.onHit) continue;
+    for (const item of Object.values(attacker.equipment)) {
+        if (!item?.onHit) continue;
 
-        const proc = weapon.onHit;
-
-        const { mult: synMult, chanceBonus: synChance, bonusEffects: synFX }
-            = evaluateSynergies(attacker, proc, weapon.id || '');
-
-        const effectiveProcChance = (proc.chance || 0) + synChance;
-
-        // Stat-based scaling
-        let procScaleStat = 'str';
-        if (['chain_lightning', 'arcane_burst', 'soul_rip', 'consecration'].includes(proc.effect)) procScaleStat = 'int';
-        else if (['blade_dance', 'stellar_arrow'].includes(proc.effect)) procScaleStat = 'dex';
-        else if (proc.type === 'shadow' || proc.type === 'fire') procScaleStat = 'int';
-
-        const procStatValue = attacker[procScaleStat] || 10;
-        const finalProcMult = synMult * (1 + procStatValue / 100);
-
-        // ── Soul Stack (special: tracks per-weapon, fires at threshold) ────
-        if (proc.effect === 'soul_stack') {
-            handleSoulStack(attacker, target, proc, synFX, finalProcMult);
-            handleExtraEffect(attacker, target, proc, finalProcMult, dealt);
-            continue; // soul_stack has its own proc-chance gate inside the handler
+        const proc = item.onHit;
+        // Synergies check (works for player, safe-check for merc)
+        let synMult = 1.0;
+        let synChance = 0;
+        let synFX = [];
+        
+        if (attacker.isPlayer) {
+            const syn = evaluateSynergies(attacker, proc, item.id || '');
+            synMult = syn.mult;
+            synChance = syn.chanceBonus;
+            synFX = syn.bonusEffects;
         }
 
-        // ── Standard proc chance gate ──────────────────────────────────────
-        if (Math.random() >= effectiveProcChance) continue;
+        const effectiveChance = (proc.chance || 0) + synChance;
+        if (Math.random() >= effectiveChance) continue;
 
-        bus.emit('combat:log', {
-            text: `✨ Legendary Effect: ${proc.effect.replace(/_/g, ' ').toUpperCase()}!`,
-            cls: 'log-crit',
-        });
+        // Stat Scaling: Mercenaries use their primary stats too
+        let scaleStat = 'str';
+        if (['chain_lightning', 'arcane_burst', 'soul_rip', 'meteor_drop'].includes(proc.effect)) scaleStat = 'int';
+        else if (['blade_dance', 'stellar_arrow'].includes(proc.effect)) scaleStat = 'dex';
+        
+        const statVal = attacker[scaleStat] || 10;
+        const finalMult = synMult * (1 + statVal / 100);
+
+        bus.emit('combat:log', { text: `✨ ${attacker.name} triggered ${proc.effect.toUpperCase()}!`, cls: 'log-crit' });
 
         switch (proc.effect) {
-            case 'chain_lightning': handleChainLightning(attacker, target, proc, synFX, finalProcMult); break;
-            case 'meteor_drop': handleMeteorDrop(target, proc, synFX, finalProcMult); break;
-            case 'divine_shield': handleDivineShield(attacker, proc, synFX, finalProcMult); break;
-            case 'arcane_burst': handleArcaneBurst(attacker, target, proc, synFX, finalProcMult); break;
-            case 'soul_rip': handleSoulRip(attacker, target, proc, synFX, finalProcMult); break;
-            case 'blade_dance': handleBladeDance(target, proc, synFX, finalProcMult); break;
-            case 'stellar_arrow': handleStellarArrow(attacker, target, proc, finalProcMult); break;
-            case 'consecration': handleConsecration(attacker, proc, synFX, finalProcMult); break;
-            case 'army_of_the_dead': handleArmyOfTheDead(attacker, proc); break;
+            case 'chain_lightning': handleChainLightning(attacker, target, proc, synFX, finalMult); break;
+            case 'meteor_drop': handleMeteorDrop(target, proc, synFX, finalMult); break;
+            case 'divine_shield': handleDivineShield(attacker, proc, synFX, finalMult); break;
+            case 'arcane_burst': handleArcaneBurst(attacker, target, proc, synFX, finalMult); break;
+            case 'soul_rip': handleSoulRip(attacker, target, proc, synFX, finalMult); break;
+            case 'blade_dance': handleBladeDance(target, proc, synFX, finalMult); break;
+            case 'stellar_arrow': handleStellarArrow(attacker, target, proc, finalMult); break;
+            case 'consecration': handleConsecration(attacker, proc, synFX, finalMult); break;
         }
-
-        handleExtraEffect(attacker, target, proc, finalProcMult, dealt);
     }
 }
 

@@ -199,47 +199,49 @@ function updateRiftHud() {
 function spawnRiftGuardian() {
     window.riftGuardianSpawned = true;
 
-    // Choose a random location near player (ensure walkable)
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 120;
-    const tx = player.x + Math.cos(angle) * dist;
-    const ty = player.y + Math.sin(angle) * dist;
+    // Find a valid spawn point near the player
+    let tx = player.x, ty = player.y;
+    for (let i = 0; i < 20; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 120 + Math.random() * 50;
+        const testX = player.x + Math.cos(angle) * dist;
+        const testY = player.y + Math.sin(angle) * dist;
+        if (dungeon && dungeon.isWalkable(testX, testY)) {
+            tx = testX; ty = testY;
+            break;
+        }
+    }
 
-    // In actual game, we'd check dungeon.isWalkable here
-
+    const depth = window.riftLevel || (zoneLevel - 6);
     const bossData = {
         id: 'rift_guardian',
-        name: `Guardian of Depth ${zoneLevel - 6}`,
+        name: `Guardian of Depth ${depth}`,
         type: 'boss',
-        maxHp: 5000 * Math.pow(1.2, zoneLevel - 6),
-        dmg: 60 * Math.pow(1.1, zoneLevel - 6),
-        moveSpeed: 100,
-        attackSpeed: 1.5,
-        attackRange: 40,
-        xpReward: 1000 * (zoneLevel - 6),
+        maxHp: 8000 * Math.pow(1.3, depth),
+        dmg: 80 * Math.pow(1.15, depth),
+        moveSpeed: 110,
+        attackSpeed: 1.6,
+        attackRange: 45,
+        xpReward: 2000 * depth,
         color: '#ff00ff',
-        size: 35,
-        x: tx, y: ty
+        size: 38,
+        x: tx, y: ty,
+        isRiftGuardian: true,
+        isRiftBoss: true
     };
 
     const boss = new Enemy(bossData);
     enemies.push(boss);
 
-    bus.on('combat:damage', (data) => {
-        const { worldX, worldY, dealt, isCrit, type } = data;
-        if (typeof dealt === 'number' || dealt === 'Blocked!') {
-            spawnFloatingText(worldX, worldY, dealt, type, isCrit);
-        }
-    });
-
-    playZoneTransition(); // reuse for sound/flash
-    fx.emitHolyBurst(tx, ty);
-    fx.emitBurst(tx, ty, '#f0f', 50, 4);
-    fx.shake(1000, 15);
+    // Only play transition/arrival sounds if NOT in town
+    if (zoneLevel !== 0) {
+        import('./engine/audio.js').then(a => a.playZoneTransition());
+        fx.emitHolyBurst(tx, ty);
+        fx.emitBurst(tx, ty, '#f0f', 60, 5);
+        fx.shake(1200, 20);
+    }
 
     addCombatLog('THE RIFT GUARDIAN HAS ARRIVED!', 'log-crit');
-    startAmbientBoss();
-
     const bossBar = $('boss-hp-bar');
     if (bossBar) {
         bossBar.classList.remove('hidden');
@@ -7772,6 +7774,15 @@ function handleBossDeath(boss) {
         gameObjects.push(portal);
 
         fx.emitHolyBurst(portal.x, portal.y);
+    }
+
+    // --- Rift Guardian Global Announcement ---
+    if (boss.isRiftGuardian && (window.riftLevel >= 50)) {
+        const msg = `⚡ GLOBAL: ${player.charName} has defeated the Depth ${window.riftLevel} Guardian! ⚡`;
+        if (window.networkManager && networkManager.socket) {
+            networkManager.socket.emit('system_message', msg);
+        }
+        addCombatLog(msg, 'log-unique');
     }
 }
 

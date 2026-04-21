@@ -275,17 +275,21 @@ export class Player {
                         this._holyFireLvl = scaledLvl;
                         break;
                     case 'ashbringer':
-                        // Already handled resonance, but can add stats here
+                        s.pctHolyDmg = (s.pctHolyDmg || 0) + 100;
+                        s.allSkills = (s.allSkills || 0) + 2;
                         break;
                     case 'frostmourne':
                         this._hasDrainAura = true;
                         this._drainType = 'cold';
                         this._drainLvl = scaledLvl;
+                        s.lifeStealPct = (s.lifeStealPct || 0) + 10;
                         break;
                     case 'shadowmourne':
                         this._hasDrainAura = true;
                         this._drainType = 'shadow';
                         this._drainLvl = scaledLvl;
+                        s.lifeStealPct = (s.lifeStealPct || 0) + 10;
+                        s.pctDmg = (s.pctDmg || 0) + 50;
                         break;
                 }
             }
@@ -1399,7 +1403,66 @@ export class Player {
 
     gainXp(amt) { this.addXp(amt); }
 
-    render(ctx) {
+    render(ctx, renderer, time) {
+        // --- Legendary Aura Stacking Visuals & Particles ---
+        if (this.itemAuras) {
+            let radiusOffset = 0;
+            this._auraParticles = this._auraParticles || [];
+            
+            const drawAuraRing = (color, type) => {
+                const radius = 22 + radiusOffset;
+                const pulse = Math.sin(time * 5) * 2;
+                ctx.save();
+                ctx.globalAlpha = 0.25;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, radius + pulse, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+
+                // Spawn Particles periodically
+                if (Math.random() < 0.1) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = Math.random() * radius;
+                    this._auraParticles.push({
+                        x: this.x + Math.cos(angle) * dist,
+                        y: this.y + Math.sin(angle) * dist,
+                        vy: -0.5 - Math.random() * 1.0,
+                        life: 1.0,
+                        color: color,
+                        type: type
+                    });
+                }
+                radiusOffset += 5;
+            };
+
+            if (this.itemAuras.has('shadowmourne')) drawAuraRing('#a040ff', 'skull');
+            if (this.itemAuras.has('frostmourne')) drawAuraRing('#00ffff', 'ice');
+            if (this.itemAuras.has('ashbringer')) drawAuraRing('#ffd700', 'holy');
+
+            // Render rising particles
+            this._auraParticles.forEach((p, i) => {
+                p.y += p.vy;
+                p.life -= 0.02;
+                ctx.save();
+                ctx.globalAlpha = p.life * 0.6;
+                ctx.fillStyle = p.color;
+                if (p.type === 'skull') {
+                    ctx.font = '8px Arial';
+                    ctx.fillText('💀', p.x - 4, p.y);
+                } else if (p.type === 'ice') {
+                    ctx.fillRect(p.x, p.y, 2, 2);
+                } else {
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI*2); ctx.fill();
+                }
+                ctx.restore();
+                if (p.life <= 0) this._auraParticles.splice(i, 1);
+            });
+        }
+
         ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(this.x, this.y + 5, 7, 3, 0, 0, Math.PI * 2); ctx.fill();
         ctx.font = '14px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(this.icon, this.x, this.y - 2);
         const w = 16, h = 2; ctx.fillStyle = '#1a0000'; ctx.fillRect(this.x - w / 2, this.y - 12, w, h);
