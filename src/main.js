@@ -3893,6 +3893,17 @@ function renderMercenaryPanel() {
         </div>
 
         <div style="margin-top:10px; border-top:1px solid #444; padding-top:8px;">
+            <div style="color:#aaa; margin-bottom:5px;">Active Skill:</div>
+            <div class="merc-skill-item" style="display:flex; align-items:center; gap:10px; background:rgba(214, 176, 104, 0.1); padding:8px; border-radius:4px; border:1px solid #bf642f; cursor:help;">
+                <div style="font-size:20px;">🛡️</div>
+                <div style="flex:1;">
+                    <div style="color:#ffd700; font-weight:bold; font-size:12px;">${mercenary.mainSkill.name}</div>
+                    <div style="color:#888; font-size:10px;">Effective Lvl: <span style="color:#fff;">${mercenary.effectiveSkillLevel}</span> (${Math.floor(mercenary.level/2)} Base + ${mercenary.allSkillBonus} Items)</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top:10px; border-top:1px solid #444; padding-top:8px;">
             <div style="color:#aaa; margin-bottom:4px;">Resistances:</div>
             <div style="display:flex; justify-content:space-between; font-size:11px;">
                 <span style="color:#f66;" title="Fire">🔥 ${mercenary.resists.fire}%</span> 
@@ -6256,7 +6267,7 @@ function saveGame() {
         cube,
         mercenary,
         difficulty,
-        waypoints: unlockedWaypoints, // Fixed variable name
+        waypoints: Array.from(discoveredWaypoints), // Corrected variable
         campaign
     });
 }

@@ -15,7 +15,7 @@ export class Mercenary {
         this.name = data.name || 'Mercenary';
         this.className = data.className || 'Rogue'; // Rogue, Desert Warrior, Iron Wolf
         this.level = data.level || 1;
-        this.icon = data.icon || 'class_rogue';
+        this.icon = (this.className === 'Rogue') ? 'class_ranger' : (data.icon || 'class_rogue');
         
         this.x = data.x || 0;
         this.y = data.y || 0;
@@ -99,8 +99,17 @@ export class Mercenary {
             allRes: this.level * 1.5,
             fireRes: 0, coldRes: 0, lightRes: 0, poisRes: 0, shadowRes: 0,
             pctIAS: 0, pctDmg: 0, lifeStealPct: 0, manaStealPct: 0,
-            flatHP: 0, flatArmor: 0, pctArmor: 0
+            flatHP: 0, flatArmor: 0, pctArmor: 0,
+            allSkills: 0, classSkills: 0
         };
+
+        // Skill Mapping per Mercenary type
+        const skillRegistry = {
+            'Rogue': { id: 'inner_sight', name: 'Inner Sight', group: 'shadow' },
+            'Desert Warrior': { id: 'jab', name: 'Jab', group: 'melee' },
+            'Iron Wolf': { id: 'elemental_bolt', name: 'Elemental Bolt', group: 'magic' }
+        };
+        this.mainSkill = skillRegistry[this.className] || { id: 'attack', name: 'Attack', group: 'melee' };
 
         // Buffs
         for (const b of this._buffs) {
@@ -121,7 +130,9 @@ export class Mercenary {
             // Mods
             if (item.mods) {
                 for (const mod of item.mods) {
-                    if (s[mod.stat] !== undefined) s[mod.stat] += mod.value;
+                    if (mod.stat === 'allSkills' || mod.stat === '+allSkills') s.allSkills += mod.value;
+                    else if (mod.stat === 'classSkills') s.classSkills += mod.value;
+                    else if (s[mod.stat] !== undefined) s[mod.stat] += mod.value;
                     else if (mod.stat === 'allRes') s.allRes += mod.value;
                 }
             }
@@ -132,7 +143,8 @@ export class Mercenary {
                 for (const gem of item.socketed) {
                     if (gem && gem.socketEffect && gem.socketEffect[itemClass]) {
                         const eff = gem.socketEffect[itemClass];
-                        if (s[eff.stat] !== undefined) s[eff.stat] += eff.value;
+                        if (eff.stat === 'allSkills' || eff.stat === '+allSkills') s.allSkills += eff.value;
+                        else if (s[eff.stat] !== undefined) s[eff.stat] += eff.value;
                         else if (eff.stat === 'allRes') s.allRes += eff.value;
                     }
                 }
@@ -140,6 +152,9 @@ export class Mercenary {
         }
 
         // Final totals
+        this.allSkillBonus = s.allSkills + s.classSkills;
+        this.effectiveSkillLevel = Math.floor(this.level / 2) + this.allSkillBonus;
+
         this.maxHp = Math.round((this.maxHp + s.flatHP) * (1 + (s.pctHP || 0) / 100));
         this.armor = Math.round((this.armor + s.flatArmor) * (1 + (s.pctArmor || 0) / 100));
         this.baseDmg = Math.round(this.baseDmg * (1 + s.pctDmg / 100));
@@ -153,7 +168,6 @@ export class Mercenary {
         };
         
         this.lifeStealPct = s.lifeStealPct;
-        
         this.hp = Math.min(this.hp, this.maxHp);
     }
 

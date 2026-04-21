@@ -5,6 +5,9 @@ import { bus } from '../engine/EventBus.js';
 import { calcDamage, applyDamage, DMG_TYPE, isCCd, getSlowFactor, isFeared, isRooted } from '../systems/combat.js';
 import { fx } from '../engine/ParticleSystem.js';
 import { Projectile } from './projectile.js';
+import { Pathfinder } from '../world/pathfinding.js';
+
+const pathfinder = new Pathfinder();
 
 const ENEMY_TYPES = {
     skeleton: { icon: 'enemy_skeleton', name: 'Skeleton', hp: 40, dmg: 5, spd: 50, xp: 15, armor: 2, group: 'undead', attackType: 'melee' },
