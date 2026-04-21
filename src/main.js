@@ -6249,6 +6249,17 @@ function sortStash() {
     SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
 }
 
+function saveGame() {
+    if (!player || !activeSlotId) return;
+    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
+        cube,
+        mercenary,
+        difficulty,
+        waypoints,
+        campaign
+    });
+}
+
 function handleDrop(target, idx) {
     if (!draggedItem) return;
     let success = false;
@@ -6265,7 +6276,6 @@ function handleDrop(target, idx) {
     else if (target === 'stash') tarArr = sharedStashTabs[currentStashTab].items;
     else if (target === 'cube') tarArr = cube;
 
-    // ... (rest of function handles swapping)
     if (tarArr) {
         const old = tarArr[idx];
         tarArr[idx] = draggedItem;
@@ -6274,7 +6284,7 @@ function handleDrop(target, idx) {
     }
 
     if (success) {
-        SaveSystem.save(player, activeSlotId);
+        saveGame();
         SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
         updateHud();
         renderInventory();
