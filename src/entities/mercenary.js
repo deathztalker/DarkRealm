@@ -379,6 +379,31 @@ export class Mercenary {
 
     render(renderer, time) {
         if (this.hp <= 0) return;
+
+        // --- Thunder Aura Visual Effect ---
+        if (this.className === 'Barbarian') {
+            const isW1Light = this.equipment.mainhand?.mods?.some(m => m.stat === 'pctLightningDmg' || m.stat === 'flatLightningDmg') || this.equipment.mainhand?.id?.includes('lightning');
+            const isW2Light = this.equipment.offhand?.mods?.some(m => m.stat === 'pctLightningDmg' || m.stat === 'flatLightningDmg') || this.equipment.offhand?.id?.includes('lightning');
+            
+            if (isW1Light && isW2Light) {
+                const pulse = Math.sin(time * 10) * 0.5 + 0.5;
+                renderer.ctx.save();
+                renderer.ctx.globalAlpha = 0.3 * pulse;
+                renderer.ctx.shadowBlur = 15;
+                renderer.ctx.shadowColor = '#ffff00';
+                renderer.ctx.strokeStyle = '#00ffff';
+                renderer.ctx.lineWidth = 2;
+                renderer.ctx.beginPath();
+                renderer.ctx.arc(this.x, this.y, 25, 0, Math.PI * 2);
+                renderer.ctx.stroke();
+                renderer.ctx.restore();
+
+                if (Math.random() < 0.05 && fx.emitLightning) {
+                    fx.emitLightning(this.x, this.y - 20, this.x + (Math.random() - 0.5) * 40, this.y + (Math.random() - 0.5) * 40, 2);
+                }
+            }
+        }
+
         renderer.drawShadow(this.x, this.y + 4, 8, 0.3);
         renderer.drawAnim(this.icon, this.x, this.y - 4, 18, this.animState || 'idle', this.facingDir || 'south', time, null, this.equipment);
         const bw = 18;
