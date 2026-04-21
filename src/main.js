@@ -571,9 +571,12 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     } else {
         player = new Player(selectedClass);
         if (charName) player.charName = charName;
-        if ($('hardcore-mode') && $('hardcore-mode').checked) {
+        
+        const hcCheck = document.getElementById('hc-mode-checkbox');
+        if (hcCheck && hcCheck.checked) {
             player.isHardcore = true;
         }
+
         player.x = dungeon.playerStart.x;
         player.y = dungeon.playerStart.y;
 
@@ -680,6 +683,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         onChatMessage: (data) => addChatMessage(data.sender, data.text, data.isSystem ? 'system' : 'general'),
         onWhisper: (data) => addChatMessage(data.sender, data.text, 'whisper') 
     });
+    window.networkManager = network; // Expose for Mercenary/Combat systems
     window.enemies = enemies; // Expose for proc engine AoE
 
     // Inspect Player → fill panel
@@ -770,6 +774,9 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     window.updatePartyHUD = updatePartyHUD;
 
     network.init();
+    network.joinZone(zoneLevel); // JOIN MMO LAYER
+    checkChampionStatus(); // CHECK FOR #1 RANK VISUALS
+    
     DB.trackPresence(player.charName, zoneLevel);
 
     lastTime = performance.now();
@@ -2248,6 +2255,13 @@ function nextZone(targetZone = null) {
         if (overlay) {
             setTimeout(() => overlay.style.opacity = '0', 200);
         }
+
+        // --- MMO: Join correct layer ---
+        if (window.networkManager) networkManager.joinZone(zoneLevel);
+        
+        // --- Prestige: Check for #1 rank ---
+        checkChampionStatus();
+
     }, 500);
 }
 
@@ -7708,6 +7722,24 @@ async function renderLeaderboard(filter = 'global') {
 }
 
 function renderPantheonList() { renderLeaderboard(); }
+
+async function checkChampionStatus() {
+    if (!player || !network) return;
+    
+    // Check Global #1
+    const globalData = await network.getLeaderboardData('global');
+    if (globalData && globalData.length > 0) {
+        player._isTopRanker = (globalData[0].charName === player.charName);
+    }
+
+    // Check Hardcore #1
+    if (player.isHardcore) {
+        const hcData = await network.getLeaderboardData('hardcore');
+        if (hcData && hcData.length > 0) {
+            player._isTopHardcore = (hcData[0].charName === player.charName);
+        }
+    }
+}
 
 function returnToMainMenu() {
     // Save current character before leaving
