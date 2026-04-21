@@ -503,7 +503,7 @@ export class Enemy {
         if (dungeon) {
             const gx = Math.floor(this.x / dungeon.tileSize);
             const gy = Math.floor(this.y / dungeon.tileSize);
-            if (gx >= 0 && gx < dungeon.width && gy >= 0 && gy < dungeon.height) {
+            if (gx >= 0 && gx < dungeon.width && gy >= 0 && gy < dungeon.height && dungeon.grid[gy]) {
                 const tile = dungeon.grid[gy][gx];
                 if (tile === 8) currentMoveSpeed *= 0.5; // Water
                 else if (tile === 13) currentMoveSpeed *= 0.7; // Lava

@@ -37,10 +37,22 @@ export class Dungeon {
         }
         if (zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0)) return this.generateBossRoom(theme, zoneLevel);
 
+        return this._generateProcedural(zoneLevel, theme, true);
+    }
+
+    generateRift(zoneLevel) {
+        const themes = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow'];
+        const theme = themes[Math.floor(Math.random() * themes.length)];
+        return this._generateProcedural(zoneLevel, theme, false);
+    }
+
+    _generateProcedural(zoneLevel, theme, placeExit = true) {
         this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
         this.rooms = [];
         this.enemySpawns = [];
         this.lootSpawns = [];
+        this.npcSpawns = [];
+        this.objectSpawns = [];
 
         // Organic vs Structural Generation
         const isOrganicTheme = ['jungle', 'desert', 'snow', 'hell'].includes(theme);
@@ -119,7 +131,7 @@ export class Dungeon {
         }
 
         // Place player start in first room center
-        const first = this.rooms[0];
+        const first = this.rooms[0] || { x: 5, y: 5, w: 5, h: 5 };
         this.playerStart = {
             x: (first.x + Math.floor(first.w / 2)) * this.tileSize + this.tileSize / 2,
             y: (first.y + Math.floor(first.h / 2)) * this.tileSize + this.tileSize / 2,
@@ -135,11 +147,15 @@ export class Dungeon {
         });
 
         // Place exit in last room
-        const last = this.rooms[this.rooms.length - 1];
-        const ec = last.x + Math.floor(last.w / 2);
-        const er = last.y + Math.floor(last.h / 2);
-        this.grid[er][ec] = TILE.STAIRS_DOWN;
-        this.exitPos = { x: ec * this.tileSize + this.tileSize / 2, y: er * this.tileSize + this.tileSize / 2 };
+        if (placeExit && this.rooms.length > 0) {
+            const last = this.rooms[this.rooms.length - 1];
+            const ec = last.x + Math.floor(last.w / 2);
+            const er = last.y + Math.floor(last.h / 2);
+            this.grid[er][ec] = TILE.STAIRS_DOWN;
+            this.exitPos = { x: ec * this.tileSize + this.tileSize / 2, y: er * this.tileSize + this.tileSize / 2 };
+        } else {
+            this.exitPos = { x: -1000, y: -1000 };
+        }
 
         // Spawn enemies in rooms 2+
         for (let i = 1; i < this.rooms.length; i++) {
@@ -398,11 +414,11 @@ export class Dungeon {
         let isBaal = false;
         let isUber = false;
 
-        if (zoneLevel === 5) { bossName = "Andariel"; bossIcon = "enemy_demon"; hpMult = 4.0; isAndariel = true; }
-        else if (zoneLevel === 10) { bossName = "Duriel"; bossIcon = "enemy_demon"; hpMult = 6.0; isDuriel = true; }
-        else if (zoneLevel === 15) { bossName = "Mephisto"; bossIcon = "enemy_skeleton"; hpMult = 8.0; isMephisto = true; }
-        else if (zoneLevel === 20) { bossName = "Diablo"; bossIcon = "enemy_demon"; hpMult = 12.0; isDiablo = true; }
-        else if (zoneLevel === 25) { bossName = "Baal"; bossIcon = "enemy_demon"; hpMult = 15.0; isBaal = true; }
+        if (zoneLevel === 5) { bossName = "Andariel"; bossIcon = "boss_andariel"; hpMult = 4.0; isAndariel = true; }
+        else if (zoneLevel === 10) { bossName = "Duriel"; bossIcon = "boss_duriel"; hpMult = 6.0; isDuriel = true; }
+        else if (zoneLevel === 15) { bossName = "Mephisto"; bossIcon = "boss_mephisto"; hpMult = 8.0; isMephisto = true; }
+        else if (zoneLevel === 20) { bossName = "Diablo"; bossIcon = "boss_diablo"; hpMult = 12.0; isDiablo = true; }
+        else if (zoneLevel === 25) { bossName = "Baal"; bossIcon = "boss_baal"; hpMult = 15.0; isBaal = true; }
 
         // Boss Spawn in center
         this.enemySpawns.push({
@@ -509,6 +525,7 @@ export class Dungeon {
     isWalkable(wx, wy) {
         const c = Math.floor(wx / this.tileSize), r = Math.floor(wy / this.tileSize);
         if (r < 0 || r >= this.height || c < 0 || c >= this.width) return false;
+        if (!this.grid || !this.grid[r]) return false;
         const tile = this.grid[r][c];
         // Allow walking on Water and Lava but movement logic will apply a penalty
         return tile !== TILE.WALL && tile !== TILE.TREE;

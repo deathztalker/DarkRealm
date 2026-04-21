@@ -48,6 +48,7 @@ export class Player {
         this.statPoints = 0;
         this.gold = 0;
         this.totalMonstersSlain = 0;
+        this._lastPortalEntry = 0; // Prevent portal loops
         this.totalGoldCollected = 0;
         this.charName = cls.name;
         this.baseStr = cls.stats.str;
@@ -761,7 +762,7 @@ export class Player {
         let finalMoveSpeed = this.moveSpeed;
         if (dungeon) {
             const gx = Math.floor(this.x / dungeon.tileSize), gy = Math.floor(this.y / dungeon.tileSize);
-            if (gx >= 0 && gx < dungeon.width && gy >= 0 && gy < dungeon.height) {
+            if (gx >= 0 && gx < dungeon.width && gy >= 0 && gy < dungeon.height && dungeon.grid[gy]) {
                 const tile = dungeon.grid[gy][gx];
                 if (tile === 8) finalMoveSpeed *= 0.5; else if (tile === 13) finalMoveSpeed *= 0.7;
             }
@@ -828,7 +829,7 @@ export class Player {
 
         if (dungeon) {
             const gx = Math.floor(this.x / dungeon.tileSize), gy = Math.floor(this.y / dungeon.tileSize);
-            if (gx >= 0 && gx < dungeon.width && gy >= 0 && gy < dungeon.height && dungeon.grid[gy][gx] === 13) {
+            if (gx >= 0 && gx < dungeon.width && gy >= 0 && gy < dungeon.height && dungeon.grid[gy] && dungeon.grid[gy][gx] === 13) {
                 this._lavaTimer = (this._lavaTimer || 0) + dt;
                 if (this._lavaTimer >= 0.5) {
                     this._lavaTimer = 0; applyDamage(null, this, { dealt: 5, isCrit: false, type: 'fire' }, 'lava');
@@ -1054,6 +1055,18 @@ export class Player {
         const statScaling = 1 + (this.int / 100); 
         const hp = Math.round((30 + slvl * 15) * (1 + (this.minionHpPct || 0) / 100) * (1 + synBonus));
         const dmg = Math.round(((skill.dmgBase || 8) + (skill.dmgPerLvl || 4) * slvl) * (1 + (this.minionDmgPct || 0) / 100) * (1 + synBonus) * statScaling);
+
+        let sprite = 'summon_skeleton'; // fallback
+        if (skillId.includes('golem')) sprite = 'summon_clay_golem';
+        if (skillId === 'blood_golem') sprite = 'summon_blood_golem';
+        if (skillId === 'iron_golem') sprite = 'summon_iron_golem';
+        if (skillId === 'skeleton_mage') sprite = 'summon_skeleton_mage';
+        if (skillId === 'raise_skeleton') sprite = 'summon_skeleton';
+        if (skillId.includes('wolf')) sprite = 'summon_dire_wolf';
+        if (skillId.includes('grizzly') || skillId.includes('bear')) sprite = 'summon_grizzly';
+        if (skillId.includes('valkyrie')) sprite = 'summon_valkyrie';
+        if (skillId.includes('voidwalker') || skillId.includes('succubus') || skillId.includes('imp')) sprite = 'summon_voidwalker';
+
         const minion = {
             id: `minion_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
             name: skill.name || skillId.replace(/_/g, ' '), skillId,
@@ -1062,7 +1075,9 @@ export class Player {
             moveSpeed: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k))) ? 0 : 80,
             isStationary: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k))),
             attackRange: (skill.group === 'totem' || skillId.includes('mage') || skillId.includes('imp')) ? 200 : 25,
-            attackCd: 0, attackSpeed: 1.2, age: 0, duration: 20 + slvl * 2, icon: `skill_${skillId}`,
+            attackCd: 0, attackSpeed: 1.2, age: 0, duration: 20 + slvl * 2, icon: `skill_${skillId}`, sprite,
+            animState: 'idle', facingDir: 'south',
+            size: (skillId.includes('golem') || skillId.includes('grizzly') || skillId.includes('valkyrie')) ? 24 : 16,
             formationOffset: { x: (Math.random()-0.5)*80, y: (Math.random()-0.5)*80 }
         };
         this.minions.push(minion); bus.emit('minion:spawned', { minion });
@@ -1072,6 +1087,8 @@ export class Player {
         this.minions = this.minions.filter(m => {
             m.age += dt; if (m.age >= m.duration || m.hp <= 0) return false;
             m.attackCd = Math.max(0, m.attackCd - dt);
+            let moved = false;
+            
             if (m.isStationary) {
                 let near = null, nD = m.attackRange || 200;
                 for (const e of enemies) { if (e.hp > 0 && e.state !== 'dead') { const d = Math.hypot(e.x-m.x, e.y-m.y); if (d < nD) { near = e; nD = d; } } }
@@ -1084,12 +1101,24 @@ export class Player {
                 let near = null, nD = 300;
                 for (const e of enemies) { if (e.hp > 0 && e.state !== 'dead') { const d = Math.hypot(e.x-m.x, e.y-m.y); if (d < nD) { near = e; nD = d; } } }
                 if (near) {
-                    if (nD > m.attackRange) { const ang = Math.atan2(near.y-m.y, near.x-m.x); const nx = m.x + Math.cos(ang)*m.moveSpeed*dt, ny = m.y + Math.sin(ang)*m.moveSpeed*dt; if (!dungeon || dungeon.isWalkable(nx, ny)) { m.x = nx; m.y = ny; } }
-                    else if (m.attackCd <= 0) { applyDamage(this, near, calcDamage(this, m.damage, 'physical', near), m.skillId); m.attackCd = m.attackSpeed; }
+                    const ang = Math.atan2(near.y-m.y, near.x-m.x);
+                    if (nD > m.attackRange) { 
+                        const nx = m.x + Math.cos(ang)*m.moveSpeed*dt, ny = m.y + Math.sin(ang)*m.moveSpeed*dt; 
+                        if (!dungeon || dungeon.isWalkable(nx, ny)) { m.x = nx; m.y = ny; moved = true; } 
+                        m.facingDir = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang)) ? (Math.cos(ang) > 0 ? 'right' : 'left') : (Math.sin(ang) > 0 ? 'down' : 'up');
+                    }
+                    else if (m.attackCd <= 0) { applyDamage(this, near, calcDamage(this, m.damage, 'physical', near), m.skillId); m.attackCd = m.attackSpeed; m.animState = 'attack'; m.facingDir = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang)) ? (Math.cos(ang) > 0 ? 'right' : 'left') : (Math.sin(ang) > 0 ? 'down' : 'up'); }
+                    if (!moved && m.animState !== 'attack') m.animState = 'idle';
+                    if (moved) m.animState = 'walk';
                     return true;
                 }
             }
-            if (dist > 40) { const s = (dist > 250 ? m.moveSpeed * 1.5 : m.moveSpeed), nx = m.x + (dx/dist)*s*dt, ny = m.y + (dy/dist)*s*dt; if (!dungeon || dungeon.isWalkable(nx, ny)) { m.x = nx; m.y = ny; } }
+            if (dist > 40) { 
+                const s = (dist > 250 ? m.moveSpeed * 1.5 : m.moveSpeed), nx = m.x + (dx/dist)*s*dt, ny = m.y + (dy/dist)*s*dt; 
+                if (!dungeon || dungeon.isWalkable(nx, ny)) { m.x = nx; m.y = ny; moved = true; } 
+                m.facingDir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+            }
+            m.animState = moved ? 'walk' : 'idle';
             return true;
         });
     }
@@ -1097,10 +1126,10 @@ export class Player {
     renderMinions(renderer, time) {
         for (const m of this.minions) {
             renderer.ctx.fillStyle = 'rgba(0,200,0,0.25)'; renderer.ctx.beginPath(); renderer.ctx.ellipse(m.x, m.y + 5, 6, 2.5, 0, 0, Math.PI * 2); renderer.ctx.fill();
-            renderer.drawSprite(m.icon, m.x, m.y - 3, 14, true, time);
-            const bW = 14, bH = 2; renderer.ctx.fillStyle = '#222'; renderer.ctx.fillRect(m.x - bW / 2, m.y - 10, bW, bH);
-            renderer.ctx.fillStyle = '#4c4'; renderer.ctx.fillRect(m.x - bW / 2, m.y - 10, bW * (m.hp / m.maxHp), bH);
-            renderer.ctx.font = '4px Cinzel, serif'; renderer.ctx.textAlign = 'center'; renderer.ctx.fillStyle = '#8f8'; renderer.ctx.fillText(m.name, m.x, m.y - 12);
+            renderer.drawAnim(m.sprite, m.x, m.y - 4, m.size || 16, m.animState || 'idle', m.facingDir || 'south', time);
+            const bW = 14, bH = 2; renderer.ctx.fillStyle = '#222'; renderer.ctx.fillRect(m.x - bW / 2, m.y - 12 - (m.size||16)/2, bW, bH);
+            renderer.ctx.fillStyle = '#4c4'; renderer.ctx.fillRect(m.x - bW / 2, m.y - 12 - (m.size||16)/2, bW * (m.hp / m.maxHp), bH);
+            renderer.ctx.font = '4px Cinzel, serif'; renderer.ctx.textAlign = 'center'; renderer.ctx.fillStyle = '#8f8'; renderer.ctx.fillText(m.name, m.x, m.y - 14 - (m.size||16)/2);
         }
     }
 

@@ -1018,6 +1018,10 @@ function gameLoop(timestamp) {
         if (o.type === 'portal' || o.type === 'uber_portal' || o.type === 'rift_exit') {
             const dist = Math.sqrt((player.x - o.x) ** 2 + (player.y - o.y) ** 2);
             if (dist < 20) {
+                const now = Date.now();
+                if (player._lastPortalEntry && now - player._lastPortalEntry < 2000) continue;
+                player._lastPortalEntry = now;
+
                 if (o.type === 'portal') {
                     const res = o.interact(player);
                     if (res && res.type === 'PORTAL') {
@@ -1295,7 +1299,7 @@ function gameLoop(timestamp) {
         renderer.ctx.beginPath();
         renderer.ctx.ellipse(mercenary.x, mercenary.y + 6, 6, 3, 0, 0, Math.PI * 2);
         renderer.ctx.fill();
-        renderer.drawAnim('class_rogue', mercenary.x, mercenary.y - 4, 26, mercenary.hp > 0 ? 'idle' : 'walk', 'south', lastTime);
+        renderer.drawAnim(mercenary.icon || 'class_rogue', mercenary.x, mercenary.y - 4, 18, mercenary.animState || 'idle', mercenary.facingDir || 'south', lastTime, null, mercenary.equipment);
         // HP bar above head
         const bw = 18;
         renderer.ctx.fillStyle = '#333';
@@ -1531,7 +1535,7 @@ function gameLoop(timestamp) {
 
         for (let r = 0; r < dungeon.height; r++) {
             for (let c = 0; c < dungeon.width; c++) {
-                if (!explored[r][c]) continue;
+                if (!explored[r][c] || !dungeon.grid[r]) continue;
                 const t = dungeon.grid[r][c];
                 if (t === 1) continue;
                 renderer.ctx.fillStyle = t === 0 ? '#444' : t === 3 ? '#ffd700' : t === 6 ? '#2d5a27' : t === 8 ? '#1e4b85' : '#555';
@@ -1843,22 +1847,12 @@ function checkDeaths() {
                 addCombatLog("Shenk the Overseer: 'BAAL SHALL... REWARD... ME...'", 'log-dmg');
             } else if (e.isHephaisto) {
                 // Drop Hellforge Hammer
-                const hammer = loot.generate(zoneLevel, 'unique');
-                hammer.baseId = 'hellforge_hammer';
-                hammer.name = "Hellforge Hammer";
-                hammer.icon = 'item_war_hammer_hd';
-                hammer.identified = true;
-                hammer.x = e.x; hammer.y = e.y;
+                const hammer = { ...ITEM_BASES.hellforge_hammer, id: 'hellforge_hammer', baseId: 'hellforge_hammer', rarity: 'unique', x: e.x, y: e.y, identified: true };
                 droppedItems.push(hammer);
                 addCombatLog("Hephaisto slayed! The Hellforge Hammer is ours.", 'log-crit');
             } else if (e.name === 'Mephisto' || e.isMephisto) {
                 // Drop Mephisto's Soulstone
-                const stone = loot.generate(zoneLevel, 'unique');
-                stone.baseId = 'mephisto_soulstone';
-                stone.name = "Mephisto's Soulstone";
-                stone.icon = 'item_mephisto_soulstone';
-                stone.identified = true;
-                stone.x = e.x + 10; stone.y = e.y + 10;
+                const stone = { ...ITEM_BASES.mephisto_soulstone, id: 'mephisto_soulstone', baseId: 'mephisto_soulstone', rarity: 'unique', x: e.x + 10, y: e.y + 10, identified: true };
                 droppedItems.push(stone);
                 addCombatLog("Mephisto's Soulstone has been recovered!", 'log-crit');
             }
@@ -3322,7 +3316,8 @@ function renderMinimap() {
     // Draw tiles
     for (let r = 0; r < dungeon.height; r++) {
         for (let c = 0; c < dungeon.width; c++) {
-            if (explored && !explored[r][c]) continue;
+            if (explored && (!explored[r] || !explored[r][c])) continue;
+            if (!dungeon.grid[r]) continue;
             const t = dungeon.grid[r][c];
             if (t === 1) continue; // WALL
 
