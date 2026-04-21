@@ -489,24 +489,28 @@ export function applyDamage(attacker, target, dmgResult, skillId = null) {
     if (isDuel && target.hp < 1) {
         target.hp = 1;
         bus.emit('combat:log', { text: 'DUEL FINISHED!', cls: 'log-level' });
-        window.network?.socket.emit('duel_end', { winner: attacker.charName });
+        if (attacker) window.network?.socket.emit('duel_end', { winner: attacker.charName });
     }
 
-    if (finalDealt > 0) target.lastAttacker = attacker.name || attacker.charName || 'Unknown';
+    if (finalDealt > 0) target.lastAttacker = attacker ? (attacker.name || attacker.charName) : (skillId || 'Environment');
 
     // ── Sensory Feedback ───────────────────────────────────────────────────
     if (dealt > 0) {
         target.hitFlashTimer = 0.12;
         if (fx) {
             if (isCrit) fx.shake(250, 5);
-            const angle = Math.atan2(target.y - attacker.y, target.x - attacker.x);
-            if (type === DMG_TYPE.PHYSICAL || type === DMG_TYPE.HOLY) fx.emitBlood(target.x, target.y, angle);
-            else fx.emitHitImpact(target.x, target.y, type);
+            if (attacker) {
+                const angle = Math.atan2(target.y - attacker.y, target.x - attacker.x);
+                if (type === DMG_TYPE.PHYSICAL || type === DMG_TYPE.HOLY) fx.emitBlood(target.x, target.y, angle);
+                else fx.emitHitImpact(target.x, target.y, type);
+            } else {
+                fx.emitHitImpact(target.x, target.y, type);
+            }
         }
     }
 
     // ── Life / Mana Steal (player) ─────────────────────────────────────────
-    if (attacker.isPlayer) {
+    if (attacker && attacker.isPlayer) {
         if (attacker.lifeStealPct)
             attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.round(dealt * attacker.lifeStealPct / 100));
         if (attacker.manaStealPct)
