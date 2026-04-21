@@ -4034,26 +4034,6 @@ bus.on('action:interact', () => {
     }
 });
 
-// Loot Filter Cycle
-bus.on('ui:toggle:lootfilter', () => {
-    lootFilter = (lootFilter + 1) % 3;
-    const labels = ['ALL', 'MAGIC+', 'RARE+'];
-    const label = document.getElementById('hud-loot-filter');
-    if (label) label.textContent = `FILTER: ${labels[lootFilter]}`;
-    addCombatLog(`Loot Filter: ${labels[lootFilter]}`, 'log-info');
-});
-
-// Weapon Swapping
-bus.on('action:weapon_swap', () => {
-    if (player && state === 'GAME') {
-        player.swapWeaponSet();
-        addCombatLog(`Swapped to Weapon Set ${player.activeWeaponSet}`, 'log-info');
-        renderInventory();
-        renderCharacterPanel();
-        updateHud();
-    }
-});
-
 function toggleTownPanels() {
     if (zoneLevel !== 0) {
         addCombatLog('Stash and Cube are only available in town!', 'log-dmg');
@@ -4166,7 +4146,13 @@ window.forgeRuneword = (rwId) => {
     });
     
     checkRuneword(target);
+
+    const runesToConsume = [...rw.runes];
+    const consumeFrom = (arr) => {
+        for (let i = arr.length - 1; i >= 0; i--) {
+            const it = arr[i];
             if (it && (it.type === 'gem' || it.type === 'rune' || it.baseId?.startsWith('rune_'))) {
+                const rid = it.baseId.replace('rune_', '');
                 const ridx = runesToConsume.indexOf(rid);
                 if (ridx !== -1) {
                     runesToConsume.splice(ridx, 1);
@@ -6202,7 +6188,6 @@ $('btn-stash-withdraw')?.addEventListener('click', () => {
         SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
         renderStash(); updateHud(); addCombatLog(`Withdrew ${toTake} gold.`, 'log-info');
     }
-});
 });
 
 function sortStash() {
