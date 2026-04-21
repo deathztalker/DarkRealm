@@ -337,8 +337,23 @@ export class Player {
         
         const totalMultiplier = 1 + (statBonusPct + globalED) / 100;
         
-        this.wepMin = Math.round(baseMin * totalMultiplier);
         this.wepMax = Math.round(baseMax * totalMultiplier);
+
+        // --- Trinity Resonance Final Multipliers ---
+        if (this._lichKingResonance) {
+            this.wepMin = Math.round(this.wepMin * 2.5);
+            this.wepMax = Math.round(this.wepMax * 2.5);
+            this.lifeStealPct = (this.lifeStealPct || 0) + 20;
+        }
+        if (this._twilightResonance) {
+            this.wepMin = Math.round(this.wepMin * 2.0);
+            this.wepMax = Math.round(this.wepMax * 2.0);
+            this.allRes = (this.allRes || 0) + 50;
+            // Also boost elemental damage
+            this.pctFireDmg = (this.pctFireDmg || 0) + 100;
+            this.pctColdDmg = (this.pctColdDmg || 0) + 100;
+            this.pctLightningDmg = (this.pctLightningDmg || 0) + 100;
+        }
         
         let baseAtkSpd = (wep?.atkSpd || 1.0) * (1 + (this.pctIAS || 0) / 100);
         this.atkSpd = baseAtkSpd * (this._auraSlowFactor < 1 ? (1 - (1 - this._auraSlowFactor) * 0.5) : 1);

@@ -391,8 +391,8 @@ function handleExtraEffect(attacker, target, proc, finalProcMult, dealt) {
  */
 function fireEquipmentProcs(attacker, target, dealt) {
     const isHero = attacker.isPlayer
+        || attacker.isMercenary
         || attacker.type === 'mercenary'
-        || attacker.id === 'mercenary'
         || attacker.name === window.mercenary?.name;
 
     if (!isHero || dealt <= 0 || !attacker.equipment) return;
@@ -756,7 +756,44 @@ let _auraTimer = 0;
  * @param {number} dt delta time in seconds
  */
 export function processAuraPulsar(player, enemies, dt) {
-    _auraTimer += dt;
+    // Resonance Logic: Check for combinations of legendary blades
+    const ash = player.itemAuras?.has('ashbringer');
+    const frost = player.itemAuras?.has('frostmourne');
+    const shadow = player.itemAuras?.has('shadowmourne');
+
+    if (frost && shadow) {
+        // Lich King Synergy: 2.5x total physical dmg + 20% Life Steal
+        player._lichKingResonance = true;
+        if (!player._buffs?.some(b => b.id === 'lich_king_synergy')) {
+            player._buffs = player._buffs || [];
+            player._buffs.push({ 
+                id: 'lich_king_synergy', name: 'Lich King Synergy', 
+                duration: 9999, type: 'special_dmg', value: 150, 
+                desc: 'Frostmourne & Shadowmourne resonate! 250% Physical Dmg, 20% Life Steal.' 
+            });
+        }
+    } else {
+        player._lichKingResonance = false;
+        player._buffs = player._buffs?.filter(b => b.id !== 'lich_king_synergy');
+    }
+
+    if (ash && shadow) {
+        // Twilight Synergy: 2.0x all dmg + 50% All Res
+        player._twilightResonance = true;
+        if (!player._buffs?.some(b => b.id === 'twilight_synergy')) {
+            player._buffs = player._buffs || [];
+            player._buffs.push({ 
+                id: 'twilight_synergy', name: 'Twilight Synergy', 
+                duration: 9999, type: 'special_res', value: 50, 
+                desc: 'Ashbringer & Shadowmourne resonate! 200% Damage, +50 All Resistances.' 
+            });
+        }
+    } else {
+        player._twilightResonance = false;
+        player._buffs = player._buffs?.filter(b => b.id !== 'twilight_synergy');
+    }
+
+    _auraTimer -= dt;
     if (_auraTimer < 1.0) return;
     _auraTimer = 0;
 

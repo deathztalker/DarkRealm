@@ -116,7 +116,8 @@ export class Projectile {
 
                 // Apply elemental states & skill effects
                 this._applyHitEffects(t);
-                SkillLogic.onHit(this.owner, t, this.skillId, this.owner.effectiveSkillLevel?.(this.skillId) || 1, this.damage);
+                const slvl = typeof this.owner.effectiveSkillLevel === 'function' ? this.owner.effectiveSkillLevel(this.skillId) : (this.owner.effectiveSkillLevel || 1);
+                SkillLogic.onHit(this.owner, t, this.skillId, slvl, this.damage);
 
                 if (this.bounces > 0) {
                     this.bounces--;

@@ -423,20 +423,34 @@
     <div class="panel-header" style="background: #1a1208; border-bottom: 1px solid #bf642f;"><span>Mercenary (O)</span><button class="panel-close" data-panel="mercenary">✕</button></div>
     <div style="padding:15px; display:flex; flex-direction:column; gap:15px;">
       
-      <!-- D2 Style Paperdoll -->
-      <div id="merc-paperdoll" style="display:flex; justify-content:center; align-items:center; gap:20px; padding:10px; background: rgba(0,0,0,0.6); border: 1px solid #332;">
+      <!-- D2 Style Paperdoll (Expanded) -->
+      <div id="merc-paperdoll" style="display:flex; flex-direction:column; gap:10px; padding:15px; background: rgba(0,0,0,0.6); border: 1px solid #332; border-radius:4px;">
         
-        <!-- Left: Weapon -->
-        <div class="equip-slot merc-slot" data-slot="mainhand" data-label="Weapon" style="width:48px; height:96px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative;"></div>
-        
-        <!-- Middle: Helm & Armor -->
-        <div style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+        <!-- Row 1: Head & Amulet -->
+        <div style="display:flex; justify-content:center; gap:20px; align-items:center;">
           <div class="equip-slot merc-slot" data-slot="head" data-label="Helm" style="width:48px; height:48px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative;"></div>
-          <div class="equip-slot merc-slot" data-slot="chest" data-label="Armor" style="width:48px; height:72px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative;"></div>
+          <div class="equip-slot merc-slot" data-slot="amulet" data-label="Amulet" style="width:32px; height:32px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative; border-radius:50%;"></div>
         </div>
 
-        <!-- Right: Shield/Offhand -->
-        <div class="equip-slot merc-slot" data-slot="offhand" data-label="Shield" style="width:48px; height:96px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative;"></div>
+        <!-- Row 2: Weapons & Chest -->
+        <div style="display:flex; justify-content:center; gap:15px; align-items:center;">
+          <div class="equip-slot merc-slot" data-slot="mainhand" data-label="Weapon" style="width:48px; height:80px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative;"></div>
+          <div class="equip-slot merc-slot" data-slot="chest" data-label="Armor" style="width:48px; height:80px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative;"></div>
+          <div class="equip-slot merc-slot" data-slot="offhand" data-label="Shield" style="width:48px; height:80px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative;"></div>
+        </div>
+
+        <!-- Row 3: Gloves, Belt, Boots -->
+        <div style="display:flex; justify-content:center; gap:10px; align-items:center;">
+          <div class="equip-slot merc-slot" data-slot="gloves" data-label="Gloves" style="width:40px; height:40px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative;"></div>
+          <div class="equip-slot merc-slot" data-slot="belt" data-label="Belt" style="width:48px; height:32px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative;"></div>
+          <div class="equip-slot merc-slot" data-slot="boots" data-label="Boots" style="width:40px; height:40px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative;"></div>
+        </div>
+
+        <!-- Row 4: Rings -->
+        <div style="display:flex; justify-content:center; gap:30px; align-items:center;">
+          <div class="equip-slot merc-slot" data-slot="ring1" data-label="Ring" style="width:32px; height:32px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative; border-radius:50%;"></div>
+          <div class="equip-slot merc-slot" data-slot="ring2" data-label="Ring" style="width:32px; height:32px; border:1px solid #554; background:rgba(0,0,0,0.8); position:relative; border-radius:50%;"></div>
+        </div>
       
       </div>
 

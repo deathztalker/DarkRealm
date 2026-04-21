@@ -2621,6 +2621,19 @@ function updateHud() {
             if (d.type === 'poison') { icon = '☠️'; color = '#00ff00'; }
             createStatusIcon(d.type, icon, color, `${d.type.toUpperCase()} DoT: ${Math.ceil(d.duration)}s`);
         }
+
+        // --- Aura Resonances & Special Statuses ---
+        player._statuses?.forEach(s => {
+            const iconMap = {
+                divine_restoration: { i: '✨', c: '#fff' },
+                abyssal_chill: { i: '❄️', c: '#88ccff' },
+                commanding_presence: { i: '🚩', c: '#ffd700' },
+                lich_king_synergy: { i: '💀', c: '#0cf' },
+                twilight_synergy: { i: '🌓', c: '#f0f' }
+            };
+            const visual = iconMap[s.type] || { i: '✨', c: '#ffd700' };
+            createStatusIcon(s.type, visual.i, visual.c, s.name || s.type.replace('_', ' ').toUpperCase(), { ...s, type: 'resonance' });
+        });
     }
 
     // Check for broken gear
@@ -3812,7 +3825,7 @@ function renderMercenaryPanel() {
     }
     $('merc-paperdoll').style.opacity = '1';
 
-    const slots = ['head', 'chest', 'mainhand', 'offhand'];
+    const slots = ['head', 'chest', 'mainhand', 'offhand', 'amulet', 'ring1', 'ring2', 'belt', 'gloves', 'boots'];
     slots.forEach(s => {
         const el = document.querySelector(`.merc-slot[data-slot="${s}"]`);
         if (!el) return;
@@ -3821,7 +3834,7 @@ function renderMercenaryPanel() {
 
         // Drag & Drop for Mercenary Slots (Threshold-based)
         el.onmousedown = (e) => {
-            if (e.button !== 0) return;
+            if (!item || e.button !== 0) return;
             const sx = e.clientX, sy = e.clientY;
             let d = false;
             const mv = (m) => {
@@ -4979,7 +4992,7 @@ function renderInventory() {
 
                 // 4. Default: Equip to Player or Mercenary (Contextual)
                 if (!$('panel-mercenary').classList.contains('hidden') && mercenary) {
-                    const validSlots = ['head', 'chest', 'mainhand', 'offhand'];
+                    const validSlots = ['head', 'chest', 'mainhand', 'offhand', 'amulet', 'ring1', 'ring2', 'belt', 'gloves', 'boots'];
                     if (validSlots.includes(item.slot)) {
                         const old = mercenary.equipment[item.slot];
                         mercenary.equipment[item.slot] = item;
@@ -6350,25 +6363,124 @@ function saveGame() {
 
 function handleDrop(target, idx) {
     if (!draggedItem) return;
+    bus.emit('ui:click');
     let success = false;
-    let srcArr = null;
-    let tarArr = null;
 
-    if (dragSource === 'inventory') srcArr = player.inventory;
-    else if (dragSource === 'belt') srcArr = player.belt;
-    else if (dragSource === 'stash') srcArr = sharedStashTabs[currentStashTab].items;
-    else if (dragSource === 'cube') srcArr = cube;
+    // Helper to get array reference by name
+    const getContainer = (name) => {
+        if (name === 'inventory') return player.inventory;
+        if (name === 'belt') return player.belt;
+        if (name === 'stash') return sharedStashTabs[currentStashTab].items;
+        if (name === 'cube') return cube;
+        return null;
+    };
 
-    if (target === 'inventory') tarArr = player.inventory;
-    else if (target === 'belt') tarArr = player.belt;
-    else if (target === 'stash') tarArr = sharedStashTabs[currentStashTab].items;
-    else if (target === 'cube') tarArr = cube;
+    const srcArr = getContainer(dragSource);
+    const tarArr = getContainer(target);
 
-    if (tarArr) {
-        const old = tarArr[idx];
-        tarArr[idx] = draggedItem;
-        if (srcArr) srcArr[dragSourceIdx] = old;
+    // 1. Array to Array (Inventory, Stash, Cube, Belt)
+    if (target === 'hotbar' && draggedSkill) {
+        const skillAtSource = player.hotbar[dragSourceIdx];
+        const skillAtTarget = player.hotbar[idx];
+
+        player.hotbar[idx] = skillAtSource;
+        player.hotbar[dragSourceIdx] = skillAtTarget;
         success = true;
+    } else if (srcArr && tarArr) {
+        const itemAtSource = srcArr[dragSourceIdx];
+        const itemAtTarget = tarArr[idx];
+
+        // Swap
+        tarArr[idx] = itemAtSource;
+        srcArr[dragSourceIdx] = itemAtTarget;
+        success = true;
+    }
+    // 2. Dragging FROM Equip TO Array (Inventory, Stash, Cube, Belt)
+    else if (dragSource === 'equip' && tarArr) {
+        const itemAtTarget = tarArr[idx];
+        const unequipped = player.unequip(dragSourceIdx);
+
+        tarArr[idx] = unequipped;
+        if (itemAtTarget) {
+            const res = player.equip(itemAtTarget, dragSourceIdx);
+            if (!res.success) {
+                const empty = player.inventory.indexOf(null);
+                if (empty !== -1) player.inventory[empty] = itemAtTarget;
+                else droppedItems.push({ ...itemAtTarget, x: player.x, y: player.y, active: true });
+            }
+        }
+        success = true;
+    }
+    // 3. Dragging FROM Array TO Equip
+    else if (srcArr && target === 'equip') {
+        const itm = srcArr[dragSourceIdx];
+        const res = player.equip(itm, idx);
+        if (res.success) {
+            srcArr[dragSourceIdx] = res.swapped;
+            success = true;
+            bus.emit('item:move');
+        } else {
+            addCombatLog(res.error, 'log-dmg');
+            bus.emit('ui:error');
+        }
+    }
+    // 4. Dragging TO Mercenary
+    else if (target === 'merc' && mercenary) {
+        const validSlots = ['head', 'chest', 'mainhand', 'offhand', 'amulet', 'ring1', 'ring2', 'belt', 'gloves', 'boots'];
+        if (validSlots.includes(draggedItem.slot) && (draggedItem.slot === idx || (draggedItem.slot.startsWith('ring') && idx.startsWith('ring')))) {
+            const itm = draggedItem;
+            const old = mercenary.equipment[idx];
+
+            if (srcArr) srcArr[dragSourceIdx] = old;
+            else if (dragSource === 'equip') {
+                player.equipment[dragSourceIdx] = old;
+                player._recalcStats();
+            }
+            else if (dragSource === 'merc') mercenary.equipment[dragSourceIdx] = old;
+
+            mercenary.equipment[idx] = itm;
+            mercenary._recalcStats();
+            success = true;
+            addCombatLog(`Equipped ${itm.name} to ${mercenary.name}`, 'log-info');
+            renderMercenaryPanel();
+        } else {
+            addCombatLog(`${mercenary.name} cannot equip this!`, 'log-dmg');
+            bus.emit('ui:error');
+        }
+    }
+    // 5. Dragging FROM Mercenary
+    else if (dragSource === 'merc' && mercenary) {
+        const itm = draggedItem;
+        if (tarArr) {
+            const old = tarArr[idx];
+            tarArr[idx] = itm;
+
+            const validSlots = ['head', 'chest', 'mainhand', 'offhand', 'amulet', 'ring1', 'ring2', 'belt', 'gloves', 'boots'];
+            if (old && validSlots.includes(old.slot) && (old.slot === dragSourceIdx || (old.slot.startsWith('ring') && dragSourceIdx.startsWith('ring')))) {
+                mercenary.equipment[dragSourceIdx] = old;
+            } else {
+                mercenary.equipment[dragSourceIdx] = null;
+                if (old) {
+                    const empty = player.inventory.indexOf(null);
+                    if (empty !== -1) player.inventory[empty] = old;
+                    else droppedItems.push({ ...old, x: player.x, y: player.y, active: true });
+                }
+            }
+            mercenary._recalcStats();
+            success = true;
+            renderMercenaryPanel();
+        } else if (target === 'equip') {
+            const res = player.equip(itm, idx);
+            if (res.success) {
+                mercenary.equipment[dragSourceIdx] = res.swapped;
+                mercenary._recalcStats();
+                success = true;
+                renderMercenaryPanel();
+            } else {
+                addCombatLog(res.error, 'log-dmg');
+                bus.emit('ui:error');
+            }
+        }
     }
 
     if (success) {
@@ -6378,9 +6490,10 @@ function handleDrop(target, idx) {
         renderInventory();
         renderStash();
         renderCube();
+        player.invalidateStats();
     }
-    draggedItem = null;
-    dragSource = null;
+
+    clearDrag();
 }
 
 function sellAllJunk() {
@@ -6869,33 +6982,59 @@ function offerQuest(giverId = null) {
 // ——— MERCENARY HIRE ———
 function hireMercenary(type = 'Rogue') {
     if (!player) return;
-    if (player.gold < 500) {
-        addCombatLog('You do not have enough gold to hire a companion.', 'log-dmg');
-        return;
-    }
-
-    if (mercenary && mercenary.hp > 0) {
-        addCombatLog('You already have an active companion.', 'log-info');
-        return;
-    }
-
+    
+    // Revive Logic (if we have one and it's dead)
     if (mercenary && mercenary.hp <= 0) {
-        if (player.gold < 200) { addCombatLog('Not enough gold to revive.', 'log-dmg'); return; }
-        player.gold -= 200;
+        const reviveCost = Math.min(5000, mercenary.level * 100);
+        if (player.gold < reviveCost) { addCombatLog(`Not enough gold to revive! (${reviveCost}g)`, 'log-dmg'); return; }
+        player.gold -= reviveCost;
         mercenary.hp = mercenary.maxHp;
         addCombatLog(`${mercenary.name} has been revived!`, 'log-level');
         updateHud();
+        saveGame();
         return;
     }
+
+    // Safety: If hiring a NEW type while having one, we must unequip the old one's items
+    if (mercenary && mercenary.className !== type) {
+        // Move items to stash or inventory
+        let recovered = 0;
+        for (const [slot, item] of Object.entries(mercenary.equipment)) {
+            if (item) {
+                const empty = player.inventory.indexOf(null);
+                if (empty !== -1) {
+                    player.inventory[empty] = item;
+                    recovered++;
+                } else {
+                    // Try shared stash
+                    const sTab = sharedStashTabs[0].items;
+                    const sEmpty = sTab.indexOf(null);
+                    if (sEmpty !== -1) {
+                        sTab[sEmpty] = item;
+                        recovered++;
+                    }
+                }
+            }
+        }
+        if (recovered > 0) addCombatLog(`Recovered ${recovered} items from previous mercenary to inventory/stash.`, 'log-info');
+    }
+
     const hireCost = 500;
     if (player.gold < hireCost) { addCombatLog(`Not enough gold! (${hireCost}g to hire)`, 'log-dmg'); return; }
     player.gold -= hireCost;
+
     const names = {
         'Rogue': ['Aliza', 'Kyra', 'Paige', 'Blaise'],
         'Desert Warrior': ['Heseir', 'Raheer', 'EMez', 'Fazel'],
-        'Iron Wolf': ['Jarulf', 'Isenhart', 'Telash', 'Flux']
+        'Iron Wolf': ['Jarulf', 'Isenhart', 'Telash', 'Flux'],
+        'Barbarian': ['Aengus', 'Bork', 'Hrothgar', 'Ulf']
     };
-    const icons = { 'Rogue': 'class_rogue', 'Desert Warrior': 'class_warrior', 'Iron Wolf': 'class_shaman' };
+    const icons = { 
+        'Rogue': 'class_ranger', 
+        'Desert Warrior': 'class_paladin', 
+        'Iron Wolf': 'class_sorceress',
+        'Barbarian': 'class_warrior'
+    };
 
     const nameList = names[type] || names['Rogue'];
     mercenary = new Mercenary({
@@ -6909,6 +7048,7 @@ function hireMercenary(type = 'Rogue') {
     addCombatLog(`Hired ${type} ${mercenary.name}! They will fight by your side.`, 'log-level');
     updateHud();
     renderMercenaryPanel();
+    saveGame();
 }
 
 // --- Phase 28: Bounty Board System ---
@@ -7379,8 +7519,15 @@ window.addEventListener('mouseup', (e) => {
             };
 
             const srcArr = getContainer(dragSource);
-            if (srcArr) srcArr[dragSourceIdx] = null;
-            else if (dragSource === 'equip') player.unequip(dragSourceIdx);
+            if (srcArr) {
+                srcArr[dragSourceIdx] = null;
+            } else if (dragSource === 'equip') {
+                player.unequip(dragSourceIdx);
+            } else if (dragSource === 'merc') {
+                mercenary.equipment[dragSourceIdx] = null;
+                mercenary._recalcStats();
+                renderMercenaryPanel();
+            }
 
             clearDrag();
             renderInventory();
