@@ -733,15 +733,26 @@ export function skillType(skill) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// --- Environment / Aura Pulsar (Run every 1s) ---
-processAuraPulsar(player, enemies, dt) {
-    this._auraTimer = (this._auraTimer || 0) + dt;
-    if (this._auraTimer < 1.0) return;
-    this._auraTimer = 0;
+// --- Environment / Aura Pulsar ---
 
-    const isAshbringer = !!player.itemAuras.has('ashbringer');
-    const isShadowmourne = !!player.itemAuras.has('shadowmourne');
-    const isFrostmourne = !!player.itemAuras.has('frostmourne');
+let _auraTimer = 0;
+
+/**
+ * Handle periodic effects for legendary weapons.
+ * @param {Player} player 
+ * @param {Array} enemies 
+ * @param {number} dt delta time in seconds
+ */
+export function processAuraPulsar(player, enemies, dt) {
+    _auraTimer += dt;
+    if (_auraTimer < 1.0) return;
+    _auraTimer = 0;
+
+    if (!player || !enemies) return;
+
+    const isAshbringer = !!player.itemAuras?.has('ashbringer');
+    const isShadowmourne = !!player.itemAuras?.has('shadowmourne');
+    const isFrostmourne = !!player.itemAuras?.has('frostmourne');
 
     // Resonance Bonuses
     let resonanceMult = 1.0;
@@ -759,7 +770,7 @@ processAuraPulsar(player, enemies, dt) {
         if (isAshbringer) {
             if (e.type === 'undead' || e.type === 'demon' || e.isBoss) {
                 const holyDmg = drainBase * 2;
-                this.applyDamage(player, e, { dealt: holyDmg, isCrit: false, type: DMG_TYPE.HOLY }, 'aura_ashbringer');
+                applyDamage(player, e, { dealt: holyDmg, isCrit: false, type: DMG_TYPE.HOLY }, 'aura_ashbringer');
                 if (fx) fx.emitHolyBurst(e.x, e.y, 8);
             }
             // Heal player
@@ -772,7 +783,7 @@ processAuraPulsar(player, enemies, dt) {
         if (player._hasDrainAura) {
             const dmg = drainBase;
             const type = player._drainType === 'shadow' ? DMG_TYPE.SHADOW : DMG_TYPE.COLD;
-            this.applyDamage(player, e, { dealt: dmg, isCrit: false, type: type }, 'aura_drain');
+            applyDamage(player, e, { dealt: dmg, isCrit: false, type: type }, 'aura_drain');
 
             // Visual Soul/Ice Fragments
             if (fx) {
@@ -790,6 +801,13 @@ processAuraPulsar(player, enemies, dt) {
             }
         }
     }
-}    if (!str || typeof str !== 'string') return '';
+}
+
+// ─────────────────────────────────────────────────────────────
+//  INTERNAL UTILITIES
+// ─────────────────────────────────────────────────────────────
+
+function cap(str) {
+    if (!str || typeof str !== 'string') return '';
     return str.charAt(0).toUpperCase() + str.slice(1);
 }

@@ -12,7 +12,7 @@ import { Player } from './entities/player.js';
 import { Enemy } from './entities/enemy.js';
 import { getAllClasses, getClass } from './data/classes.js';
 import { loot, SETS } from './systems/lootSystem.js';
-import { updateStatuses } from './systems/combat.js';
+import { updateStatuses, processAuraPulsar } from './systems/combat.js';
 import { SaveSystem } from './systems/saveSystem.js';
 import { DB } from './systems/db.js';
 import { NetworkManager } from './network/NetworkManager.js';
@@ -856,6 +856,22 @@ function gameLoop(timestamp) {
         }
 
         fx.update(dt * 1000); // Particle update expects ms
+
+        // --- Phase 32: Legendary Aura Pulsar & Visuals ---
+        if (state === 'GAME') {
+            processAuraPulsar(player, enemies, dt);
+            
+            // Resonance Visual Effects
+            if (player.itemAuras?.has('shadowmourne')) {
+                if (Math.random() < 0.15) fx.emitBurst(player.x, player.y - 15, '#a040ff', 1, 2.5);
+            }
+            if (player.itemAuras?.has('frostmourne')) {
+                if (Math.random() < 0.15) fx.emitBurst(player.x, player.y + 5, '#6af', 2, 1.2);
+            }
+            if (player.itemAuras?.has('ashbringer')) {
+                if (Math.random() < 0.15) fx.emitHolyBurst(player.x, player.y, 1);
+            }
+        }
 
         // HP Regen out of combat (passive) + gear-based regen (always active)
         if (player.hp > 0 && player.hp < player.maxHp) {
@@ -7204,152 +7220,6 @@ function startDrag(e, item, source, idx) {
     document.body.appendChild(dragGhost);
 
     e.target.closest('.inv-item')?.classList.add('dragging');
-}
-
-function handleDrop(target, idx) {
-    if (!draggedItem) return;
-    bus.emit('ui:click');
-    let success = false;
-
-    // Helper to get array reference by name
-    const getContainer = (name) => {
-        if (name === 'inventory') return player.inventory;
-        if (name === 'belt') return player.belt;
-        if (name === 'stash') return (currentStashTab === 'personal') ? stash : sharedStash;
-        if (name === 'cube') return cube;
-        return null;
-    };
-
-    const srcArr = getContainer(dragSource);
-    const tarArr = getContainer(target);
-
-    // 1. Array to Array (Inventory, Stash, Cube, Belt)
-    if (target === 'hotbar' && draggedSkill) {
-        const skillAtSource = player.hotbar[dragSourceIdx];
-        const skillAtTarget = player.hotbar[idx];
-
-        player.hotbar[idx] = skillAtSource;
-        player.hotbar[dragSourceIdx] = skillAtTarget;
-        success = true;
-    } else if (srcArr && tarArr) {
-        const itemAtSource = srcArr[dragSourceIdx];
-        const itemAtTarget = tarArr[idx];
-
-        // Swap
-        tarArr[idx] = itemAtSource;
-        srcArr[dragSourceIdx] = itemAtTarget;
-        success = true;
-    }
-    // 2. Dragging FROM Equip TO Array (Inventory, Stash, Cube, Belt)
-    else if (dragSource === 'equip' && tarArr) {
-        const itemAtTarget = tarArr[idx];
-        const unequipped = player.unequip(dragSourceIdx);
-
-        tarArr[idx] = unequipped;
-        if (itemAtTarget) {
-            // Attempt to equip the item that was in the target slot
-            const res = player.equip(itemAtTarget, dragSourceIdx);
-            if (!res.success) {
-                // If it can't be equipped (reqs), try to put it back in source (unlikely to fail if it was there)
-                // or just put it in first empty inv slot
-                const empty = player.inventory.indexOf(null);
-                if (empty !== -1) player.inventory[empty] = itemAtTarget;
-                else droppedItems.push({ ...itemAtTarget, x: player.x, y: player.y, active: true });
-            }
-        }
-        success = true;
-    }
-    // 3. Dragging FROM Array TO Equip
-    else if (srcArr && target === 'equip') {
-        const itm = srcArr[dragSourceIdx];
-        const res = player.equip(itm, idx);
-        if (res.success) {
-            srcArr[dragSourceIdx] = res.swapped;
-            success = true;
-            bus.emit('item:move');
-        } else {
-            addCombatLog(res.error, 'log-dmg');
-            bus.emit('ui:error');
-        }
-    }
-    // 4. Dragging TO Mercenary
-    else if (target === 'merc' && mercenary) {
-        const validSlots = ['head', 'chest', 'mainhand', 'offhand'];
-        if (validSlots.includes(draggedItem.slot) && (draggedItem.slot === idx || (draggedItem.slot.startsWith('ring') && idx.startsWith('ring')))) {
-            const itm = draggedItem;
-            const old = mercenary.equipment[idx];
-
-            if (srcArr) srcArr[dragSourceIdx] = old;
-            else if (dragSource === 'equip') {
-                player.equipment[dragSourceIdx] = old;
-                player._recalcStats();
-            }
-            else if (dragSource === 'merc') mercenary.equipment[dragSourceIdx] = old;
-
-            mercenary.equipment[idx] = itm;
-            mercenary._recalcStats();
-            success = true;
-            addCombatLog(`Equipped ${itm.name} to ${mercenary.name}`, 'log-info');
-            renderMercenaryPanel();
-            SaveSystem.save(player, activeSlotId); // Auto-save for cloud sync
-        } else {
-            addCombatLog(`${mercenary.name} cannot equip this!`, 'log-dmg');
-            bus.emit('ui:error');
-        }
-    }
-    // 5. Dragging FROM Mercenary
-    else if (dragSource === 'merc' && mercenary) {
-        const itm = draggedItem;
-        if (tarArr) {
-            const old = tarArr[idx];
-            tarArr[idx] = itm;
-
-            // Check if old can be equipped by merc in this slot
-            const validSlots = ['head', 'chest', 'mainhand', 'offhand'];
-            if (old && validSlots.includes(old.slot) && (old.slot === dragSourceIdx || (old.slot.startsWith('ring') && dragSourceIdx.startsWith('ring')))) {
-                mercenary.equipment[dragSourceIdx] = old;
-            } else {
-                mercenary.equipment[dragSourceIdx] = null;
-                if (old) {
-                    const empty = player.inventory.indexOf(null);
-                    if (empty !== -1) player.inventory[empty] = old;
-                    else droppedItems.push({ ...old, x: player.x, y: player.y, active: true });
-                }
-            }
-            mercenary._recalcStats();
-            success = true;
-            renderMercenaryPanel();
-            SaveSystem.save(player, activeSlotId); // Auto-save for cloud sync
-        } else if (target === 'equip') {
-            const res = player.equip(itm, idx);
-            if (res.success) {
-                mercenary.equipment[dragSourceIdx] = res.swapped;
-                mercenary._recalcStats();
-                success = true;
-                renderMercenaryPanel();
-                SaveSystem.save(player, activeSlotId); // Auto-save for cloud sync
-            } else {
-                addCombatLog(res.error, 'log-dmg');
-                bus.emit('ui:error');
-            }
-        }
-    }
-
-    if (success) {
-        // Persistence for shared stash
-        if (dragSource === 'stash' && currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
-        if (target === 'stash' && currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
-
-        player.invalidateStats();
-        addCombatLog(`Moved ${draggedItem.name}`, 'log-info');
-    }
-
-    clearDrag();
-    renderInventory();
-    renderCharacterPanel();
-    renderStash();
-    renderCube();
-    updateHud();
 }
 
 function clearDrag() {
