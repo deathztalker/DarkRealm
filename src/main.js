@@ -4868,12 +4868,12 @@ function renderInventory() {
             div.addEventListener('click', (e) => {
                 // 1. Move to Stash (if open)
                 if (!$('panel-stash').classList.contains('hidden')) {
-                    const targetStash = currentStashTab === 'personal' ? stash : sharedStash;
+                    const targetStash = sharedStashTabs[currentStashTab].items;
                     const emptySlot = targetStash.indexOf(null);
                     if (emptySlot !== -1) {
                         targetStash[emptySlot] = item;
                         player.inventory[i] = null;
-                        if (currentStashTab === 'shared') SaveSystem.saveSharedStash(sharedStash, sharedGold);
+                        SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
                         addCombatLog(`Moved ${item.name} to Stash.`, 'log-info');
                         hideTooltip();
                         renderInventory();
@@ -6526,7 +6526,7 @@ function sellAllJunk() {
 }
 
 $('btn-sort-stash')?.addEventListener('click', () => {
-    const target = (currentStashTab === 'personal') ? stash : sharedStash;
+    const target = sharedStashTabs[currentStashTab].items;
     sortArray(target);
     renderStash();
     addCombatLog('Stash Sorted', 'log-info');
