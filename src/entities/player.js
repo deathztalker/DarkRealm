@@ -258,14 +258,35 @@ export class Player {
         this.goldFind = (s.goldFind || 0) + diffMF;
 
         const wep = (this.equipment && this.equipment.mainhand);
-        let baseMin = wep ? (wep.minDmg || 1) + (s.flatMinDmg || 0) : 1 + (s.flatMinDmg || 0);
-        let baseMax = wep ? (wep.maxDmg || 3) + (s.flatMaxDmg || 0) : 3 + (s.flatMaxDmg || 0);
         
-        const statBonus = 1 + (this.str / 100);
-        const dmgBonus = 1 + (this.pctDmg / 100);
+        // 1. Calculate Base Weapon Damage (Local ED applied here)
+        let weaponMin = wep ? (wep.minDmg || 1) : 1;
+        let weaponMax = wep ? (wep.maxDmg || 3) : 3;
+
+        // Apply Local Weapon ED (pctDmg on the weapon itself)
+        if (wep && wep.mods) {
+            const localED = wep.mods.reduce((acc, mod) => mod.stat === 'pctDmg' ? acc + mod.value : acc, 0);
+            if (localED > 0) {
+                weaponMin = Math.floor(weaponMin * (1 + localED / 100));
+                weaponMax = Math.floor(weaponMax * (1 + localED / 100));
+            }
+        }
+
+        // 2. Base Damage = Modified Weapon Damage + Flat Damage from gear/charms
+        const baseMin = weaponMin + (s.flatMinDmg || 0);
+        const baseMax = weaponMax + (s.flatMaxDmg || 0);
         
-        this.wepMin = Math.round(baseMin * statBonus * dmgBonus);
-        this.wepMax = Math.round(baseMax * statBonus * dmgBonus);
+        // 3. Stat Bonus (1% per point): Str for most, Dex for Bows/Javelins
+        const statBonusPct = (wep?.type === 'bow' || wep?.type === 'javelin') ? this.dex : this.str;
+        
+        // 4. Global ED (Skills, Auras, Off-weapon gear like Fortitude/Jewels in armor)
+        // Note: s.pctDmg now contains ONLY non-weapon ED because we'll handle weapon ED locally
+        const globalED = (s.pctDmg || 0);
+        
+        const totalMultiplier = 1 + (statBonusPct + globalED) / 100;
+        
+        this.wepMin = Math.round(baseMin * totalMultiplier);
+        this.wepMax = Math.round(baseMax * totalMultiplier);
         
         let baseAtkSpd = (wep?.atkSpd || 1.0) * (1 + (this.pctIAS || 0) / 100);
         this.atkSpd = baseAtkSpd * (this._auraSlowFactor < 1 ? (1 - (1 - this._auraSlowFactor) * 0.5) : 1);
@@ -578,9 +599,13 @@ export class Player {
         if (item.mods) {
             for (const mod of item.mods) {
                 if (mod && mod.stat) {
-                    if (mod.stat.startsWith('+') && !['+allSkills', '+classSkills', '+skill', '+skillGroup'].some(p => mod.stat.startsWith(p))) {
+                    // DIABLO 2 Logic: pctDmg on a Weapon is LOCAL (applies to weapon base).
+                    // pctDmg on anything else (Armor, Jewels in Armor, Charms) is GLOBAL.
+                    if (mod.stat === 'pctDmg' && (item.slot === SLOT.MAINHAND || item.slot === SLOT.OFFHAND || item.type === 'weapon')) {
+                        item._localED = (item._localED || 0) + mod.value;
+                    } else if (mod.stat.startsWith('+') && !['+allSkills', '+classSkills', '+skill', '+skillGroup'].some(p => mod.stat.startsWith(p))) {
                         s[mod.stat] = (s[mod.stat] || 0) + mod.value;
-                    } else if (!mod.stat.startsWith('+')) {
+                    } else {
                         s[mod.stat] = (s[mod.stat] || 0) + (mod.value || 0);
                     }
                 }
@@ -593,7 +618,12 @@ export class Player {
             for (const gem of item.socketed) {
                 if (gem && gem.socketEffect && gem.socketEffect[itemClass]) {
                     const eff = gem.socketEffect[itemClass];
-                    s[eff.stat] = (s[eff.stat] || 0) + eff.value;
+                    // Jewels or Runes with pctDmg inside a weapon also count as LOCAL ED in D2
+                    if (eff.stat === 'pctDmg' && itemClass === 'weapon') {
+                        item._localED = (item._localED || 0) + eff.value;
+                    } else {
+                        s[eff.stat] = (s[eff.stat] || 0) + eff.value;
+                    }
                 }
             }
         }
