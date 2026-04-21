@@ -7,7 +7,7 @@ import { TalentTree } from '../systems/talentTree.js';
 import { getClass, getSkillMap } from '../data/classes.js';
 import { calcDamage, applyDamage, applyDot, skillDamage, skillType, DMG_TYPE } from '../systems/combat.js';
 import { SETS } from '../systems/lootSystem.js';
-import { RARITY } from '../data/items.js';
+import { RARITY, SLOT } from '../data/items.js';
 import { Projectile, AoEZone } from './projectile.js';
 import { fx } from '../engine/ParticleSystem.js';
 import { SkillLogic } from '../systems/skillLogic.js';
@@ -298,6 +298,9 @@ export class Player {
         this.cannotBeFrozen = !!s.cannotBeFrozen;
         this.manaAfterKill = s.manaAfterKill || 0;
         this.lifeAfterKill = s.lifeAfterKill || 0;
+        this.crushingBlow = s.crushingBlow || 0;
+        this.deadlyStrike = s.deadlyStrike || 0;
+        this.openWounds = s.openWounds || 0;
 
         // Custom passives flags
         this.canDualWield2H = !!ts.canDualWield2H;
