@@ -87,14 +87,26 @@ export function calcDamage(attacker, baseDmg, type, defender) {
     if (defender[`${type}Immune`]) {
         dmg = 0;
     } else if (type !== DMG_TYPE.MAGIC && type !== DMG_TYPE.HOLY) {
-        let res = (defender[`${type}Res`] || 0) - (defender.resDebuff || 0);
+        let statusResDebuff = 0;
+        if (defender._statuses) {
+            for (const s of defender._statuses) {
+                if (s.type === 'res_debuff') statusResDebuff += s.value;
+            }
+        }
+        let res = (defender[`${type}Res`] || 0) - (defender.resDebuff || 0) - statusResDebuff;
         res = Math.min(75, Math.max(-100, res));
         dmg *= 1 - res / 100;
     }
 
     // Armor reduction (physical only)
     if (type === DMG_TYPE.PHYSICAL) {
-        const armor = Math.max(0, (defender.armor || 0) - (defender.armorDebuff || 0));
+        let statusArmorDebuff = 0;
+        if (defender._statuses) {
+            for (const s of defender._statuses) {
+                if (s.type === 'armor_shred' || s.type === 'inner_sight') statusArmorDebuff += Math.abs(s.value);
+            }
+        }
+        const armor = Math.max(0, (defender.armor || 0) - (defender.armorDebuff || 0) - statusArmorDebuff);
         const atkLevel = Math.max(1, attacker.level || 1);
         const divisor = armor + 5 * atkLevel * 10;
         const reduction = divisor > 0 ? armor / divisor : 0;

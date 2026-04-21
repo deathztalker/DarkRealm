@@ -3873,34 +3873,15 @@ function renderMercenaryPanel() {
         buffHtml += '</div>';
     }
 
-    const mBaseDmg = Math.round(mercenary.baseDmg);
+    const mBaseDmg = Math.round(mercenary.totalDmg || mercenary.baseDmg);
     const mMaxDmg = Math.round(mBaseDmg + (mercenary.level * 2));
     
-    $('merc-stats-display').innerHTML = `
-        <div style="color:var(--gold); font-size:14px; font-weight:bold; margin-bottom:8px; border-bottom:1px solid #bf642f; padding-bottom:4px; text-align:center; text-shadow: 0 0 5px rgba(0,0,0,0.8);">
-            ${mercenary.name} - Lvl ${mercenary.level} ${mercenary.className}
-        </div>
-        
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:x:10px; gap-y:5px; font-size:11px;">
-            <div style="color:#aaa;">Strength: <span style="color:#fff;">${mercenary.str || mercenary.level * 2 + 10}</span></div>
-            <div style="color:#aaa;">Dexterity: <span style="color:#fff;">${mercenary.dex || mercenary.level * 2 + 10}</span></div>
-            
+    const statsHtml = `
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-size:11px;">
             <div style="color:#aaa;">Damage: <span style="color:#fff;">${mBaseDmg} - ${mMaxDmg}</span></div>
             <div style="color:#aaa;">Defense: <span style="color:#fff;">${mercenary.armor || 0}</span></div>
-            
             <div style="color:#aaa;">Life: <span style="color:#fff;">${Math.round(mercenary.hp)} / ${mercenary.maxHp}</span></div>
             <div style="color:#aaa;">Experience: <span style="color:#fff;">${Math.floor(mercenary.xp)} / ${mercenary.xpToNextLevel}</span></div>
-        </div>
-
-        <div style="margin-top:10px; border-top:1px solid #444; padding-top:8px;">
-            <div style="color:#aaa; margin-bottom:5px;">Active Skill:</div>
-            <div class="merc-skill-item" style="display:flex; align-items:center; gap:10px; background:rgba(214, 176, 104, 0.1); padding:8px; border-radius:4px; border:1px solid #bf642f; cursor:help;">
-                <div style="font-size:20px;">🛡️</div>
-                <div style="flex:1;">
-                    <div style="color:#ffd700; font-weight:bold; font-size:12px;">${mercenary.mainSkill.name}</div>
-                    <div style="color:#888; font-size:10px;">Effective Lvl: <span style="color:#fff;">${mercenary.effectiveSkillLevel}</span> (${Math.floor(mercenary.level/2)} Base + ${mercenary.allSkillBonus} Items)</div>
-                </div>
-            </div>
         </div>
 
         <div style="margin-top:10px; border-top:1px solid #444; padding-top:8px;">
@@ -3918,6 +3899,73 @@ function renderMercenaryPanel() {
         </div>
         ${buffHtml}
     `;
+
+    // Skills Tree HTML
+    import('./data/mercenary_talents.js').then(({ MERC_TREES }) => {
+        const treeData = MERC_TREES[mercenary.className] || [];
+        let skillsHtml = `
+            <div style="margin-bottom:10px; text-align:center;">
+                <span style="color:#ffd700; font-size:12px;">Unspent Points: ${mercenary.unspentPoints}</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px; max-height:220px; overflow-y:auto; padding-right:5px;">
+        `;
+        
+        treeData.forEach(tree => {
+            skillsHtml += `<div style="font-size:10px; color:#ffd700; border-bottom:1px solid #444; padding-bottom:2px; margin-top:5px; text-transform:uppercase;">${tree.name}</div>`;
+            tree.nodes.forEach(node => {
+                const pts = mercenary.points[node.id] || 0;
+                const canAdd = mercenary.unspentPoints > 0 && pts < (node.maxPts || 20);
+                skillsHtml += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(214,176,104,0.05); padding:8px; border-radius:4px; border:1px solid #332;">
+                        <div style="flex:1;">
+                            <div style="font-size:11px; color:#fff; font-weight:bold;">${node.name} [${pts}/${node.maxPts || 20}]</div>
+                            <div style="font-size:9px; color:#888;">${node.desc}</div>
+                        </div>
+                        ${canAdd ? `<button onclick="addMercTalent('${node.id}')" style="width:22px; height:22px; background:#bf642f; color:#fff; border:1px solid #ffd700; border-radius:2px; cursor:pointer; font-weight:bold;">+</button>` : ''}
+                    </div>
+                `;
+            });
+        });
+        skillsHtml += `</div>`;
+
+        $('merc-stats-display').innerHTML = `
+            <div style="color:var(--gold); font-size:14px; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #bf642f; padding-bottom:4px; text-align:center;">
+                ${mercenary.name} - Lvl ${mercenary.level} ${mercenary.className}
+            </div>
+            <div style="display:flex; border-bottom:1px solid #444; margin-bottom:10px;">
+                <button id="merc-tab-stats" style="flex:1; padding:6px; background:#1a1208; color:#ffd700; border:none; border-right:1px solid #444; cursor:pointer; font-family:Cinzel;">Stats</button>
+                <button id="merc-tab-skills" style="flex:1; padding:6px; background:#0a0805; color:#888; border:none; cursor:pointer; font-family:Cinzel;">Skills</button>
+            </div>
+            <div id="merc-content-stats">${statsHtml}</div>
+            <div id="merc-content-skills" class="hidden">${skillsHtml}</div>
+        `;
+
+        // Wire tabs
+        $('merc-tab-stats').onclick = () => {
+            $('merc-content-stats').classList.remove('hidden');
+            $('merc-content-skills').classList.add('hidden');
+            $('merc-tab-stats').style.background = '#1a1208'; $('merc-tab-stats').style.color = '#ffd700';
+            $('merc-tab-skills').style.background = '#0a0805'; $('merc-tab-skills').style.color = '#888';
+        };
+        $('merc-tab-skills').onclick = () => {
+            $('merc-content-skills').classList.remove('hidden');
+            $('merc-content-stats').classList.add('hidden');
+            $('merc-tab-skills').style.background = '#1a1208'; $('merc-tab-skills').style.color = '#ffd700';
+            $('merc-tab-stats').style.background = '#0a0805'; $('merc-tab-stats').style.color = '#888';
+        };
+    });
+}
+
+window.addMercTalent = (skillId) => {
+    if (mercenary && mercenary.unspentPoints > 0) {
+        mercenary.unspentPoints--;
+        mercenary.points[skillId] = (mercenary.points[skillId] || 0) + 1;
+        mercenary._recalcStats();
+        renderMercenaryPanel();
+        saveGame();
+        bus.emit('ui:click');
+    }
+};
 }
 
 function renderBountyBoard() {
@@ -4129,10 +4177,39 @@ function openRuneCodex() {
                         return `<span style="border:1px solid; padding:3px 8px; font-size:11px; border-radius:3px; font-weight:bold; ${runeStyle}">${r.toUpperCase()}</span>`;
                     }).join('')}
                 </div>
-                <div style="font-size:11px; color:#d6b068; margin-bottom:12px; font-style:italic; line-height:1.4;">
+                <div style="font-size:11px; color:#d6b068; margin-bottom:12px; font-style:italic; line-height:1.4; border-left:2px solid #bf642f; padding-left:10px;">
                     ${Object.entries(rw.bonuses).map(([k,v]) => {
-                        const label = k.replace('pct', '%').replace('flat', '+').replace('Res', ' Res');
-                        return `<span style="display:inline-block; margin-right:8px;">${label}: ${v}</span>`;
+                        const friendlyNames = {
+                            pctDmg: 'Enhanced Damage',
+                            pctIAS: 'Attack Speed',
+                            pctMoveSpeed: 'Move Speed',
+                            allRes: 'All Resistances',
+                            allSkills: 'All Skills',
+                            flatSTR: 'Strength',
+                            flatDEX: 'Dexterity',
+                            flatVIT: 'Vitality',
+                            flatINT: 'Intellect',
+                            flatHP: 'Life',
+                            flatMP: 'Mana',
+                            manaRegenPerSec: 'Mana Regen',
+                            lifeStealPct: 'Life Stolen per hit',
+                            manaStealPct: 'Mana Stolen per hit',
+                            crushingBlow: 'Crushing Blow',
+                            deadlyStrike: 'Deadly Strike',
+                            openWounds: 'Open Wounds',
+                            convictionAura: 'Conviction Aura',
+                            meditationAura: 'Meditation Aura',
+                            vigorAura: 'Vigor Aura',
+                            shadowAura: 'Shadow Aura',
+                            minionDmgPct: 'Minion Damage',
+                            cooldownReduct: 'Cooldown Reduction',
+                            shadowNovaOnHit: 'Shadow Nova on Hit',
+                            totemLifePct: 'Totem Life'
+                        };
+                        const label = friendlyNames[k] || k.replace('pct', '%').replace('flat', '+').replace('Res', ' Res').replace('Aura', ' Aura');
+                        const valStr = (typeof v === 'object') ? `${v.min}-${v.max}%` : (v > 0 ? `+${v}` : v);
+                        const suffix = (k.startsWith('pct') && typeof v !== 'object') ? '%' : '';
+                        return `<div style="margin-bottom:2px;">${label}: <span style="color:#fff;">${valStr}${suffix}</span></div>`;
                     }).join('')}
                 </div>
                 ${canCraft ? `<button onclick="forgeRuneword('${rw.id}')" style="width:100%; padding:8px; background:#bf642f; color:#fff; border:1px solid #ffd700; border-radius:2px; cursor:pointer; font-weight:bold; font-size:12px; text-transform:uppercase; letter-spacing:1px;">FORGE ON VALID BASE</button>` : ''}
