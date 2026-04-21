@@ -285,4 +285,16 @@ export class Mercenary {
             bus.emit('combat:spawnProjectile', { proj });
         }
     }
+
+    serialize() {
+        return {
+            name: this.name,
+            className: this.className,
+            level: this.level,
+            xp: this.xp,
+            hp: this.hp,
+            icon: this.icon,
+            equipment: this.equipment
+        };
+    }
 }

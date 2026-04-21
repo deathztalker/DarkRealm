@@ -1291,7 +1291,8 @@ export class Player {
             talents: this.talents.serialize(), equipment: this.equipment, secondaryEquipment: this.secondaryEquipment, activeWeaponSet: this.activeWeaponSet,
             inventory: this.inventory, belt: this.belt, hotbar: this.hotbar, permanentResists: this.permanentResists, hasLarzukReward: this.hasLarzukReward,
             hasAnyaReward: this.hasAnyaReward, hasImbue: this.hasImbue, magicFind: this.magicFind || 0, goldFind: this.goldFind || 0,
-            crushingBlow: this.crushingBlow || 0, allSkillBonus: this.allSkillBonus || 0, activeAura: this.activeAura, _auraSlvl: this._auraSlvl
+            crushingBlow: this.crushingBlow || 0, allSkillBonus: this.allSkillBonus || 0, activeAura: this.activeAura, _auraSlvl: this._auraSlvl,
+            mercenary: window.mercenary ? window.mercenary.serialize() : null
         };
     }
 
@@ -1305,6 +1306,13 @@ export class Player {
         p.hotbar = data.hotbar || [null, null, null, null, null]; p.permanentResists = data.permanentResists || 0; p.hasLarzukReward = !!data.hasLarzukReward;
         p.hasAnyaReward = !!data.hasAnyaReward; p.hasImbue = !!data.hasImbue; p.magicFind = data.magicFind || 0; p.goldFind = data.goldFind || 0;
         p.crushingBlow = data.crushingBlow || 0; p.allSkillBonus = data.allSkillBonus || 0; p.activeAura = data.activeAura || null; p._auraSlvl = data._auraSlvl || 0;
+        
+        if (data.mercenary) {
+            import('./mercenary.js').then(({ Mercenary }) => {
+                window.mercenary = Mercenary.deserialize(data.mercenary);
+            });
+        }
+
         p._recalcStats(); return p;
     }
 }
