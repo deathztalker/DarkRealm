@@ -234,6 +234,26 @@ export class Mercenary {
         const hasConviction = player.activeStatuses?.has('conviction');
         const hasFanaticism = player.activeStatuses?.has('fanaticism');
 
+        // Master Synergies Detection
+        const pointsIn = (treeId) => {
+            const tree = (MERC_TREES[this.className] || []).find(t => t.id === treeId);
+            if (!tree) return 0;
+            return tree.nodes.reduce((acc, n) => acc + (this.points[n.id] || 0), 0);
+        };
+
+        if (this.className === 'Rogue') {
+            const activeBranches = [pointsIn('rogue_fire'), pointsIn('rogue_cold'), pointsIn('rogue_lightning')].filter(p => p > 0).length;
+            if (activeBranches >= 2) applyStatus(player, 'phantom_barrage', 2.0, 1, 'Phantom Barrage: 30% chance for extra elemental arrows.');
+        } else if (this.className === 'Desert Warrior') {
+            const activeBranches = [pointsIn('desert_offense'), pointsIn('desert_defense'), pointsIn('desert_tactical')].filter(p => p > 0).length;
+            if (activeBranches >= 2) {
+                allies.forEach(a => applyStatus(a, 'champions_phalanx', 2.0, 15, 'Champion\'s Phalanx: 15% Damage Reduction & Holy Thorns.'));
+            }
+        } else if (this.className === 'Barbarian') {
+            const activeBranches = [pointsIn('barb_combat'), pointsIn('barb_warcries')].filter(p => p > 0).length;
+            if (activeBranches >= 2) this._avatarOfWarReady = true;
+        }
+
         for (const ally of allies) {
             if (!ally || ally.hp <= 0) continue;
             if (Math.hypot(ally.x - this.x, ally.y - this.y) > 400) continue;

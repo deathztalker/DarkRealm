@@ -2198,6 +2198,20 @@ function nextZone(targetZone = null) {
         player.x = dungeon.playerStart.x;
         player.y = dungeon.playerStart.y;
         player.path = [];
+        player.attackTarget = null;
+
+        // --- Critical: Teleport Party ---
+        if (window.mercenary) {
+            mercenary.x = player.x;
+            mercenary.y = player.y;
+            if (mercenary.path) mercenary.path = [];
+        }
+        if (player.minions) {
+            player.minions.forEach(m => {
+                m.x = player.x; m.y = player.y;
+                if (m.path) m.path = [];
+            });
+        }
 
         isTransitioning = false;
 
