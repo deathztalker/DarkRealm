@@ -613,7 +613,6 @@ export class NetworkManager {
                     charName:player->>charName,
                     classId:player->>classId,
                     isHardcore:player->>isHardcore,
-                    campaign,
                     extra_data
                 `)
                 .order('extra_data->riftLevel', { ascending: false })
@@ -629,7 +628,7 @@ export class NetworkManager {
                 charName: row.charName,
                 classId: row.classId,
                 isHardcore: row.isHardcore === 'true' || row.isHardcore === true,
-                campaign: row.campaign,
+                campaign: row.extra_data?.campaign || null,
                 extra_data: row.extra_data
             }));
         } catch (e) {

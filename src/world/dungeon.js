@@ -99,7 +99,7 @@ export class Dungeon {
         };
 
         // Helper: fill a rect with a tile
-        const fill = (x0, y0, x1, y1, tile) => {
+        const fill = (y0, x0, y1, x1, tile) => {
             for (let y = y0; y <= y1; y++)
                 for (let x = x0; x <= x1; x++)
                     if (y >= 0 && y < this.height && x >= 0 && x < this.width)
@@ -193,9 +193,14 @@ export class Dungeon {
 
             // === Bonfire + waypoint in plaza center ===
             addObj('bonfire', 'decoration', 'Campfire', 0, 1, 'obj_bonfire');
+            addObj('fountain_main', 'decoration', 'Plaza Fountain', -2, -3, 'obj_fountain_ornate');
             addObj('waypoint', 'waypoint', 'Waypoint', 3, 1, 'obj_waypoint', { zone: zoneLevel });
             addObj('stash', 'stash', 'Stash', -4, 2, 'obj_chest');
             addObj('cube', 'cube', 'Horadric Cube', -6, 2, 'item_horadric_fragment');
+
+            // === Market stalls near Gheed ===
+            addObj('stall_1', 'decoration', 'Market Stall', 8, -10, 'obj_stall_market');
+            addObj('stall_2', 'decoration', 'Market Stall', 12, -10, 'obj_stall_market');
 
             // === Shrines along west wall ===
             addObj('shrine_e', 'shrine', 'Experience Shrine', -24, -8, 'obj_shrine', { shrineType: 'experience' });
@@ -221,6 +226,9 @@ export class Dungeon {
             addNpc('deckard_cain', 'Deckard Cain', 'elder', -2, -4, 'npc_deckard_cain', 'Stay a while and listen!');
             addNpc('rogue_scout1', 'Rogue Scout', 'guard', -26, -16, 'npc_akara', 'Be on your guard, stranger.');
             addNpc('rogue_scout2', 'Rogue Scout', 'guard', 26, -16, 'npc_akara', 'The darkness grows.');
+
+            // === Dungeon Entrance ===
+            addObj('blood_moor_entrance', 'portal', 'To Blood Moor', 0, 16, 'obj_dungeon_entrance', { targetZone: 1 });
 
             this.playerStart = { x: cx * this.tileSize, y: (cy + 12) * this.tileSize };
             this.exitPos = { x: cx * this.tileSize, y: (py1 + 1) * this.tileSize };
@@ -283,7 +291,7 @@ export class Dungeon {
                 addObj(`pillar_${i}`, 'decoration', 'Pillar', i, -15, 'obj_pillar_holy');
 
             // === Fountain in market square ===
-            addObj('fountain', 'decoration', 'Fountain', 0, -2, 'obj_well');
+            addObj('fountain', 'decoration', 'Plaza Fountain', 0, -2, 'obj_fountain_ornate');
 
             // === Waypoint & services ===
             addObj('waypoint', 'waypoint', 'Waypoint', 8, 2, 'obj_waypoint', { zone: zoneLevel });
@@ -293,6 +301,9 @@ export class Dungeon {
             // === Barrels & market stalls ===
             for (let i = 0; i < 8; i++)
                 addObj(`barrel_${i}`, 'breakable', 'Urn', -5 + i, 5, 'obj_urn');
+
+            addObj('stall_1', 'decoration', 'Market Stall', -8, -10, 'obj_stall_market');
+            addObj('stall_2', 'decoration', 'Market Stall', 12, -10, 'obj_stall_market');
 
             // === Shrines ===
             addObj('shrine_a', 'shrine', 'Armor Shrine', -28, -6, 'obj_shrine', { shrineType: 'armor' });
@@ -313,6 +324,9 @@ export class Dungeon {
 
             this.playerStart = { x: cx * this.tileSize, y: (cy + 8) * this.tileSize };
             this.exitPos = { x: cx * this.tileSize, y: (wy1 + 1) * this.tileSize };
+
+            // === Dungeon Entrance ===
+            addObj('sewers_entrance', 'portal', 'To Rocky Waste', 0, 21, 'obj_dungeon_entrance', { targetZone: 39 });
 
             // ── ACT 3 : KURAST DOCKS ─────────────────────────────────
         } else if (zoneLevel === 68) {
@@ -371,6 +385,9 @@ export class Dungeon {
             for (let i = 0; i < 10; i++)
                 addObj(`crate_${i}`, 'breakable', 'Crate', -18 + i * 2, 10, 'obj_barrel');
 
+            addObj('stall_1', 'decoration', 'Market Stall', -6, 12, 'obj_stall_market');
+            addObj('stall_2', 'decoration', 'Market Stall', 12, 12, 'obj_stall_market');
+
             // Shrines
             addObj('shrine_s', 'shrine', 'Speed Shrine', -26, 2, 'obj_shrine', { shrineType: 'speed' });
             addObj('shrine_c', 'shrine', 'Combat Shrine', -26, -8, 'obj_shrine', { shrineType: 'combat' });
@@ -391,6 +408,9 @@ export class Dungeon {
 
             this.playerStart = { x: cx * this.tileSize, y: (cy + 8) * this.tileSize };
             this.exitPos = { x: (cx - 28) * this.tileSize, y: cy * this.tileSize };
+
+            // === Dungeon Entrance ===
+            addObj('jungle_entrance', 'portal', 'To Spider Cavern', -29, 0, 'obj_dungeon_entrance', { targetZone: 69 });
 
             // ── ACT 4 : PANDEMONIUM FORTRESS ─────────────────────────
         } else if (zoneLevel === 96) {
@@ -466,6 +486,9 @@ export class Dungeon {
 
             this.playerStart = { x: cx * this.tileSize, y: (fy1 + 5) * this.tileSize };
             this.exitPos = { x: cx * this.tileSize, y: (fy1 + 1) * this.tileSize };
+
+            // === Dungeon Entrance ===
+            addObj('hell_entrance', 'portal', 'To Outer Steppes', 0, fy1 + 1, 'obj_dungeon_entrance', { targetZone: 97 });
 
             // ── ACT 5 : HARROGATH ────────────────────────────────────
         } else if (zoneLevel === 102) {
@@ -560,9 +583,11 @@ export class Dungeon {
 
             this.playerStart = { x: cx * this.tileSize, y: (cy + 12) * this.tileSize };
             this.exitPos = { x: cx * this.tileSize, y: (hy1 + 1) * this.tileSize };
+
+            // === Dungeon Entrance ===
+            addObj('harrogath_entrance', 'portal', 'To Bloody Foothills', 0, 21, 'obj_dungeon_entrance', { targetZone: 103 });
         }
 
-        // === Always place these shared objects ===
         return this;
     }
 
@@ -647,8 +672,17 @@ export class Dungeon {
             y: (first.y + Math.floor(first.h / 2)) * this.tileSize + this.tileSize / 2,
         };
 
+        // Entrance Portal (from town)
+        if (placeExit) {
+             this.objectSpawns.push({
+                type: 'portal', x: this.playerStart.x, y: this.playerStart.y,
+                icon: 'obj_dungeon_entrance', name: 'To Town',
+                targetZone: [0, 38, 68, 96, 102][Math.floor(zoneLevel/40)] || 0 
+            });
+        }
+
         this.objectSpawns.push({
-            type: 'waypoint', x: this.playerStart.x + 32, y: this.playerStart.y,
+            type: 'waypoint', x: this.playerStart.x + 48, y: this.playerStart.y,
             icon: 'obj_waypoint', zone: zoneLevel
         });
 
@@ -750,10 +784,23 @@ export class Dungeon {
             if (zl <= 37 && theme === 'catacombs') {
                 if (this.rng() < 0.2) this.objectSpawns.push({ type: 'decoration', x: (room.x + 2) * this.tileSize, y: (room.y + 2) * this.tileSize, icon: 'obj_sarcophagus' });
                 if (this.rng() < 0.1) this.objectSpawns.push({ type: 'decoration', x: (room.x + room.w - 2) * this.tileSize, y: (room.y + 2) * this.tileSize, icon: 'obj_gargoyle' });
+                // Add corner pillars for atmosphere
+                if (room.w > 6 && room.h > 6) {
+                    const px = (room.x + 1) * this.tileSize; const py = (room.y + 1) * this.tileSize;
+                    this.objectSpawns.push({ type: 'decoration', x: px, y: py, icon: 'obj_pillar_holy' });
+                }
             } else if (zl <= 67 && this.rng() < 0.15) {
                 this.objectSpawns.push({ type: 'decoration', x: (room.x + Math.floor(room.w / 2)) * this.tileSize, y: (room.y + 2) * this.tileSize, icon: 'obj_pillar_holy' });
             } else if (zl <= 101 && this.rng() < 0.2) {
                 this.objectSpawns.push({ type: 'decoration', x: (room.x + Math.floor(this.rng() * room.w)) * this.tileSize, y: (room.y + Math.floor(this.rng() * room.h)) * this.tileSize, icon: 'obj_cluster_soulstone' });
+            }
+
+            // General environmental clutter
+            if (this.rng() < 0.3) {
+                const dx = (room.x + 1 + Math.floor(this.rng()*(room.w-2))) * this.tileSize;
+                const dy = (room.y + 1 + Math.floor(this.rng()*(room.h-2))) * this.tileSize;
+                const icon = this.rng() < 0.5 ? 'obj_debris' : 'obj_barrel';
+                this.objectSpawns.push({ type: 'decoration', x: dx, y: dy, icon });
             }
 
             if (theme === 'hell' && this.rng() < 0.2) {
