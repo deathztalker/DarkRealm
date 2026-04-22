@@ -714,13 +714,13 @@ function _handleChainLightning(attacker, target, proc, synFX, mult, enemies) {
     bus.emit('combat:log', { text: '⚡ Chain Lightning!', cls: 'log-crit' });
 }
 
-function _handleMeteorDrop(attacker, target, proc, synFX, mult) {
+function _handleMeteorDrop(attacker, target, proc, synFX, mult, enemies) {
     const meteorDmg = Math.round(safeNum(proc.damage, 350) * mult);
     const meteorRadius = safeNum(proc.radius, 120) * (synFX.includes('aoe_expand') ? 1.5 : 1);
 
     if (fx) { fx.emitBurst(target.x, target.y, '#ff4400', 60, 5); fx.shake(800, 15); }
 
-    for (const e of (window.enemies ?? [])) {
+    for (const e of (enemies || [])) {
         if (safeNum(e.hp) > 0 && Math.hypot(e.x - target.x, e.y - target.y) < meteorRadius) {
             e.hp = Math.max(0, safeNum(e.hp) - meteorDmg);
             if (synFX.includes('burn_dot')) applyStatus(e, 'burn', 5, 150);
@@ -729,7 +729,7 @@ function _handleMeteorDrop(attacker, target, proc, synFX, mult) {
     bus.emit('combat:log', { text: '🔥 Meteor!', cls: 'log-crit' });
 }
 
-function _handleDivineShield(attacker, proc, synFX, mult) {
+function _handleDivineShield(attacker, target, proc, synFX, mult, enemies) {
     const dur = safeNum(proc.duration, 8);
     attacker.divineShield = safeNum(attacker.divineShield) + Math.round(safeNum(proc.shieldHp, 800) * mult);
     attacker._divineShieldTimer = dur;
@@ -784,7 +784,7 @@ function _handleSoulRip(attacker, target, proc, synFX, mult, enemies) {
     bus.emit('combat:log', { text: '❄️ Soul Rip!', cls: 'log-crit' });
 }
 
-function _handleBladeDance(attacker, target, proc, synFX, mult) {
+function _handleBladeDance(attacker, target, proc, synFX, mult, enemies) {
     const hits = safeNum(proc.hits, 3) + (synFX.includes('extra_hit') ? 1 : 0);
     const hitDmg = Math.round(safeNum(proc.damage, 60) * mult);
 
@@ -817,7 +817,7 @@ function _handleStellarArrow(attacker, target, proc, synFX, mult, enemies) {
     bus.emit('combat:log', { text: '⭐ Stellar Arrow!', cls: 'log-crit' });
 }
 
-function _handleConsecration(attacker, proc, synFX, mult, enemies) {
+function _handleConsecration(attacker, target, proc, synFX, mult, enemies) {
     const cDmg = Math.round(safeNum(proc.damage, 100) * mult);
     const cRad = safeNum(proc.radius, 90) * (synFX.includes('aoe_expand') ? 1.5 : 1);
 
@@ -833,7 +833,7 @@ function _handleConsecration(attacker, proc, synFX, mult, enemies) {
     bus.emit('combat:log', { text: '✝️ Consecration!', cls: 'log-crit' });
 }
 
-function _handleArmyOfTheDead(attacker, proc) {
+function _handleArmyOfTheDead(attacker, target, proc, synFX, mult, enemies) {
     bus.emit('proc:army_of_dead', { x: attacker.x, y: attacker.y, count: safeNum(proc.count, 3), duration: safeNum(proc.duration, 12) });
     if (fx) fx.emitBurst(attacker.x, attacker.y, '#334466', 50, 5);
     bus.emit('combat:log', { text: '💀 Army of the Dead!', cls: 'log-crit' });
@@ -858,7 +858,7 @@ function _handleVoidStorm(attacker, target, proc, synFX, mult, enemies) {
 }
 
 // ── New proc: Infernal Brand — marks target; next hit detonates for 500 % dmg ─
-function _handleInfernalBrand(attacker, target, proc, synFX, mult) {
+function _handleInfernalBrand(attacker, target, proc, synFX, mult, enemies) {
     if (target._infernalBrand) {
         // Detonate
         const detonateDmg = Math.round(target._infernalBrandDmg * 5.0 * mult);
