@@ -89,34 +89,30 @@ export class Enemy {
         const act3Enemies = ['fetish', 'wraith', 'spider', 'bat', 'zombie', 'ghost'];
         const act4Enemies = ['venom_lord', 'doom_knight', 'oblivion_knight', 'hell_lord', 'wraith', 'demon'];
 
-        // --- Act II Spawning Logic ---
-        if (zone >= 6 && zone <= 9) {
-            // Favor desert enemies
-            const desertEnemies = ['scarab', 'sand_leaper', 'mummy', 'wraith', 'bat', 'spider'];
-            types = types.filter(t => desertEnemies.includes(t));
-            if (types.length === 0) types = Object.keys(ENEMY_TYPES); // Fallback
-        } else if (zone < 6) {
-            // Favor Act I enemies
+        // --- ACT-ACCURATE SPAWNING LOGIC ---
+        if (zone <= 37) {
+            // Act I: 1-37
             const act1Enemies = ['skeleton', 'skeleton_archer', 'goblin', 'zombie', 'ghost', 'fetish'];
             types = types.filter(t => act1Enemies.includes(t));
-            if (types.length === 0) types = Object.keys(ENEMY_TYPES);
-        } else if (zone >= 11 && zone <= 14) {
-            // Favor Act III enemies
+        } else if (zone <= 67) {
+            // Act II: 38-67
+            const desertEnemies = ['scarab', 'sand_leaper', 'mummy', 'wraith', 'bat', 'spider'];
+            types = types.filter(t => desertEnemies.includes(t));
+        } else if (zone <= 95) {
+            // Act III: 68-95
             types = types.filter(t => act3Enemies.includes(t));
-            if (types.length === 0) types = Object.keys(ENEMY_TYPES);
-        } else if (zone >= 16 && zone <= 19) {
-            // Favor Act IV enemies
+        } else if (zone <= 101) {
+            // Act IV: 96-101
             types = types.filter(t => act4Enemies.includes(t));
-            if (types.length === 0) types = Object.keys(ENEMY_TYPES);
-        } else if (zone >= 21 && zone <= 24) {
-            // Favor Act V enemies
+        } else if (zone <= 125) {
+            // Act V: 102-125
             const act5Enemies = ['death_maul', 'hell_lord', 'overseer', 'venom_lord', 'doom_knight', 'wraith'];
             types = types.filter(t => act5Enemies.includes(t));
-            if (types.length === 0) types = Object.keys(ENEMY_TYPES);
-        } else if (zone === 99) {
-            // Secret Cow Level: Only cows
+        } else if (zone === 126) {
+            // Secret Cow Level
             types = ['cow'];
         }
+        if (types.length === 0) types = Object.keys(ENEMY_TYPES); // Safety fallback
 
         const typeKey = types[Math.floor(Math.random() * types.length)];
         const base = ENEMY_TYPES[typeKey];
@@ -135,8 +131,8 @@ export class Enemy {
         this.hitFlashTimer = 0;
         this.lostTargetTimer = 0; // Timer for losing LOS
 
-        const scale = 1 + (this.level - 1) * 0.12;
-        const currentRiftDepth = (this.level >= 7 && window.zoneLevel >= 7) ? (window.zoneLevel - 6) : 0;
+        const scale = 1 + (this.level - 1) * 0.08; // Slightly reduced per-level scaling for 125 levels
+        const currentRiftDepth = (this.level >= 128) ? (this.level - 127) : 0;
         const riftScale = currentRiftDepth > 0 ? Math.pow(1.25, currentRiftDepth) : 1.0;
         const diffMult = (window._difficulty !== undefined ? window.DIFFICULTY_MULT[window._difficulty] : 1.0) * riftScale;
 
@@ -152,7 +148,7 @@ export class Enemy {
             } else {
                 // Random Rift Boss
                 let availableBosses = BOSS_POOL;
-                if (this.level > 7) {
+                if (this.level >= 128) {
                     availableBosses = BOSS_POOL.filter(b => b.riftOnly);
                     if (availableBosses.length === 0) availableBosses = BOSS_POOL;
                 } else {
@@ -178,11 +174,11 @@ export class Enemy {
             this.isRiftGuardian = spawn.isRiftGuardian || false;
 
             // Set specific boss flags for special AI behaviors
-            this.isAndariel = spawn.isAndariel || bossSource.id === 'andariel';
-            this.isDuriel = spawn.isDuriel || bossSource.id === 'duriel';
-            this.isMephisto = spawn.isMephisto || bossSource.id === 'mephisto';
-            this.isDiablo = spawn.isDiablo || bossSource.id === 'diablo';
-            this.isBaal = spawn.isBaal || bossSource.id === 'baal';
+            this.isAndariel = spawn.isAndariel || bossSource.id === 'andariel' || this.level === 37;
+            this.isDuriel = spawn.isDuriel || bossSource.id === 'duriel' || this.level === 67;
+            this.isMephisto = spawn.isMephisto || bossSource.id === 'mephisto' || this.level === 95;
+            this.isDiablo = spawn.isDiablo || bossSource.id === 'diablo' || this.level === 101;
+            this.isBaal = spawn.isBaal || bossSource.id === 'baal' || this.level === 125;
             this.isUber = spawn.isUber || bossSource.isUber;
             this.isButcher = spawn.isButcher || bossSource.id === 'butcher';
             this.isRadament = spawn.isRadament || bossSource.id === 'radament';

@@ -80,7 +80,7 @@ export const DB = {
             mercenary: dbRow.mercenary || null,
             difficulty: dbRow.difficulty || 0,
             waypoints: dbRow.waypoints || [0],
-            campaign: dbRow.campaign || null,
+            campaign: dbRow.campaign || dbRow.extra_data?.campaign || null,
             player: dbRow.player,
             timestamp: new Date(dbRow.updated_at).getTime()
         }));
@@ -88,6 +88,15 @@ export const DB = {
 
     async upsertSave(slotId, rawSaveData) {
         if (!this.isLoggedIn()) return false;
+        
+        // Ensure waypoints is an array for JSONB storage
+        let waypointsArray = rawSaveData.waypoints;
+        if (waypointsArray instanceof Set) {
+            waypointsArray = Array.from(waypointsArray);
+        } else if (!Array.isArray(waypointsArray)) {
+            waypointsArray = [0];
+        }
+
         const payload = {
             slot_id: slotId,
             user_id: this.session.user.id,
@@ -96,10 +105,12 @@ export const DB = {
             stash: rawSaveData.stash,
             cube: rawSaveData.cube,
             mercenary: rawSaveData.mercenary,
-            waypoints: rawSaveData.waypoints,
+            waypoints: waypointsArray,
             difficulty: rawSaveData.difficulty,
-            campaign: rawSaveData.campaign,
-            extra_data: rawSaveData.extra_data || null,
+            extra_data: {
+                ...(rawSaveData.extra_data || {}),
+                campaign: rawSaveData.campaign
+            },
             updated_at: new Date().toISOString()
         };
 

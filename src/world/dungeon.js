@@ -39,12 +39,12 @@ export class Dungeon {
         if (seed !== null) this._seed = seed;
         else this._seed = Math.floor(Math.random() * 1000000);
 
-        if (zoneLevel >= 26) return this.generateRift(zoneLevel);
+        if (zoneLevel >= 128) return this.generateRift(zoneLevel);
 
-        if (zoneLevel === 0 || zoneLevel === 6 || zoneLevel === 11 || zoneLevel === 16 || zoneLevel === 21) {
+        if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
             return this.generateTown(theme, zoneLevel);
         }
-        if (zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0)) return this.generateBossRoom(theme, zoneLevel);
+        if ([37, 67, 95, 101, 125, 127].includes(zoneLevel) || (zoneLevel >= 128 && zoneLevel % 5 === 0)) return this.generateBossRoom(theme, zoneLevel);
 
         return this._generateProcedural(zoneLevel, theme, true);
     }
@@ -137,6 +137,14 @@ export class Dungeon {
                     }
                 }
             }
+        } else if (theme === 'arcane') {
+            for (let r = 0; r < this.height; r++) {
+                for (let c = 0; c < this.width; c++) {
+                    if (this.grid[r][c] === TILE.FLOOR) {
+                        this.grid[r][c] = TILE.ICE; // Arcane path style
+                    }
+                }
+            }
         }
 
         // Place player start in first room center
@@ -169,7 +177,7 @@ export class Dungeon {
         // Spawn enemies in rooms 2+
         for (let i = 1; i < this.rooms.length; i++) {
             const room = this.rooms[i];
-            const count = 2 + Math.floor(this.rng() * 4) + Math.floor(zoneLevel / 3);
+            const count = 2 + Math.floor(this.rng() * 4) + Math.floor(zoneLevel / 10);
             for (let n = 0; n < count; n++) {
                 const sx = room.x + 1 + Math.floor(this.rng() * (room.w - 2));
                 const sy = room.y + 1 + Math.floor(this.rng() * (room.h - 2));
@@ -185,16 +193,17 @@ export class Dungeon {
 
                 // Inject Unique Mini-Bosses into normal zones
                 if (isBoss) {
-                    if (zoneLevel === 7) { spawn.name = "Radament"; spawn.icon = "enemy_skeleton"; spawn.isRadament = true; spawn.hpMult = 3.0; }
-                    if (zoneLevel === 8) { spawn.name = "Beetleburst"; spawn.icon = "enemy_spider"; spawn.isBeetleburst = true; spawn.hpMult = 2.5; }
-                    if (zoneLevel === 9) { spawn.name = "Coldworm the Burrower"; spawn.icon = "enemy_spider"; spawn.isColdworm = true; spawn.hpMult = 3.0; }
-                    if (zoneLevel === 13) { spawn.name = "Battlemaid Sarina"; spawn.icon = "enemy_ghost"; spawn.isSarina = true; spawn.hpMult = 2.5; }
-                    if (zoneLevel === 14) { spawn.name = "Toorc Icefist"; spawn.icon = "enemy_skeleton"; spawn.isCouncil = true; spawn.hpMult = 4.0; }
-                    if (zoneLevel === 22) { spawn.name = "Shenk the Overseer"; spawn.icon = "enemy_demon"; spawn.isShenk = true; spawn.hpMult = 3.5; }
-                    if (zoneLevel === 23) { spawn.name = "Frozenstein"; spawn.icon = "enemy_demon"; spawn.isFrozenstein = true; spawn.hpMult = 3.5; }
+                    if (zoneLevel === 40) { spawn.name = "Radament"; spawn.icon = "enemy_skeleton"; spawn.isRadament = true; spawn.hpMult = 3.0; }
+                    if (zoneLevel === 46) { spawn.name = "Beetleburst"; spawn.icon = "enemy_spider"; spawn.isBeetleburst = true; spawn.hpMult = 2.5; }
+                    if (zoneLevel === 48) { spawn.name = "Coldworm the Burrower"; spawn.icon = "enemy_spider"; spawn.isColdworm = true; spawn.hpMult = 3.0; }
+                    if (zoneLevel === 59) { spawn.name = "The Summoner"; spawn.icon = "class_sorceress"; spawn.hpMult = 5.0; spawn.dmgMult = 4.0; }
+                    if (zoneLevel === 82) { spawn.name = "Battlemaid Sarina"; spawn.icon = "enemy_ghost"; spawn.isSarina = true; spawn.hpMult = 2.5; }
+                    if (zoneLevel === 92) { spawn.name = "Toorc Icefist"; spawn.icon = "enemy_skeleton"; spawn.isCouncil = true; spawn.hpMult = 4.0; }
+                    if (zoneLevel === 103) { spawn.name = "Shenk the Overseer"; spawn.icon = "enemy_demon"; spawn.isShenk = true; spawn.hpMult = 3.5; }
+                    if (zoneLevel === 109) { spawn.name = "Frozenstein"; spawn.icon = "enemy_demon"; spawn.isFrozenstein = true; spawn.hpMult = 3.5; }
 
                     // Act I Unique: The Butcher in Zone 5 (Second to last room)
-                    if (zoneLevel === 5 && i === this.rooms.length - 2 && this.rng() < 0.3) {
+                    if (zoneLevel === 37 && i === this.rooms.length - 2 && this.rng() < 0.3) {
                         spawn.name = "The Butcher";
                         spawn.icon = "enemy_demon";
                         spawn.isButcher = true;
@@ -202,17 +211,17 @@ export class Dungeon {
                     }
 
                     // Act IV Unique Bosses
-                    if (zoneLevel === 18 && i === this.rooms.length - 1) {
+                    if (zoneLevel === 98 && i === this.rooms.length - 1) {
                         spawn.name = "Izual"; spawn.icon = "boss_izual"; spawn.isIzual = true; spawn.hpMult = 8.0; spawn.dmgMult = 4.0;
                     }
-                    if (zoneLevel === 19 && i === this.rooms.length - 1) {
+                    if (zoneLevel === 100 && i === this.rooms.length - 1) {
                         spawn.name = "Hephaisto"; spawn.icon = "boss_hephaisto"; spawn.isHephaisto = true; spawn.hpMult = 8.0; spawn.dmgMult = 5.0;
                         // Inject Hellforge Object nearby
                         this.objectSpawns.push({ id: 'hellforge', type: 'hellforge', name: 'The Hellforge', x: spawn.x + 60, y: spawn.y, icon: 'obj_altar' });
                     }
 
                     // Act V: The Ancients (Trio)
-                    if (zoneLevel === 24 && i === this.rooms.length - 1) {
+                    if (zoneLevel === 116 && i === this.rooms.length - 1) {
                         // We replace the last room spawn with 3 Ancients
                         spawn.name = "Talic the Defender"; spawn.icon = "enemy_demon"; spawn.isAncient = true; spawn.hpMult = 5.0;
                         const s2 = { ...spawn, name: "Madawc the Guardian", x: spawn.x + 40, isAncient: true };
@@ -246,80 +255,149 @@ export class Dungeon {
             for (let b = 0; b < numBreakables; b++) {
                 const bx = (room.x + 1 + Math.floor(this.rng() * (room.w - 2))) * this.tileSize;
                 const by = (room.y + 1 + Math.floor(this.rng() * (room.h - 2))) * this.tileSize;
-                this.objectSpawns.push({ type: 'breakable', x: bx, y: by, icon: 'obj_barrel' });
-
+                this.objectSpawns.push({ type: 'breakable', x: bx, y: by, icon: (theme === 'desert' || theme === 'tomb') ? 'obj_urn' : 'obj_barrel' });
             }
         }
 
-        this._populate(zoneLevel, theme);
         return this;
     }
 
+    
     generateTown(theme, zoneLevel = 0) {
-        const bgTile = theme === 'desert' ? TILE.SAND : theme === 'snow' ? TILE.SNOW : TILE.GRASS;
-        this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(bgTile));
         this.rooms = [];
         this.enemySpawns = [];
         this.lootSpawns = [];
-
-        // Central Path
-        for (let y = 10; y < this.height - 10; y++) {
-            for (let x = this.width / 2 - 2; x <= this.width / 2 + 2; x++) {
-                this.grid[y][x] = TILE.PATH;
-            }
-        }
-
-        // River crossing
-        for (let x = 10; x < this.width - 10; x++) {
-            for (let y = this.height / 2 - 2; y <= this.height / 2 + 2; y++) {
-                if (this.grid[y][x] === TILE.PATH) this.grid[y][x] = TILE.BRIDGE;
-                else this.grid[y][x] = TILE.WATER;
-            }
-        }
-
-        // Town Square & buildings
+        this.npcSpawns = [];
+        this.objectSpawns = [];
         const cx = Math.floor(this.width / 2);
         const cy = 20;
 
-        // Square
-        for (let y = cy - 4; y <= cy + 4; y++) {
-            for (let x = cx - 5; x <= cx + 5; x++) {
-                this.grid[y][x] = TILE.PATH;
-            }
-        }
-
-        // Buildings (Walls blocking movement but hollow inside)
-        const carveBuilding = (bx, by, bw, bh) => {
-            for (let y = by; y < by + bh; y++) {
-                for (let x = bx; x < bx + bw; x++) {
-                    if (y === by || y === by + bh - 1 || x === bx || x === bx + bw - 1) {
-                        this.grid[y][x] = TILE.WALL;
-                    } else {
-                        this.grid[y][x] = TILE.FLOOR; // Walkable interior
-                    }
-                }
-            }
-            this.grid[by + bh - 1][bx + Math.floor(bw / 2)] = TILE.PATH; // Door
+        const addNpc = (id, name, type, dx, dy, icon, dialogue) => {
+            this.npcSpawns.push({ id, name, type, x: (cx + dx) * this.tileSize, y: (cy + dy) * this.tileSize, icon, dialogue });
         };
 
-        carveBuilding(cx - 12, cy - 3, 6, 5); // Blacksmith
-        carveBuilding(cx + 6, cy - 3, 7, 6);  // Tavern
-
-        // Trees border
-        for (let y = 0; y < this.height; y++) {
-            for (let x = 0; x < this.width; x++) {
-                if (x < 3 || x > this.width - 4 || y < 3 || y > this.height - 4) {
-                    if (this.rng() < 0.6) this.grid[y][x] = TILE.TREE;
-                }
-                else if (this.grid[y][x] === TILE.GRASS && this.rng() < 0.05) {
-                    this.grid[y][x] = TILE.TREE;
+        if (zoneLevel === 0) {
+            // Act 1: Rogue Encampment
+            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.GRASS));
+            for (let y = 10; y < this.height - 10; y++) {
+                for (let x = cx - 2; x <= cx + 2; x++) this.grid[y][x] = TILE.PATH;
+            }
+            // River
+            for (let x = 10; x < this.width - 10; x++) {
+                for (let y = this.height / 2 - 2; y <= this.height / 2 + 2; y++) {
+                    if (this.grid[y][x] === TILE.PATH) this.grid[y][x] = TILE.BRIDGE;
+                    else this.grid[y][x] = TILE.WATER;
                 }
             }
+            // Tents/Walls
+            for (let y = cy - 4; y <= cy + 4; y++) {
+                for (let x = cx - 5; x <= cx + 5; x++) this.grid[y][x] = TILE.PATH;
+            }
+            this.objectSpawns.push({ id: 'tent1', type: 'tent', name: 'Rogue Tent', x: (cx - 4) * this.tileSize, y: (cy - 4) * this.tileSize, icon: 'obj_tent_leather' });
+            this.objectSpawns.push({ id: 'tent2', type: 'tent', name: 'Rogue Tent', x: (cx + 4) * this.tileSize, y: (cy - 4) * this.tileSize, icon: 'obj_tent_leather' });
+            // Trees
+            for (let y = 0; y < this.height; y++) {
+                for (let x = 0; x < this.width; x++) {
+                    if (x < 3 || x > this.width - 4 || y < 3 || y > this.height - 4) {
+                        if (this.rng() < 0.6) this.grid[y][x] = TILE.TREE;
+                    } else if (this.grid[y][x] === TILE.GRASS && this.rng() < 0.05) this.grid[y][x] = TILE.TREE;
+                }
+            }
+            addNpc("deckard_cain", "Deckard Cain", "elder", -2, -6, "npc_deckard_cain", "Stay a while and listen!");
+            addNpc("gheed", "Gheed", "merchant", 4, -4, "npc_ormus", "Looking for a deal? My prices are mostly fair.");
+            addNpc("warriv", "Warriv", "waypoint", 4, 3, "npc_larzuk", "Ready to travel to the East?");
+            addNpc("akara", "Akara", "elder", -4, -4, "npc_akara", "Greetings, traveler.");
+            addNpc("charsi", "Charsi", "merchant", 5, -3, "npc_akara", "Need a repair?");
+            addNpc("kashya", "Kashya", "mercenary_hire", -5, 2, "npc_akara", "My rogues are ready.");
+        } else if (zoneLevel === 38) {
+            // Act 2: Lut Gholein
+            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.SAND));
+            // Ocean to the east
+            for (let y = 0; y < this.height; y++) {
+                for (let x = this.width - 15; x < this.width; x++) this.grid[y][x] = TILE.WATER;
+                this.grid[y][this.width - 16] = TILE.BRIDGE; // Docks
+            }
+            // Palace to the north
+            for (let y = 0; y < 10; y++) {
+                for (let x = cx - 10; x <= cx + 10; x++) this.grid[y][x] = TILE.WALL;
+            }
+            this.grid[10][cx] = TILE.DOOR;
+            this.objectSpawns.push({ id: 'house1', type: 'house', name: 'Sandstone House', x: (cx - 6) * this.tileSize, y: (cy - 2) * this.tileSize, icon: 'obj_house_sandstone' });
+            this.objectSpawns.push({ id: 'house2', type: 'house', name: 'Sandstone House', x: (cx + 6) * this.tileSize, y: (cy - 2) * this.tileSize, icon: 'obj_house_sandstone' });
+            addNpc("deckard_cain", "Deckard Cain", "elder", -2, -6, "npc_deckard_cain", "Stay a while and listen!");
+            addNpc("lysander", "Lysander", "merchant", 5, 2, "npc_akara", "Mind your step, I'm working with volatile potions!");
+            addNpc("meshif", "Meshif", "waypoint", 12, 0, "npc_larzuk", "The Kurast docks are waiting.");
+            addNpc("fara", "Fara", "elder", -4, -4, "npc_akara", "I can heal and repair.");
+            addNpc("greiz", "Greiz", "mercenary_hire", -5, 2, "npc_larzuk", "Desert mercenaries at your service.");
+            addNpc("drognan", "Drognan", "merchant", 6, -3, "npc_ormus", "Magic flows through these walls.");
+            addNpc("atma", "Atma", "elder", 0, 5, "npc_akara", "They took my husband and son...");
+        } else if (zoneLevel === 68) {
+            // Act 3: Kurast Docks
+            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WATER));
+            // Wooden Docks structure
+            for (let y = 10; y < this.height - 10; y++) {
+                for (let x = cx - 15; x <= cx + 10; x++) {
+                    if ((x+y)%2===0) this.grid[y][x] = TILE.BRIDGE; // Planks
+                    else this.grid[y][x] = TILE.PATH; 
+                }
+            }
+            this.objectSpawns.push({ id: 'hut1', type: 'hut', name: 'Stilt Hut', x: (cx - 6) * this.tileSize, y: (cy - 4) * this.tileSize, icon: 'obj_hut_stilt' });
+            this.objectSpawns.push({ id: 'hut2', type: 'hut', name: 'Stilt Hut', x: (cx + 6) * this.tileSize, y: (cy - 4) * this.tileSize, icon: 'obj_hut_stilt' });
+            for(let i=0; i<6; i++) { this.objectSpawns.push({ type: 'tree', x: (cx - 10 + Math.random()*20) * this.tileSize, y: (cy + 5 + Math.random()*10) * this.tileSize, icon: 'obj_tree_jungle' }); }
+            addNpc("deckard_cain", "Deckard Cain", "elder", -2, -6, "npc_deckard_cain", "Stay a while and listen!");
+            addNpc("ormus", "Ormus", "elder", -5, -4, "npc_ormus", "Ormus speaks to you, traveler.");
+            addNpc("hratli", "Hratli", "merchant", 6, -2, "npc_larzuk", "The jungle is dangerous, take a good blade.");
+            addNpc("asheara", "Asheara", "mercenary_hire", -6, 3, "npc_akara", "My Iron Wolves will aid you.");
+            addNpc("meshif", "Meshif", "waypoint", 10, 10, "npc_larzuk", "We must cross the seas.");
+        } else if (zoneLevel === 96) {
+            // Act 4: Pandemonium Fortress
+            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
+            // Floating fortress over void
+            for (let y = cy - 10; y <= cy + 15; y++) {
+                for (let x = cx - 15; x <= cx + 15; x++) {
+                    if (Math.hypot(x-cx, y-cy) < 14) this.grid[y][x] = TILE.FLOOR; // Stone
+                    else if (Math.hypot(x-cx, y-cy) < 16) this.grid[y][x] = TILE.LAVA; // Lava edge
+                }
+            }
+            this.grid[cy+14][cx] = TILE.STAIRS_DOWN; // Exit
+            
+            // Add Act 4 Props
+            this.objectSpawns.push({ id: 'statue1', type: 'statue', name: 'Angel Statue', x: (cx - 10) * this.tileSize, y: (cy - 5) * this.tileSize, icon: 'obj_statue_angel' });
+            this.objectSpawns.push({ id: 'statue2', type: 'statue', name: 'Angel Statue', x: (cx + 10) * this.tileSize, y: (cy - 5) * this.tileSize, icon: 'obj_statue_angel' });
+            this.objectSpawns.push({ id: 'pillar1', type: 'pillar', name: 'Holy Pillar', x: (cx - 5) * this.tileSize, y: (cy + 10) * this.tileSize, icon: 'obj_pillar_holy' });
+            this.objectSpawns.push({ id: 'pillar2', type: 'pillar', name: 'Holy Pillar', x: (cx + 5) * this.tileSize, y: (cy + 10) * this.tileSize, icon: 'obj_pillar_holy' });
+
+            addNpc("deckard_cain", "Deckard Cain", "elder", -2, -6, "npc_deckard_cain", "Stay a while and listen!");
+            addNpc("tyrael", "Tyrael", "elder", 0, -8, "npc_tyrael", "The Light shall guide you against Diablo.");
+            addNpc("jamella", "Jamella", "merchant", -5, -3, "npc_akara", "The Light welcomes you.");
+            addNpc("halbu", "Halbu", "merchant", 5, 2, "npc_larzuk", "I craft the armor of legends.");
+        } else if (zoneLevel === 102) {
+            // Act 5: Harrogath
+            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.SNOW));
+            for (let y = cy - 8; y <= cy + 8; y++) {
+                for (let x = cx - 10; x <= cx + 10; x++) this.grid[y][x] = TILE.PATH;
+            }
+            for (let x = cx - 12; x <= cx + 12; x++) {
+                this.grid[cy-9][x] = TILE.WALL;
+                this.grid[cy+9][x] = TILE.WALL;
+            }
+            this.grid[cy+9][cx] = TILE.DOOR;
+            this.objectSpawns.push({ id: 'longhouse1', type: 'longhouse', name: 'Stone Longhouse', x: (cx - 6) * this.tileSize, y: (cy - 3) * this.tileSize, icon: 'obj_longhouse_stone' });
+            this.objectSpawns.push({ id: 'longhouse2', type: 'longhouse', name: 'Stone Longhouse', x: (cx + 6) * this.tileSize, y: (cy - 3) * this.tileSize, icon: 'obj_longhouse_stone' });
+            for(let i=0; i<12; i++) { this.objectSpawns.push({ type: 'tree', x: (cx - 15 + Math.random()*30) * this.tileSize, y: (cy - 10 + Math.random()*20) * this.tileSize, icon: 'obj_tree_snowy_pine' }); }
+            addNpc("deckard_cain", "Deckard Cain", "elder", -2, -6, "npc_deckard_cain", "Stay a while and listen!");
+            addNpc("malah", "Malah", "elder", -4, -5, "npc_akara", "It is cold, but my heart is warm for you.");
+            addNpc("larzuk", "Larzuk", "merchant", 6, -1, "npc_larzuk", "Ready to put holes in your gear?");
+            addNpc("qual_kehk", "Qual-Kehk", "mercenary_hire", -7, 4, "npc_larzuk", "The sons of Arreat fight for gold.");
+            addNpc("anya", "Anya", "merchant", 5, 3, "npc_akara", "Thank you for rescuing me.");
+            addNpc("nihlathak", "Nihlathak", "elder", 8, -4, "npc_ormus", "Do not cross me.");
         }
 
         this.playerStart = { x: cx * this.tileSize, y: (cy + 2) * this.tileSize };
         this.exitPos = { x: cx * this.tileSize, y: (this.height - 12) * this.tileSize };
-        this.grid[this.height - 12][cx] = TILE.STAIRS_DOWN;
+        if (this.grid[this.height - 12] && this.grid[this.height - 12][cx] !== undefined) {
+            this.grid[this.height - 12][cx] = TILE.STAIRS_DOWN;
+        }
 
         // Waypoint Pad in Town Square
         this.objectSpawns.push({
@@ -327,52 +405,8 @@ export class Dungeon {
             x: cx * this.tileSize,
             y: cy * this.tileSize,
             icon: 'obj_waypoint',
-            zone: 0
+            zone: zoneLevel
         });
-
-        // --- ACT-SPECIFIC NPC SPAWNS ---
-        const addNpc = (id, name, type, dx, dy, icon, dialogue) => {
-            this.npcSpawns.push({
-                id, name, type,
-                x: (cx + dx) * this.tileSize,
-                y: (cy + dy) * this.tileSize,
-                icon, dialogue
-            });
-        };
-
-        addNpc("deckard_cain", "Deckard Cain", "elder", -2, -6, "npc_deckard_cain", "Stay a while and listen!");
-
-        if (zoneLevel === 0) {
-            // Act 1: Rogue Encampment
-            addNpc("gheed", "Gheed", "merchant", 4, -4, "npc_ormus", "Looking for a deal? My prices are mostly fair.");
-            addNpc("warriv", "Warriv", "waypoint", 4, 3, "npc_larzuk", "Ready to travel to the East?");
-            addNpc("akara", "Akara", "elder", -4, -4, "npc_akara", "Greetings, traveler.");
-            addNpc("charsi", "Charsi", "merchant", 5, -3, "npc_akara", "Need a repair?");
-            addNpc("kashya", "Kashya", "mercenary_hire", -5, 2, "npc_akara", "My rogues are ready.");
-        } else if (zoneLevel === 6) {
-            // Act 2: Lut Gholein
-            addNpc("lysander", "Lysander", "merchant", 5, 2, "npc_akara", "Mind your step, I'm working with volatile potions!");
-            addNpc("meshif", "Meshif", "waypoint", 4, 4, "npc_larzuk", "The Kurast docks are waiting.");
-            addNpc("fara", "Fara", "elder", -4, -4, "npc_akara", "I can heal and repair.");
-            addNpc("greiz", "Greiz", "mercenary_hire", -5, 2, "npc_larzuk", "Desert mercenaries at your service.");
-            addNpc("drognan", "Drognan", "merchant", 6, -3, "npc_ormus", "Magic flows through these walls.");
-        } else if (zoneLevel === 11) {
-            // Act 3: Kurast Docks
-            addNpc("ormus", "Ormus", "elder", -5, -4, "npc_ormus", "Ormus speaks to you, traveler.");
-            addNpc("hratli", "Hratli", "merchant", 6, -2, "npc_larzuk", "The jungle is dangerous, take a good blade.");
-            addNpc("asheara", "Asheara", "mercenary_hire", -6, 3, "npc_akara", "My Iron Wolves will aid you.");
-        } else if (zoneLevel === 16) {
-            // Act 4: Pandemonium Fortress
-            addNpc("tyrael", "Tyrael", "elder", 0, -6, "npc_tyrael", "The Light shall guide you against Diablo.");
-            addNpc("jamella", "Jamella", "merchant", -5, -3, "npc_akara", "The Light welcomes you.");
-            addNpc("halbu", "Halbu", "merchant", 5, 2, "npc_larzuk", "I craft the armor of legends.");
-        } else if (zoneLevel === 21) {
-            // Act 5: Harrogath
-            addNpc("malah", "Malah", "elder", -4, -5, "npc_akara", "It is cold, but my heart is warm for you.");
-            addNpc("larzuk", "Larzuk", "merchant", 6, -1, "npc_larzuk", "Ready to put holes in your gear?");
-            addNpc("qual_kehk", "Qual-Kehk", "mercenary_hire", -7, 4, "npc_larzuk", "The sons of Arreat fight for gold.");
-            addNpc("anya", "Anya", "merchant", 5, 3, "npc_akara", "Thank you for rescuing me.");
-        }
 
         // Town Objects: Stash & Cube
         this.objectSpawns.push({ id: 'stash', type: 'stash', name: 'Alijo (Stash)', x: (cx - 6) * this.tileSize, y: cy * this.tileSize, icon: 'obj_chest' });
@@ -380,6 +414,7 @@ export class Dungeon {
 
         return this;
     }
+
 
     generateBossRoom(theme, zoneLevel = 5) {
         this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
@@ -411,22 +446,17 @@ export class Dungeon {
 
         this.playerStart = { x: cx * this.tileSize, y: (cy + radius + 8) * this.tileSize };
 
+        
         // Boss Selection based on level
-        let bossName = "Blood Raven";
-        let bossIcon = "enemy_ghost";
-        let hpMult = 2.0;
-        let isAndariel = false;
-        let isDuriel = false;
-        let isMephisto = false;
-        let isDiablo = false;
-        let isBaal = false;
-        let isUber = false;
+        let bossName = "Blood Raven"; let bossIcon = "enemy_ghost"; let hpMult = 2.0;
+        let isAndariel = false, isDuriel = false, isMephisto = false, isDiablo = false, isBaal = false, isUber = false;
 
-        if (zoneLevel === 5) { bossName = "Andariel"; bossIcon = "boss_andariel"; hpMult = 4.0; isAndariel = true; }
-        else if (zoneLevel === 10) { bossName = "Duriel"; bossIcon = "boss_duriel"; hpMult = 6.0; isDuriel = true; }
-        else if (zoneLevel === 15) { bossName = "Mephisto"; bossIcon = "boss_mephisto"; hpMult = 8.0; isMephisto = true; }
-        else if (zoneLevel === 20) { bossName = "Diablo"; bossIcon = "boss_diablo"; hpMult = 12.0; isDiablo = true; }
-        else if (zoneLevel === 25) { bossName = "Baal"; bossIcon = "boss_baal"; hpMult = 15.0; isBaal = true; }
+        if (zoneLevel === 37) { bossName = "Andariel"; bossIcon = "boss_andariel"; hpMult = 4.0; isAndariel = true; }
+        else if (zoneLevel === 67) { bossName = "Duriel"; bossIcon = "boss_duriel"; hpMult = 6.0; isDuriel = true; }
+        else if (zoneLevel === 95) { bossName = "Mephisto"; bossIcon = "boss_mephisto"; hpMult = 8.0; isMephisto = true; }
+        else if (zoneLevel === 101) { bossName = "Diablo"; bossIcon = "boss_diablo"; hpMult = 12.0; isDiablo = true; }
+        else if (zoneLevel === 125) { bossName = "Baal"; bossIcon = "boss_baal"; hpMult = 15.0; isBaal = true; }
+        else if (zoneLevel === 127) { bossName = "Uber Diablo"; bossIcon = "boss_diablo"; hpMult = 30.0; isUber = true; }
 
         // Boss Spawn in center
         this.enemySpawns.push({
@@ -608,7 +638,8 @@ export class Dungeon {
             [TILE.STAIRS_DOWN]: 'env_stairs_down', [TILE.STAIRS_UP]: 'env_stairs_up',
             [TILE.GRASS]: 'env_grass', [TILE.PATH]: 'env_path', [TILE.WATER]: 'env_water',
             [TILE.TREE]: 'env_tree', [TILE.BRIDGE]: 'env_bridge',
-            [TILE.SAND]: 'env_sand', [TILE.CACTUS]: 'env_cactus'
+            [TILE.SAND]: 'env_sand', [TILE.CACTUS]: 'env_cactus',
+            [TILE.SNOW]: 'env_snow', [TILE.ICE]: 'env_ice', [TILE.LAVA]: 'env_lava'
         };
 
         for (let r = camTop; r < camBottom; r++) {
@@ -638,13 +669,29 @@ export class Dungeon {
 
     _populate(zl, theme) {
         if (!this.rooms || this.rooms.length === 0) return;
-        const icon = theme === 'desert' || theme === 'tomb' ? 'obj_urn' : 'obj_barrel';
+        
+        let breakableIcon = 'obj_barrel';
+        if (theme === 'desert' || theme === 'tomb') breakableIcon = 'obj_urn';
+        else if (theme === 'hell') breakableIcon = 'obj_urn_hell';
+
         for (const room of this.rooms) {
+            // Place breakables
             const count = 1 + Math.floor(this.rng() * 3);
             for (let i = 0; i < count; i++) {
                 const bx = (room.x + Math.floor(this.rng() * room.w)) * this.tileSize;
                 const by = (room.y + Math.floor(this.rng() * room.h)) * this.tileSize;
-                this.objectSpawns.push({ type: 'breakable', x: bx, y: by, icon });
+                this.objectSpawns.push({ type: 'breakable', x: bx, y: by, icon: breakableIcon });
+            }
+
+            // Place thematic decorative props
+            if (theme === 'hell') {
+                if (this.rng() < 0.2) {
+                    const dx = (room.x + Math.floor(this.rng() * room.w)) * this.tileSize;
+                    const dy = (room.y + Math.floor(this.rng() * room.h)) * this.tileSize;
+                    const hellProps = ['obj_cluster_soulstone', 'obj_altar_pentagram', 'obj_torch_hell'];
+                    const icon = hellProps[Math.floor(this.rng() * hellProps.length)];
+                    this.objectSpawns.push({ type: 'decoration', x: dx, y: dy, icon });
+                }
             }
         }
     }

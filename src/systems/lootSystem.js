@@ -1421,7 +1421,7 @@ export class LootSystem {
      * @returns {object|null} item or null (no drop)
      */
     roll(enemy, context = {}) {
-        const depth = window.riftLevel || Math.max(0, window.zoneLevel - 6);
+        const depth = window.riftLevel || Math.max(0, window.zoneLevel - 127);
         const riftMF = depth > 0 ? (depth * 25) : 0; 
         const totalMF = (context.magicFind || 0) + riftMF;
 

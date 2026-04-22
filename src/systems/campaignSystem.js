@@ -51,16 +51,17 @@ class CampaignSystem {
     }
 
     isActUnlocked(actNum) {
+        if (actNum === 0) return true;
         return actNum <= this.completedActs + 1;
     }
 
     getActForZone(z) {
-        if (z === 0) return 0; // Town is shared or belongs to current
-        if (z <= 5) return 1;
-        if (z <= 10) return 2;
-        if (z <= 15) return 3;
-        if (z <= 20) return 4;
-        if (z <= 25) return 5;
+        if (z === 0) return 1;
+        if (z <= 37) return 1;
+        if (z <= 67) return 2;
+        if (z <= 95) return 3;
+        if (z <= 101) return 4;
+        if (z <= 125) return 5;
         return 6; // Rifts
     }
 

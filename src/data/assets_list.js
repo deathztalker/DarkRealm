@@ -11,7 +11,7 @@ export const ASSET_NAMES = [
     'summon_iron_golem', 'summon_spirit_wolf', 'summon_dire_wolf', 'summon_grizzly', 
     'summon_valkyrie', 'summon_voidwalker',
     'env_bridge', 'env_door', 'env_floor', 'env_grass', 'env_path', 'env_sand', 
-    'env_sand_hd', 'env_stairs_down', 'env_stairs_up', 'env_tree', 'env_wall', 'env_water', 
+    'env_sand_hd', 'env_stairs_down', 'env_stairs_up', 'env_tree', 'env_wall', 'env_water', 'env_snow', 'env_ice', 'env_lava',
     'npc_elder', 'npc_merchant', 'npc_female', 'mercenary_warrior', 'mercenary_archer',
     'npc_deckard_cain', 'npc_tyrael', 'npc_akara', 'npc_ormus', 'npc_larzuk', 
     'npc_drognan', 'npc_jamella', 'npc_nihlathak', 'npc_malah',
@@ -25,6 +25,7 @@ export const ASSET_NAMES = [
     'obj_tent_leather', 'obj_house_sandstone', 'obj_hut_stilt', 'obj_longhouse_stone', 
     'obj_pillar_holy', 'obj_tree_palm', 'obj_wagon_merchant', 'obj_stall_bazaar', 
     'obj_tree_jungle', 'obj_tree_snowy_pine',
+    'obj_cluster_soulstone', 'obj_altar_pentagram', 'obj_urn_hell', 'obj_torch_hell',
     'item_amulet', 'item_armor_leather', 'item_armor_plate', 'item_potion_hp', 'item_potion_mp', 'item_ring',
     'item_axe_hd', 'item_book_skill_hd', 'item_great_helm_hd', 'item_shield_royal_hd',
     'mercenary_warrior', 'mercenary_archer'

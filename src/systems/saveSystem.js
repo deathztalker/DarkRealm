@@ -46,11 +46,19 @@ export const SaveSystem = {
         } catch { return []; }
     },
 
-    /** Save a character to a specific slot */
     saveSlot(slotId, player, zoneLevel, stash, extras) {
         if (!player || !slotId) return false;
         try {
             const slots = this.listSlots();
+            
+            // Ensure waypoints is an array for JSON serialization
+            let waypointsArray = extras?.waypoints;
+            if (waypointsArray instanceof Set) {
+                waypointsArray = Array.from(waypointsArray);
+            } else if (!Array.isArray(waypointsArray)) {
+                waypointsArray = [0];
+            }
+
             const entry = {
                 id: slotId,
                 name: player.charName || player.className,
@@ -64,7 +72,7 @@ export const SaveSystem = {
                 timestamp: Date.now(),
                 player: player.serialize(),
                 difficulty: extras?.difficulty || 0,
-                waypoints: extras?.waypoints || [0],
+                waypoints: waypointsArray,
                 campaign: (extras?.campaign && typeof extras.campaign.serialize === 'function') ? extras.campaign.serialize() : (extras?.campaign || null),
                 extra_data: { riftLevel: window.riftLevel || 0 },
             };

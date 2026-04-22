@@ -62,7 +62,7 @@ let isNightManual = false; // Internal flag for state checks
 let portalReturnZone = 0;
 let zoneLevel = 0;
 window.currentTheme = 'town';
-let isBossZone = false;
+let isBossZone = [37, 67, 95, 101, 125, 127].includes(zoneLevel) || (zoneLevel >= 128 && zoneLevel % 5 === 0);
 let isZoneLocked = false;
 let isTransitioning = false;
 let dialogue = null;
@@ -167,7 +167,7 @@ const RIFT_MODS = [
 
 function generateRiftMods() {
     window.activeRiftMods = [];
-    const count = 1 + Math.floor((zoneLevel - 7) / 5); // 1 mod at lvl 8, 2 at 13, etc
+    const count = 1 + Math.floor((zoneLevel - 127) / 5); // 1 mod at lvl 8, 2 at 13, etc
     const pool = [...RIFT_MODS];
     for (let i = 0; i < Math.min(count, 3); i++) {
         if (pool.length === 0) break;
@@ -178,7 +178,7 @@ function generateRiftMods() {
 
 function updateRiftHud() {
     const hud = $('rift-hud');
-    if (zoneLevel < 7) {
+    if (zoneLevel < 128) {
         hud.classList.add('hidden');
         return;
     }
@@ -213,7 +213,7 @@ function spawnRiftGuardian() {
         }
     }
 
-    const depth = window.riftLevel || (zoneLevel - 6);
+    const depth = window.riftLevel || (zoneLevel - 127);
     const bossData = {
         id: 'rift_guardian',
         name: `Guardian of Depth ${depth}`,
@@ -308,7 +308,7 @@ const ACHIEVEMENTS = [
     { id: 'slayer_10', name: 'Slayer', desc: 'Slay 10 monsters', check: () => killCount >= 10, reward: 100 },
     { id: 'slayer_50', name: 'Veteran Slayer', desc: 'Slay 50 monsters', check: () => killCount >= 50, reward: 300 },
     { id: 'slayer_100', name: 'Legendary Slayer', desc: 'Slay 100 monsters', check: () => killCount >= 100, reward: 500 },
-    { id: 'reach_5', name: 'Hero of Act I', desc: 'Reach Zone 5', check: () => discoveredWaypoints.has(5), reward: 200 },
+    { id: 'reach_5', name: 'Hero of Act I', desc: 'Reach Zone 5', check: () => discoveredWaypoints.has(37), reward: 200 },
     { id: 'nightmare', name: 'Nightmare Begins', desc: 'Enter Nightmare difficulty', check: () => difficulty >= 1, reward: 500 },
     { id: 'hell', name: 'Into the Fire', desc: 'Enter Hell difficulty', check: () => difficulty >= 2, reward: 1000 },
     { id: 'quest_1', name: 'Quest Seeker', desc: 'Complete your first quest', check: () => completedQuests.size >= 1, reward: 100 },
@@ -319,34 +319,12 @@ const ACHIEVEMENTS = [
 ];
 
 const ZONE_NAMES = {
-    0: 'Rogue Encampment',
-    1: 'Blood Moor',
-    2: 'Cold Plains',
-    3: 'Dark Wood',
-    4: 'Catacombs',
-    5: 'The Cauterized Arena',
-    6: 'Lut Gholein',
-    7: 'Rocky Waste',
-    8: 'Dry Hills',
-    9: 'Far Oasis',
-    10: 'Tal Rasha\'s Chamber',
-    11: 'Kurast Docks',
-    12: 'Spider Forest',
-    13: 'Flayer Jungle',
-    14: 'Travincal',
-    15: 'Durance of Hate',
-    16: 'Pandemonium Fortress',
-    17: 'Outer Steppes',
-    18: 'Plains of Despair',
-    19: 'River of Flame',
-    20: 'Chaos Sanctuary',
-    21: 'Harrogath',
-    22: 'Bloody Foothills',
-    23: 'Arreat Summit',
-    24: 'Worldstone Keep',
-    25: 'Worldstone Chamber',
-    26: 'Infinite Rift',
-    99: 'Moo Moo Farm',
+    0: 'Rogue Encampment', 1: 'Blood Moor', 2: 'Den of Evil', 3: 'Cold Plains', 4: 'Cave Level 1', 5: 'Cave Level 2', 6: 'Burial Grounds', 7: 'Crypt', 8: 'Mausoleum', 9: 'Stony Field', 10: 'Tristram', 11: 'Underground Passage Level 1', 12: 'Underground Passage Level 2', 13: 'Dark Wood', 14: 'Black Marsh', 15: 'Hole Level 1', 16: 'Hole Level 2', 17: 'Forgotten Tower', 18: 'Tower Cellar Level 1', 19: 'Tower Cellar Level 2', 20: 'Tower Cellar Level 3', 21: 'Tower Cellar Level 4', 22: 'Tower Cellar Level 5', 23: 'Tamoe Highland', 24: 'Pit Level 1', 25: 'Pit Level 2', 26: 'Monastery Gate', 27: 'Outer Cloister', 28: 'Barracks', 29: 'Jail Level 1', 30: 'Jail Level 2', 31: 'Jail Level 3', 32: 'Inner Cloister', 33: 'Cathedral', 34: 'Catacombs Level 1', 35: 'Catacombs Level 2', 36: 'Catacombs Level 3', 37: 'Catacombs Level 4',
+    38: 'Lut Gholein', 39: 'Rocky Waste', 40: 'Stony Tomb Level 1', 41: 'Stony Tomb Level 2', 42: 'Dry Hills', 43: 'Halls of the Dead Level 1', 44: 'Halls of the Dead Level 2', 45: 'Halls of the Dead Level 3', 46: 'Far Oasis', 47: 'Maggot Lair Level 1', 48: 'Maggot Lair Level 2', 49: 'Maggot Lair Level 3', 50: 'Lost City', 51: 'Ancient Tunnels', 52: 'Claw Viper Temple Level 1', 53: 'Claw Viper Temple Level 2', 54: 'Harem Level 1', 55: 'Harem Level 2', 56: 'Palace Cellar Level 1', 57: 'Palace Cellar Level 2', 58: 'Palace Cellar Level 3', 59: 'Arcane Sanctuary', 60: 'Canyon of the Magi', 61: "Tal Rasha's Tomb 1", 62: "Tal Rasha's Tomb 2", 63: "Tal Rasha's Tomb 3", 64: "Tal Rasha's Tomb 4", 65: "Tal Rasha's Tomb 5", 66: "Tal Rasha's Tomb 6", 67: "Tal Rasha's Chamber",
+    68: 'Kurast Docks', 69: 'Spider Forest', 70: 'Spider Cave', 71: 'Arachnid Lair', 72: 'Great Marsh', 73: 'Flayer Jungle', 74: 'Flayer Dungeon Level 1', 75: 'Flayer Dungeon Level 2', 76: 'Flayer Dungeon Level 3', 77: 'Swampy Pit Level 1', 78: 'Swampy Pit Level 2', 79: 'Swampy Pit Level 3', 80: 'Lower Kurast', 81: 'Kurast Bazaar', 82: 'Ruined Temple', 83: 'Disused Fane', 84: 'Sewers Level 1', 85: 'Sewers Level 2', 86: 'Upper Kurast', 87: 'Forgotten Temple', 88: 'Forgotten Reliquary', 89: 'Kurast Causeway', 90: 'Ruined Fane', 91: 'Disused Reliquary', 92: 'Travincal', 93: 'Durance of Hate Level 1', 94: 'Durance of Hate Level 2', 95: 'Durance of Hate Level 3',
+    96: 'Pandemonium Fortress', 97: 'Outer Steppes', 98: 'Plains of Despair', 99: 'City of the Damned', 100: 'River of Flame', 101: 'Chaos Sanctuary',
+    102: 'Harrogath', 103: 'Bloody Foothills', 104: 'Frigid Highlands', 105: 'Abaddon', 106: 'Arreat Plateau', 107: 'Pit of Acheron', 108: 'Crystalline Passage', 109: 'Frozen River', 110: 'Glacial Trail', 111: 'Drifter Cavern', 112: 'Frozen Tundra', 113: 'Infernal Pit', 114: "The Ancients' Way", 115: 'Icy Cellar', 116: 'Arreat Summit', 117: "Nihlathak's Temple", 118: 'Halls of Anguish', 119: 'Halls of Pain', 120: 'Halls of Vaught', 121: 'Worldstone Keep Level 1', 122: 'Worldstone Keep Level 2', 123: 'Worldstone Keep Level 3', 124: 'Throne of Destruction', 125: 'Worldstone Chamber',
+    126: 'Moo Moo Farm', 127: 'Uber Tristram', 128: 'Infernal Rift'
 };
 
 window.DIFFICULTY_NAMES = ['Normal', 'Nightmare', 'Hell', 'Rift Mode'];
@@ -525,17 +503,18 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
 
     // Set initial theme
     function getTheme(z, hz) {
-        if (z === 0) {
-            if (hz >= 21) return 'snow';
-            if (hz >= 16) return 'hell';
-            if (hz >= 11) return 'jungle';
-            if (hz >= 6) return 'desert';
+        if (z === 0 || z === 38 || z === 68 || z === 96 || z === 102) {
+            if (z === 102) return 'snow';
+            if (z === 96) return 'hell';
+            if (z === 68) return 'jungle';
+            if (z === 38) return 'desert';
             return 'town';
         } else {
-            if (z >= 21) return 'snow';
-            if (z >= 16) return 'hell';
-            if (z >= 11) return 'jungle';
-            if (z >= 6) return 'desert';
+            if (z >= 128) { const t = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow']; return t[Math.floor(Math.random() * t.length)]; }
+            if (z >= 102) return 'snow';
+            if (z >= 96) return 'hell';
+            if (z >= 68) return 'jungle';
+            if (z >= 38) return 'desert';
             return 'cathedral';
         }
     }
@@ -545,7 +524,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     if (!window._currentZoneSeed) {
         const nameHash = (charName || 'unknown').split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0);
         window._currentZoneSeed = Math.abs(nameHash + zoneLevel) % 1000000;
-        if (zoneLevel === 0 || zoneLevel === 6 || zoneLevel === 11 || zoneLevel === 16 || zoneLevel === 21) {
+        if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
             window._currentZoneSeed = 12345;
         }
     }
@@ -624,8 +603,8 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     // Apply difficulty & Rift scaling to enemies
     const diffMult = window.DIFFICULTY_MULT[window._difficulty] || 1;
     let riftMult = 1.0;
-    if (zoneLevel >= 7) {
-        riftMult = Math.pow(1.15, zoneLevel - 6); // 15% more power per depth
+    if (zoneLevel >= 128) {
+        riftMult = Math.pow(1.15, zoneLevel - 127); // 15% more power per depth
     }
 
     for (const e of enemies) {
@@ -659,7 +638,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     renderCharacterPanel();
 
     // Ensure boss bar hidden unless zone 5 or rift boss
-    isBossZone = zoneLevel === 5 || zoneLevel === 10 || zoneLevel === 15 || zoneLevel === 20 || (zoneLevel > 21 && zoneLevel % 5 === 0);
+    isBossZone = [37, 67, 95, 101, 125, 127].includes(zoneLevel) || (zoneLevel >= 128 && zoneLevel % 5 === 0);
     const bossBar = $('boss-hp-bar');
     if (bossBar && !isBossZone) bossBar.classList.add('hidden');
 
@@ -1516,8 +1495,8 @@ function gameLoop(timestamp) {
         let ambient = 'rgba(0, 0, 0, 0.88)';
         
         // --- Act-Specific Climate & Lighting ---
-        if (zoneLevel === 0) ambient = 'rgba(0, 0, 10, 0.15)'; // Town 1
-        else if (zoneLevel >= 1 && zoneLevel <= 5) {
+        if (zoneLevel === 0 || [38, 68, 96, 102].includes(zoneLevel)) ambient = 'rgba(0, 0, 10, 0.15)'; // Towns
+        else if (zoneLevel <= 37) {
             // Act 1: Rainy/Stormy
             ambient = 'rgba(5, 5, 20, 0.75)';
             if (Math.random() < 0.005) { // Lightning strike
@@ -1526,27 +1505,27 @@ function gameLoop(timestamp) {
             }
             if (Math.random() < 0.4) fx.emitBurst(camera.x + Math.random()*camera.w, camera.y - 20, '#55a', 1, 0.5); // Rain
         }
-        else if (zoneLevel >= 6 && zoneLevel <= 10) {
+        else if (zoneLevel <= 67) {
             // Act 2: Sandstorm
             ambient = 'rgba(25, 15, 0, 0.70)';
             if (Math.random() < 0.3) fx.emitBurst(camera.x + camera.w + 20, camera.y + Math.random()*camera.h, '#dcb', 1, 0.8); // Sand
         }
-        else if (zoneLevel >= 11 && zoneLevel <= 15) {
+        else if (zoneLevel <= 95) {
             // Act 3: Foggy Jungle
             ambient = 'rgba(10, 25, 10, 0.80)';
             if (Math.random() < 0.1) fx.emitBurst(camera.x + Math.random()*camera.w, camera.y + Math.random()*camera.h, '#8f8', 1, 1.2); // Fireflies
         }
-        else if (zoneLevel >= 16 && zoneLevel <= 20) {
+        else if (zoneLevel <= 101) {
             // Act 4: Hell Fire
             ambient = 'rgba(35, 5, 0, 0.85)';
             if (Math.random() < 0.2) fx.emitBurst(camera.x + Math.random()*camera.w, camera.y + camera.h + 10, '#f40', 1, 1.5); // Embers
         }
-        else if (zoneLevel >= 21 && zoneLevel <= 25) {
+        else if (zoneLevel <= 125) {
             // Act 5: Blizzard
             ambient = 'rgba(15, 20, 35, 0.75)';
             if (Math.random() < 0.5) fx.emitBurst(camera.x + camera.w + 50, camera.y + Math.random()*camera.h, '#fff', 1, 0.4); // Snow wind
         }
-        else if (zoneLevel >= 7 || window.riftLevel > 0) {
+        else if (zoneLevel >= 128 || window.riftLevel > 0) {
             // Rift: Void particles
             ambient = 'rgba(20, 0, 30, 0.90)';
             if (Math.random() < 0.1) fx.emitBurst(camera.x + Math.random()*camera.w, camera.y + Math.random()*camera.h, '#a0f', 1, 2.0);
@@ -1968,7 +1947,7 @@ function checkDeaths() {
             checkBountyProgress(e);
 
             // Rift Progress
-            if (zoneLevel >= 7 && window.riftProgress < 100) {
+            if (zoneLevel >= 128 && window.riftProgress < 100) {
                 const inc = e.type === 'boss' ? 15 : (e.type === 'elite' ? 6 : 2);
                 window.riftProgress = Math.min(100, window.riftProgress + inc);
                 updateRiftHud();
@@ -2028,24 +2007,25 @@ function checkDeaths() {
                 if (!player.maxDifficulty) player.maxDifficulty = 0;
 
                 let unlockedDiff = false;
-                // Transition difficulty after Baal (Zone 25)
-                if (difficulty === player.maxDifficulty && player.maxDifficulty < 3 && zoneLevel === 25) {
+                // Transition difficulty after Baal (Zone 125)
+                if (difficulty === player.maxDifficulty && player.maxDifficulty < 3 && zoneLevel === 125) {
                     player.maxDifficulty++;
                     unlockedDiff = true;
                 }
 
                 // Dynamic Boss Victory Messaging
                 const bossMessages = {
-                    5: 'Andariel, the Maiden of Anguish, has been defeated.',
-                    10: 'Duriel, the Lord of Pain, is no more.',
-                    15: 'Mephisto, the Lord of Hatred, has been banished.',
-                    20: 'Diablo, the Lord of Terror, has fallen!',
-                    25: 'Baal, the Lord of Destruction, is slain! The Worldstone is safe.'
+                    37: 'Andariel, the Maiden of Anguish, has been defeated.',
+                    67: 'Duriel, the Lord of Pain, is no more.',
+                    95: 'Mephisto, the Lord of Hatred, has been banished.',
+                    101: 'Diablo, the Lord of Terror, has fallen!',
+                    125: 'Baal, the Lord of Destruction, is slain! The Worldstone is safe.'
                 };
-                const bossMsg = bossMessages[zoneLevel] || (zoneLevel > 25 ? `Rift Guardian defeated at Depth ${zoneLevel - 7}.` : 'The Guardian has been slain.');
+                const bossMsg = bossMessages[zoneLevel] || (zoneLevel > 125 ? `Rift Guardian defeated at Depth ${zoneLevel - 127}.` : 'The Guardian has been slain.');
+
 
                 setTimeout(() => {
-                    const isFinalEndgame = (zoneLevel === 25 && difficulty === 2);
+                    const isFinalEndgame = (zoneLevel === 125 && difficulty === 2);
                     if (isFinalEndgame) {
                         $('victory-screen').querySelector('p').textContent = bossMsg;
                         $('victory-screen').classList.remove('hidden');
@@ -2099,7 +2079,7 @@ function checkDeaths() {
         state = 'DEAD';
         playDeathSfx();
         $('death-screen').classList.remove('hidden');
-        const zName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 7}`;
+        const zName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 127}`;
 
         let deathMsg = `You fell in ${zName} at Level ${player.level}.<br>`;
         deathMsg += `<div style="font-size:12px;color:#888;margin-top:10px;">Total Slain: ${player.totalMonstersSlain} | Gold Collected: ${player.totalGoldCollected}</div>`;
@@ -2174,7 +2154,7 @@ function nextZone(targetZone = null) {
 
         if (targetZone !== null) {
             const targetAct = campaign.getActForZone(targetZone);
-            if (!campaign.isActUnlocked(targetAct) && targetZone !== 0 && targetZone < 26) {
+            if (!campaign.isActUnlocked(targetAct) && targetZone !== 0 && targetZone < 128) {
                 addCombatLog(`! THE NEXT ACT IS LOCKED. Defeat the Act Boss first!`, 'log-dmg');
                 isTransitioning = false;
                 if (overlay) overlay.style.opacity = '0';
@@ -2182,7 +2162,7 @@ function nextZone(targetZone = null) {
             }
             
             // --- MMO: Ensure each town is generated with its specific NPCs ---
-            const isTown = [0, 6, 11, 16, 21].includes(targetZone);
+            const isTown = [0, 38, 68, 96, 102].includes(targetZone);
             if (isTown && !worldZones[targetZone]) {
                 const townDungeon = new Dungeon(30, 30);
                 townDungeon.generate(targetZone, null, 12345);
@@ -2200,7 +2180,7 @@ function nextZone(targetZone = null) {
             zoneLevel = targetZone;
         } else {
             zoneLevel++;
-            if (zoneLevel > 7 && riftGuardianSpawned) {
+            if (zoneLevel > 128 && riftGuardianSpawned) {
                 // We defeated the guardian and took the portal forward
                 riftLevel++;
             }
@@ -2211,12 +2191,12 @@ function nextZone(targetZone = null) {
         const nameHash = (charName || 'unknown').split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0);
         window._currentZoneSeed = Math.abs(nameHash + zoneLevel) % 1000000;
         // Towns use a static seed
-        if ([0, 6, 11, 16, 21].includes(zoneLevel)) {
+        if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
             window._currentZoneSeed = 12345;
         }
 
         // Setup Rift state
-        if (zoneLevel >= 26) {
+        if (zoneLevel >= 128) {
             riftProgress = 0;
             riftGuardianSpawned = false;
             generateRiftMods();
@@ -2236,18 +2216,39 @@ function nextZone(targetZone = null) {
             dungeon = new Dungeon(150, 120, 16);
             dungeon._seed = window._currentZoneSeed;
 
+            // --- ACT-ACCURATE THEME SELECTION ---
             window.currentTheme = 'cathedral';
-            if (zoneLevel === 0) window.currentTheme = 'town';
-            else if (zoneLevel <= 2) window.currentTheme = 'wilderness';
-            else if (zoneLevel <= 10) window.currentTheme = (zoneLevel >= 6) ? 'desert' : 'cathedral';
-            else if (zoneLevel <= 13) window.currentTheme = 'jungle';
-            else if (zoneLevel <= 15) window.currentTheme = 'temple';
-            else if (zoneLevel <= 20) window.currentTheme = 'hell';
-            else if (zoneLevel <= 25) window.currentTheme = 'snow';
-            else if (zoneLevel === 100) window.currentTheme = 'hell'; // Uber Tristram
+            if ([0, 38, 68, 96, 102].includes(zoneLevel)) window.currentTheme = 'town';
+            else if (zoneLevel <= 37) {
+                // Act 1: 1-37
+                if (zoneLevel <= 13) window.currentTheme = 'wilderness';
+                else if (zoneLevel <= 25) window.currentTheme = 'cathedral';
+                else window.currentTheme = 'catacombs';
+            } else if (zoneLevel <= 67) {
+                // Act 2: 39-67
+                if (zoneLevel === 59) window.currentTheme = 'arcane';
+                else if (zoneLevel >= 61) window.currentTheme = 'tomb';
+                else window.currentTheme = 'desert';
+            } else if (zoneLevel <= 95) {
+                // Act 3: 69-95
+                if (zoneLevel <= 79) window.currentTheme = 'jungle';
+                else if (zoneLevel <= 91) window.currentTheme = 'temple';
+                else window.currentTheme = 'catacombs'; // Durance vibe
+            } else if (zoneLevel <= 101) {
+                // Act 4: 97-101
+                window.currentTheme = 'hell';
+            } else if (zoneLevel <= 125) {
+                // Act 5: 103-125
+                window.currentTheme = 'snow';
+            } else if (zoneLevel === 126) window.currentTheme = 'wilderness';
+            else if (zoneLevel === 127) window.currentTheme = 'hell';
             else {
                 // Infinite Rifts: Random theme
                 const themes = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow'];
+                window.currentTheme = themes[Math.floor(dungeon.rng() * themes.length)];
+            }
+
+            dungeon.generate(zoneLevel, window.currentTheme, window._currentZoneSeed);
                 window.currentTheme = themes[Math.floor(dungeon.rng() * themes.length)];
             }
 
@@ -2332,7 +2333,7 @@ function finishZoneLoad() {
         }
 
         // --- Phase 3 Wave 6: Wirt's Leg Drop (Zone 3 - Dark Wood) ---
-        if (zoneLevel === 3) {
+        if (zoneLevel === 13) {
             const corpse = new GameObject('wirts_corpse', player.x - 100, player.y + 100, 'env_grave');
             corpse.interactable = true;
             corpse.onInteract = () => {
@@ -2398,22 +2399,22 @@ function finishZoneLoad() {
     aoeZones = []; // Clear old AoEs
     dialogue = null;
 
-    const zoneName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 7}`;
+    const zoneName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 127}`;
     const diffLabel = (difficulty > 0 && difficulty < 3) ? ` (${DIFFICULTY_NAMES[difficulty]})` : (difficulty === 3 ? ' (Rift Mode)' : '');
 
     // Check if boss zone
-    isBossZone = (zoneLevel === 5 || zoneLevel === 10 || zoneLevel === 15 || zoneLevel === 20 || zoneLevel === 25 || (zoneLevel > 26 && zoneLevel % 5 === 0));
+    isBossZone = [37, 67, 95, 101, 125, 127].includes(zoneLevel) || (zoneLevel >= 128 && zoneLevel % 5 === 0);
     isZoneLocked = isBossZone;
 
     // Endgame: zones beyond 7 scale infinitely
     let endgameMult = 1.0;
     const diffMult = window.DIFFICULTY_MULT[window._difficulty] || 1.0;
     
-    if (zoneLevel >= 26) {
+    if (zoneLevel >= 128) {
         // Infinite Rift scaling: base from campaign end + 20% per rift level + difficulty
         endgameMult = Math.pow(1.15, 20) * Math.pow(1.2, window.riftLevel) * diffMult;
-    } else if (zoneLevel > 7) {
-        endgameMult = Math.pow(1.15, zoneLevel - 6) * diffMult;
+    } else if (zoneLevel > 128) {
+        endgameMult = Math.pow(1.15, zoneLevel - 127) * diffMult;
     }
     $('zone-name').textContent = zoneName + diffLabel;
     addCombatLog(`Entered ${zoneName}${diffLabel}!`, 'log-level');
@@ -2427,17 +2428,21 @@ function finishZoneLoad() {
     });
 
     // Apply thematic changes
-    function getTheme(z) {
-        let referenceZone = z;
-        if (z === 0 && player && player.highestZone) {
-            referenceZone = player.highestZone;
+    function getTheme(z, hz) {
+        if (z === 0 || z === 38 || z === 68 || z === 96 || z === 102) {
+            if (z === 102) return 'snow';
+            if (z === 96) return 'hell';
+            if (z === 68) return 'jungle';
+            if (z === 38) return 'desert';
+            return 'town';
+        } else {
+            if (z >= 128) { const t = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow']; return t[Math.floor(Math.random() * t.length)]; }
+            if (z >= 102) return 'snow';
+            if (z >= 96) return 'hell';
+            if (z >= 68) return 'jungle';
+            if (z >= 38) return 'desert';
+            return 'cathedral';
         }
-
-        if (referenceZone >= 21) return 'snow';
-        if (referenceZone >= 16) return 'hell';
-        if (referenceZone >= 11) return 'jungle';
-        if (referenceZone >= 6) return 'desert';
-        return 'cathedral';
     }
     window.currentTheme = getTheme(zoneLevel);
 
@@ -2454,7 +2459,7 @@ function finishZoneLoad() {
     // Discover waypoint
     discoveredWaypoints.add(zoneLevel);
     // Town zones automatically discover their waypoint if it exists
-    if ([0, 6, 11, 16, 21].includes(zoneLevel)) {
+    if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
         discoveredWaypoints.add(zoneLevel);
     }
 
@@ -2462,7 +2467,7 @@ function finishZoneLoad() {
     // if (zoneLevel > 5 && difficulty < 2) { ... }
 
     // Ambient Audio Update
-    if (zoneLevel === 5) {
+    if (zoneLevel === 37) {
         startAmbientBoss();
     } else if (zoneLevel > 0) {
         startAmbientDungeon();
@@ -2495,19 +2500,19 @@ function updateQuestHud() {
     const hz = player.highestZone || 0;
     if (hz < 5) {
         questName = "Act I: Blood and Ash";
-        questTarget = "Defeat Andariel (Zone 5)";
+        questTarget = "Defeat Andariel (Zone 37)";
     } else if (hz < 10) {
         questName = "Act II: The Desert Wastes";
-        questTarget = "Defeat Duriel (Zone 10)";
+        questTarget = "Defeat Duriel (Zone 67)";
     } else if (hz < 15) {
         questName = "Act III: The Corrupted Jungle";
-        questTarget = "Defeat Mephisto (Zone 15)";
+        questTarget = "Defeat Mephisto (Zone 95)";
     } else if (hz < 20) {
         questName = "Act IV: The Gates of Hell";
-        questTarget = "Defeat Diablo (Zone 20)";
+        questTarget = "Defeat Diablo (Zone 101)";
     } else if (hz < 25) {
         questName = "Act V: The Frozen Peak";
-        questTarget = "Defeat Baal (Zone 25)";
+        questTarget = "Defeat Baal (Zone 125)";
     } else {
         questName = "Epilogue: Infinite Rifts";
         questTarget = `Delve deeper... (Max: ${hz})`;
@@ -2625,7 +2630,7 @@ function updateHud() {
     if (canvas) {
         let filter = 'none';
         if (zoneLevel === 0) filter = 'sepia(0.2) saturate(1.2)';
-        else if (zoneLevel === 5 || (zoneLevel > 7 && zoneLevel % 5 === 0)) filter = 'saturate(1.5) contrast(1.1) hue-rotate(-10deg)';
+        else if (zoneLevel === 137 || (zoneLevel > 128 && zoneLevel % 5 === 0)) filter = 'saturate(1.5) contrast(1.1) hue-rotate(-10deg)';
         else if (typeof theme !== 'undefined' && theme === 'catacombs') filter = 'brightness(0.8) saturate(0.8) hue-rotate(20deg)';
         else if (typeof theme !== 'undefined' && theme === 'wilderness') filter = 'saturate(1.1) contrast(1.05)';
         canvas.style.filter = filter;
@@ -3544,7 +3549,7 @@ function renderMinimap() {
         ctx.strokeRect(2, 2, mw - 4, mh - 4);
 
         // Area Label
-        const zoneName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 7}`;
+        const zoneName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 127}`;
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.fillRect(mw / 2 - 100, 10, 200, 30);
         ctx.strokeStyle = '#bf642f';
@@ -5759,11 +5764,11 @@ function renderDialoguePicker(npc) {
 
     // --- Phase 12+: Campaign & Quest Buttons ---
     if (npc.id === 'warriv' && campaign.completedActs >= 1) {
-        options.push({ label: 'Travel East', action: () => { nextZone(6); menu.remove(); activeDialogueNpc = null; } });
+        options.push({ label: 'Travel East', action: () => { nextZone(38); menu.remove(); activeDialogueNpc = null; } });
     } else if (npc.id === 'meshif' && campaign.completedActs >= 2) {
-        options.push({ label: 'Sail East', action: () => { nextZone(11); menu.remove(); activeDialogueNpc = null; } });
-    } else if (npc.id === 'tyrael' && (zoneLevel === 16 || zoneLevel === 21) && campaign.completedActs >= 4) {
-        options.push({ label: 'Travel to Harrogath', action: () => { nextZone(21); menu.remove(); activeDialogueNpc = null; } });
+        options.push({ label: 'Sail East', action: () => { nextZone(68); menu.remove(); activeDialogueNpc = null; } });
+    } else if (npc.id === 'tyrael' && (zoneLevel === 96 || zoneLevel === 21) && campaign.completedActs >= 4) {
+        options.push({ label: 'Travel to Harrogath', action: () => { nextZone(102); menu.remove(); activeDialogueNpc = null; } });
     }
 
     if (npc.id === 'atma' && campaign.hasFlag('radament_slain') && !campaign.questRewards.has('radament')) {
@@ -5794,7 +5799,7 @@ function renderDialoguePicker(npc) {
         options.push({
             label: 'Enter Infernal Rift', action: () => {
                 addCombatLog('Entering the Infernal Rift...', 'log-crit');
-                nextZone(26); // Zone 26 is Infinite Rift
+                nextZone(128); // Zone 26 is Infinite Rift
                 menu.remove();
                 activeDialogueNpc = null;
             }
@@ -6033,12 +6038,12 @@ function renderWaypointMenu(obj) {
     scrollArea.style.cssText = 'max-height: 250px; overflow-y: auto; padding-right: 5px;';
 
     const acts = [
-        { name: 'ACT I', range: [0, 5] },
-        { name: 'ACT II', range: [6, 10] },
-        { name: 'ACT III', range: [11, 15] },
-        { name: 'ACT IV', range: [16, 20] },
-        { name: 'ACT V', range: [21, 25] },
-        { name: 'RIFT', range: [26, 1000] }
+        { name: 'ACT I', range: [0, 37] },
+        { name: 'ACT II', range: [38, 67] },
+        { name: 'ACT III', range: [68, 95] },
+        { name: 'ACT IV', range: [96, 101] },
+        { name: 'ACT V', range: [102, 125] },
+        { name: 'RIFT', range: [126, 10000] }
     ];
 
     const wpZones = [...discoveredWaypoints].sort((a, b) => a - b);
@@ -6752,7 +6757,7 @@ $('btn-transmute')?.addEventListener('click', () => {
         if (resultItem.id === 'hellfire_key_set') {
             addCombatLog('The sky darkens... A portal to Uber Tristram has opened!', 'log-crit');
             const portal = new GameObject('uber_portal', player.x, player.y - 40, 'env_water');
-            portal.targetZone = 100; // Uber Tristram
+            portal.targetZone = 127; // Uber Tristram
             gameObjects.push(portal);
 
             // Clear keys
@@ -6765,7 +6770,7 @@ $('btn-transmute')?.addEventListener('click', () => {
             if (zoneLevel > 0) {
                 addCombatLog("Moo Moo Moo... A portal to the Secret Cow Level has opened!", 'log-unique');
                 const portal = new GameObject('cow_portal', player.x, player.y - 40, 'env_water');
-                portal.targetZone = 99; // Moo Moo Farm
+                portal.targetZone = 126; // Moo Moo Farm
                 gameObjects.push(portal);
 
                 // Consume specific ingredients
@@ -6809,7 +6814,7 @@ const ACT_1_QUESTS = {
     'blood_raven': {
         id: 'blood_raven',
         name: 'Sisters\' Burial Grounds',
-        desc: 'Defeat Blood Raven in the Burial Grounds (Zone 3).',
+        desc: 'Defeat Blood Raven in the Burial Grounds (Zone 6).',
         target: 1,
         giver: 'kashya',
         goldReward: 1000,
@@ -6821,7 +6826,7 @@ const ACT_1_QUESTS = {
     'forgotten_tower': {
         id: 'forgotten_tower',
         name: 'The Forgotten Tower',
-        desc: 'Find the countess and her hoard in the Tower (Zone 4).',
+        desc: 'Find the countess and her hoard in the Tower (Zone 17).',
         target: 1,
         giver: 'deckard_cain',
         goldReward: 5000,
@@ -6832,7 +6837,7 @@ const ACT_1_QUESTS = {
     'tools_of_the_trade': {
         id: 'tools_of_the_trade',
         name: 'Tools of the Trade',
-        desc: 'Retrieve the Horadric Malus from the Smith in the Monastery (Zone 5).',
+        desc: 'Retrieve the Horadric Malus from the Smith in the Monastery (Zone 37).',
         target: 1,
         giver: 'charsi',
         goldReward: 2000,
@@ -6843,7 +6848,7 @@ const ACT_1_QUESTS = {
     'andariel': {
         id: 'andariel',
         name: 'Sisters to the Slaughter',
-        desc: 'Defeat Andariel, the Maiden of Anguish, in the Depths (Zone 5 Boss).',
+        desc: 'Defeat Andariel, the Maiden of Anguish, in the Depths (Zone 37 Boss).',
         target: 1,
         giver: 'akara',
         goldReward: 10000,
@@ -6857,7 +6862,7 @@ const ACT_2_QUESTS = {
     'radament': {
         id: 'radament',
         name: 'Radament\'s Lair',
-        desc: 'Slay Radament in the Sewers (Zone 7).',
+        desc: 'Slay Radament in the Sewers (Zone 84).',
         target: 1,
         giver: 'atma',
         goldReward: 5000,
@@ -6869,7 +6874,7 @@ const ACT_2_QUESTS = {
     'horadric_staff': {
         id: 'horadric_staff',
         name: 'The Horadric Staff',
-        desc: 'Retrieve the Horadric Staff components (Zone 8/9).',
+        desc: 'Retrieve the Horadric Staff components (Zone 48).',
         target: 2,
         giver: 'deckard_cain',
         goldReward: 8000,
@@ -6880,7 +6885,7 @@ const ACT_2_QUESTS = {
     'duriel': {
         id: 'duriel',
         name: 'The Seven Tombs',
-        desc: 'Defeat Duriel, the Lord of Pain, in Tal Rasha\'s Chamber (Zone 10).',
+        desc: 'Defeat Duriel, the Lord of Pain, in Tal Rasha\'s Chamber (Zone 67).',
         target: 1,
         giver: 'deckard_cain',
         goldReward: 15000,
@@ -6895,7 +6900,7 @@ const ACT_3_QUESTS = {
     'khalims_will': {
         id: 'khalims_will',
         name: 'Khalim\'s Will',
-        desc: 'Recover the relics of Khalim from the Jungle (Zone 12/13).',
+        desc: 'Recover the relics of Khalim from the Jungle (Zone 73).',
         target: 2,
         giver: 'ormus',
         goldReward: 10000,
@@ -6906,7 +6911,7 @@ const ACT_3_QUESTS = {
     'travincal': {
         id: 'travincal',
         name: 'The Blackened Temple',
-        desc: 'Defeat the High Council in Travincal (Zone 14).',
+        desc: 'Defeat the High Council in Travincal (Zone 92).',
         target: 1,
         giver: 'deckard_cain',
         goldReward: 12000,
@@ -6918,7 +6923,7 @@ const ACT_3_QUESTS = {
     'mephisto': {
         id: 'mephisto',
         name: 'The Guardian',
-        desc: 'Defeat Mephisto, the Lord of Hatred, in the Durance of Hate (Zone 15 Boss).',
+        desc: 'Defeat Mephisto, the Lord of Hatred, in the Durance of Hate (Zone 95 Boss).',
         target: 1,
         giver: 'deckard_cain',
         goldReward: 25000,
@@ -6933,7 +6938,7 @@ const ACT_4_QUESTS = {
     'hellgate': {
         id: 'hellgate',
         name: 'The Fallen Angel',
-        desc: 'Find and defeat Izual in the Plains of Despair (Zone 18).',
+        desc: 'Find and defeat Izual in the Plains of Despair (Zone 98).',
         target: 1,
         giver: 'tyrael',
         goldReward: 20000,
@@ -6945,7 +6950,7 @@ const ACT_4_QUESTS = {
     'hellforge': {
         id: 'hellforge',
         name: 'The Hellforge',
-        desc: 'Slay Hephaisto the Armorer (Zone 19) and use the Hellforge to destroy Mephisto\'s Soulstone.',
+        desc: 'Slay Hephaisto the Armorer (Zone 100) and use the Hellforge to destroy Mephisto\'s Soulstone.',
         target: 1,
         giver: 'tyrael',
         goldReward: 25000,
@@ -6957,7 +6962,7 @@ const ACT_4_QUESTS = {
     'terrors_end': {
         id: 'terrors_end',
         name: 'Terror\'s End',
-        desc: 'Reach the Chaos Sanctuary (Zone 20) and defeat Diablo, the Lord of Terror.',
+        desc: 'Reach the Chaos Sanctuary (Zone 101) and defeat Diablo, the Lord of Terror.',
         target: 1,
         giver: 'tyrael',
         goldReward: 50000,
@@ -6973,7 +6978,7 @@ const ACT_5_QUESTS = {
     'siege_on_harrogath': {
         id: 'siege_on_harrogath',
         name: 'Siege on Harrogath',
-        desc: 'Slay Shenk the Overseer at the Bloody Foothills (Zone 22).',
+        desc: 'Slay Shenk the Overseer at the Bloody Foothills (Zone 103).',
         target: 1,
         giver: 'larzuk',
         goldReward: 20000,
@@ -6985,7 +6990,7 @@ const ACT_5_QUESTS = {
     'prison_of_ice': {
         id: 'prison_of_ice',
         name: 'Prison of Ice',
-        desc: 'Rescue Anya by defeating Frozenstein in the Ice Caves (Zone 23/24 subarea).',
+        desc: 'Rescue Anya by defeating Frozenstein in the Ice Caves (Zone 111).',
         target: 1,
         giver: 'malah',
         goldReward: 30000,
@@ -6997,7 +7002,7 @@ const ACT_5_QUESTS = {
     'rite_of_passage': {
         id: 'rite_of_passage',
         name: 'Rite of Passage',
-        desc: 'Defeat the three Ancients upon Arreat Summit (Zone 23) without leaving the area.',
+        desc: 'Defeat the three Ancients upon Arreat Summit (Zone 116) without leaving the area.',
         target: 3, // Must kill all 3
         giver: 'nihlathak',
         goldReward: 40000,
@@ -7009,7 +7014,7 @@ const ACT_5_QUESTS = {
     'lod_finale': {
         id: 'lod_finale',
         name: 'The Lord of Destruction',
-        desc: 'Reach the Worldstone Chamber (Zone 25) and defeat Baal, the Lord of Destruction.',
+        desc: 'Reach the Worldstone Chamber (Zone 125) and defeat Baal, the Lord of Destruction.',
         target: 1,
         giver: 'tyrael',
         goldReward: 100000,
@@ -7359,7 +7364,7 @@ function renderDifficultySelection() {
     // Victory Screen
     $('btn-continue-rift').addEventListener('click', () => {
         $('victory-screen').classList.add('hidden');
-        nextZone(6);
+        nextZone(38);
     });
 
     $('btn-victory-menu').addEventListener('click', () => {
@@ -7930,11 +7935,11 @@ function handleBossDeath(boss) {
     if (boss.isRadament) campaign.setFlag('radament_slain', true);
     if (boss.id === 'anya') campaign.setFlag('anya_rescued', true);
 
-    if (boss.isAndariel || zoneLevel === 5) { actNum = 1; actName = 'I'; actSubtitle = 'The Sightless Eye Cleared'; }
-    else if (boss.isDuriel || zoneLevel === 10) { actNum = 2; actName = 'II'; actSubtitle = 'The Secret of the Vizjerei Cleared'; }
-    else if (boss.isMephisto || zoneLevel === 15) { actNum = 3; actName = 'III'; actSubtitle = 'The Infernal Gate Cleared'; }
-    else if (boss.isDiablo || zoneLevel === 20) { actNum = 4; actName = 'IV'; actSubtitle = 'The Chaos Sanctuary Cleared'; }
-    else if (boss.isBaal || zoneLevel === 25) { actNum = 5; actName = 'V'; actSubtitle = 'The Lord of Destruction Slain'; }
+    if (boss.isAndariel || zoneLevel === 137) { actNum = 1; actName = 'I'; actSubtitle = 'The Sightless Eye Cleared'; }
+    else if (boss.isDuriel || zoneLevel === 67) { actNum = 2; actName = 'II'; actSubtitle = 'The Secret of the Vizjerei Cleared'; }
+    else if (boss.isMephisto || zoneLevel === 95) { actNum = 3; actName = 'III'; actSubtitle = 'The Infernal Gate Cleared'; }
+    else if (boss.isDiablo || zoneLevel === 671) { actNum = 4; actName = 'IV'; actSubtitle = 'The Chaos Sanctuary Cleared'; }
+    else if (boss.isBaal || zoneLevel === 125) { actNum = 5; actName = 'V'; actSubtitle = 'The Lord of Destruction Slain'; }
 
     // --- Phase 22: Rift Guardian Victory ---
     if (boss.isRiftGuardian) {
@@ -7978,7 +7983,7 @@ function handleBossDeath(boss) {
         }
 
         const portal = new GameObject('portal', boss.x + 40, boss.y, 'obj_portal');
-        const actNextTown = { 1: 6, 2: 11, 3: 16, 4: 21, 5: 0 };
+        const actNextTown = { 1: 38, 2: 68, 3: 96, 4: 102, 5: 0 };
         portal.targetZone = actNextTown[actNum] || 0;
         portal.isActPortal = true;
         gameObjects.push(portal);
@@ -8118,7 +8123,7 @@ window.addEventListener('DOMContentLoaded', () => {
                             if (!arg) addCombatLog('Usage: /duel [name]', 'log-info');
                             else network.sendDuelInvite(arg);
                         } else if (cmd === '/rift') {
-                            nextZone(26);
+                            nextZone(128);
                         } else {
                             addCombatLog('Unknown command.', 'log-dmg');
                         }
