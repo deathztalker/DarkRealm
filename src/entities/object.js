@@ -48,7 +48,7 @@ export class GameObject {
         const time = Date.now();
         const ctx = renderer.ctx;
         
-        let drawSize = 16; // Reduced base size
+        let drawSize = this.spriteSize || 16; // Custom size or reduced base size
         let bobY = 0;
         let scale = 1;
         let glowColor = null;

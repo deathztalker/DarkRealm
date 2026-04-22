@@ -175,15 +175,22 @@ export class Dungeon {
 
             // === Northern tents row (west side) ===
             building(cx - 26, cy - 20, cx - 18, cy - 14, 'bottom');
+            addObj('tent_w1', 'decoration', 'Rogue Tent', -22, -17, 'obj_tent_leather', { spriteSize: 64 });
             building(cx - 26, cy - 12, cx - 18, cy - 6, 'bottom');
+            addObj('tent_w2', 'decoration', 'Rogue Tent', -22, -9, 'obj_tent_leather', { spriteSize: 64 });
             building(cx - 26, cy - 4, cx - 18, cy + 2, 'bottom');
+            addObj('tent_w3', 'decoration', 'Rogue Tent', -22, -1, 'obj_tent_leather', { spriteSize: 64 });
 
             // === Northern tents row (east side) ===
             building(cx + 18, cy - 20, cx + 26, cy - 14, 'bottom');
+            addObj('tent_e1', 'decoration', 'Rogue Tent', 22, -17, 'obj_tent_leather', { spriteSize: 64 });
             building(cx + 18, cy - 12, cx + 26, cy - 6, 'bottom');
+            addObj('tent_e2', 'decoration', 'Rogue Tent', 22, -9, 'obj_tent_leather', { spriteSize: 64 });
 
             // === Charsi's forge (east, large) ===
             building(cx + 14, cy - 2, cx + 26, cy + 8, 'left');
+            addObj('forge_roof', 'decoration', 'Blacksmith', 20, 3, 'obj_tent_rogue', { spriteSize: 80 });
+            addObj('forge_anvil', 'decoration', 'Anvil', 20, 5, 'obj_anvil_hot', { spriteSize: 32 });
 
             // === Watchtowers at corners ===
             fill(py0, px0, py0 + 3, px0 + 3, TILE.WALL);
@@ -274,17 +281,31 @@ export class Dungeon {
             // === Sandstone buildings ===
             // West district
             building(cx - 30, cy - 22, cx - 20, cy - 14, 'right');
+            addObj('h_w1', 'decoration', 'House', -25, -18, 'obj_house_sandstone', { spriteSize: 80 });
             building(cx - 30, cy - 10, cx - 20, cy - 2, 'right');
+            addObj('h_w2', 'decoration', 'House', -25, -6, 'obj_house_sandstone', { spriteSize: 80 });
             building(cx - 30, cy + 2, cx - 20, cy + 10, 'right');
+            addObj('h_w3', 'decoration', 'House', -25, 6, 'obj_house_sandstone', { spriteSize: 80 });
             building(cx - 18, cy - 22, cx - 10, cy - 14, 'bottom');
+            addObj('h_w4', 'decoration', 'House', -14, -18, 'obj_house_sandstone', { spriteSize: 64 });
             building(cx - 18, cy + 8, cx - 10, cy + 18, 'top');
+            addObj('h_w5', 'decoration', 'House', -14, 13, 'obj_house_sandstone', { spriteSize: 80 });
             // East district
             building(cx + 10, cy - 22, cx + 22, cy - 14, 'bottom');
+            addObj('h_e1', 'decoration', 'House', 16, -18, 'obj_house_sandstone', { spriteSize: 80 });
             building(cx + 10, cy - 10, cx + 22, cy - 2, 'bottom');
+            addObj('h_e2', 'decoration', 'House', 16, -6, 'obj_house_sandstone', { spriteSize: 80 });
             // Palace / Inn (large, center-north)
             building(cx - 8, cy - 22, cx + 8, cy - 12, 'bottom');
+            addObj('palace', 'decoration', 'Palace', 0, -17, 'obj_house_sandstone', { spriteSize: 120 });
             // Guard post
             building(cx - 4, wy0, cx + 4, wy0 + 4, 'bottom');
+            addObj('guard_post', 'decoration', 'Guard Post', 0, wy0 - cy + 2, 'obj_house_sandstone', { spriteSize: 64 });
+            
+            // Scattered Palm Trees
+            for (let i=0; i<6; i++) {
+                addObj(`palm_${i}`, 'decoration', 'Palm Tree', -20 + i*8, -25, 'obj_tree_palm', { spriteSize: 48 });
+            }
 
             // === Palace courtyard pillars ===
             for (let i = -3; i <= 3; i += 3)
@@ -356,14 +377,22 @@ export class Dungeon {
 
             // === Stilt huts across the docks ===
             building(cx - 28, cy - 14, cx - 16, cy - 6, 'right');
+            addObj('hut_1', 'decoration', 'Stilt Hut', -22, -10, 'obj_hut_stilt', { spriteSize: 80 });
             building(cx - 28, cy - 2, cx - 16, cy + 6, 'right');
+            addObj('hut_2', 'decoration', 'Stilt Hut', -22, 2, 'obj_hut_stilt', { spriteSize: 80 });
             building(cx - 28, cy + 8, cx - 16, cy + 14, 'right');
+            addObj('hut_3', 'decoration', 'Stilt Hut', -22, 11, 'obj_hut_stilt', { spriteSize: 80 });
             building(cx - 12, cy - 14, cx - 2, cy - 6, 'bottom');
+            addObj('hut_4', 'decoration', 'Stilt Hut', -7, -10, 'obj_hut_stilt', { spriteSize: 80 });
             building(cx - 12, cy + 8, cx - 2, cy + 14, 'top');
+            addObj('hut_5', 'decoration', 'Stilt Hut', -7, 11, 'obj_hut_stilt', { spriteSize: 80 });
             building(cx + 12, cy - 14, cx + 20, cy - 6, 'bottom');
+            addObj('hut_6', 'decoration', 'Stilt Hut', 16, -10, 'obj_hut_stilt', { spriteSize: 80 });
             building(cx + 12, cy + 4, cx + 20, cy + 12, 'top');
+            addObj('hut_7', 'decoration', 'Stilt Hut', 16, 8, 'obj_hut_stilt', { spriteSize: 80 });
             // Central hall (Ormus's) — large
             building(cx - 4, cy - 14, cx + 10, cy - 4, 'bottom');
+            addObj('hut_ormus', 'decoration', 'Great Hut', 3, -9, 'obj_hut_stilt', { spriteSize: 100 });
 
             // === Temple ruin outline (north east corner) ===
             border(cx + 16, cy - 22, cx + 28, cy - 10, TILE.RUINS);
@@ -466,9 +495,12 @@ export class Dungeon {
             addObj('stash', 'stash', 'Stash', -8, 4, 'obj_chest');
             addObj('cube', 'cube', 'Horadric Cube', -10, 4, 'item_horadric_fragment');
 
-            // Decorative soulstones
-            for (let i = -2; i <= 2; i += 2)
-                addObj(`soul_${i}`, 'decoration', 'Soulstone', i, -14, 'obj_cluster_soulstone');
+            // Decorative soulstones and statues
+            for (let i = -2; i <= 2; i += 2) {
+                addObj(`soul_${i}`, 'decoration', 'Soulstone', i, -14, 'obj_cluster_soulstone', { spriteSize: 48 });
+            }
+            addObj(`statue_w`, 'decoration', 'Angel Statue', -10, -6, 'obj_statue_angel', { spriteSize: 48 });
+            addObj(`statue_e`, 'decoration', 'Angel Statue', 10, -6, 'obj_statue_angel', { spriteSize: 48 });
 
             // Hell torches
             for (let i = -26; i <= 26; i += 6) {
@@ -534,15 +566,22 @@ export class Dungeon {
             // === Cabins & longhouses ===
             // West district
             building(cx - 28, cy - 18, cx - 16, cy - 10, 'right');
+            addObj('lh_w1', 'decoration', 'Longhouse', -22, -14, 'obj_longhouse_stone', { spriteSize: 96 });
             building(cx - 28, cy - 6, cx - 16, cy + 2, 'right');
+            addObj('lh_w2', 'decoration', 'Longhouse', -22, -2, 'obj_longhouse_stone', { spriteSize: 96 });
             building(cx - 28, cy + 6, cx - 16, cy + 14, 'right');
+            addObj('lh_w3', 'decoration', 'Longhouse', -22, 10, 'obj_longhouse_stone', { spriteSize: 96 });
             // East district
             building(cx + 16, cy - 18, cx + 28, cy - 10, 'left');
+            addObj('lh_e1', 'decoration', 'Longhouse', 22, -14, 'obj_harrogath_cabin', { spriteSize: 96 });
             building(cx + 16, cy + 2, cx + 28, cy + 10, 'left');
+            addObj('lh_e2', 'decoration', 'Longhouse', 22, 6, 'obj_harrogath_cabin', { spriteSize: 96 });
             // Larzuk's smithy (south east, large)
             building(cx + 16, cy + 10, cx + 28, cy + 18, 'left');
+            addObj('lh_larzuk', 'decoration', 'Smithy', 22, 14, 'obj_harrogath_cabin', { spriteSize: 96 });
             // Malah's house (north, prominent)
             building(cx - 8, cy - 18, cx + 8, cy - 10, 'bottom');
+            addObj('lh_malah', 'decoration', 'Malahs Healing', 0, -14, 'obj_longhouse_stone', { spriteSize: 128 });
 
             // === Arreat Summit path (north, narrowing) ===
             for (let y = hy0 - 1; y >= 2; y--) {

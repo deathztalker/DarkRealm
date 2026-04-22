@@ -643,6 +643,8 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         obj.isOpen = s.isOpen || false;
         if (s.type === 'shrine') obj.shrineType = s.shrineType;
         if (s.type === 'waypoint') obj.zone = s.zone;
+        if (s.type === 'portal') obj.targetZone = s.targetZone;
+        if (s.spriteSize) obj.spriteSize = s.spriteSize;
         return obj;
     }) : [];
     enemies = dungeon.enemySpawns.map(s => new Enemy(s));
@@ -2245,7 +2247,12 @@ function nextZone(targetZone = null) {
                     dungeon: townDungeon,
                     enemies: [],
                     npcs: townDungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, townDungeon)),
-                    gameObjects: townDungeon.objectSpawns.map(s => new GameObject(s.id || s.type, s.x, s.y, s.icon, s.id)),
+                    gameObjects: townDungeon.objectSpawns.map(s => {
+                        const obj = new GameObject(s.id || s.type, s.x, s.y, s.icon, s.id);
+                        if (s.spriteSize) obj.spriteSize = s.spriteSize;
+                        if (s.type === 'portal') obj.targetZone = s.targetZone;
+                        return obj;
+                    }),
                     droppedItems: [],
                     droppedGold: [],
                     respawnQueue: []
@@ -2399,6 +2406,8 @@ function finishZoneLoad() {
             obj.isOpen = s.isOpen || false;
             if (s.type === 'shrine') obj.shrineType = s.shrineType;
             if (s.type === 'waypoint') obj.zone = s.zone;
+            if (s.type === 'portal') obj.targetZone = s.targetZone;
+            if (s.spriteSize) obj.spriteSize = s.spriteSize;
             return obj;
         }) : [];
         enemies = [];
@@ -2446,6 +2455,8 @@ function finishZoneLoad() {
             obj.isOpen = s.isOpen || false;
             if (s.type === 'shrine') obj.shrineType = s.shrineType;
             if (s.type === 'waypoint') obj.zone = s.zone;
+            if (s.type === 'portal') obj.targetZone = s.targetZone;
+            if (s.spriteSize) obj.spriteSize = s.spriteSize;
             return obj;
         }) : [];
         enemies = dungeon.enemySpawns.map(s => new Enemy(s));
