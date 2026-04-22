@@ -44,6 +44,12 @@ window.addSocialRequest = addSocialRequest;
 window.showSpeechBubble = showSpeechBubble;
 window.GameObjectClass = GameObject;
 
+// --- Phase 37: Localization Helper ---
+const TRANSLATIONS = {
+    'portal.toTown': 'To Town'
+};
+window.t = (key) => TRANSLATIONS[key] || key;
+
 import { RUNEWORDS } from './data/runes.js';
 import { getSynergyTooltipHtml } from './systems/synergyEngine.js';
 
@@ -329,6 +335,103 @@ const ZONE_NAMES = {
     126: 'Moo Moo Farm', 127: 'Uber Tristram', 128: 'Infernal Rift'
 };
 
+// --- Phase 37: resolveTheme Helper ---
+function resolveTheme(z, d, zn) {
+    if ([0, 38, 68, 96, 102].includes(z)) {
+        if (z === 102) return 'snow';
+        if (z === 96) return 'hell';
+        if (z === 68) return 'jungle';
+        if (z === 38) return 'desert';
+        return 'town';
+    }
+    if (z >= 128) {
+        const themes = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow'];
+        return themes[Math.floor(d.rng() * themes.length)];
+    }
+
+    const name = (zn || ZONE_NAMES[z] || 'Unknown').toLowerCase();
+    let theme = 'catacombs'; // Default
+
+    // Keyword mapping
+    if (name.includes('moor') || name.includes('plains') || name.includes('field') || name.includes('highland') || name.includes('marsh') || name.includes('steppes') || name.includes('despair')) theme = 'wilderness';
+    else if (name.includes('cave') || name.includes('lair') || name.includes('hole') || name.includes('pit') || name.includes('passage') || name.includes('cavern') || name.includes('den') || name.includes('tunnels')) theme = 'cave';
+    else if (name.includes('crypt') || name.includes('mausoleum') || name.includes('tomb') || name.includes('halls of the dead')) theme = 'tomb';
+    else if (name.includes('catacombs') || name.includes('cellar') || name.includes('durance')) theme = 'catacombs';
+    else if (name.includes('jail') || name.includes('prison') || name.includes('barracks')) theme = 'jail';
+    else if (name.includes('sewers') || name.includes('harem') || name.includes('palace')) theme = 'sewer';
+    else if (name.includes('desert') || name.includes('waste') || name.includes('city') || name.includes('canyon') || name.includes('oasis') || name.includes('rocky') || name.includes('hills')) theme = 'desert';
+    else if (name.includes('arcane') || name.includes('sanctuary')) theme = 'arcane';
+    else if (name.includes('jungle') || name.includes('forest')) theme = 'jungle';
+    else if (name.includes('hell') || name.includes('flame') || name.includes('chaos')) theme = 'hell';
+    else if (name.includes('fortress')) theme = 'fortress';
+    else if (name.includes('cathedral') || name.includes('temple') || name.includes('cloister') || name.includes('fane') || name.includes('reliquary') || name.includes('travincal') || name.includes('bazaar') || name.includes('kurast') || name.includes('causeway')) theme = 'temple';
+
+    // Act-level Fallback if still default
+    if (theme === 'catacombs' && !name.includes('catacombs') && !name.includes('cellar') && !name.includes('durance')) {
+        if (z <= 37) theme = (z <= 13) ? 'wilderness' : 'catacombs';
+        else if (z <= 67) theme = 'desert';
+        else if (z <= 95) theme = (z <= 79) ? 'jungle' : 'temple';
+        else if (z <= 101) theme = 'hell';
+        else if (z <= 125) theme = 'snow';
+    }
+
+    // Act 5 Override for Snow
+    if (z >= 103 && z <= 125) {
+        if (!['cave', 'tomb', 'jail'].includes(theme)) theme = 'snow';
+    }
+
+    return theme;
+}
+
+// --- Phase 37: resolveTheme Helper ---
+function resolveTheme(z, d, zn) {
+    if ([0, 38, 68, 96, 102].includes(z)) {
+        if (z === 102) return 'snow';
+        if (z === 96) return 'hell';
+        if (z === 68) return 'jungle';
+        if (z === 38) return 'desert';
+        return 'town';
+    }
+    if (z >= 128) {
+        const themes = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow'];
+        return themes[Math.floor(d.rng() * themes.length)];
+    }
+
+    const name = (zn || ZONE_NAMES[z] || 'Unknown').toLowerCase();
+    let theme = 'catacombs'; // Default
+
+    // Keyword mapping
+    if (name.includes('moor') || name.includes('plains') || name.includes('field') || name.includes('highland') || name.includes('marsh') || name.includes('steppes') || name.includes('despair')) theme = 'wilderness';
+    else if (name.includes('cave') || name.includes('lair') || name.includes('hole') || name.includes('pit') || name.includes('passage') || name.includes('cavern') || name.includes('den') || name.includes('tunnels')) theme = 'cave';
+    else if (name.includes('crypt') || name.includes('mausoleum') || name.includes('tomb') || name.includes('halls of the dead')) theme = 'tomb';
+    else if (name.includes('catacombs') || name.includes('cellar') || name.includes('durance')) theme = 'catacombs';
+    else if (name.includes('jail') || name.includes('prison') || name.includes('barracks')) theme = 'jail';
+    else if (name.includes('sewers') || name.includes('harem') || name.includes('palace')) theme = 'sewer';
+    else if (name.includes('desert') || name.includes('waste') || name.includes('city') || name.includes('canyon') || name.includes('oasis') || name.includes('rocky') || name.includes('hills')) theme = 'desert';
+    else if (name.includes('arcane') || name.includes('sanctuary')) theme = 'arcane';
+    else if (name.includes('jungle') || name.includes('forest')) theme = 'jungle';
+    else if (name.includes('hell') || name.includes('flame') || name.includes('chaos')) theme = 'hell';
+    else if (name.includes('fortress')) theme = 'fortress';
+    else if (name.includes('cathedral') || name.includes('temple') || name.includes('cloister') || name.includes('fane') || name.includes('reliquary') || name.includes('travincal') || name.includes('bazaar') || name.includes('kurast') || name.includes('causeway')) theme = 'temple';
+
+    // Act-level Fallback if still default
+    if (theme === 'catacombs' && !name.includes('catacombs') && !name.includes('cellar') && !name.includes('durance')) {
+        if (z <= 37) theme = (z <= 13) ? 'wilderness' : 'catacombs';
+        else if (z <= 67) theme = 'desert';
+        else if (z <= 95) theme = (z <= 79) ? 'jungle' : 'temple';
+        else if (z <= 101) theme = 'hell';
+        else if (z <= 125) theme = 'snow';
+    }
+
+    // Act 5 Override for Snow
+    if (z >= 103 && z <= 125) {
+        if (!['cave', 'tomb', 'jail'].includes(theme)) theme = 'snow';
+    }
+
+    return theme;
+}
+
+
 window.DIFFICULTY_NAMES = ['Normal', 'Nightmare', 'Hell', 'Rift Mode'];
 window.DIFFICULTY_MULT = [1.0, 2.5, 5.0, 5.0]; // Rift mode uses Hell base stats
 
@@ -504,23 +607,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     }
 
     // Set initial theme
-    function getTheme(z, hz) {
-        if (z === 0 || z === 38 || z === 68 || z === 96 || z === 102) {
-            if (z === 102) return 'snow';
-            if (z === 96) return 'hell';
-            if (z === 68) return 'jungle';
-            if (z === 38) return 'desert';
-            return 'town';
-        } else {
-            if (z >= 128) { const t = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow']; return t[Math.floor(Math.random() * t.length)]; }
-            if (z >= 102) return 'snow';
-            if (z >= 96) return 'hell';
-            if (z >= 68) return 'jungle';
-            if (z >= 38) return 'desert';
-            return 'cathedral';
-        }
-    }
-    window.currentTheme = getTheme(zoneLevel, curHighestZone);
+    window.currentTheme = resolveTheme(zoneLevel, dungeon);
 
     // Initial Seed Setup
     if (!window._currentZoneSeed) {
