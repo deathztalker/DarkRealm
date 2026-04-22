@@ -7445,23 +7445,28 @@ window.addEventListener('DOMContentLoaded', () => {
         startGame(null, null, charName);
     });
 
-    function renderDifficultySelection() {
+    window.renderDifficultySelection = function(slot = null) {
         const container = document.getElementById('difficulty-selector');
         if (!container) return;
 
-        const maxUnlocked = player?.maxDifficulty || 0;
+        const maxUnlocked = slot?.player?.maxDifficulty || 0;
+        let selectedDiff = slot?.difficulty || 0;
+        if (selectedDiff > maxUnlocked) selectedDiff = maxUnlocked;
+        
+        window._difficulty = selectedDiff;
+
         container.innerHTML = '';
 
-        DIFFICULTY_NAMES.forEach((name, idx) => {
+        window.DIFFICULTY_NAMES.forEach((name, idx) => {
             const isLocked = idx > maxUnlocked;
             const btn = document.createElement('button');
-            btn.className = `diff-btn ${difficulty === idx ? 'active' : ''} ${isLocked ? 'locked' : ''}`;
+            btn.className = `diff-btn ${selectedDiff === idx ? 'active' : ''} ${isLocked ? 'locked' : ''}`;
             btn.dataset.diff = idx;
             btn.disabled = isLocked;
 
             btn.innerHTML = `
             <div class="diff-name">${name}</div>
-            ${isLocked ? '<div class="diff-lock">🔒 LOCKED</div>' : `<div class="diff-mult">${window.DIFFICULTY_MULT[idx]}x Monsters</div>`}
+            ${isLocked ? '<div class="diff-lock">🔒 LOCKED</div>' : `<div class="diff-mult">${window.DIFFICULTY_MULT[idx]}x</div>`}
         `;
 
             if (!isLocked) {
@@ -7469,7 +7474,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     window._difficulty = idx;
-                    difficulty = idx;
                 };
             }
             container.appendChild(btn);
@@ -7580,6 +7584,11 @@ async function renderSaveSlots(onlineUsers = {}) {
 function updateCharPreview(slot) {
     const nameEl = document.getElementById('preview-name'), detailsEl = document.getElementById('preview-details'), renderDiv = document.getElementById('char-preview-render');
     if (nameEl) nameEl.innerText = slot.name; if (detailsEl) detailsEl.innerText = `Level ${slot.level} ${slot.className}`;
+    
+    if (typeof window.renderDifficultySelection === 'function') {
+        window.renderDifficultySelection(slot);
+    }
+
     if (renderDiv) {
         renderDiv.innerHTML = '';
         const spriteUrl = `assets/class_${slot.classId}.png`;
