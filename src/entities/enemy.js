@@ -157,7 +157,6 @@ export class Enemy {
                 bossSource = availableBosses[Math.floor(Math.random() * availableBosses.length)];
             }
 
-            this.icon = spawn.icon || bossSource.icon || base.icon;
             this.name = spawn.name || bossSource.name;
             this.id = bossSource.id || this.id;
             this.deathSound = bossSource.deathSound || null;
@@ -192,6 +191,24 @@ export class Enemy {
             this.isShenk = spawn.isShenk || bossSource.id === 'shenk';
             this.isFrozenstein = spawn.isFrozenstein || bossSource.id === 'frozenstein';
 
+            // --- BOSS ICON MAPPING ---
+            if (this.isAndariel) this.icon = 'boss_andariel';
+            else if (this.isDuriel) this.icon = 'boss_duriel';
+            else if (this.isMephisto) this.icon = 'boss_mephisto';
+            else if (this.isDiablo) this.icon = 'boss_diablo';
+            else if (this.isBaal) this.icon = 'boss_baal';
+            else if (this.isButcher) this.icon = 'boss_the_butcher';
+            else if (this.isRadament) this.icon = 'boss_radament';
+            else if (this.isBeetleburst) this.icon = 'boss_beetleburst';
+            else if (this.isIzual) this.icon = 'boss_izual';
+            else if (this.isHephaisto) this.icon = 'boss_hephaisto';
+            else if (this.isShenk) this.icon = 'boss_shenk';
+            else if (this.name === 'King Leoric') this.icon = 'boss_leoric';
+            else if (this.name === 'The Cow King') this.icon = 'boss_cow_king';
+            else if (this.id === 'angry_jano') this.icon = 'boss_angry_jano';
+            else if (this.id === 'demon_wirt') this.icon = 'boss_demon_wirt';
+            else this.icon = spawn.icon || bossSource.icon || base.icon;
+
             if (this.isAndariel) this.poisonRadius = 120;
             if (this.isDuriel) { this.holyFreezeRadius = 100; this.holyFreezeSlow = 0.4; }
 
@@ -203,24 +220,7 @@ export class Enemy {
                 this.isNightFury = true; // Visual indicator flag
             }
 
-
-
-            this.isAndariel = spawn.isAndariel || spawn.id === 'andariel';
-            if (this.isAndariel) {
-                this.name = "Andariel";
-                this.icon = 'enemy_demon';
-                this.maxHp = Math.round(this.maxHp * 2.5);
-                this.dmg = Math.round(this.dmg * 1.5);
-                this.poisonRadius = 70;
-            }
-
-            this.isDuriel = this.isDuriel || spawn.isDuriel || spawn.id === 'duriel';
-            this.isMephisto = this.isMephisto || spawn.isMephisto || spawn.id === 'mephisto' || spawn.id === 'uber_mephisto';
-            this.isDiablo = this.isDiablo || spawn.isDiablo || spawn.id === 'diablo' || spawn.id === 'uber_diablo';
-            this.isBaal = this.isBaal || spawn.isBaal || spawn.id === 'baal' || spawn.id === 'uber_baal';
-            this.isUber = bossSource.isUber || false;
             if (this.isUber) {
-                this.name = bossSource.name;
                 this.renderScale *= 1.5;
                 this.radius *= 1.5;
                 this.allRes = 50;

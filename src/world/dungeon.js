@@ -364,6 +364,7 @@ export class Dungeon {
             // Add Act 4 Props
             this.objectSpawns.push({ id: 'statue1', type: 'statue', name: 'Angel Statue', x: (cx - 10) * this.tileSize, y: (cy - 5) * this.tileSize, icon: 'obj_statue_angel' });
             this.objectSpawns.push({ id: 'statue2', type: 'statue', name: 'Angel Statue', x: (cx + 10) * this.tileSize, y: (cy - 5) * this.tileSize, icon: 'obj_statue_angel' });
+            this.objectSpawns.push({ id: 'altar_pf', type: 'altar', name: 'Obsidian Altar', x: cx * this.tileSize, y: (cy - 8) * this.tileSize, icon: 'obj_pandemonium_altar' });
             this.objectSpawns.push({ id: 'pillar1', type: 'pillar', name: 'Holy Pillar', x: (cx - 5) * this.tileSize, y: (cy + 10) * this.tileSize, icon: 'obj_pillar_holy' });
             this.objectSpawns.push({ id: 'pillar2', type: 'pillar', name: 'Holy Pillar', x: (cx + 5) * this.tileSize, y: (cy + 10) * this.tileSize, icon: 'obj_pillar_holy' });
 
@@ -382,8 +383,8 @@ export class Dungeon {
                 this.grid[cy+9][x] = TILE.WALL;
             }
             this.grid[cy+9][cx] = TILE.DOOR;
-            this.objectSpawns.push({ id: 'longhouse1', type: 'longhouse', name: 'Stone Longhouse', x: (cx - 6) * this.tileSize, y: (cy - 3) * this.tileSize, icon: 'obj_longhouse_stone' });
-            this.objectSpawns.push({ id: 'longhouse2', type: 'longhouse', name: 'Stone Longhouse', x: (cx + 6) * this.tileSize, y: (cy - 3) * this.tileSize, icon: 'obj_longhouse_stone' });
+            this.objectSpawns.push({ id: 'longhouse1', type: 'longhouse', name: 'Barbaric Cabin', x: (cx - 6) * this.tileSize, y: (cy - 3) * this.tileSize, icon: 'obj_harrogath_cabin' });
+            this.objectSpawns.push({ id: 'longhouse2', type: 'longhouse', name: 'Barbaric Cabin', x: (cx + 6) * this.tileSize, y: (cy - 3) * this.tileSize, icon: 'obj_harrogath_cabin' });
             for(let i=0; i<12; i++) { this.objectSpawns.push({ type: 'tree', x: (cx - 15 + Math.random()*30) * this.tileSize, y: (cy - 10 + Math.random()*20) * this.tileSize, icon: 'obj_tree_snowy_pine' }); }
             addNpc("deckard_cain", "Deckard Cain", "elder", -2, -6, "npc_deckard_cain", "Stay a while and listen!");
             addNpc("malah", "Malah", "elder", -4, -5, "npc_akara", "It is cold, but my heart is warm for you.");

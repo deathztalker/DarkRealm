@@ -20,9 +20,11 @@ export class GameObject {
             return { type: 'LOOT', count: 2 + Math.floor(Math.random() * 3) };
         } else if (this.type === 'breakable' && !this.isOpen) {
             this.isOpen = true;
-            this.icon = 'obj_chest_open'; // New transparent or debris icon
+            this.destroyed = true; // Mark for removal or non-rendering
             if (window.fx) {
-                window.fx.emitDebris(this.x, this.y, '#8a7a60', 12);
+                // Determine debris color based on icon
+                const debrisColor = this.icon.includes('barrel') ? '#8b4513' : '#d2b48c';
+                window.fx.emitDebris(this.x, this.y, debrisColor, 12);
                 window.fx.shake(200, 2);
             }
             return { type: 'BREAKABLE' };

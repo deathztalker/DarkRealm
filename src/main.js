@@ -597,7 +597,13 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     window.aoeZones = aoeZones;
     window._difficulty = window._difficulty || 0; // Ensure it exists
     npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
-    gameObjects = dungeon.objectSpawns.map(s => new GameObject(s.type, s.x, s.y, s.icon));
+    gameObjects = dungeon.objectSpawns ? dungeon.objectSpawns.map(s => {
+        const obj = new GameObject(s.type, s.x, s.y, s.icon, s.id);
+        obj.isOpen = s.isOpen || false;
+        if (s.type === 'shrine') obj.shrineType = s.shrineType;
+        if (s.type === 'waypoint') obj.zone = s.zone;
+        return obj;
+    }) : [];
     enemies = dungeon.enemySpawns.map(s => new Enemy(s));
 
     // Apply difficulty & Rift scaling to enemies
@@ -944,6 +950,12 @@ function gameLoop(timestamp) {
     const statusTargets = [player, ...enemies, ...npcs];
     if (mercenary) statusTargets.push(mercenary);
     updateStatuses(statusTargets, dt);
+
+    // Filter out destroyed objects (Phase 36 Refinement)
+    gameObjects = gameObjects.filter(obj => !obj.destroyed);
+    if (worldZones[zoneLevel]) {
+        worldZones[zoneLevel].gameObjects = worldZones[zoneLevel].gameObjects.filter(obj => !obj.destroyed);
+    }
 
     // Update Loot Beams (Tick the particle system for persistence)
     for (const drop of droppedItems) {
@@ -2249,10 +2261,6 @@ function nextZone(targetZone = null) {
             }
 
             dungeon.generate(zoneLevel, window.currentTheme, window._currentZoneSeed);
-                window.currentTheme = themes[Math.floor(dungeon.rng() * themes.length)];
-            }
-
-            dungeon.generate(zoneLevel, window.currentTheme, window._currentZoneSeed);
             
             // finishZoneLoad will populate enemies/npcs/objects
             finishZoneLoad();
@@ -2322,7 +2330,13 @@ function finishZoneLoad() {
     // Spawn appropriate entities
     if (zoneLevel === 0) {
         npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
-        gameObjects = dungeon.objectSpawns.map(s => new GameObject(s.type, s.x, s.y, s.icon));
+        gameObjects = dungeon.objectSpawns ? dungeon.objectSpawns.map(s => {
+        const obj = new GameObject(s.type, s.x, s.y, s.icon, s.id);
+        obj.isOpen = s.isOpen || false;
+        if (s.type === 'shrine') obj.shrineType = s.shrineType;
+        if (s.type === 'waypoint') obj.zone = s.zone;
+        return obj;
+    }) : [];
         enemies = [];
 
         // If we came from a dungeon, spawn a portal back
