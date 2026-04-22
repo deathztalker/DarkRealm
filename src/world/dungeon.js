@@ -52,6 +52,7 @@ export class Dungeon {
     generate(zoneLevel = 1, theme = 'cathedral', seed = null) {
         if (seed !== null) this._seed = seed;
         else this._seed = Math.floor(Math.random() * 1000000);
+        this.theme = theme;
 
         if (zoneLevel >= 128) return this.generateRift(zoneLevel);
         if ([0, 38, 68, 96, 102].includes(zoneLevel)) return this.generateTown(theme, zoneLevel);
@@ -301,10 +302,10 @@ export class Dungeon {
             // Guard post
             building(cx - 4, wy0, cx + 4, wy0 + 4, 'bottom');
             addObj('guard_post', 'decoration', 'Guard Post', 0, wy0 - cy + 2, 'obj_house_sandstone', { spriteSize: 64 });
-            
+
             // Scattered Palm Trees
-            for (let i=0; i<6; i++) {
-                addObj(`palm_${i}`, 'decoration', 'Palm Tree', -20 + i*8, -25, 'obj_tree_palm', { spriteSize: 48 });
+            for (let i = 0; i < 6; i++) {
+                addObj(`palm_${i}`, 'decoration', 'Palm Tree', -20 + i * 8, -25, 'obj_tree_palm', { spriteSize: 48 });
             }
 
             // === Palace courtyard pillars ===
@@ -707,11 +708,11 @@ export class Dungeon {
 
         // Entrance Portal (from town/previous zone)
         if (placeExit) {
-             const townZones = [0, 38, 68, 96, 102];
-             const myAct = Math.floor(zoneLevel / 40);
-             const targetTown = townZones[myAct] !== undefined ? townZones[myAct] : 0;
+            const townZones = [0, 38, 68, 96, 102];
+            const myAct = Math.floor(zoneLevel / 40);
+            const targetTown = townZones[myAct] !== undefined ? townZones[myAct] : 0;
 
-             this.objectSpawns.push({
+            this.objectSpawns.push({
                 type: 'portal', x: this.playerStart.x, y: this.playerStart.y,
                 icon: 'obj_dungeon_entrance', name: 'A la Ciudad',
                 targetZone: targetTown
@@ -834,8 +835,8 @@ export class Dungeon {
 
             // General environmental clutter
             if (this.rng() < 0.3) {
-                const dx = (room.x + 1 + Math.floor(this.rng()*(room.w-2))) * this.tileSize;
-                const dy = (room.y + 1 + Math.floor(this.rng()*(room.h-2))) * this.tileSize;
+                const dx = (room.x + 1 + Math.floor(this.rng() * (room.w - 2))) * this.tileSize;
+                const dy = (room.y + 1 + Math.floor(this.rng() * (room.h - 2))) * this.tileSize;
                 const icon = this.rng() < 0.5 ? 'obj_debris' : 'obj_barrel';
                 this.objectSpawns.push({ type: 'decoration', x: dx, y: dy, icon });
             }
@@ -1011,7 +1012,7 @@ export class Dungeon {
 
         const TILE_SPRITES = {
             [TILE.FLOOR]: 'env_floor', [TILE.WALL]: 'env_wall', [TILE.DOOR]: 'env_door',
-            [TILE.STAIRS_DOWN]: 'env_stairs_down', [TILE.STAIRS_UP]: 'env_stairs_up',
+            [TILE.STAIRS_DOWN]: 'obj_dungeon_entrance', [TILE.STAIRS_UP]: 'obj_dungeon_entrance',
             [TILE.GRASS]: 'env_grass', [TILE.PATH]: 'env_path', [TILE.WATER]: 'env_water',
             [TILE.TREE]: 'env_tree', [TILE.BRIDGE]: 'env_bridge', [TILE.SAND]: 'env_sand',
             [TILE.CACTUS]: 'env_cactus', [TILE.SNOW]: 'env_snow', [TILE.ICE]: 'env_ice',
@@ -1036,9 +1037,18 @@ export class Dungeon {
                 const tile = this.grid[r][c];
                 ctx.fillStyle = baseColors[tile] || '#000';
                 ctx.fillRect(c * ts, r * ts, ts, ts);
-                const spriteName = TILE_SPRITES[tile];
+                let spriteName = TILE_SPRITES[tile];
+
+                // Dynamic biome trees
+                if (tile === TILE.TREE) {
+                    spriteName = 'obj_tree_oak'; // default wilderness
+                    if (this.theme === 'desert') spriteName = 'obj_tree_dead';
+                    else if (this.theme === 'jungle') spriteName = 'obj_tree_banyan';
+                    else if (this.theme === 'snow') spriteName = 'obj_tree_snowpine';
+                }
+
                 if (spriteName) {
-                    if (tile === TILE.TREE || tile === TILE.CACTUS)
+                    if (tile === TILE.TREE || tile === TILE.CACTUS || tile === TILE.STAIRS_DOWN)
                         renderer.drawSprite(spriteName, c * ts + ts / 2, r * ts + ts / 2, ts);
                     else
                         renderer.drawTile(spriteName, c * ts + ts / 2, r * ts + ts / 2, ts);

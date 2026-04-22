@@ -692,14 +692,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     if (bossBar && !isBossZone) bossBar.classList.add('hidden');
 
     // Initial save
-    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
-        difficulty: window._difficulty,
-        waypoints: [...discoveredWaypoints],
-        mercenary: mercenary ? mercenary.serialize() : null,
-        cube,
-        campaign: campaign.serialize(),
-        achievements: Array.from(unlockedAchievements)
-    });
+    saveGame();
 
     // Initial ambient audio
     if (isBossZone) {
@@ -1600,13 +1593,7 @@ function gameLoop(timestamp) {
     // Auto-save every 30 seconds
     if (timestamp - lastSaveTime > 30000 && activeSlotId) {
         lastSaveTime = timestamp;
-        SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
-            difficulty: window._difficulty,
-            waypoints: [...discoveredWaypoints],
-            mercenary: mercenary ? mercenary.serialize() : null,
-            cube,
-            achievements: Array.from(unlockedAchievements)
-        });
+        saveGame();
         addCombatLog('Progress Saved.', 'log-info');
     }
 
@@ -1733,7 +1720,7 @@ function checkInteractions(pos) {
                 if (!discoveredWaypoints.has(res.zone)) {
                     discoveredWaypoints.add(res.zone);
                     addCombatLog(`Waypoint Discovered: ${ZONE_NAMES[res.zone] || 'Area'}`, 'log-crit');
-                    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, { difficulty, waypoints: Array.from(discoveredWaypoints) });
+                    saveGame();
                     if (fx) fx.emitBurst(o.x, o.y, '#ffd700', 30, 2.5);
                 } else {
                     renderWaypointMenu(o);
@@ -2390,16 +2377,17 @@ function finishZoneLoad() {
     player.attackTarget = null;
 
     // --- Phase 36: Return Portal Auto-Spawn ---
-    if (zoneLevel === 0 && portalReturnZone !== null) {
+    if ([0, 38, 68, 96, 102].includes(zoneLevel) && portalReturnZone !== null) {
         const tp = new GameObject('portal_return', player.x + 40, player.y, 'obj_portal');
         tp.targetZone = portalReturnZone;
         tp.name = `Portal to Zone ${portalReturnZone}`;
         gameObjects.push(tp);
         if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 40, 3);
+        portalReturnZone = null; // Clear so it doesn't duplicate
     }
 
     // Spawn appropriate entities
-    if (zoneLevel === 0) {
+    if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
         npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
         gameObjects = dungeon.objectSpawns ? dungeon.objectSpawns.map(s => {
             const obj = new GameObject(s.type, s.x, s.y, s.icon, s.id);
@@ -2507,14 +2495,7 @@ function finishZoneLoad() {
     }
     $('zone-name').textContent = zoneName + diffLabel;
     addCombatLog(`Entered ${zoneName}${diffLabel}!`, 'log-level');
-    if (activeSlotId) SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
-        difficulty: window._difficulty,
-        waypoints: [...discoveredWaypoints],
-        mercenary: mercenary ? mercenary.serialize() : null,
-        cube,
-        achievements: Array.from(unlockedAchievements),
-        highestZone: player.highestZone || 0
-    });
+    saveGame();
 
     // Apply thematic changes
     function getTheme(z, hz) {
@@ -4214,7 +4195,7 @@ bus.on('ui:closeAll', () => {
 
 function tryCastTownPortal() {
     if (state !== 'GAME' && state !== 'INVENTORY') return;
-    if (zoneLevel === 0) {
+    if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
         addCombatLog('Cannot cast Town Portal in Town!', 'log-dmg');
         return;
     }
@@ -4223,7 +4204,7 @@ function tryCastTownPortal() {
     portalReturnZone = zoneLevel;
     const portalId = `tp_${player.charName}_${Date.now()}`;
     const tp = new GameObject('portal', player.x, player.y - 10, 'obj_portal', portalId);
-    tp.targetZone = 0; // Go to town
+    tp.targetZone = [0, 38, 68, 96, 102][campaign.getActForZone(zoneLevel) - 1] || 0; // Go to current act town
     tp.name = `${player.charName}'s Portal`;
     gameObjects.push(tp);
 
@@ -5268,12 +5249,12 @@ function renderInventory() {
                 }
 
                 if (item.type === 'scroll' && item.baseId === 'scroll_town_portal') {
-                    if (zoneLevel === 0) {
+                    if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
                         addCombatLog('Cannot cast Town Portal in Town!', 'log-dmg');
                         return;
                     }
-                    const tp = new GameObject('portal', player.x, player.y - 40, 'env_water');
-                    tp.targetZone = 0;
+                    const tp = new GameObject('portal', player.x, player.y - 40, 'obj_portal');
+                    tp.targetZone = [0, 38, 68, 96, 102][campaign.getActForZone(zoneLevel) - 1] || 0;
                     portalReturnZone = zoneLevel;
                     gameObjects.push(tp);
                     if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 50, 4);
@@ -5293,9 +5274,10 @@ function renderInventory() {
                         playLoot();
                     } else if ((item.charges || 0) > 0) {
                         if (item.baseId === 'tome_tp') {
-                            if (zoneLevel === 0) { addCombatLog('Cannot cast in Town!', 'log-dmg'); return; }
-                            const tp = new GameObject('portal', player.x, player.y - 40, 'env_water');
-                            tp.targetZone = 0; portalReturnZone = zoneLevel;
+                            if ([0, 38, 68, 96, 102].includes(zoneLevel)) { addCombatLog('Cannot cast in Town!', 'log-dmg'); return; }
+                            const tp = new GameObject('portal', player.x, player.y - 40, 'obj_portal');
+                            tp.targetZone = [0, 38, 68, 96, 102][campaign.getActForZone(zoneLevel) - 1] || 0; 
+                            portalReturnZone = zoneLevel;
                             gameObjects.push(tp);
                             if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 50, 4);
                             addCombatLog('Town Portal Opened!', 'log-level');
@@ -6612,11 +6594,13 @@ function sortStash() {
 function saveGame() {
     if (!player || !activeSlotId) return;
     SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
-        cube,
-        mercenary,
-        difficulty,
+        difficulty: window._difficulty || 0,
         waypoints: Array.from(discoveredWaypoints),
-        campaign: campaign.serialize()
+        mercenary: mercenary ? mercenary.serialize() : null,
+        cube,
+        campaign: campaign.serialize(),
+        achievements: Array.from(unlockedAchievements || []),
+        highestZone: player.highestZone || 0
     });
 }
 
@@ -7951,10 +7935,7 @@ async function checkChampionStatus() {
 function returnToMainMenu() {
     // Save current character before leaving
     if (player && window._activeSlotId) {
-        SaveSystem.saveSlot(window._activeSlotId, player, zoneLevel, stash, {
-            difficulty: window._difficulty,
-            waypoints: Array.from(discoveredWaypoints)
-        });
+        saveGame();
     }
 
     // Switch to menu state
