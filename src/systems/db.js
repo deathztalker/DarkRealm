@@ -80,7 +80,7 @@ export const DB = {
             mercenary: dbRow.mercenary || null,
             difficulty: dbRow.difficulty || 0,
             waypoints: dbRow.waypoints || [0],
-            campaign: dbRow.campaign || dbRow.extra_data?.campaign || null,
+            campaign: dbRow.campaign || dbRow.extra_data?.campaign || dbRow.player?.campaign || null,
             player: dbRow.player,
             timestamp: new Date(dbRow.updated_at).getTime()
         }));
@@ -139,12 +139,11 @@ export const DB = {
         if (!this.isLoggedIn()) return null;
         const { data, error } = await this.client
             .from('shared_stash')
-            .select('items, gold, tabs')
+            .select('*')
             .limit(1)
-            .single();
+            .maybeSingle();
         
-        // It's normal for no row to exist initially
-        if (error && error.code !== 'PGRST116') {
+        if (error) {
             console.error('Fetch shared stash error:', error);
             return null;
         }
@@ -159,32 +158,22 @@ export const DB = {
             gold: 0
         };
 
-        // If tabs column is empty but items exist (migration)
-        if (!data.tabs && data.items) {
-            return {
-                tabs: [
-                    { name: 'Shared 1', items: data.items.concat(Array(Math.max(0, 100 - data.items.length)).fill(null)) },
-                    { name: 'Shared 2', items: Array(100).fill(null) },
-                    { name: 'Shared 3', items: Array(100).fill(null) },
-                    { name: 'Private', items: Array(100).fill(null) }
-                ],
-                gold: data.gold || 0
-            };
-        }
-
         return data;
     },
 
     async upsertSharedStash(tabs, gold) {
         if (!this.isLoggedIn()) return false;
+        
+        const payload = {
+            user_id: this.session.user.id,
+            tabs,
+            gold,
+            updated_at: new Date().toISOString()
+        };
+
         const { error } = await this.client
             .from('shared_stash')
-            .upsert({
-                user_id: this.session.user.id,
-                tabs,
-                gold,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id' });
+            .upsert(payload, { onConflict: 'user_id' });
         
         if (error) {
             console.error('Upsert shared stash error:', error);

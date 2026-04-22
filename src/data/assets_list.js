@@ -24,8 +24,9 @@ export const ASSET_NAMES = [
     'obj_bonfire', 'obj_fountain', 'obj_bridge_rope', 'obj_statue_angel', 'obj_anvil_hot', 
     'obj_tent_leather', 'obj_house_sandstone', 'obj_hut_stilt', 'obj_longhouse_stone', 
     'obj_pillar_holy', 'obj_tree_palm', 'obj_wagon_merchant', 'obj_stall_bazaar', 
-    'obj_tree_jungle', 'obj_tree_snowy_pine',
+    'obj_tree_jungle', 'obj_tree_snowy_pine', 'obj_pandemonium_altar', 'obj_harrogath_cabin',
     'obj_cluster_soulstone', 'obj_altar_pentagram', 'obj_urn_hell', 'obj_torch_hell',
+    'obj_fence_wood', 'obj_sarcophagus', 'obj_gargoyle', 'obj_tent_rogue',
     'item_amulet', 'item_armor_leather', 'item_armor_plate', 'item_potion_hp', 'item_potion_mp', 'item_ring',
     'item_axe_hd', 'item_book_skill_hd', 'item_great_helm_hd', 'item_shield_royal_hd',
     'mercenary_warrior', 'mercenary_archer'

@@ -6033,73 +6033,132 @@ function renderWaypointMenu(obj) {
     menu.id = 'dialogue-picker';
     menu.className = 'dialogue-picker-menu';
 
-    // Position near waypoint
+    // Position near waypoint - wider menu for tabs
     const screen = camera.toScreen(obj.x, obj.y);
     menu.style.cssText = `
-        position: absolute; left: ${screen.x - 110}px; top: ${screen.y - 180}px; width: 220px;
-        background: rgba(10, 8, 5, 0.95); border: 1px solid #bf642f;
-        padding: 15px; z-index: 1000; font-family: 'Cinzel', serif;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.9), inset 0 0 15px rgba(186, 145, 88, 0.1);
-        pointer-events: all; border-radius: 8px;
+        position: absolute; left: ${screen.x - 200}px; top: ${screen.y - 220}px; width: 400px;
+        background: rgba(10, 8, 5, 0.98); border: 2px solid #4a3520;
+        padding: 0; z-index: 1000; font-family: 'Cinzel', serif;
+        box-shadow: 0 10px 50px rgba(0,0,0,0.9), inset 0 0 25px rgba(186, 145, 88, 0.1);
+        pointer-events: all; border-radius: 4px; overflow: hidden;
     `;
 
     const title = document.createElement('div');
-    title.style.cssText = 'color: #ffd700; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #4a3520; padding-bottom: 6px; text-align: center;';
+    title.style.cssText = 'color: #ffd700; font-size: 18px; padding: 12px; background: rgba(0,0,0,0.5); border-bottom: 1px solid #4a3520; text-align: center; letter-spacing: 2px; text-shadow: 0 2px 4px #000;';
     title.textContent = 'WAYPOINT TRAVEL';
     menu.appendChild(title);
 
-    const scrollArea = document.createElement('div');
-    scrollArea.style.cssText = 'max-height: 250px; overflow-y: auto; padding-right: 5px;';
-
     const acts = [
-        { name: 'ACT I', range: [0, 37] },
-        { name: 'ACT II', range: [38, 67] },
-        { name: 'ACT III', range: [68, 95] },
-        { name: 'ACT IV', range: [96, 101] },
-        { name: 'ACT V', range: [102, 125] },
-        { name: 'RIFT', range: [126, 10000] }
+        { id: 1, name: 'ACT I', range: [0, 37] },
+        { id: 2, name: 'ACT II', range: [38, 67] },
+        { id: 3, name: 'ACT III', range: [68, 95] },
+        { id: 4, name: 'ACT IV', range: [96, 101] },
+        { id: 5, name: 'ACT V', range: [102, 125] },
+        { id: 6, name: 'RIFT', range: [126, 10000] }
     ];
 
     const wpZones = [...discoveredWaypoints].sort((a, b) => a - b);
-
-    acts.forEach(act => {
+    
+    // Filter available acts
+    const availableActs = acts.filter(act => {
         const discoveredInAct = wpZones.filter(wz => wz >= act.range[0] && wz <= act.range[1]);
-        if (discoveredInAct.length === 0) return;
-        const actIdx = acts.indexOf(act) + 1;
-        if (actIdx <= 5 && !campaign.isActUnlocked(actIdx)) return;
-
-        const header = document.createElement('div');
-        header.style.cssText = 'color: #888; font-size: 10px; margin: 8px 0 4px; border-bottom: 1px solid #333;';
-        header.textContent = act.name;
-        scrollArea.appendChild(header);
-
-        discoveredInAct.forEach(wz => {
-            if (wz === zoneLevel) return;
-            const btn = document.createElement('div');
-            btn.className = 'dialogue-option';
-            btn.style.cssText = 'color: #d8b068; cursor: pointer; padding: 8px; margin: 2px 0; text-align: left; transition: all 0.2s; font-size: 12px; background: rgba(191,100,47,0.05); border: 1px solid transparent;';
-            btn.onmouseover = () => { btn.style.color = '#fff'; btn.style.background = 'rgba(191,100,47,0.2)'; btn.style.borderColor = '#bf642f'; };
-            btn.onmouseout = () => { btn.style.color = '#d8b068'; btn.style.background = 'rgba(191,100,47,0.05)'; btn.style.borderColor = 'transparent'; };
-            btn.textContent = `⚡ ${ZONE_NAMES[wz] || 'Area ' + wz}`;
-            btn.onclick = () => {
-                addCombatLog(`Teleporting to ${ZONE_NAMES[wz] || 'Area ' + wz}...`, 'log-level');
-                nextZone(wz);
-                menu.remove();
-                activeWaypointObj = null;
-            };
-            scrollArea.appendChild(btn);
-        });
+        if (discoveredInAct.length === 0) return false;
+        if (act.id <= 5 && !campaign.isActUnlocked(act.id)) return false;
+        return true;
     });
 
+    // Determine default selected act (current zone act if available, else first available)
+    let selectedActId = availableActs.find(act => zoneLevel >= act.range[0] && zoneLevel <= act.range[1])?.id || availableActs[0]?.id;
+
+    const tabsContainer = document.createElement('div');
+    tabsContainer.style.cssText = 'display: flex; background: #1a1510; border-bottom: 1px solid #4a3520;';
+
+    const scrollArea = document.createElement('div');
+    scrollArea.style.cssText = 'height: 300px; overflow-y: auto; padding: 15px; background: rgba(0,0,0,0.3);';
+
+    function refreshWaypoints() {
+        scrollArea.innerHTML = '';
+        const act = acts.find(a => a.id === selectedActId);
+        if (!act) return;
+
+        const discoveredInAct = wpZones.filter(wz => wz >= act.range[0] && wz <= act.range[1]);
+        
+        // Split into two columns for better space usage if many waypoints
+        const listGrid = document.createElement('div');
+        listGrid.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px;';
+
+        discoveredInAct.forEach(wz => {
+            const isCurrent = (wz === zoneLevel);
+            const btn = document.createElement('div');
+            btn.className = 'dialogue-option';
+            btn.style.cssText = `
+                color: ${isCurrent ? '#888' : '#d8b068'}; 
+                cursor: ${isCurrent ? 'default' : 'pointer'}; 
+                padding: 10px; text-align: left; transition: all 0.2s; font-size: 13px; 
+                background: ${isCurrent ? 'rgba(0,0,0,0.3)' : 'rgba(191,100,47,0.05)'}; 
+                border: 1px solid ${isCurrent ? '#333' : 'rgba(186, 145, 88, 0.2)'};
+                border-radius: 4px;
+            `;
+            
+            if (!isCurrent) {
+                btn.onmouseover = () => { btn.style.color = '#fff'; btn.style.background = 'rgba(191,100,47,0.2)'; btn.style.borderColor = '#bf642f'; };
+                btn.onmouseout = () => { btn.style.color = '#d8b068'; btn.style.background = 'rgba(191,100,47,0.05)'; btn.style.borderColor = 'rgba(186, 145, 88, 0.2)'; };
+                btn.onclick = () => {
+                    addCombatLog(`Teleporting to ${ZONE_NAMES[wz] || 'Area ' + wz}...`, 'log-level');
+                    nextZone(wz);
+                    menu.remove();
+                    activeWaypointObj = null;
+                };
+            }
+            
+            btn.textContent = `${isCurrent ? '📍' : '⚡'} ${ZONE_NAMES[wz] || 'Area ' + wz}`;
+            listGrid.appendChild(btn);
+        });
+
+        scrollArea.appendChild(listGrid);
+    }
+
+    availableActs.forEach(act => {
+        const tab = document.createElement('div');
+        tab.style.cssText = `
+            flex: 1; padding: 10px 5px; text-align: center; cursor: pointer; font-size: 11px;
+            color: ${act.id === selectedActId ? '#ffd700' : '#888'};
+            background: ${act.id === selectedActId ? 'transparent' : 'rgba(0,0,0,0.3)'};
+            border-top: 2px solid ${act.id === selectedActId ? '#bf642f' : 'transparent'};
+            border-right: 1px solid #4a3520; transition: all 0.2s;
+        `;
+        tab.textContent = act.name;
+        tab.onclick = () => {
+            selectedActId = act.id;
+            Array.from(tabsContainer.children).forEach(t => {
+                t.style.color = '#888';
+                t.style.background = 'rgba(0,0,0,0.3)';
+                t.style.borderTopColor = 'transparent';
+            });
+            tab.style.color = '#ffd700';
+            tab.style.background = 'transparent';
+            tab.style.borderTopColor = '#bf642f';
+            refreshWaypoints();
+        };
+        tabsContainer.appendChild(tab);
+    });
+
+    menu.appendChild(tabsContainer);
     menu.appendChild(scrollArea);
 
+    const footer = document.createElement('div');
+    footer.style.cssText = 'padding: 10px; background: rgba(0,0,0,0.5); border-top: 1px solid #4a3520; text-align: center;';
+    
     const cancelBtn = document.createElement('div');
     cancelBtn.className = 'dialogue-option';
-    cancelBtn.style.cssText = 'color: #888; cursor: pointer; padding: 10px; margin: 4px 0; text-align: center; font-size: 12px;';
+    cancelBtn.style.cssText = 'color: #888; cursor: pointer; padding: 6px; text-align: center; font-size: 12px; border: 1px solid #444; width: 100px; margin: 0 auto; border-radius: 4px;';
     cancelBtn.textContent = 'CLOSE';
     cancelBtn.onclick = () => { menu.remove(); activeWaypointObj = null; };
-    menu.appendChild(cancelBtn);
+    footer.appendChild(cancelBtn);
+    
+    menu.appendChild(footer);
 
+    refreshWaypoints();
     $('game-screen').appendChild(menu);
 }
 
@@ -7736,14 +7795,13 @@ async function renderLeaderboard(filter = 'global') {
     document.body.appendChild(overlay);
 
     try {
-        let query = SaveSystem.DB.from('saves')
+        let query = DB.client.from('saves')
             .select(`
                 charName:player->>charName,
                 classId:player->>classId,
                 isHardcore:player->>isHardcore,
-                extra_data
+                player
             `)
-            .order('extra_data->riftLevel', { ascending: false })
             .limit(20);
 
         if (filter === 'class' && player) query = query.eq('player->>classId', player.classId);
@@ -7751,6 +7809,13 @@ async function renderLeaderboard(filter = 'global') {
 
         const { data, error } = await query;
         if (error) throw error;
+
+        // Sort by riftLevel in JS as fallback if DB column is missing
+        data.sort((a, b) => {
+            const levelA = a.player?.extra_data?.riftLevel || 0;
+            const levelB = b.player?.extra_data?.riftLevel || 0;
+            return levelB - levelA;
+        });
 
         const body = $('leaderboard-body');
         body.innerHTML = '';
@@ -7760,8 +7825,7 @@ async function renderLeaderboard(filter = 'global') {
         }
 
         data.forEach((row, i) => {
-            const extra = row.extra_data || {};
-            const depth = extra.riftLevel || 0;
+            const depth = row.player?.extra_data?.riftLevel || 0;
             const isMe = player && row.charName === player.charName;
             
             const tr = document.createElement('tr');

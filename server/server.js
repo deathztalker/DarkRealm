@@ -30,18 +30,18 @@ app.get('/', (req, res) => {
 });
 
 // --- GLOBAL STATE ---
-const players = {};
 const friends = {}; 
+const players = {}; // { socketId: { id, x, y, animState, facingDir, classId, name, zoneLevel } }
+const zoneHosts = {}; // { zoneLevel: socketId }
 const activeTrades = {}; 
-let currentHostId = null;
 
-function electNewHost() {
-    const ids = Object.keys(players);
-    if (ids.length > 0) {
-        currentHostId = ids[0];
-        io.to(currentHostId).emit('host_assignment', true);
+function electNewHost(zoneLevel) {
+    const playersInZone = Object.values(players).filter(p => p.zoneLevel === zoneLevel);
+    if (playersInZone.length > 0) {
+        zoneHosts[zoneLevel] = playersInZone[0].id;
+        io.to(zoneHosts[zoneLevel]).emit('host_assignment', true);
     } else {
-        currentHostId = null;
+        delete zoneHosts[zoneLevel];
     }
 }
 
@@ -50,6 +50,10 @@ io.on('connection', (socket) => {
 
     socket.on('join', (data) => {
         if (!data) return;
+        
+        const zoneLevel = data.zoneLevel || 0;
+        socket.join(`zone_${zoneLevel}`);
+
         players[socket.id] = {
             id: socket.id,
             x: data.x || 0,
@@ -57,37 +61,100 @@ io.on('connection', (socket) => {
             animState: 'idle',
             facingDir: 'down',
             classId: data.classId,
-            name: data.name || 'Stranger'
+            name: data.name || 'Stranger',
+            zoneLevel: zoneLevel
         };
-        if (!currentHostId) electNewHost();
-        socket.emit('current_players', players);
-        socket.broadcast.emit('player_joined', players[socket.id]);
+
+        if (!zoneHosts[zoneLevel]) electNewHost(zoneLevel);
+        
+        // Send only players in the same zone
+        const playersInZone = Object.fromEntries(Object.entries(players).filter(([_, p]) => p.zoneLevel === zoneLevel));
+        socket.emit('current_players', playersInZone);
+        
+        // Notify others in the zone
+        socket.broadcast.to(`zone_${zoneLevel}`).emit('player_joined', players[socket.id]);
+    });
+
+    socket.on('change_zone', (data) => {
+        if (!players[socket.id]) return;
+        const oldZone = players[socket.id].zoneLevel;
+        const newZone = data.zoneLevel;
+
+        socket.leave(`zone_${oldZone}`);
+        socket.broadcast.to(`zone_${oldZone}`).emit('player_left', socket.id);
+        
+        if (zoneHosts[oldZone] === socket.id) electNewHost(oldZone);
+
+        socket.join(`zone_${newZone}`);
+        players[socket.id].zoneLevel = newZone;
+        players[socket.id].x = data.x || 0;
+        players[socket.id].y = data.y || 0;
+
+        if (!zoneHosts[newZone]) electNewHost(newZone);
+
+        const playersInZone = Object.fromEntries(Object.entries(players).filter(([_, p]) => p.zoneLevel === newZone));
+        socket.emit('current_players', playersInZone);
+        socket.broadcast.to(`zone_${newZone}`).emit('player_joined', players[socket.id]);
     });
 
     socket.on('move', (data) => {
         if (data && players[socket.id]) {
-            players[socket.id].x = data.x;
-            players[socket.id].y = data.y;
-            players[socket.id].animState = data.animState;
-            players[socket.id].facingDir = data.facingDir;
-            socket.broadcast.emit('player_moved', players[socket.id]);
+            const p = players[socket.id];
+            p.x = data.x;
+            p.y = data.y;
+            p.animState = data.animState;
+            p.facingDir = data.facingDir;
+            if (data.activeAura) p.activeAura = data.activeAura;
+            
+            socket.broadcast.to(`zone_${p.zoneLevel}`).emit('player_moved', p);
         }
     });
 
-    socket.on('enemy_damaged', (data) => socket.broadcast.emit('enemy_damaged', data));
-    socket.on('enemy_death', (id) => socket.broadcast.emit('enemy_death', id));
-    socket.on('enemy_sync', (data) => socket.broadcast.emit('enemy_sync', data));
+    // Scoped environment events
+    socket.on('enemy_damaged', (data) => {
+        if(players[socket.id]) socket.broadcast.to(`zone_${players[socket.id].zoneLevel}`).emit('enemy_damaged', data);
+    });
+    socket.on('enemy_death', (id) => {
+        if(players[socket.id]) socket.broadcast.to(`zone_${players[socket.id].zoneLevel}`).emit('enemy_death', id);
+    });
+    socket.on('enemy_sync', (data) => {
+        if(players[socket.id]) socket.broadcast.to(`zone_${players[socket.id].zoneLevel}`).emit('enemy_sync', data);
+    });
+    socket.on('npc_sync', (data) => {
+        if(players[socket.id]) socket.broadcast.to(`zone_${players[socket.id].zoneLevel}`).emit('npc_sync', data);
+    });
+    socket.on('minion_sync', (data) => {
+        if(players[socket.id]) socket.broadcast.to(`zone_${players[socket.id].zoneLevel}`).emit('minion_sync', { id: socket.id, minions: data });
+    });
+    socket.on('merc_sync', (data) => {
+        if(players[socket.id]) socket.broadcast.to(`zone_${players[socket.id].zoneLevel}`).emit('merc_sync', { id: socket.id, mercenary: data });
+    });
+    socket.on('portal_spawn', (data) => {
+        if(players[socket.id]) socket.broadcast.to(`zone_${players[socket.id].zoneLevel}`).emit('portal_spawn', data);
+    });
 
     socket.on('chat_message', (text) => {
         const p = players[socket.id];
         if (p && text) {
-            io.emit('chat_message', {
+            // Broadcast only to the zone
+            io.to(`zone_${p.zoneLevel}`).emit('chat_message', {
                 id: Date.now(),
                 sender: p.name,
                 text: text,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             });
         }
+    });
+
+    socket.on('system_message', (text) => {
+        // Global broadcasts (e.g. Rift Guardian defeated)
+        io.emit('chat_message', {
+            id: Date.now(),
+            sender: 'System',
+            text: text,
+            isSystem: true,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
     });
 
     socket.on('whisper', (data) => {
@@ -172,9 +239,13 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log(`- Player Disconnected: ${socket.id}`);
-        delete players[socket.id];
-        if (socket.id === currentHostId) electNewHost();
-        io.emit('player_left', socket.id);
+        const p = players[socket.id];
+        if (p) {
+            const oldZone = p.zoneLevel;
+            socket.broadcast.to(`zone_${oldZone}`).emit('player_left', socket.id);
+            delete players[socket.id];
+            if (zoneHosts[oldZone] === socket.id) electNewHost(oldZone);
+        }
     });
 });
 
@@ -185,3 +256,4 @@ process.on('uncaughtException', (err) => console.error('CRITICAL ERROR:', err));
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`>>> MMO SERVER LIVE ON PORT ${PORT} <<<`);
 });
+
