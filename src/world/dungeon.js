@@ -1,8 +1,21 @@
 /**
  * Dungeon Generator — BSP room-corridor procedural generation
+ * IMPROVED: Greatly enhanced town generation with larger, more detailed cities
  */
 
-export const TILE = { FLOOR: 0, WALL: 1, DOOR: 2, STAIRS_DOWN: 3, STAIRS_UP: 4, SPAWN: 5, GRASS: 6, PATH: 7, WATER: 8, TREE: 9, BRIDGE: 10, SAND: 11, CACTUS: 12, LAVA: 13, SNOW: 14, ICE: 15 };
+export const TILE = {
+    FLOOR: 0, WALL: 1, DOOR: 2, STAIRS_DOWN: 3, STAIRS_UP: 4, SPAWN: 5,
+    GRASS: 6, PATH: 7, WATER: 8, TREE: 9, BRIDGE: 10, SAND: 11,
+    CACTUS: 12, LAVA: 13, SNOW: 14, ICE: 15,
+    // New tiles for richer city building
+    COBBLE: 16,      // Cobblestone streets
+    FENCE: 17,       // Wooden/stone fences
+    RUINS: 18,       // Crumbled wall sections
+    DIRT: 19,        // Dirt path variant
+    MARBLE: 20,      // Fancy floor for Act 4 fortress
+    WOOD_FLOOR: 21,  // Interior floor for buildings
+    SHALLOW_WATER: 22, // Shallows / docks
+};
 
 export const TILE_COLORS = {
     [TILE.FLOOR]: '#2c2838', [TILE.WALL]: '#161320', [TILE.DOOR]: '#5a3a20',
@@ -10,9 +23,10 @@ export const TILE_COLORS = {
     [TILE.GRASS]: '#2d5a27', [TILE.PATH]: '#5c4a3d', [TILE.WATER]: '#1e4b85',
     [TILE.TREE]: '#1b4018', [TILE.BRIDGE]: '#503525',
     [TILE.SAND]: '#d4a017', [TILE.CACTUS]: '#4a6b2c',
-    [TILE.LAVA]: '#ff4500', // Molten orange
-    [TILE.SNOW]: '#ffffff', // Pure white
-    [TILE.ICE]: '#a0e0ff'   // Light cyan
+    [TILE.LAVA]: '#ff4500', [TILE.SNOW]: '#ffffff', [TILE.ICE]: '#a0e0ff',
+    [TILE.COBBLE]: '#4a4040', [TILE.FENCE]: '#6b4a25', [TILE.RUINS]: '#2a1e1e',
+    [TILE.DIRT]: '#4a3520', [TILE.MARBLE]: '#c8c0b0', [TILE.WOOD_FLOOR]: '#6b4a2a',
+    [TILE.SHALLOW_WATER]: '#2a6aaa',
 };
 
 export class Dungeon {
@@ -40,11 +54,9 @@ export class Dungeon {
         else this._seed = Math.floor(Math.random() * 1000000);
 
         if (zoneLevel >= 128) return this.generateRift(zoneLevel);
-
-        if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
-            return this.generateTown(theme, zoneLevel);
-        }
-        if ([37, 67, 95, 101, 125, 127].includes(zoneLevel) || (zoneLevel >= 128 && zoneLevel % 5 === 0)) return this.generateBossRoom(theme, zoneLevel);
+        if ([0, 38, 68, 96, 102].includes(zoneLevel)) return this.generateTown(theme, zoneLevel);
+        if ([37, 67, 95, 101, 125, 127].includes(zoneLevel) || (zoneLevel >= 128 && zoneLevel % 5 === 0))
+            return this.generateBossRoom(theme, zoneLevel);
 
         return this._generateProcedural(zoneLevel, theme, true);
     }
@@ -55,6 +67,514 @@ export class Dungeon {
         return this._generateProcedural(zoneLevel, theme, false);
     }
 
+    // ─────────────────────────────────────────────────────────────
+    //  TOWN GENERATION — completely rewritten
+    // ─────────────────────────────────────────────────────────────
+    generateTown(theme, zoneLevel = 0) {
+        this.rooms = [];
+        this.enemySpawns = [];
+        this.lootSpawns = [];
+        this.npcSpawns = [];
+        this.objectSpawns = [];
+
+        const cx = Math.floor(this.width / 2);
+        const cy = Math.floor(this.height / 2);
+
+        const addNpc = (id, name, type, dx, dy, icon, dialogue) => {
+            this.npcSpawns.push({
+                id, name, type,
+                x: (cx + dx) * this.tileSize,
+                y: (cy + dy) * this.tileSize,
+                icon, dialogue
+            });
+        };
+
+        const addObj = (id, type, name, dx, dy, icon, extra = {}) => {
+            this.objectSpawns.push({
+                id, type, name,
+                x: (cx + dx) * this.tileSize,
+                y: (cy + dy) * this.tileSize,
+                icon, ...extra
+            });
+        };
+
+        // Helper: fill a rect with a tile
+        const fill = (x0, y0, x1, y1, tile) => {
+            for (let y = y0; y <= y1; y++)
+                for (let x = x0; x <= x1; x++)
+                    if (y >= 0 && y < this.height && x >= 0 && x < this.width)
+                        this.grid[y][x] = tile;
+        };
+
+        // Helper: draw a hollow rect (walls only)
+        const border = (x0, y0, x1, y1, tile) => {
+            for (let x = x0; x <= x1; x++) { this._setTile(y0, x, tile); this._setTile(y1, x, tile); }
+            for (let y = y0; y <= y1; y++) { this._setTile(y, x0, tile); this._setTile(y, x1, tile); }
+        };
+
+        // Helper: draw a simple building (walls + wood floor interior)
+        const building = (x0, y0, x1, y1, doorSide = 'bottom') => {
+            fill(y0, x0, y1, x1, TILE.WALL);
+            fill(y0 + 1, x0 + 1, y1 - 1, x1 - 1, TILE.WOOD_FLOOR);
+            const mx = Math.floor((x0 + x1) / 2);
+            const my = Math.floor((y0 + y1) / 2);
+            if (doorSide === 'bottom') this._setTile(y1, mx, TILE.DOOR);
+            else if (doorSide === 'top') this._setTile(y0, mx, TILE.DOOR);
+            else if (doorSide === 'left') this._setTile(my, x0, TILE.DOOR);
+            else if (doorSide === 'right') this._setTile(my, x1, TILE.DOOR);
+        };
+
+        // Helper: scatter trees in a region
+        const scatterTrees = (x0, y0, x1, y1, density = 0.12) => {
+            for (let y = y0; y <= y1; y++)
+                for (let x = x0; x <= x1; x++)
+                    if (this.rng() < density && this.grid[y]?.[x] === TILE.GRASS)
+                        this._setTile(y, x, TILE.TREE);
+        };
+
+        // Helper: horizontal road
+        const hRoad = (y, x0, x1, tile = TILE.PATH) => {
+            for (let x = x0; x <= x1; x++) this._setTile(y, x, tile);
+        };
+        // Helper: vertical road
+        const vRoad = (x, y0, y1, tile = TILE.PATH) => {
+            for (let y = y0; y <= y1; y++) this._setTile(y, x, tile);
+        };
+
+        // ── ACT 1 : ROGUE ENCAMPMENT ─────────────────────────────
+        if (zoneLevel === 0) {
+            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.GRASS));
+
+            // === Outer forest ring ===
+            scatterTrees(0, 0, this.width - 1, this.height - 1, 0.18);
+
+            // === Palisade perimeter wall (large) ===
+            const px0 = cx - 28, px1 = cx + 28, py0 = cy - 22, py1 = cy + 18;
+            border(px0, py0, px1, py1, TILE.FENCE);
+            // Gate at bottom
+            this._setTile(py1, cx - 1, TILE.DOOR);
+            this._setTile(py1, cx, TILE.DOOR);
+            this._setTile(py1, cx + 1, TILE.DOOR);
+            // Clear fence interior so trees don't bleed in
+            fill(py0 + 1, px0 + 1, py1 - 1, px1 - 1, TILE.GRASS);
+
+            // === Main dirt square in center ===
+            fill(cy - 10, cx - 14, cy + 10, cx + 14, TILE.PATH);
+
+            // === Central cobblestone plaza ===
+            fill(cy - 5, cx - 6, cy + 5, cx + 6, TILE.COBBLE);
+
+            // === Camp roads (cross-shaped) ===
+            hRoad(cy, px0 + 1, px1 - 1);
+            vRoad(cx, py0 + 1, py1 - 1);
+
+            // === River at the south (wide) ===
+            fill(py1 + 2, 0, py1 + 12, this.width - 1, TILE.WATER);
+            // Shallow bank
+            fill(py1 + 1, 0, py1 + 2, this.width - 1, TILE.SHALLOW_WATER);
+
+            // === Northern tents row (west side) ===
+            building(cx - 26, cy - 20, cx - 18, cy - 14, 'bottom');
+            building(cx - 26, cy - 12, cx - 18, cy - 6, 'bottom');
+            building(cx - 26, cy - 4, cx - 18, cy + 2, 'bottom');
+
+            // === Northern tents row (east side) ===
+            building(cx + 18, cy - 20, cx + 26, cy - 14, 'bottom');
+            building(cx + 18, cy - 12, cx + 26, cy - 6, 'bottom');
+
+            // === Charsi's forge (east, large) ===
+            building(cx + 14, cy - 2, cx + 26, cy + 8, 'left');
+
+            // === Watchtowers at corners ===
+            fill(py0, px0, py0 + 3, px0 + 3, TILE.WALL);
+            fill(py0, px1 - 3, py0 + 3, px1, TILE.WALL);
+            fill(py1 - 3, px0, py1, px0 + 3, TILE.WALL);
+            fill(py1 - 3, px1 - 3, py1, px1, TILE.WALL);
+
+            // === Bonfire + waypoint in plaza center ===
+            addObj('bonfire', 'decoration', 'Campfire', 0, 1, 'obj_bonfire');
+            addObj('waypoint', 'waypoint', 'Waypoint', 3, 1, 'obj_waypoint', { zone: zoneLevel });
+            addObj('stash', 'stash', 'Stash', -4, 2, 'obj_chest');
+            addObj('cube', 'cube', 'Horadric Cube', -6, 2, 'item_horadric_fragment');
+
+            // === Shrines along west wall ===
+            addObj('shrine_e', 'shrine', 'Experience Shrine', -24, -8, 'obj_shrine', { shrineType: 'experience' });
+            addObj('shrine_m', 'shrine', 'Mana Shrine', -24, 2, 'obj_shrine', { shrineType: 'mana' });
+
+            // === Fence decorations ===
+            for (let i = 0; i < 10; i++)
+                addObj(`torch_${i}`, 'decoration', 'Torch', -14 + i * 3, -21, 'obj_torch');
+
+            // === Well in NE courtyard ===
+            addObj('well', 'decoration', 'Well', 20, -10, 'obj_well');
+
+            // === Supplies / barrels ===
+            for (let i = 0; i < 6; i++)
+                addObj(`barrel_${i}`, 'breakable', 'Barrel', 15 + i, 6, 'obj_barrel');
+
+            // === NPCs ===
+            addNpc('akara', 'Akara', 'elder', -20, -17, 'npc_akara', 'I am Akara, High Priestess of the Sightless Eye.');
+            addNpc('charsi', 'Charsi', 'merchant', 20, 2, 'npc_akara', "Hi there! I'm Charsi, the Encampment's blacksmith.");
+            addNpc('kashya', 'Kashya', 'mercenary_hire', -8, 8, 'npc_akara', 'I am Kashya. My Rogues are the best scouts in Sanctuary.');
+            addNpc('gheed', 'Gheed', 'merchant', 10, -8, 'npc_ormus', "A Deal? I've got plenty of those!");
+            addNpc('warriv', 'Warriv', 'waypoint', 6, 14, 'npc_larzuk', 'I can take you to the East when you are ready.');
+            addNpc('deckard_cain', 'Deckard Cain', 'elder', -2, -4, 'npc_deckard_cain', 'Stay a while and listen!');
+            addNpc('rogue_scout1', 'Rogue Scout', 'guard', -26, -16, 'npc_akara', 'Be on your guard, stranger.');
+            addNpc('rogue_scout2', 'Rogue Scout', 'guard', 26, -16, 'npc_akara', 'The darkness grows.');
+
+            this.playerStart = { x: cx * this.tileSize, y: (cy + 12) * this.tileSize };
+            this.exitPos = { x: cx * this.tileSize, y: (py1 + 1) * this.tileSize };
+
+            // ── ACT 2 : LUT GHOLEIN ──────────────────────────────────
+        } else if (zoneLevel === 38) {
+            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.SAND));
+
+            // === Desert outside ===
+            // Scattered cacti in the wilds
+            for (let y = 0; y < this.height; y++)
+                for (let x = 0; x < this.width; x++)
+                    if (this.rng() < 0.04) this._setTile(y, x, TILE.CACTUS);
+
+            // === City boundary wall ===
+            const wx0 = cx - 32, wx1 = cx + 24, wy0 = cy - 24, wy1 = cy + 20;
+            border(wx0, wy0, wx1, wy1, TILE.WALL);
+            // Gates
+            this._setTile(wy0, cx, TILE.DOOR); // north gate
+            this._setTile(wy1, cx, TILE.DOOR); // south gate
+            // Interior clear
+            fill(wy0 + 1, wx0 + 1, wy1 - 1, wx1 - 1, TILE.SAND);
+
+            // === Stone paved city core ===
+            fill(cy - 14, cx - 22, cy + 14, cx + 18, TILE.FLOOR);
+
+            // === Market square (cobbled) ===
+            fill(cy - 6, cx - 8, cy + 6, cx + 6, TILE.COBBLE);
+
+            // === Main avenues ===
+            hRoad(cy, wx0 + 1, wx1 - 1, TILE.PATH);
+            vRoad(cx, wy0 + 1, wy1 - 1, TILE.PATH);
+            hRoad(cy - 10, wx0 + 1, wx1 - 1, TILE.PATH);
+
+            // === Sea / harbour (right side) ===
+            fill(0, cx + 26, this.height - 1, this.width - 1, TILE.WATER);
+            fill(0, cx + 24, this.height - 1, cx + 26, TILE.SHALLOW_WATER);
+            // Docks
+            for (let dockY = cy - 8; dockY <= cy + 8; dockY += 4) {
+                fill(dockY, cx + 24, dockY + 2, cx + 32, TILE.BRIDGE);
+            }
+
+            // === Sandstone buildings ===
+            // West district
+            building(cx - 30, cy - 22, cx - 20, cy - 14, 'right');
+            building(cx - 30, cy - 10, cx - 20, cy - 2, 'right');
+            building(cx - 30, cy + 2, cx - 20, cy + 10, 'right');
+            building(cx - 18, cy - 22, cx - 10, cy - 14, 'bottom');
+            building(cx - 18, cy + 8, cx - 10, cy + 18, 'top');
+            // East district
+            building(cx + 10, cy - 22, cx + 22, cy - 14, 'bottom');
+            building(cx + 10, cy - 10, cx + 22, cy - 2, 'bottom');
+            // Palace / Inn (large, center-north)
+            building(cx - 8, cy - 22, cx + 8, cy - 12, 'bottom');
+            // Guard post
+            building(cx - 4, wy0, cx + 4, wy0 + 4, 'bottom');
+
+            // === Palace courtyard pillars ===
+            for (let i = -3; i <= 3; i += 3)
+                addObj(`pillar_${i}`, 'decoration', 'Pillar', i, -15, 'obj_pillar_holy');
+
+            // === Fountain in market square ===
+            addObj('fountain', 'decoration', 'Fountain', 0, -2, 'obj_well');
+
+            // === Waypoint & services ===
+            addObj('waypoint', 'waypoint', 'Waypoint', 8, 2, 'obj_waypoint', { zone: zoneLevel });
+            addObj('stash', 'stash', 'Stash', -10, 2, 'obj_chest');
+            addObj('cube', 'cube', 'Horadric Cube', -12, 2, 'item_horadric_fragment');
+
+            // === Barrels & market stalls ===
+            for (let i = 0; i < 8; i++)
+                addObj(`barrel_${i}`, 'breakable', 'Urn', -5 + i, 5, 'obj_urn');
+
+            // === Shrines ===
+            addObj('shrine_a', 'shrine', 'Armor Shrine', -28, -6, 'obj_shrine', { shrineType: 'armor' });
+            addObj('shrine_r', 'shrine', 'Resist Shrine', -28, 6, 'obj_shrine', { shrineType: 'resist' });
+
+            // === NPCs ===
+            addNpc('fara', 'Fara', 'elder', -24, -8, 'npc_akara', 'I am Fara. I can heal your wounds.');
+            addNpc('lysander', 'Lysander', 'merchant', -24, 0, 'npc_akara', "Be careful! I'm brewing something sensitive.");
+            addNpc('drognan', 'Drognan', 'merchant', 16, -18, 'npc_ormus', 'The Vizjerei have many secrets.');
+            addNpc('greiz', 'Greiz', 'mercenary_hire', 20, 6, 'npc_larzuk', 'My desert mercenaries are for hire.');
+            addNpc('atma', 'Atma', 'elder', 0, 12, 'npc_akara', 'Radament... he killed my family.');
+            addNpc('meshif', 'Meshif', 'waypoint', 22, 0, 'npc_larzuk', 'I am the captain of this ship.');
+            addNpc('jerhyn', 'Jerhyn', 'elder', -2, -18, 'npc_tyrael', 'Welcome to Lut Gholein. I am its Sultan.');
+            addNpc('elzix', 'Elzix', 'merchant', 14, -10, 'npc_ormus', 'Stay at my inn for a rest.');
+            addNpc('deckard_cain', 'Deckard Cain', 'elder', -2, -4, 'npc_deckard_cain', 'Stay a while and listen!');
+            addNpc('guard1', 'City Guard', 'guard', -4, -25, 'npc_larzuk', 'None shall pass without Sultan\'s leave.');
+            addNpc('guard2', 'City Guard', 'guard', 4, -25, 'npc_larzuk', 'Move along, traveler.');
+
+            this.playerStart = { x: cx * this.tileSize, y: (cy + 8) * this.tileSize };
+            this.exitPos = { x: cx * this.tileSize, y: (wy1 + 1) * this.tileSize };
+
+            // ── ACT 3 : KURAST DOCKS ─────────────────────────────────
+        } else if (zoneLevel === 68) {
+            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WATER));
+
+            // === Jungle shore at back (north) ===
+            fill(0, 0, cy - 18, this.width - 1, TILE.GRASS);
+            scatterTrees(0, 0, this.width - 1, cy - 14, 0.25);
+
+            // === Wide main dock platform ===
+            fill(cy - 16, cx - 30, cy + 16, cx + 20, TILE.BRIDGE);
+
+            // === Central raised district (solid land section) ===
+            fill(cy - 10, cx - 20, cy + 10, cx + 10, TILE.PATH);
+            fill(cy - 6, cx - 12, cy + 6, cx + 6, TILE.COBBLE);
+
+            // === Pier arms extending into the water ===
+            // East piers
+            for (let py = cy - 12; py <= cy + 12; py += 6)
+                fill(py, cx + 20, py + 3, cx + 38, TILE.BRIDGE);
+            // South piers
+            for (let px = cx - 24; px <= cx + 12; px += 12)
+                fill(cy + 16, px, cy + 28, px + 3, TILE.BRIDGE);
+
+            // === Shallow water near shore ===
+            fill(cy + 14, 0, cy + 18, this.width - 1, TILE.SHALLOW_WATER);
+
+            // === Stilt huts across the docks ===
+            building(cx - 28, cy - 14, cx - 16, cy - 6, 'right');
+            building(cx - 28, cy - 2, cx - 16, cy + 6, 'right');
+            building(cx - 28, cy + 8, cx - 16, cy + 14, 'right');
+            building(cx - 12, cy - 14, cx - 2, cy - 6, 'bottom');
+            building(cx - 12, cy + 8, cx - 2, cy + 14, 'top');
+            building(cx + 12, cy - 14, cx + 20, cy - 6, 'bottom');
+            building(cx + 12, cy + 4, cx + 20, cy + 12, 'top');
+            // Central hall (Ormus's) — large
+            building(cx - 4, cy - 14, cx + 10, cy - 4, 'bottom');
+
+            // === Temple ruin outline (north east corner) ===
+            border(cx + 16, cy - 22, cx + 28, cy - 10, TILE.RUINS);
+            fill(cy - 20, cx + 18, cy - 12, cx + 26, TILE.FLOOR);
+
+            // === Jungle tree clusters on dock edges ===
+            for (let i = 0; i < 12; i++) {
+                const tx = cx - 30 + Math.floor(this.rng() * 10);
+                const ty = cy - 20 + Math.floor(this.rng() * 6);
+                this._setTile(ty, tx, TILE.TREE);
+            }
+
+            // === Services ===
+            addObj('waypoint', 'waypoint', 'Waypoint', 6, 2, 'obj_waypoint', { zone: zoneLevel });
+            addObj('stash', 'stash', 'Stash', -8, 2, 'obj_chest');
+            addObj('cube', 'cube', 'Horadric Cube', -10, 2, 'item_horadric_fragment');
+
+            // === Market crates ===
+            for (let i = 0; i < 10; i++)
+                addObj(`crate_${i}`, 'breakable', 'Crate', -18 + i * 2, 10, 'obj_barrel');
+
+            // Shrines
+            addObj('shrine_s', 'shrine', 'Speed Shrine', -26, 2, 'obj_shrine', { shrineType: 'speed' });
+            addObj('shrine_c', 'shrine', 'Combat Shrine', -26, -8, 'obj_shrine', { shrineType: 'combat' });
+
+            // Temple altar up north
+            addObj('altar', 'decoration', 'Ancient Altar', 22, -16, 'obj_altar');
+
+            // NPCs
+            addNpc('ormus', 'Ormus', 'elder', -2, -9, 'npc_ormus', 'Ormus has been waiting for you.');
+            addNpc('hratli', 'Hratli', 'merchant', 16, -9, 'npc_larzuk', 'Good luck in the jungle, traveler.');
+            addNpc('asheara', 'Asheara', 'mercenary_hire', -22, 10, 'npc_akara', 'The Iron Wolves are ready.');
+            addNpc('alkor', 'Alkor', 'merchant', -22, -10, 'npc_akara', 'I am Alkor. I deal in alchemy.');
+            addNpc('cain_kurast', 'Deckard Cain', 'elder', -2, -4, 'npc_deckard_cain', 'Stay a while and listen!');
+            addNpc('meshif_k', 'Meshif', 'waypoint', 18, 12, 'npc_larzuk', 'I can take you to Lut Gholein.');
+            addNpc('natalya', 'Natalya', 'elder', 12, 4, 'npc_akara', 'I hunt evil in these jungles.');
+            addNpc('dock_worker1', 'Dock Worker', 'guard', -26, 12, 'npc_larzuk', 'Watch your step on these planks!');
+            addNpc('dock_worker2', 'Dock Worker', 'guard', 20, 14, 'npc_larzuk', 'Strange tides lately...');
+
+            this.playerStart = { x: cx * this.tileSize, y: (cy + 8) * this.tileSize };
+            this.exitPos = { x: (cx - 28) * this.tileSize, y: cy * this.tileSize };
+
+            // ── ACT 4 : PANDEMONIUM FORTRESS ─────────────────────────
+        } else if (zoneLevel === 96) {
+            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
+
+            // === Outer void with lava rivers ===
+            // Lava streams in the background
+            for (let lx = 0; lx < this.width; lx++)
+                for (let ly = 0; ly < this.height; ly++)
+                    if (Math.abs(Math.sin(lx * 0.15) * 3 - (ly - cy + 30)) < 2) this._setTile(ly, lx, TILE.LAVA);
+
+            // === Grand fortress walls (octagonal feel) ===
+            const fw = 30, fh = 26;
+            const fx0 = cx - fw, fx1 = cx + fw, fy0 = cy - fh, fy1 = cy + fh;
+            border(fx0, fy0, fx1, fy1, TILE.WALL);
+            fill(fy0 + 1, fx0 + 1, fy1 - 1, fx1 - 1, TILE.MARBLE);
+
+            // Diagonal cuts at corners (for octagon)
+            for (let d = 0; d < 5; d++) {
+                fill(fy0 + d, fx0, fy0 + d, fx0 + (4 - d), TILE.WALL);
+                fill(fy0 + d, fx1 - (4 - d), fy0 + d, fx1, TILE.WALL);
+                fill(fy1 - d, fx0, fy1 - d, fx0 + (4 - d), TILE.WALL);
+                fill(fy1 - d, fx1 - (4 - d), fy1 - d, fx1, TILE.WALL);
+            }
+
+            // === Inner sanctum (darker floor) ===
+            fill(cy - 10, cx - 12, cy + 10, cx + 12, TILE.FLOOR);
+            border(cy - 10, cx - 12, cy + 10, cx + 12, TILE.WALL);
+
+            // === Sanctuary gates ===
+            this._setTile(cy + 10, cx - 1, TILE.DOOR);
+            this._setTile(cy + 10, cx, TILE.DOOR);
+            this._setTile(cy + 10, cx + 1, TILE.DOOR);
+
+            // === Entrance bridge from south ===
+            fill(fy1, cx - 3, fy1 + 10, cx + 3, TILE.PATH);
+
+            // === Colonnaded avenues ===
+            for (let px = fx0 + 4; px <= fx1 - 4; px += 6) {
+                this._setTile(cy - 12, px, TILE.WALL); // pillar row
+                this._setTile(cy + 12, px, TILE.WALL);
+            }
+
+            // === Lava pools inside fortress ===
+            fill(cy - 24, cx - 26, cy - 18, cx - 20, TILE.LAVA);
+            fill(cy - 24, cx + 20, cy - 18, cx + 26, TILE.LAVA);
+            fill(cy + 18, cx - 26, cy + 24, cx - 20, TILE.LAVA);
+            fill(cy + 18, cx + 20, cy + 24, cx + 26, TILE.LAVA);
+
+            // === Pandemonium altar in throne room ===
+            addObj('altar', 'altar', 'Pandemonium Altar', 0, -6, 'obj_pandemonium_altar');
+            addObj('waypoint', 'waypoint', 'Waypoint', 6, 4, 'obj_waypoint', { zone: zoneLevel });
+            addObj('stash', 'stash', 'Stash', -8, 4, 'obj_chest');
+            addObj('cube', 'cube', 'Horadric Cube', -10, 4, 'item_horadric_fragment');
+
+            // Decorative soulstones
+            for (let i = -2; i <= 2; i += 2)
+                addObj(`soul_${i}`, 'decoration', 'Soulstone', i, -14, 'obj_cluster_soulstone');
+
+            // Hell torches
+            for (let i = -26; i <= 26; i += 6) {
+                addObj(`htorch_n${i}`, 'decoration', 'Hell Torch', i, -25, 'obj_torch_hell');
+                addObj(`htorch_s${i}`, 'decoration', 'Hell Torch', i, 25, 'obj_torch_hell');
+            }
+
+            // NPCs
+            addNpc('tyrael', 'Tyrael', 'elder', 0, -9, 'npc_tyrael', 'The Light welcomes you to the last bastion against Hell.');
+            addNpc('jamella', 'Jamella', 'merchant', -16, 0, 'npc_akara', 'I can heal your soul.');
+            addNpc('halbu', 'Halbu', 'merchant', 16, 0, 'npc_larzuk', 'Armor... weapons... I have it all.');
+            addNpc('deckard_cain', 'Deckard Cain', 'elder', -2, 3, 'npc_deckard_cain', 'Stay a while and listen!');
+            addNpc('angel_guard1', 'Angelic Guard', 'guard', -28, 0, 'npc_tyrael', 'None shall defile this sanctuary.');
+            addNpc('angel_guard2', 'Angelic Guard', 'guard', 28, 0, 'npc_tyrael', 'Be vigilant. Diablo is near.');
+
+            this.playerStart = { x: cx * this.tileSize, y: (fy1 + 5) * this.tileSize };
+            this.exitPos = { x: cx * this.tileSize, y: (fy1 + 1) * this.tileSize };
+
+            // ── ACT 5 : HARROGATH ────────────────────────────────────
+        } else if (zoneLevel === 102) {
+            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.SNOW));
+
+            // === Mountain backdrop (north) ===
+            for (let y = 0; y < cy - 22; y++)
+                for (let x = 0; x < this.width; x++)
+                    this._setTile(y, x, TILE.WALL);
+
+            // === Snow fields with ice patches ===
+            for (let y = cy - 22; y < this.height; y++)
+                for (let x = 0; x < this.width; x++)
+                    if (this.rng() < 0.06) this._setTile(y, x, TILE.ICE);
+
+            // === Outer palisade ===
+            const hx0 = cx - 30, hx1 = cx + 30, hy0 = cy - 20, hy1 = cy + 20;
+            border(hx0, hy0, hx1, hy1, TILE.WALL);
+            // Main gate (south)
+            this._setTile(hy1, cx - 2, TILE.DOOR);
+            this._setTile(hy1, cx - 1, TILE.DOOR);
+            this._setTile(hy1, cx, TILE.DOOR);
+            this._setTile(hy1, cx + 1, TILE.DOOR);
+            this._setTile(hy1, cx + 2, TILE.DOOR);
+            // Postern gate (north)
+            this._setTile(hy0, cx, TILE.DOOR);
+
+            // === Interior roads & paths ===
+            fill(hy0 + 1, hx0 + 1, hy1 - 1, hx1 - 1, TILE.SNOW);
+            hRoad(cy, hx0 + 1, hx1 - 1, TILE.PATH);
+            vRoad(cx, hy0 + 1, hy1 - 1, TILE.PATH);
+            hRoad(cy - 8, hx0 + 1, hx1 - 1, TILE.COBBLE);
+
+            // === Main square (cobbled) ===
+            fill(cy - 5, cx - 10, cy + 5, cx + 10, TILE.COBBLE);
+
+            // === Watchtowers at corners ===
+            fill(hy0, hx0, hy0 + 4, hx0 + 4, TILE.WALL);
+            fill(hy0, hx1 - 4, hy0 + 4, hx1, TILE.WALL);
+            fill(hy1 - 4, hx0, hy1, hx0 + 4, TILE.WALL);
+            fill(hy1 - 4, hx1 - 4, hy1, hx1, TILE.WALL);
+
+            // === Cabins & longhouses ===
+            // West district
+            building(cx - 28, cy - 18, cx - 16, cy - 10, 'right');
+            building(cx - 28, cy - 6, cx - 16, cy + 2, 'right');
+            building(cx - 28, cy + 6, cx - 16, cy + 14, 'right');
+            // East district
+            building(cx + 16, cy - 18, cx + 28, cy - 10, 'left');
+            building(cx + 16, cy + 2, cx + 28, cy + 10, 'left');
+            // Larzuk's smithy (south east, large)
+            building(cx + 16, cy + 10, cx + 28, cy + 18, 'left');
+            // Malah's house (north, prominent)
+            building(cx - 8, cy - 18, cx + 8, cy - 10, 'bottom');
+
+            // === Arreat Summit path (north, narrowing) ===
+            for (let y = hy0 - 1; y >= 2; y--) {
+                const narrowing = Math.max(1, Math.floor((hy0 - y) / 3));
+                for (let x = cx - narrowing; x <= cx + narrowing; x++)
+                    this._setTile(y, x, TILE.PATH);
+            }
+
+            // === Decorative ice formations ===
+            for (let i = 0; i < 8; i++) {
+                const ix = cx - 26 + Math.floor(this.rng() * 52);
+                const iy = cy - 18 + Math.floor(this.rng() * 36);
+                if (this.grid[iy]?.[ix] === TILE.SNOW)
+                    this._setTile(iy, ix, TILE.ICE);
+            }
+
+            // === Services ===
+            addObj('waypoint', 'waypoint', 'Waypoint', 4, 2, 'obj_waypoint', { zone: zoneLevel });
+            addObj('stash', 'stash', 'Stash', -8, 2, 'obj_chest');
+            addObj('cube', 'cube', 'Horadric Cube', -10, 2, 'item_horadric_fragment');
+
+            // Shrines
+            addObj('shrine_h', 'shrine', 'Health Shrine', -26, 6, 'obj_shrine', { shrineType: 'health' });
+            addObj('shrine_e', 'shrine', 'Experience Shrine', 26, 6, 'obj_shrine', { shrineType: 'experience' });
+
+            // Forge / anvil for Larzuk
+            addObj('forge', 'decoration', "Larzuk's Forge", 22, 14, 'obj_altar');
+
+            // NPCs
+            addNpc('malah', 'Malah', 'elder', -2, -14, 'npc_akara', 'Welcome to Harrogath, child.');
+            addNpc('larzuk', 'Larzuk', 'merchant', 22, 14, 'npc_larzuk', 'I am the best smith on Arreat.');
+            addNpc('qual_kehk', 'Qual-Kehk', 'mercenary_hire', -22, 12, 'npc_larzuk', 'My Barbarian warriors will fight for you.');
+            addNpc('anya', 'Anya', 'merchant', 22, 6, 'npc_akara', 'I owe you my life, traveler.');
+            addNpc('nihlathak', 'Nihlathak', 'elder', 0, -10, 'npc_ormus', 'I am busy. Begone.');
+            addNpc('cain_harr', 'Deckard Cain', 'elder', -2, -4, 'npc_deckard_cain', 'Stay a while and listen!');
+            addNpc('barb_guard1', 'Barbarian Guard', 'guard', -32, cy - hy0, 'npc_larzuk', 'The mountain will not fall while we stand.');
+            addNpc('barb_guard2', 'Barbarian Guard', 'guard', 32, cy - hy0, 'npc_larzuk', 'Baal shall not pass!');
+
+            this.playerStart = { x: cx * this.tileSize, y: (cy + 12) * this.tileSize };
+            this.exitPos = { x: cx * this.tileSize, y: (hy1 + 1) * this.tileSize };
+        }
+
+        // === Always place these shared objects ===
+        return this;
+    }
+
+    // Safe tile setter with bounds check
+    _setTile(r, c, tile) {
+        if (r >= 0 && r < this.height && c >= 0 && c < this.width)
+            this.grid[r][c] = tile;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  PROCEDURAL DUNGEON — unchanged logic, small tile additions
+    // ─────────────────────────────────────────────────────────────
     _generateProcedural(zoneLevel, theme, placeExit = true) {
         this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
         this.rooms = [];
@@ -63,104 +583,75 @@ export class Dungeon {
         this.npcSpawns = [];
         this.objectSpawns = [];
 
-        // Organic vs Structural Generation
         const isOrganicTheme = ['jungle', 'desert', 'snow', 'hell'].includes(theme);
 
         if (!isOrganicTheme) {
-            // BSP split
             const root = { x: 1, y: 1, w: this.width - 2, h: this.height - 2 };
             let iterations = 6;
             if (theme === 'catacombs') iterations = 7;
             if (theme === 'temple') iterations = 5;
 
             const leaves = this._bsp(root, 0, iterations);
-
-            // Carve rooms in leaves
             for (const leaf of leaves) {
                 const room = this._carveRoom(leaf);
                 if (room) this.rooms.push(room);
             }
-
-            // Connect rooms with corridors
-            for (let i = 1; i < this.rooms.length; i++) {
+            for (let i = 1; i < this.rooms.length; i++)
                 this._corridor(this.rooms[i - 1], this.rooms[i]);
-            }
         } else {
-            // Cellular Automata
             this._generateAutomata();
         }
 
-        // --- Theme Post-Processing ---
+        // Theme Post-Processing
         if (theme === 'desert') {
-            for (let r = 0; r < this.height; r++) {
-                for (let c = 0; c < this.width; c++) {
+            for (let r = 0; r < this.height; r++)
+                for (let c = 0; c < this.width; c++)
                     if (this.grid[r][c] === TILE.FLOOR) {
                         this.grid[r][c] = TILE.SAND;
                         if (this.rng() < 0.03) this.grid[r][c] = TILE.CACTUS;
                     }
-                }
-            }
         } else if (theme === 'jungle') {
-            for (let r = 0; r < this.height; r++) {
-                for (let c = 0; c < this.width; c++) {
+            for (let r = 0; r < this.height; r++)
+                for (let c = 0; c < this.width; c++)
                     if (this.grid[r][c] === TILE.FLOOR) {
                         this.grid[r][c] = TILE.GRASS;
                         if (this.rng() < 0.1) this.grid[r][c] = TILE.TREE;
                     }
-                }
-            }
         } else if (theme === 'temple') {
-            for (let r = 0; r < this.height; r++) {
-                for (let c = 0; c < this.width; c++) {
-                    if (this.grid[r][c] === TILE.FLOOR && this.rng() < 0.1) {
+            for (let r = 0; r < this.height; r++)
+                for (let c = 0; c < this.width; c++)
+                    if (this.grid[r][c] === TILE.FLOOR && this.rng() < 0.1)
                         this.grid[r][c] = TILE.WATER;
-                    }
-                }
-            }
         } else if (theme === 'hell') {
-            for (let r = 0; r < this.height; r++) {
-                for (let c = 0; c < this.width; c++) {
-                    if (this.grid[r][c] === TILE.FLOOR && this.rng() < 0.08) {
+            for (let r = 0; r < this.height; r++)
+                for (let c = 0; c < this.width; c++)
+                    if (this.grid[r][c] === TILE.FLOOR && this.rng() < 0.08)
                         this.grid[r][c] = TILE.LAVA;
-                    }
-                }
-            }
         } else if (theme === 'snow') {
-            for (let r = 0; r < this.height; r++) {
-                for (let c = 0; c < this.width; c++) {
+            for (let r = 0; r < this.height; r++)
+                for (let c = 0; c < this.width; c++)
                     if (this.grid[r][c] === TILE.FLOOR) {
                         this.grid[r][c] = TILE.SNOW;
                         if (this.rng() < 0.05) this.grid[r][c] = TILE.ICE;
                     }
-                }
-            }
         } else if (theme === 'arcane') {
-            for (let r = 0; r < this.height; r++) {
-                for (let c = 0; c < this.width; c++) {
-                    if (this.grid[r][c] === TILE.FLOOR) {
-                        this.grid[r][c] = TILE.ICE; // Arcane path style
-                    }
-                }
-            }
+            for (let r = 0; r < this.height; r++)
+                for (let c = 0; c < this.width; c++)
+                    if (this.grid[r][c] === TILE.FLOOR)
+                        this.grid[r][c] = TILE.ICE;
         }
 
-        // Place player start
         const first = this.rooms[0] || { x: 5, y: 5, w: 5, h: 5 };
         this.playerStart = {
             x: (first.x + Math.floor(first.w / 2)) * this.tileSize + this.tileSize / 2,
             y: (first.y + Math.floor(first.h / 2)) * this.tileSize + this.tileSize / 2,
         };
 
-        // Place Waypoint in first room
         this.objectSpawns.push({
-            type: 'waypoint',
-            x: this.playerStart.x + 32,
-            y: this.playerStart.y,
-            icon: 'obj_waypoint',
-            zone: zoneLevel
+            type: 'waypoint', x: this.playerStart.x + 32, y: this.playerStart.y,
+            icon: 'obj_waypoint', zone: zoneLevel
         });
 
-        // Place exit
         if (placeExit && this.rooms.length > 0) {
             const last = this.rooms[this.rooms.length - 1];
             const ec = last.x + Math.floor(last.w / 2);
@@ -171,20 +662,20 @@ export class Dungeon {
             this.exitPos = { x: -1000, y: -1000 };
         }
 
-        // Populate with objects and enemies
         this._populate(zoneLevel, theme);
-
         return this;
     }
 
     _populate(zl, theme) {
+        if (!this.rooms || this.rooms.length === 0) return;
+
         let breakableIcon = 'obj_barrel';
         if (theme === 'desert' || theme === 'tomb') breakableIcon = 'obj_urn';
         else if (theme === 'hell') breakableIcon = 'obj_urn_hell';
 
         for (let i = 1; i < this.rooms.length; i++) {
             const room = this.rooms[i];
-            
+
             // 1. Enemies
             const count = 2 + Math.floor(this.rng() * 4) + Math.floor(zl / 10);
             for (let n = 0; n < count; n++) {
@@ -200,40 +691,27 @@ export class Dungeon {
                     level: zl,
                 };
 
-                // Inject Unique Mini-Bosses
                 if (isBoss) {
-                    if (zoneLevel === 37 && i === this.rooms.length - 2 && this.rng() < 0.3) {
-                        spawn.name = "The Butcher";
-                        spawn.icon = "enemy_demon";
-                        spawn.isButcher = true;
-                        spawn.hpMult = 5.0;
-                    }
                     const uniqueMapping = {
-                        40: { name: "Radament", icon: "enemy_skeleton", isRadament: true, hpMult: 3.5 },
-                        46: { name: "Beetleburst", icon: "enemy_spider", isBeetleburst: true, hpMult: 3.0 },
-                        48: { name: "Coldworm the Burrower", icon: "enemy_spider", isColdworm: true, hpMult: 3.5 },
-                        59: { name: "The Summoner", icon: "class_sorceress", hpMult: 6.0, dmgMult: 4.5 },
-                        82: { name: "Battlemaid Sarina", icon: "enemy_ghost", isSarina: true, hpMult: 3.0 },
-                        92: { name: "Toorc Icefist", icon: "enemy_skeleton", isCouncil: true, hpMult: 4.5 },
-                        103: { name: "Shenk the Overseer", icon: "enemy_demon", isShenk: true, hpMult: 4.0 },
-                        109: { name: "Frozenstein", icon: "enemy_demon", isFrozenstein: true, hpMult: 4.0 }
+                        40: { name: 'Radament', icon: 'enemy_skeleton', isRadament: true, hpMult: 3.5 },
+                        46: { name: 'Beetleburst', icon: 'enemy_spider', isBeetleburst: true, hpMult: 3.0 },
+                        48: { name: 'Coldworm the Burrower', icon: 'enemy_spider', isColdworm: true, hpMult: 3.5 },
+                        59: { name: 'The Summoner', icon: 'class_sorceress', hpMult: 6.0, dmgMult: 4.5 },
+                        82: { name: 'Battlemaid Sarina', icon: 'enemy_ghost', isSarina: true, hpMult: 3.0 },
+                        92: { name: 'Toorc Icefist', icon: 'enemy_skeleton', isCouncil: true, hpMult: 4.5 },
+                        103: { name: 'Shenk the Overseer', icon: 'enemy_demon', isShenk: true, hpMult: 4.0 },
+                        109: { name: 'Frozenstein', icon: 'enemy_demon', isFrozenstein: true, hpMult: 4.0 },
                     };
                     if (uniqueMapping[zl]) Object.assign(spawn, uniqueMapping[zl]);
-
-                    if (zl === 98) { spawn.name = "Izual"; spawn.icon = "boss_izual"; spawn.isIzual = true; spawn.hpMult = 8.0; }
-                    if (zl === 100) { 
-                        spawn.name = "Hephaisto"; spawn.icon = "boss_hephaisto"; spawn.isHephaisto = true; spawn.hpMult = 8.0;
+                    if (zl === 98) { spawn.name = 'Izual'; spawn.icon = 'boss_izual'; spawn.isIzual = true; spawn.hpMult = 8.0; }
+                    if (zl === 100) {
+                        spawn.name = 'Hephaisto'; spawn.icon = 'boss_hephaisto'; spawn.isHephaisto = true; spawn.hpMult = 8.0;
                         this.objectSpawns.push({ id: 'hellforge', type: 'hellforge', name: 'The Hellforge', x: spawn.x + 60, y: spawn.y, icon: 'obj_altar' });
                     }
-
-                    // Act V: The Ancients (Trio)
-                    if (zoneLevel === 116 && i === this.rooms.length - 1) {
-                        // We replace the last room spawn with 3 Ancients
-                        spawn.name = "Talic the Defender"; spawn.icon = "enemy_demon"; spawn.isAncient = true; spawn.hpMult = 5.0;
-                        const s2 = { ...spawn, name: "Madawc the Guardian", x: spawn.x + 40, isAncient: true };
-                        const s3 = { ...spawn, name: "Korlic the Protector", x: spawn.x - 40, isAncient: true };
-                        this.enemySpawns.push(s2, s3);
-                        // Inject Altar nearby
+                    if (zl === 116 && i === this.rooms.length - 1) {
+                        spawn.name = 'Talic the Defender'; spawn.icon = 'enemy_demon'; spawn.isAncient = true; spawn.hpMult = 5.0;
+                        this.enemySpawns.push({ ...spawn, name: 'Madawc the Guardian', x: spawn.x + 40, isAncient: true });
+                        this.enemySpawns.push({ ...spawn, name: 'Korlic the Protector', x: spawn.x - 40, isAncient: true });
                         this.objectSpawns.push({ id: 'ancients_altar', type: 'ancients_altar', name: 'Altar of the Heavens', x: spawn.x, y: spawn.y - 60, icon: 'obj_altar' });
                     }
                 }
@@ -242,186 +720,48 @@ export class Dungeon {
 
             // 2. Loot / Chests
             if (this.rng() < 0.25) {
-                const cx = (room.x + Math.floor(room.w/2)) * this.tileSize;
-                const cy = (room.y + Math.floor(room.h/2)) * this.tileSize;
+                const cx = (room.x + Math.floor(room.w / 2)) * this.tileSize;
+                const cy = (room.y + Math.floor(room.h / 2)) * this.tileSize;
                 this.objectSpawns.push({ type: 'chest', x: cx, y: cy, icon: 'obj_chest' });
             }
 
             // 3. Shrines
             if (i > 1 && i < this.rooms.length - 1 && this.rng() < 0.15) {
-                const sx = (room.x + 1) * this.tileSize;
-                const sy = (room.y + 1) * this.tileSize;
                 const types = ['experience', 'armor', 'combat', 'mana', 'resist', 'speed'];
-                this.objectSpawns.push({ type: 'shrine', x: sx, y: sy, icon: 'obj_shrine', shrineType: types[Math.floor(this.rng()*types.length)] });
+                this.objectSpawns.push({
+                    type: 'shrine',
+                    x: (room.x + 1) * this.tileSize, y: (room.y + 1) * this.tileSize,
+                    icon: 'obj_shrine', shrineType: types[Math.floor(this.rng() * types.length)]
+                });
             }
 
             // 4. Breakables
             const bCount = 1 + Math.floor(this.rng() * 4);
-            for(let b=0; b<bCount; b++) {
-                const bx = (room.x + 1 + Math.floor(this.rng() * (room.w-2))) * this.tileSize;
-                const by = (room.y + 1 + Math.floor(this.rng() * (room.h-2))) * this.tileSize;
-                this.objectSpawns.push({ type: 'breakable', x: bx, y: by, icon: breakableIcon });
+            for (let b = 0; b < bCount; b++) {
+                this.objectSpawns.push({
+                    type: 'breakable',
+                    x: (room.x + 1 + Math.floor(this.rng() * (room.w - 2))) * this.tileSize,
+                    y: (room.y + 1 + Math.floor(this.rng() * (room.h - 2))) * this.tileSize,
+                    icon: breakableIcon
+                });
             }
 
-            // 5. Decorative Act-Specific Props
-            if (zl <= 37) { // Act 1
-                if (theme === 'catacombs' && this.rng() < 0.2) {
-                    const px = (room.x + 2) * this.tileSize; const py = (room.y + 2) * this.tileSize;
-                    this.objectSpawns.push({ type: 'decoration', x: px, y: py, icon: 'obj_sarcophagus' });
-                }
-                if (theme === 'catacombs' && this.rng() < 0.1) {
-                    const px = (room.x + room.w - 2) * this.tileSize; const py = (room.y + 2) * this.tileSize;
-                    this.objectSpawns.push({ type: 'decoration', x: px, y: py, icon: 'obj_gargoyle' });
-                }
-            } else if (zl <= 67) { // Act 2
-                if (this.rng() < 0.15) {
-                    const px = (room.x + Math.floor(room.w/2)) * this.tileSize;
-                    const py = (room.y + 2) * this.tileSize;
-                    this.objectSpawns.push({ type: 'decoration', x: px, y: py, icon: 'obj_pillar_holy' });
-                }
-            } else if (zl <= 101) { // Act 4
-                if (this.rng() < 0.2) {
-                    const px = (room.x + Math.floor(this.rng()*room.w)) * this.tileSize;
-                    const py = (room.y + Math.floor(this.rng()*room.h)) * this.tileSize;
-                    this.objectSpawns.push({ type: 'decoration', x: px, y: py, icon: 'obj_cluster_soulstone' });
-                }
+            // 5. Decorative props
+            if (zl <= 37 && theme === 'catacombs') {
+                if (this.rng() < 0.2) this.objectSpawns.push({ type: 'decoration', x: (room.x + 2) * this.tileSize, y: (room.y + 2) * this.tileSize, icon: 'obj_sarcophagus' });
+                if (this.rng() < 0.1) this.objectSpawns.push({ type: 'decoration', x: (room.x + room.w - 2) * this.tileSize, y: (room.y + 2) * this.tileSize, icon: 'obj_gargoyle' });
+            } else if (zl <= 67 && this.rng() < 0.15) {
+                this.objectSpawns.push({ type: 'decoration', x: (room.x + Math.floor(room.w / 2)) * this.tileSize, y: (room.y + 2) * this.tileSize, icon: 'obj_pillar_holy' });
+            } else if (zl <= 101 && this.rng() < 0.2) {
+                this.objectSpawns.push({ type: 'decoration', x: (room.x + Math.floor(this.rng() * room.w)) * this.tileSize, y: (room.y + Math.floor(this.rng() * room.h)) * this.tileSize, icon: 'obj_cluster_soulstone' });
+            }
+
+            if (theme === 'hell' && this.rng() < 0.2) {
+                const hellProps = ['obj_cluster_soulstone', 'obj_altar_pentagram', 'obj_torch_hell'];
+                this.objectSpawns.push({ type: 'decoration', x: (room.x + Math.floor(this.rng() * room.w)) * this.tileSize, y: (room.y + Math.floor(this.rng() * room.h)) * this.tileSize, icon: hellProps[Math.floor(this.rng() * hellProps.length)] });
             }
         }
     }
-
-    generateTown(theme, zoneLevel = 0) {
-        this.rooms = [];
-        this.enemySpawns = [];
-        this.lootSpawns = [];
-        this.npcSpawns = [];
-        this.objectSpawns = [];
-        const cx = Math.floor(this.width / 2);
-        const cy = Math.floor(this.height / 2);
-
-        const addNpc = (id, name, type, dx, dy, icon, dialogue) => {
-            this.npcSpawns.push({ id, name, type, x: (cx + dx) * this.tileSize, y: (cy + dy) * this.tileSize, icon, dialogue });
-        };
-
-        if (zoneLevel === 0) {
-            // Act 1: Rogue Encampment (D2-accurate)
-            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.GRASS));
-            // Path and Encampment Square
-            for (let y = cy - 10; y <= cy + 10; y++) {
-                for (let x = cx - 12; x <= cx + 12; x++) {
-                    if (Math.hypot(x-cx, y-cy) < 10) this.grid[y][x] = TILE.PATH;
-                }
-            }
-            // River to the south
-            for (let x = 0; x < this.width; x++) {
-                for (let y = cy + 15; y < cy + 25; y++) this.grid[y][x] = TILE.WATER;
-            }
-            // Fences and Tents
-            this.objectSpawns.push({ id: 'tent_akara', type: 'tent', name: "Akara's Tent", x: (cx - 8) * this.tileSize, y: (cy - 6) * this.tileSize, icon: 'obj_tent_rogue' });
-            this.objectSpawns.push({ id: 'tent_charsi', type: 'tent', name: "Charsi's Forge", x: (cx + 10) * this.tileSize, y: (cy - 2) * this.tileSize, icon: 'obj_tent_leather' });
-            this.objectSpawns.push({ id: 'bonfire', type: 'decoration', name: "Campfire", x: cx * this.tileSize, y: cy * this.tileSize, icon: 'obj_bonfire' });
-            for(let i=0; i<8; i++) {
-                this.objectSpawns.push({ type: 'decoration', x: (cx - 15 + i*4) * this.tileSize, y: (cy - 12) * this.tileSize, icon: 'obj_fence_wood' });
-            }
-
-            addNpc("akara", "Akara", "elder", -8, -4, "npc_akara", "I am Akara, High Priestess of the Sightless Eye.");
-            addNpc("charsi", "Charsi", "merchant", 10, 0, "npc_akara", "Hi there! I'm Charsi, the Encampment's blacksmith.");
-            addNpc("kashya", "Kashya", "mercenary_hire", -6, 6, "npc_akara", "I am Kashya. My Rogues are the best scouts in Sanctuary.");
-            addNpc("gheed", "Gheed", "merchant", 8, -6, "npc_ormus", "A Deal? I've got plenty of those!");
-            addNpc("warriv", "Warriv", "waypoint", 6, 8, "npc_larzuk", "Greetings. I can take you to the East when you are ready.");
-            addNpc("deckard_cain", "Deckard Cain", "elder", -2, -2, "npc_deckard_cain", "Stay a while and listen!");
-
-        } else if (zoneLevel === 38) {
-            // Act 2: Lut Gholein (City of the Desert)
-            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.SAND));
-            // City Walls and Paving
-            for (let y = cy - 15; y <= cy + 15; y++) {
-                for (let x = cx - 20; x <= cx + 20; x++) {
-                    if (Math.abs(x-cx) < 18 && Math.abs(y-cy) < 13) this.grid[y][x] = TILE.FLOOR; // Stone paved
-                }
-            }
-            // Sea to the right
-            for (let y = 0; y < this.height; y++) {
-                for (let x = cx + 25; x < this.width; x++) this.grid[y][x] = TILE.WATER;
-            }
-            // Sandstone Buildings
-            this.objectSpawns.push({ type: 'house', x: (cx - 14) * this.tileSize, y: (cy - 8) * this.tileSize, icon: 'obj_house_sandstone' });
-            this.objectSpawns.push({ type: 'house', x: (cx - 14) * this.tileSize, y: (cy + 6) * this.tileSize, icon: 'obj_house_sandstone' });
-            this.objectSpawns.push({ type: 'house', x: (cx + 10) * this.tileSize, y: (cy - 10) * this.tileSize, icon: 'obj_house_sandstone' });
-            
-            addNpc("fara", "Fara", "elder", -6, -8, "npc_akara", "I am Fara. I can heal your wounds and repair your gear.");
-            addNpc("lysander", "Lysander", "merchant", -12, 0, "npc_akara", "Be careful! I'm brewing something sensitive.");
-            addNpc("drognan", "Drognan", "merchant", 10, -6, "npc_ormus", "The Vizjerei have many secrets.");
-            addNpc("greiz", "Greiz", "mercenary_hire", 12, 6, "npc_larzuk", "My desert mercenaries are for hire.");
-            addNpc("atma", "Atma", "elder", 0, 10, "npc_akara", "Radament... he killed my family.");
-            addNpc("meshif", "Meshif", "waypoint", 18, 0, "npc_larzuk", "I am the captain of this ship.");
-            addNpc("deckard_cain", "Deckard Cain", "elder", -2, -2, "npc_deckard_cain", "Stay a while and listen!");
-
-        } else if (zoneLevel === 68) {
-            // Act 3: Kurast Docks (Jungle Outpost)
-            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WATER));
-            // Massive wood docks
-            for (let y = cy - 12; y <= cy + 12; y++) {
-                for (let x = cx - 25; x <= cx + 15; x++) {
-                    if (Math.abs(y-cy) < 5 || Math.abs(x-cx) < 5) this.grid[y][x] = TILE.BRIDGE;
-                }
-            }
-            // Stilt Huts
-            this.objectSpawns.push({ type: 'hut', x: (cx - 18) * this.tileSize, y: (cy - 8) * this.tileSize, icon: 'obj_hut_stilt' });
-            this.objectSpawns.push({ type: 'hut', x: (cx - 18) * this.tileSize, y: (cy + 8) * this.tileSize, icon: 'obj_hut_stilt' });
-            this.objectSpawns.push({ type: 'hut', x: (cx + 10) * this.tileSize, y: (cy - 10) * this.tileSize, icon: 'obj_hut_stilt' });
-            
-            addNpc("ormus", "Ormus", "elder", -4, -4, "npc_ormus", "Ormus has been waiting for you.");
-            addNpc("hratli", "Hratli", "merchant", 8, -6, "npc_larzuk", "Good luck in the jungle, traveler.");
-            addNpc("asheara", "Asheara", "mercenary_hire", -10, 8, "npc_akara", "The Iron Wolves are ready.");
-            addNpc("alkor", "Alkor", "merchant", -15, -10, "npc_akara", "I am Alkor. I deal in alchemy.");
-            addNpc("deckard_cain", "Deckard Cain", "elder", -2, -2, "npc_deckard_cain", "Stay a while and listen!");
-
-        } else if (zoneLevel === 96) {
-            // Act 4: Pandemonium Fortress
-            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
-            for (let y = cy - 12; y <= cy + 12; y++) {
-                for (let x = cx - 12; x <= cx + 12; x++) {
-                    if (Math.hypot(x-cx, y-cy) < 11) this.grid[y][x] = TILE.FLOOR;
-                }
-            }
-            this.objectSpawns.push({ type: 'altar', x: cx * this.tileSize, y: (cy - 4) * this.tileSize, icon: 'obj_pandemonium_altar' });
-            
-            addNpc("tyrael", "Tyrael", "elder", 0, -8, "npc_tyrael", "The Light welcomes you to the last bastion.");
-            addNpc("jamella", "Jamella", "merchant", -6, -4, "npc_akara", "I can heal your soul.");
-            addNpc("halbu", "Halbu", "merchant", 6, -4, "npc_larzuk", "Armor... weapons... I have it all.");
-            addNpc("deckard_cain", "Deckard Cain", "elder", -2, -2, "npc_deckard_cain", "Stay a while and listen!");
-
-        } else if (zoneLevel === 102) {
-            // Act 5: Harrogath (Snowy Stronghold)
-            this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.SNOW));
-            for (let y = cy - 12; y <= cy + 12; y++) {
-                for (let x = cx - 15; x <= cx + 15; x++) {
-                    if (Math.abs(x-cx) < 13 && Math.abs(y-cy) < 10) this.grid[y][x] = TILE.PATH;
-                }
-            }
-            // Cabins
-            this.objectSpawns.push({ type: 'house', x: (cx - 10) * this.tileSize, y: (cy - 6) * this.tileSize, icon: 'obj_harrogath_cabin' });
-            this.objectSpawns.push({ type: 'house', x: (cx + 10) * this.tileSize, y: (cy - 6) * this.tileSize, icon: 'obj_harrogath_cabin' });
-            
-            addNpc("malah", "Malah", "elder", -6, -8, "npc_akara", "Welcome to Harrogath, child.");
-            addNpc("larzuk", "Larzuk", "merchant", 10, -2, "npc_larzuk", "I am the best smith on Arreat.");
-            addNpc("qual_kehk", "Qual-Kehk", "mercenary_hire", -10, 6, "npc_larzuk", "My warriors will fight for you.");
-            addNpc("anya", "Anya", "merchant", 10, 6, "npc_akara", "I owe you my life.");
-            addNpc("nihlathak", "Nihlathak", "elder", 0, -10, "npc_ormus", "I am busy. Begone.");
-            addNpc("deckard_cain", "Deckard Cain", "elder", -2, -2, "npc_deckard_cain", "Stay a while and listen!");
-        }
-
-        this.playerStart = { x: cx * this.tileSize, y: (cy + 4) * this.tileSize };
-        this.exitPos = { x: cx * this.tileSize, y: (cy + 15) * this.tileSize };
-        
-        // Waypoint in the center
-        this.objectSpawns.push({ type: 'waypoint', x: cx * this.tileSize, y: (cy + 2) * this.tileSize, icon: 'obj_waypoint', zone: zoneLevel });
-        this.objectSpawns.push({ id: 'stash', type: 'stash', name: 'Stash', x: (cx - 4) * this.tileSize, y: (cy + 2) * this.tileSize, icon: 'obj_chest' });
-        this.objectSpawns.push({ id: 'cube', type: 'cube', name: 'Horadric Cube', x: (cx - 6) * this.tileSize, y: (cy + 2) * this.tileSize, icon: 'item_horadric_fragment' });
-
-        return this;
-    }
-
 
     generateBossRoom(theme, zoneLevel = 5) {
         this.grid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
@@ -435,46 +775,30 @@ export class Dungeon {
         const cy = Math.floor(this.height / 2);
         const radius = 15;
 
-        // Circular-ish Arena
-        for (let y = cy - radius; y <= cy + radius; y++) {
-            for (let x = cx - radius; x <= cx + radius; x++) {
-                if ((x - cx) ** 2 + (y - cy) ** 2 <= radius ** 2) {
+        for (let y = cy - radius; y <= cy + radius; y++)
+            for (let x = cx - radius; x <= cx + radius; x++)
+                if ((x - cx) ** 2 + (y - cy) ** 2 <= radius ** 2)
                     this.grid[y][x] = theme === 'catacombs' ? TILE.PATH : TILE.FLOOR;
-                }
-            }
-        }
 
-        // Entrance hallway
-        for (let y = cy + radius; y <= cy + radius + 10; y++) {
-            for (let x = cx - 2; x <= cx + 2; x++) {
+        for (let y = cy + radius; y <= cy + radius + 10; y++)
+            for (let x = cx - 2; x <= cx + 2; x++)
                 this.grid[y][x] = TILE.PATH;
-            }
-        }
 
         this.playerStart = { x: cx * this.tileSize, y: (cy + radius + 8) * this.tileSize };
 
-        
-        // Boss Selection based on level
-        let bossName = "Blood Raven"; let bossIcon = "enemy_ghost"; let hpMult = 2.0;
+        let bossName = 'Blood Raven', bossIcon = 'enemy_ghost', hpMult = 2.0;
         let isAndariel = false, isDuriel = false, isMephisto = false, isDiablo = false, isBaal = false, isUber = false;
+        if (zoneLevel === 37) { bossName = 'Andariel'; bossIcon = 'boss_andariel'; hpMult = 4.0; isAndariel = true; }
+        else if (zoneLevel === 67) { bossName = 'Duriel'; bossIcon = 'boss_duriel'; hpMult = 6.0; isDuriel = true; }
+        else if (zoneLevel === 95) { bossName = 'Mephisto'; bossIcon = 'boss_mephisto'; hpMult = 8.0; isMephisto = true; }
+        else if (zoneLevel === 101) { bossName = 'Diablo'; bossIcon = 'boss_diablo'; hpMult = 12.0; isDiablo = true; }
+        else if (zoneLevel === 125) { bossName = 'Baal'; bossIcon = 'boss_baal'; hpMult = 15.0; isBaal = true; }
+        else if (zoneLevel === 127) { bossName = 'Uber Diablo'; bossIcon = 'boss_diablo'; hpMult = 30.0; isUber = true; }
 
-        if (zoneLevel === 37) { bossName = "Andariel"; bossIcon = "boss_andariel"; hpMult = 4.0; isAndariel = true; }
-        else if (zoneLevel === 67) { bossName = "Duriel"; bossIcon = "boss_duriel"; hpMult = 6.0; isDuriel = true; }
-        else if (zoneLevel === 95) { bossName = "Mephisto"; bossIcon = "boss_mephisto"; hpMult = 8.0; isMephisto = true; }
-        else if (zoneLevel === 101) { bossName = "Diablo"; bossIcon = "boss_diablo"; hpMult = 12.0; isDiablo = true; }
-        else if (zoneLevel === 125) { bossName = "Baal"; bossIcon = "boss_baal"; hpMult = 15.0; isBaal = true; }
-        else if (zoneLevel === 127) { bossName = "Uber Diablo"; bossIcon = "boss_diablo"; hpMult = 30.0; isUber = true; }
-
-        // Boss Spawn in center
         this.enemySpawns.push({
-            x: cx * this.tileSize,
-            y: cy * this.tileSize,
-            type: 'boss',
-            level: zoneLevel,
-            name: bossName,
-            icon: bossIcon,
-            hpMult: hpMult,
-            dmgMult: 2.0 + (zoneLevel / 20),
+            x: cx * this.tileSize, y: cy * this.tileSize,
+            type: 'boss', level: zoneLevel, name: bossName, icon: bossIcon,
+            hpMult, dmgMult: 2.0 + (zoneLevel / 20),
             isAndariel, isDuriel, isMephisto, isDiablo, isBaal, isUber
         });
 
@@ -482,6 +806,9 @@ export class Dungeon {
         return this;
     }
 
+    // ─────────────────────────────────────────────────────────────
+    //  BSP / CA / CORRIDOR — unchanged
+    // ─────────────────────────────────────────────────────────────
     _bsp(node, depth, maxDepth) {
         if (depth >= maxDepth || node.w < 12 || node.h < 12) return [node];
         const horizontal = node.h > node.w ? true : node.w > node.h ? false : this.rng() < 0.5;
@@ -500,138 +827,96 @@ export class Dungeon {
     }
 
     _generateAutomata() {
-        // Initial random fill
         let grid = Array.from({ length: this.height }, () =>
             Array.from({ length: this.width }, () => this.rng() < 0.45 ? TILE.WALL : TILE.FLOOR)
         );
-
-        // Run iterations
         for (let i = 0; i < 5; i++) {
-            let nextGrid = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
+            let next = Array.from({ length: this.height }, () => Array(this.width).fill(TILE.WALL));
             for (let r = 0; r < this.height; r++) {
                 for (let c = 0; c < this.width; c++) {
                     let walls = 0;
-                    for (let dr = -1; dr <= 1; dr++) {
+                    for (let dr = -1; dr <= 1; dr++)
                         for (let dc = -1; dc <= 1; dc++) {
                             if (dr === 0 && dc === 0) continue;
                             const nr = r + dr, nc = c + dc;
                             if (nr < 0 || nr >= this.height || nc < 0 || nc >= this.width) walls++;
                             else if (grid[nr][nc] === TILE.WALL) walls++;
                         }
-                    }
-                    if (walls > 4) nextGrid[r][c] = TILE.WALL;
-                    else nextGrid[r][c] = TILE.FLOOR;
+                    next[r][c] = walls > 4 ? TILE.WALL : TILE.FLOOR;
                 }
             }
-            grid = nextGrid;
+            grid = next;
         }
-
-        // Ensure boundaries are walls
-        for (let r = 0; r < this.height; r++) {
-            grid[r][0] = TILE.WALL;
-            grid[r][this.width - 1] = TILE.WALL;
-        }
-        for (let c = 0; c < this.width; c++) {
-            grid[0][c] = TILE.WALL;
-            grid[this.height - 1][c] = TILE.WALL;
-        }
-
+        for (let r = 0; r < this.height; r++) { grid[r][0] = TILE.WALL; grid[r][this.width - 1] = TILE.WALL; }
+        for (let c = 0; c < this.width; c++) { grid[0][c] = TILE.WALL; grid[this.height - 1][c] = TILE.WALL; }
         this.grid = grid;
-
-        // --- Critical: Populate virtual rooms for enemy spawning ---
-        // CA maps are mostly open, so we create virtual room chunks to trigger the spawn loop
         this.rooms = [];
-        const chunkSize = 15;
-        for (let r = 2; r < this.height - chunkSize; r += chunkSize) {
-            for (let c = 2; c < this.width - chunkSize; c += chunkSize) {
-                if (this.grid[r + 5][c + 5] === TILE.FLOOR || this.grid[r + 5][c + 5] === TILE.SAND || this.grid[r + 5][c + 5] === TILE.SNOW || this.grid[r + 5][c + 5] === TILE.GRASS) {
-                    this.rooms.push({ x: c, y: r, w: chunkSize - 2, h: chunkSize - 2 });
-                }
+        const cs = 15;
+        for (let r = 2; r < this.height - cs; r += cs)
+            for (let c = 2; c < this.width - cs; c += cs) {
+                const t = this.grid[r + 5]?.[c + 5];
+                if (t === TILE.FLOOR || t === TILE.SAND || t === TILE.SNOW || t === TILE.GRASS)
+                    this.rooms.push({ x: c, y: r, w: cs - 2, h: cs - 2 });
             }
-        }
-
-        if (this.rooms.length === 0) {
+        if (this.rooms.length === 0)
             this.rooms.push({ x: 5, y: 5, w: this.width - 10, h: this.height - 10 });
-        }
     }
 
     _carveRoom(leaf) {
-        const margin = 2;
-        const maxW = leaf.w - margin * 2;
-        const maxH = leaf.h - margin * 2;
+        const margin = 2, maxW = leaf.w - margin * 2, maxH = leaf.h - margin * 2;
         if (maxW < 4 || maxH < 4) return null;
         const rw = 4 + Math.floor(this.rng() * (maxW - 3));
         const rh = 4 + Math.floor(this.rng() * (maxH - 3));
         const rx = leaf.x + margin + Math.floor(this.rng() * (maxW - rw + 1));
         const ry = leaf.y + margin + Math.floor(this.rng() * (maxH - rh + 1));
-        for (let y = ry; y < ry + rh; y++) {
-            for (let x = rx; x < rx + rw; x++) {
+        for (let y = ry; y < ry + rh; y++)
+            for (let x = rx; x < rx + rw; x++)
                 if (y > 0 && y < this.height - 1 && x > 0 && x < this.width - 1)
                     this.grid[y][x] = TILE.FLOOR;
-            }
-        }
         return { x: rx, y: ry, w: rw, h: rh };
     }
 
     _corridor(roomA, roomB) {
-        const ax = roomA.x + Math.floor(roomA.w / 2);
-        const ay = roomA.y + Math.floor(roomA.h / 2);
+        let cx = roomA.x + Math.floor(roomA.w / 2);
+        let cy = roomA.y + Math.floor(roomA.h / 2);
         const bx = roomB.x + Math.floor(roomB.w / 2);
         const by = roomB.y + Math.floor(roomB.h / 2);
-        let cx = ax, cy = ay;
         while (cx !== bx) { this.grid[cy][cx] = TILE.FLOOR; cx += cx < bx ? 1 : -1; }
         while (cy !== by) { this.grid[cy][cx] = TILE.FLOOR; cy += cy < by ? 1 : -1; }
     }
 
+    // ─────────────────────────────────────────────────────────────
+    //  COLLISION & LOS
+    // ─────────────────────────────────────────────────────────────
     isWalkable(wx, wy) {
         const c = Math.floor(wx / this.tileSize), r = Math.floor(wy / this.tileSize);
         if (r < 0 || r >= this.height || c < 0 || c >= this.width) return false;
         if (!this.grid || !this.grid[r]) return false;
         const tile = this.grid[r][c];
-        // Allow walking on Water and Lava but movement logic will apply a penalty
-        return tile !== TILE.WALL && tile !== TILE.TREE;
+        return tile !== TILE.WALL && tile !== TILE.TREE && tile !== TILE.FENCE;
     }
 
-    /** Raycast using Digital Differential Analyzer (DDA) to check Line of Sight */
     hasLineOfSight(x0, y0, x1, y1) {
-        const c0 = Math.floor(x0 / this.tileSize);
-        const r0 = Math.floor(y0 / this.tileSize);
-        const c1 = Math.floor(x1 / this.tileSize);
-        const r1 = Math.floor(y1 / this.tileSize);
-
-        let dx = Math.abs(c1 - c0);
-        let dy = Math.abs(r1 - r0);
-        let x = c0;
-        let y = r0;
-        let n = 1 + dx + dy;
-        const x_inc = (c1 > c0) ? 1 : -1;
-        const y_inc = (r1 > r0) ? 1 : -1;
-        let error = dx - dy;
-        dx *= 2;
-        dy *= 2;
-
+        const c0 = Math.floor(x0 / this.tileSize), r0 = Math.floor(y0 / this.tileSize);
+        const c1 = Math.floor(x1 / this.tileSize), r1 = Math.floor(y1 / this.tileSize);
+        let dx = Math.abs(c1 - c0), dy = Math.abs(r1 - r0);
+        let x = c0, y = r0, n = 1 + dx + dy;
+        const xi = (c1 > c0) ? 1 : -1, yi = (r1 > r0) ? 1 : -1;
+        let err = dx - dy; dx *= 2; dy *= 2;
         for (; n > 0; --n) {
             if (y < 0 || y >= this.height || x < 0 || x >= this.width) return false;
-            const tile = this.grid[y][x];
-            if (tile === TILE.WALL || tile === TILE.TREE) return false;
-
-            if (error > 0) {
-                x += x_inc;
-                error -= dy;
-            } else if (error < 0) {
-                y += y_inc;
-                error += dx;
-            } else {
-                x += x_inc;
-                error -= dy;
-                y += y_inc;
-                error += dx;
-                n--;
-            }
+            const t = this.grid[y][x];
+            if (t === TILE.WALL || t === TILE.TREE || t === TILE.FENCE) return false;
+            if (err > 0) { x += xi; err -= dy; }
+            else if (err < 0) { y += yi; err += dx; }
+            else { x += xi; err -= dy; y += yi; err += dx; n--; }
         }
         return true;
     }
 
+    // ─────────────────────────────────────────────────────────────
+    //  RENDER
+    // ─────────────────────────────────────────────────────────────
     render(renderer, camera) {
         const ctx = renderer.ctx; camera.apply(ctx);
         const ts = this.tileSize;
@@ -644,62 +929,38 @@ export class Dungeon {
             [TILE.FLOOR]: 'env_floor', [TILE.WALL]: 'env_wall', [TILE.DOOR]: 'env_door',
             [TILE.STAIRS_DOWN]: 'env_stairs_down', [TILE.STAIRS_UP]: 'env_stairs_up',
             [TILE.GRASS]: 'env_grass', [TILE.PATH]: 'env_path', [TILE.WATER]: 'env_water',
-            [TILE.TREE]: 'env_tree', [TILE.BRIDGE]: 'env_bridge',
-            [TILE.SAND]: 'env_sand', [TILE.CACTUS]: 'env_cactus',
-            [TILE.SNOW]: 'env_snow', [TILE.ICE]: 'env_ice', [TILE.LAVA]: 'env_lava'
+            [TILE.TREE]: 'env_tree', [TILE.BRIDGE]: 'env_bridge', [TILE.SAND]: 'env_sand',
+            [TILE.CACTUS]: 'env_cactus', [TILE.SNOW]: 'env_snow', [TILE.ICE]: 'env_ice',
+            [TILE.LAVA]: 'env_lava', [TILE.COBBLE]: 'env_cobble', [TILE.FENCE]: 'env_fence',
+            [TILE.RUINS]: 'env_ruins', [TILE.DIRT]: 'env_dirt', [TILE.MARBLE]: 'env_marble',
+            [TILE.WOOD_FLOOR]: 'env_wood_floor', [TILE.SHALLOW_WATER]: 'env_shallow_water',
+        };
+
+        const baseColors = {
+            [TILE.FLOOR]: '#1a1820', [TILE.WALL]: '#0a080c', [TILE.DOOR]: '#3a2a1a',
+            [TILE.STAIRS_DOWN]: '#151525', [TILE.STAIRS_UP]: '#151525',
+            [TILE.GRASS]: '#1a2e1a', [TILE.PATH]: '#2a201a', [TILE.WATER]: '#0a1a2e',
+            [TILE.TREE]: '#0a1d0a', [TILE.BRIDGE]: '#2a1a10', [TILE.SAND]: '#3d2e14',
+            [TILE.CACTUS]: '#1e2b12', [TILE.SNOW]: '#d0d8e8', [TILE.ICE]: '#6088aa',
+            [TILE.LAVA]: '#331000', [TILE.COBBLE]: '#2a2222', [TILE.FENCE]: '#3a2810',
+            [TILE.RUINS]: '#1a1212', [TILE.DIRT]: '#2a1a0a', [TILE.MARBLE]: '#8a8070',
+            [TILE.WOOD_FLOOR]: '#3a2518', [TILE.SHALLOW_WATER]: '#0e2a4a',
         };
 
         for (let r = camTop; r < camBottom; r++) {
             for (let c = camLeft; c < camRight; c++) {
                 const tile = this.grid[r][c];
-                const spriteName = TILE_SPRITES[tile];
-                const baseColors = {
-                    [TILE.FLOOR]: '#1a1820', [TILE.WALL]: '#0a080c', [TILE.DOOR]: '#3a2a1a',
-                    [TILE.STAIRS_DOWN]: '#151525', [TILE.STAIRS_UP]: '#151525',
-                    [TILE.GRASS]: '#1a2e1a', [TILE.PATH]: '#2a201a', [TILE.WATER]: '#0a1a2e',
-                    [TILE.TREE]: '#0a1d0a', [TILE.BRIDGE]: '#2a1a10',
-                    [TILE.SAND]: '#3d2e14', [TILE.CACTUS]: '#1e2b12'
-                };
                 ctx.fillStyle = baseColors[tile] || '#000';
                 ctx.fillRect(c * ts, r * ts, ts, ts);
+                const spriteName = TILE_SPRITES[tile];
                 if (spriteName) {
-                    if (tile === TILE.TREE || tile === TILE.CACTUS) {
+                    if (tile === TILE.TREE || tile === TILE.CACTUS)
                         renderer.drawSprite(spriteName, c * ts + ts / 2, r * ts + ts / 2, ts);
-                    } else {
+                    else
                         renderer.drawTile(spriteName, c * ts + ts / 2, r * ts + ts / 2, ts);
-                    }
                 }
             }
         }
         camera.reset(ctx);
-    }
-
-    _populate(zl, theme) {
-        if (!this.rooms || this.rooms.length === 0) return;
-        
-        let breakableIcon = 'obj_barrel';
-        if (theme === 'desert' || theme === 'tomb') breakableIcon = 'obj_urn';
-        else if (theme === 'hell') breakableIcon = 'obj_urn_hell';
-
-        for (const room of this.rooms) {
-            // Place breakables
-            const count = 1 + Math.floor(this.rng() * 3);
-            for (let i = 0; i < count; i++) {
-                const bx = (room.x + Math.floor(this.rng() * room.w)) * this.tileSize;
-                const by = (room.y + Math.floor(this.rng() * room.h)) * this.tileSize;
-                this.objectSpawns.push({ type: 'breakable', x: bx, y: by, icon: breakableIcon });
-            }
-
-            // Place thematic decorative props
-            if (theme === 'hell') {
-                if (this.rng() < 0.2) {
-                    const dx = (room.x + Math.floor(this.rng() * room.w)) * this.tileSize;
-                    const dy = (room.y + Math.floor(this.rng() * room.h)) * this.tileSize;
-                    const hellProps = ['obj_cluster_soulstone', 'obj_altar_pentagram', 'obj_torch_hell'];
-                    const icon = hellProps[Math.floor(this.rng() * hellProps.length)];
-                    this.objectSpawns.push({ type: 'decoration', x: dx, y: dy, icon });
-                }
-            }
-        }
     }
 }
