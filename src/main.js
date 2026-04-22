@@ -59,7 +59,9 @@ let state = 'MENU', selectedClass = null;
 let lastTime = 0, lastSaveTime = 0;
 let worldTime = 8 * 60; // Start at 08:00 AM
 let isNightManual = false; // Internal flag for state checks
-let portalReturnZone = 0;
+let portalReturnZone = null;
+let portalReturnCoords = null;
+let portalReturnSeed = null;
 let zoneLevel = 0;
 window.currentTheme = 'town';
 let isBossZone = [37, 67, 95, 101, 125, 127].includes(zoneLevel) || (zoneLevel >= 128 && zoneLevel % 5 === 0);
