@@ -74,7 +74,10 @@ export const SaveSystem = {
                 difficulty: extras?.difficulty || 0,
                 waypoints: waypointsArray,
                 campaign: (extras?.campaign && typeof extras.campaign.serialize === 'function') ? extras.campaign.serialize() : (extras?.campaign || null),
-                extra_data: { riftLevel: window.riftLevel || 0 },
+                extra_data: { 
+                    riftLevel: window.riftLevel || 0,
+                    highestZone: extras?.highestZone || player.highestZone || 0
+                },
             };
             const idx = slots.findIndex(s => s.id === slotId);
             if (idx >= 0) slots[idx] = entry;
@@ -109,6 +112,7 @@ export const SaveSystem = {
                 difficulty: slot.difficulty || 0,
                 waypoints: slot.waypoints || [0],
                 campaign: slot.campaign || null,
+                highestZone: slot.extra_data?.highestZone || 0,
             };
         } catch (e) {
             console.error('Failed to load slot:', e);

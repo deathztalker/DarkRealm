@@ -2059,6 +2059,28 @@ function checkDeaths() {
                 player.highestZone = Math.max(player.highestZone || 0, zoneLevel);
                 if (!player.maxDifficulty) player.maxDifficulty = 0;
 
+                // --- PROGRESSION PORTAL & WAYPOINT UNLOCK ---
+                let nextTargetZone = zoneLevel + 1;
+                if (zoneLevel === 37) nextTargetZone = 38; // To Lut Gholein
+                else if (zoneLevel === 67) nextTargetZone = 68; // To Kurast
+                else if (zoneLevel === 95) nextTargetZone = 96; // To Pandemonium
+                else if (zoneLevel === 101) nextTargetZone = 102; // To Harrogath
+                else if (zoneLevel === 125) nextTargetZone = 128; // To Rifts
+
+                const portalName = zoneLevel >= 128 ? 'To Deeper Rift' : 'To Next Act';
+                const p = new GameObject('boss_portal', e.x, e.y - 40, 'obj_portal');
+                p.targetZone = nextTargetZone;
+                p.name = portalName;
+                gameObjects.push(p);
+
+                // Auto-unlock the next town's waypoint
+                if (zoneLevel <= 125) {
+                    discoveredWaypoints.add(nextTargetZone);
+                }
+
+                if (fx && fx.emitBurst) fx.emitBurst(p.x, p.y, '#30ccff', 50, 3);
+
+
                 let unlockedDiff = false;
                 // Transition difficulty after Baal (Zone 125)
                 if (difficulty === player.maxDifficulty && player.maxDifficulty < 3 && zoneLevel === 125) {
@@ -2217,7 +2239,7 @@ function nextZone(targetZone = null) {
             // --- MMO: Ensure each town is generated with its specific NPCs ---
             const isTown = [0, 38, 68, 96, 102].includes(targetZone);
             if (isTown && !worldZones[targetZone]) {
-                const townDungeon = new Dungeon(30, 30);
+                const townDungeon = new Dungeon(120, 100);
                 townDungeon.generate(targetZone, null, 12345);
                 worldZones[targetZone] = {
                     dungeon: townDungeon,
