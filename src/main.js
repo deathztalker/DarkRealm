@@ -2230,38 +2230,39 @@ function nextZone(targetZone = null) {
             dungeon = new Dungeon(150, 120, 16);
             dungeon._seed = window._currentZoneSeed;
 
-            // --- ACT-ACCURATE THEME SELECTION ---
-            window.currentTheme = 'cathedral';
-            if ([0, 38, 68, 96, 102].includes(zoneLevel)) window.currentTheme = 'town';
-            else if (zoneLevel <= 37) {
-                // Act 1: 1-37
-                if (zoneLevel <= 13) window.currentTheme = 'wilderness';
-                else if (zoneLevel <= 25) window.currentTheme = 'cathedral';
-                else window.currentTheme = 'catacombs';
-            } else if (zoneLevel <= 67) {
-                // Act 2: 39-67
-                if (zoneLevel === 59) window.currentTheme = 'arcane';
-                else if (zoneLevel >= 61) window.currentTheme = 'tomb';
-                else window.currentTheme = 'desert';
-            } else if (zoneLevel <= 95) {
-                // Act 3: 69-95
-                if (zoneLevel <= 79) window.currentTheme = 'jungle';
-                else if (zoneLevel <= 91) window.currentTheme = 'temple';
-                else window.currentTheme = 'catacombs'; // Durance vibe
-            } else if (zoneLevel <= 101) {
-                // Act 4: 97-101
-                window.currentTheme = 'hell';
-            } else if (zoneLevel <= 125) {
-                // Act 5: 103-125
-                window.currentTheme = 'snow';
-            } else if (zoneLevel === 126) window.currentTheme = 'wilderness';
-            else if (zoneLevel === 127) window.currentTheme = 'hell';
-            else {
+            // --- SMART THEME SELECTION BASED ON NAME ---
+            const name = ZONE_NAMES[zoneLevel] || 'Unknown';
+            window.currentTheme = 'catacombs'; // Default
+
+            if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
+                window.currentTheme = 'town';
+            } else if (zoneLevel >= 128) {
                 // Infinite Rifts: Random theme
                 const themes = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow'];
                 window.currentTheme = themes[Math.floor(dungeon.rng() * themes.length)];
+            } else {
+                // Keyword-based biome mapping
+                const n = name.toLowerCase();
+                if (n.includes('moor') || n.includes('plains') || n.includes('field') || n.includes('highland') || n.includes('marsh')) window.currentTheme = 'wilderness';
+                else if (n.includes('cave') || n.includes('lair') || n.includes('hole') || n.includes('pit') || n.includes('passage') || n.includes('cavern') || n.includes('den')) window.currentTheme = 'cave';
+                else if (n.includes('crypt') || n.includes('mausoleum') || n.includes('tomb')) window.currentTheme = 'tomb';
+                else if (n.includes('catacombs') || n.includes('cellar')) window.currentTheme = 'catacombs';
+                else if (n.includes('jail') || n.includes('prison') || n.includes('barracks')) window.currentTheme = 'jail';
+                else if (n.includes('sewers')) window.currentTheme = 'sewer';
+                else if (n.includes('desert') || n.includes('waste') || n.includes('city') || n.includes('canyon') || n.includes('oasis')) window.currentTheme = 'desert';
+                else if (n.includes('arcane') || n.includes('sanctuary')) window.currentTheme = 'arcane';
+                else if (n.includes('jungle') || n.includes('forest')) window.currentTheme = 'jungle';
+                else if (n.includes('hell') || n.includes('steppes') || n.includes('despair') || n.includes('flame') || n.includes('chaos')) window.currentTheme = 'hell';
+                else if (n.includes('fortress')) window.currentTheme = 'fortress';
+                else if (n.includes('cathedral') || n.includes('temple') || n.includes('cloister') || n.includes('fane') || n.includes('reliquary')) window.currentTheme = 'temple';
+                
+                // Act 5 Override for Snow
+                if (zoneLevel >= 103 && zoneLevel <= 125) {
+                    if (!['cave', 'tomb', 'jail'].includes(window.currentTheme)) window.currentTheme = 'snow';
+                }
             }
 
+            console.log(`[Zone] ${name} (LVL ${zoneLevel}) using theme: ${window.currentTheme}`);
             dungeon.generate(zoneLevel, window.currentTheme, window._currentZoneSeed);
             
             // finishZoneLoad will populate enemies/npcs/objects

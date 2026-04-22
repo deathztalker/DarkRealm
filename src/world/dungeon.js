@@ -608,13 +608,14 @@ export class Dungeon {
         this.npcSpawns = [];
         this.objectSpawns = [];
 
-        const isOrganicTheme = ['jungle', 'desert', 'snow', 'hell'].includes(theme);
+        // Organic vs Structural Biomes
+        const isOrganicTheme = ['jungle', 'desert', 'snow', 'hell', 'cave'].includes(theme);
 
         if (!isOrganicTheme) {
             const root = { x: 1, y: 1, w: this.width - 2, h: this.height - 2 };
             let iterations = 6;
-            if (theme === 'catacombs') iterations = 7;
-            if (theme === 'temple') iterations = 5;
+            if (theme === 'catacombs' || theme === 'tomb') iterations = 7;
+            if (theme === 'temple' || theme === 'fortress') iterations = 5;
 
             const leaves = this._bsp(root, 0, iterations);
             for (const leaf of leaves) {
@@ -627,43 +628,36 @@ export class Dungeon {
             this._generateAutomata();
         }
 
-        // Theme Post-Processing
-        if (theme === 'desert') {
-            for (let r = 0; r < this.height; r++)
-                for (let c = 0; c < this.width; c++)
-                    if (this.grid[r][c] === TILE.FLOOR) {
+        // --- Theme Post-Processing (Biomes) ---
+        for (let r = 0; r < this.height; r++) {
+            for (let c = 0; c < this.width; c++) {
+                if (this.grid[r][c] === TILE.FLOOR) {
+                    if (theme === 'desert') {
                         this.grid[r][c] = TILE.SAND;
                         if (this.rng() < 0.03) this.grid[r][c] = TILE.CACTUS;
-                    }
-        } else if (theme === 'jungle') {
-            for (let r = 0; r < this.height; r++)
-                for (let c = 0; c < this.width; c++)
-                    if (this.grid[r][c] === TILE.FLOOR) {
+                    } else if (theme === 'jungle') {
                         this.grid[r][c] = TILE.GRASS;
                         if (this.rng() < 0.1) this.grid[r][c] = TILE.TREE;
-                    }
-        } else if (theme === 'temple') {
-            for (let r = 0; r < this.height; r++)
-                for (let c = 0; c < this.width; c++)
-                    if (this.grid[r][c] === TILE.FLOOR && this.rng() < 0.1)
-                        this.grid[r][c] = TILE.WATER;
-        } else if (theme === 'hell') {
-            for (let r = 0; r < this.height; r++)
-                for (let c = 0; c < this.width; c++)
-                    if (this.grid[r][c] === TILE.FLOOR && this.rng() < 0.08)
-                        this.grid[r][c] = TILE.LAVA;
-        } else if (theme === 'snow') {
-            for (let r = 0; r < this.height; r++)
-                for (let c = 0; c < this.width; c++)
-                    if (this.grid[r][c] === TILE.FLOOR) {
+                    } else if (theme === 'cave') {
+                        this.grid[r][c] = TILE.DIRT;
+                    } else if (theme === 'snow') {
                         this.grid[r][c] = TILE.SNOW;
                         if (this.rng() < 0.05) this.grid[r][c] = TILE.ICE;
+                    } else if (theme === 'arcane') {
+                        this.grid[r][c] = TILE.ICE; // Glowing blue path
+                    } else if (theme === 'hell') {
+                        if (this.rng() < 0.08) this.grid[r][c] = TILE.LAVA;
+                    } else if (theme === 'sewer') {
+                        if (this.rng() < 0.05) this.grid[r][c] = TILE.SHALLOW_WATER;
+                    } else if (theme === 'fortress') {
+                        this.grid[r][c] = TILE.MARBLE;
+                    } else if (theme === 'jail') {
+                        this.grid[r][c] = TILE.RUINS;
+                    } else if (theme === 'tomb') {
+                        this.grid[r][c] = TILE.COBBLE;
                     }
-        } else if (theme === 'arcane') {
-            for (let r = 0; r < this.height; r++)
-                for (let c = 0; c < this.width; c++)
-                    if (this.grid[r][c] === TILE.FLOOR)
-                        this.grid[r][c] = TILE.ICE;
+                }
+            }
         }
 
         const first = this.rooms[0] || { x: 5, y: 5, w: 5, h: 5 };
@@ -672,12 +666,16 @@ export class Dungeon {
             y: (first.y + Math.floor(first.h / 2)) * this.tileSize + this.tileSize / 2,
         };
 
-        // Entrance Portal (from town)
+        // Entrance Portal (from town/previous zone)
         if (placeExit) {
+             const townZones = [0, 38, 68, 96, 102];
+             const myAct = Math.floor(zoneLevel / 40);
+             const targetTown = townZones[myAct] !== undefined ? townZones[myAct] : 0;
+
              this.objectSpawns.push({
                 type: 'portal', x: this.playerStart.x, y: this.playerStart.y,
-                icon: 'obj_dungeon_entrance', name: 'To Town',
-                targetZone: [0, 38, 68, 96, 102][Math.floor(zoneLevel/40)] || 0 
+                icon: 'obj_dungeon_entrance', name: 'A la Ciudad',
+                targetZone: targetTown
             });
         }
 
