@@ -6,7 +6,7 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-console.log('>>> SISTEMA INICIANDO - MODO MMO COMPLETO <<<');
+console.log('>>> SISTEMA INICIANDO - MODO MMO COMPLETO CON INSTANCIAMIENTO <<<');
 
 // 1. CORS TOTAL
 app.use(cors());
@@ -26,15 +26,18 @@ const io = new Server(server, {
 const players = {};
 const friends = {};
 const activeTrades = {}; 
-let currentHostId = null;
+const rooms = {}; // roomName -> { hostId }
 
-function electNewHost() {
-    const ids = Object.keys(players);
-    if (ids.length > 0) {
-        currentHostId = ids[0];
-        io.to(currentHostId).emit('host_assignment', true);
+function electNewHost(roomName) {
+    const room = io.sockets.adapter.rooms.get(roomName);
+    if (room && room.size > 0) {
+        const firstId = Array.from(room)[0];
+        io.to(firstId).emit('host_assignment', true);
+        if (!rooms[roomName]) rooms[roomName] = {};
+        rooms[roomName].hostId = firstId;
+        console.log(`[Host] Elected ${players[firstId]?.name || firstId} for room ${roomName}`);
     } else {
-        currentHostId = null;
+        delete rooms[roomName];
     }
 }
 
@@ -52,60 +55,139 @@ io.on('connection', (socket) => {
             classId: data.classId,
             name: data.name || 'Stranger'
         };
-        if (!currentHostId) electNewHost();
-        socket.emit('current_players', players);
-        socket.broadcast.emit('player_joined', players[socket.id]);
+        // Initial join defaults to global lobby or previous room logic
+        // But join_zone will handle the actual instancing
+    });
+
+    socket.on('join_zone', (data) => {
+        if (!data || !data.roomName) return;
+        
+        const oldRoom = players[socket.id]?.roomName;
+        if (oldRoom) {
+            socket.leave(oldRoom);
+            if (rooms[oldRoom]?.hostId === socket.id) electNewHost(oldRoom);
+        }
+
+        socket.join(data.roomName);
+        if (!players[socket.id]) {
+            players[socket.id] = { id: socket.id };
+        }
+        players[socket.id].zoneId = data.zoneId;
+        players[socket.id].roomName = data.roomName;
+        players[socket.id].name = data.playerData?.charName || players[socket.id].name || 'Stranger';
+        Object.assign(players[socket.id], data.playerData); // Sync full stats
+
+        console.log(`[Zone] ${players[socket.id].name} joined layer: ${data.roomName}`);
+
+        // Sync with others in the same room
+        const roomPlayers = {};
+        const room = io.sockets.adapter.rooms.get(data.roomName);
+        if (room) {
+            room.forEach(id => {
+                if (id !== socket.id && players[id]) {
+                    roomPlayers[id] = players[id];
+                }
+            });
+        }
+        
+        socket.emit('current_players', roomPlayers);
+        socket.to(data.roomName).emit('player_joined', players[socket.id]);
+
+        // Host Election for this specific room
+        if (!rooms[data.roomName] || !rooms[data.roomName].hostId) {
+            electNewHost(data.roomName);
+        } else {
+            socket.emit('host_assignment', false);
+        }
     });
 
     socket.on('move', (data) => {
-        if (data && players[socket.id]) {
-            Object.assign(players[socket.id], data);
-            socket.broadcast.emit('player_moved', players[socket.id]);
+        const p = players[socket.id];
+        if (data && p) {
+            Object.assign(p, data);
+            if (p.roomName) {
+                socket.to(p.roomName).emit('player_moved', p);
+            } else {
+                socket.broadcast.emit('player_moved', p);
+            }
         }
     });
 
     // --- MMO ENHANCED SYNC: Skills & Minions ---
     socket.on('skill_use', (data) => {
-        // Broadcasst skill action to other players
-        socket.broadcast.emit('player_skill', { id: socket.id, ...data });
+        const p = players[socket.id];
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('player_skill', { id: socket.id, ...data });
+        }
     });
 
     socket.on('minion_sync', (minions) => {
-        if (players[socket.id]) {
-            players[socket.id].minions = minions;
-            socket.broadcast.emit('player_minions_sync', { id: socket.id, minions });
+        const p = players[socket.id];
+        if (p) {
+            p.minions = minions;
+            if (p.roomName) {
+                socket.to(p.roomName).emit('player_minions_sync', { id: socket.id, minions });
+            }
         }
     });
 
     socket.on('merc_sync', (mercData) => {
-        if (players[socket.id]) {
-            players[socket.id].mercenary = mercData;
-            socket.broadcast.emit('player_merc_sync', { id: socket.id, mercenary: mercData });
+        const p = players[socket.id];
+        if (p) {
+            p.mercenary = mercData;
+            if (p.roomName) {
+                socket.to(p.roomName).emit('player_merc_sync', { id: socket.id, mercenary: mercData });
+            }
         }
     });
 
-    socket.on('enemy_sync', (data) => socket.broadcast.emit('enemy_sync', data));
-    socket.on('npc_sync', (data) => socket.broadcast.emit('npc_sync', data));
+    socket.on('enemy_sync', (data) => {
+        const p = players[socket.id];
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('enemy_sync', data);
+        }
+    });
 
-    // --- MMO TOTAL SYNC: Objects, Projectiles & Loot ---
+    socket.on('npc_sync', (data) => {
+        const p = players[socket.id];
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('npc_sync', data);
+        }
+    });
+
     socket.on('object_interact', (data) => {
-        socket.broadcast.emit('object_update', data);
+        const p = players[socket.id];
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('object_update', data);
+        }
     });
 
     socket.on('projectile_fire', (data) => {
-        socket.broadcast.emit('projectile_spawn', { ownerId: socket.id, ...data });
+        const p = players[socket.id];
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('projectile_spawn', { ownerId: socket.id, ...data });
+        }
     });
 
     socket.on('loot_spawn', (data) => {
-        socket.broadcast.emit('loot_spawn', data);
+        const p = players[socket.id];
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('loot_spawn', data);
+        }
     });
 
     socket.on('loot_pickup', (lootId) => {
-        socket.broadcast.emit('loot_pickup', lootId);
+        const p = players[socket.id];
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('loot_pickup', lootId);
+        }
     });
 
     socket.on('zone_theme_sync', (theme) => {
-        socket.broadcast.emit('zone_theme_sync', theme);
+        const p = players[socket.id];
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('zone_theme_sync', theme);
+        }
     });
 
     socket.on('chat_message', (text) => {
@@ -120,6 +202,10 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('system_message', (text) => {
+        io.emit('chat_message', { sender: 'System', text, isSystem: true });
+    });
+
     socket.on('whisper', (data) => {
         if (!data) return;
         const sender = players[socket.id];
@@ -131,7 +217,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // --- SISTEMA DE COMERCIO (RESTAURADO) ---
     socket.on('trade_invite', (targetName) => {
         const tid = Object.keys(players).find(id => players[id].name === targetName);
         if (tid && tid !== socket.id) io.to(tid).emit('trade_invite', { from: players[socket.id].name, fromId: socket.id });
@@ -146,7 +231,6 @@ io.on('connection', (socket) => {
         io.to(socket.id).emit('trade_start', { tradeId, partner: players[fromId].name });
     });
 
-    // --- SISTEMA DE GRUPO (PARTY) ---
     socket.on('party_invite', (targetName) => {
         const targetId = Object.keys(players).find(id => players[id].name === targetName);
         if (targetId && targetId !== socket.id) {
@@ -159,9 +243,9 @@ io.on('connection', (socket) => {
 
     socket.on('party_accept', (fromId) => {
         if (players[fromId] && players[socket.id]) {
-            // Broadcast to both players that they are now in a party
-            // (In a more complex app we'd manage party rooms)
+            const partyId = `party_${Date.now()}`;
             const partyData = {
+                id: partyId,
                 leaderId: fromId,
                 members: [
                     { id: fromId, name: players[fromId].name },
@@ -174,27 +258,21 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        console.log(`[Socket] - Jugador desconectado: ${socket.id}`);
-        
-        // Broadcast a todos que el jugador se fue ANTES de borrarlo
-        io.emit('player_left', socket.id);
-        
-        // Limpiar de todos los mapas globales
-        if (players[socket.id]) {
-            console.log(`[MMO] Limpiando estado del jugador: ${players[socket.id].name}`);
+        console.log(`[Socket] - Player disconnected: ${socket.id}`);
+        const p = players[socket.id];
+        if (p) {
+            const roomName = p.roomName;
+            io.emit('player_left', socket.id);
             delete players[socket.id];
-        }
-        
-        if (socket.id === currentHostId) {
-            console.log('[MMO] El Host se ha ido, eligiendo nuevo Host...');
-            electNewHost();
+            if (roomName && rooms[roomName]?.hostId === socket.id) {
+                electNewHost(roomName);
+            }
         }
     });
 });
 
 process.on('uncaughtException', (err) => console.error('CRITICAL:', err));
 
-// ESCUCHA SIN RESTRICCIONES (Railway gestiona la IP)
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`>>> MMO SERVER LIVE ON PORT ${PORT} <<<`);
 });

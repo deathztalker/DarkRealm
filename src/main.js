@@ -541,9 +541,18 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     }
     window.currentTheme = getTheme(zoneLevel, curHighestZone);
 
+    // Initial Seed Setup
+    if (!window._currentZoneSeed) {
+        const nameHash = (charName || 'unknown').split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0);
+        window._currentZoneSeed = Math.abs(nameHash + zoneLevel) % 1000000;
+        if (zoneLevel === 0 || zoneLevel === 6 || zoneLevel === 11 || zoneLevel === 16 || zoneLevel === 21) {
+            window._currentZoneSeed = 12345;
+        }
+    }
+
     // Generate dungeon
     dungeon = new Dungeon(80, 60, 16);
-    dungeon.generate(zoneLevel, window.currentTheme);
+    dungeon.generate(zoneLevel, window.currentTheme, window._currentZoneSeed);
 
     // Create player
     if (loadPlayerData && loadPlayerData.player) {
@@ -1959,12 +1968,12 @@ function checkDeaths() {
             checkBountyProgress(e);
 
             // Rift Progress
-            if (zoneLevel >= 7 && riftProgress < 100) {
+            if (zoneLevel >= 7 && window.riftProgress < 100) {
                 const inc = e.type === 'boss' ? 15 : (e.type === 'elite' ? 6 : 2);
-                riftProgress = Math.min(100, riftProgress + inc);
+                window.riftProgress = Math.min(100, window.riftProgress + inc);
                 updateRiftHud();
 
-                if (riftProgress >= 100 && !riftGuardianSpawned) {
+                if (window.riftProgress >= 100 && !window.riftGuardianSpawned) {
                     spawnRiftGuardian();
                 }
             }
@@ -2176,7 +2185,7 @@ function nextZone(targetZone = null) {
             const isTown = [0, 6, 11, 16, 21].includes(targetZone);
             if (isTown && !worldZones[targetZone]) {
                 const townDungeon = new Dungeon(30, 30);
-                townDungeon.generate(targetZone);
+                townDungeon.generate(targetZone, null, 12345);
                 worldZones[targetZone] = {
                     dungeon: townDungeon,
                     enemies: [],
@@ -2197,6 +2206,15 @@ function nextZone(targetZone = null) {
             }
         }
 
+        // --- MMO: Update seed for synchronization ---
+        const charName = player ? player.charName : 'unknown';
+        const nameHash = (charName || 'unknown').split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0);
+        window._currentZoneSeed = Math.abs(nameHash + zoneLevel) % 1000000;
+        // Towns use a static seed
+        if ([0, 6, 11, 16, 21].includes(zoneLevel)) {
+            window._currentZoneSeed = 12345;
+        }
+
         // Setup Rift state
         if (zoneLevel >= 26) {
             riftProgress = 0;
@@ -2214,6 +2232,10 @@ function nextZone(targetZone = null) {
             droppedItems = state.droppedItems;
             droppedGold = state.droppedGold;
         } else {
+            // Create dungeon first to have a deterministic RNG
+            dungeon = new Dungeon(150, 120, 16);
+            dungeon._seed = window._currentZoneSeed;
+
             window.currentTheme = 'cathedral';
             if (zoneLevel === 0) window.currentTheme = 'town';
             else if (zoneLevel <= 2) window.currentTheme = 'wilderness';
@@ -2226,11 +2248,10 @@ function nextZone(targetZone = null) {
             else {
                 // Infinite Rifts: Random theme
                 const themes = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow'];
-                window.currentTheme = themes[Math.floor(Math.random() * themes.length)];
+                window.currentTheme = themes[Math.floor(dungeon.rng() * themes.length)];
             }
 
-            dungeon = new Dungeon(150, 120, 16);
-            dungeon.generate(zoneLevel, window.currentTheme);
+            dungeon.generate(zoneLevel, window.currentTheme, window._currentZoneSeed);
             
             // finishZoneLoad will populate enemies/npcs/objects
             finishZoneLoad();
@@ -2272,7 +2293,7 @@ function nextZone(targetZone = null) {
         }
 
         // --- MMO: Join correct layer ---
-        if (window.networkManager) networkManager.joinZone(zoneLevel);
+        if (window.networkManager) networkManager.joinZone(zoneLevel, window._currentZoneSeed);
         
         // --- Prestige: Check for #1 rank ---
         checkChampionStatus();
@@ -2385,7 +2406,15 @@ function finishZoneLoad() {
     isZoneLocked = isBossZone;
 
     // Endgame: zones beyond 7 scale infinitely
-    const endgameMult = zoneLevel > 7 ? 1 + (zoneLevel - 7) * 0.3 : 1;
+    let endgameMult = 1.0;
+    const diffMult = window.DIFFICULTY_MULT[window._difficulty] || 1.0;
+    
+    if (zoneLevel >= 26) {
+        // Infinite Rift scaling: base from campaign end + 20% per rift level + difficulty
+        endgameMult = Math.pow(1.15, 20) * Math.pow(1.2, window.riftLevel) * diffMult;
+    } else if (zoneLevel > 7) {
+        endgameMult = Math.pow(1.15, zoneLevel - 6) * diffMult;
+    }
     $('zone-name').textContent = zoneName + diffLabel;
     addCombatLog(`Entered ${zoneName}${diffLabel}!`, 'log-level');
     if (activeSlotId) SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
@@ -6433,8 +6462,8 @@ function saveGame() {
         cube,
         mercenary,
         difficulty,
-        waypoints: Array.from(discoveredWaypoints), // Corrected variable
-        campaign
+        waypoints: Array.from(discoveredWaypoints),
+        campaign: campaign.serialize()
     });
 }
 
@@ -7688,13 +7717,18 @@ async function renderLeaderboard(filter = 'global') {
     document.body.appendChild(overlay);
 
     try {
-        let query = SaveSystem.DB.from('save_slots')
-            .select('charName, classId, isHardcore, extra_data')
+        let query = SaveSystem.DB.from('saves')
+            .select(`
+                charName:player->>charName,
+                classId:player->>classId,
+                isHardcore:player->>isHardcore,
+                extra_data
+            `)
             .order('extra_data->riftLevel', { ascending: false })
             .limit(20);
 
-        if (filter === 'class' && player) query = query.eq('classId', player.classId);
-        if (filter === 'hardcore') query = query.eq('isHardcore', true);
+        if (filter === 'class' && player) query = query.eq('player->>classId', player.classId);
+        if (filter === 'hardcore') query = query.eq('player->>isHardcore', 'true');
 
         const { data, error } = await query;
         if (error) throw error;
@@ -7723,7 +7757,7 @@ async function renderLeaderboard(filter = 'global') {
             tr.innerHTML = `
                 <td style="padding:12px 10px; color:${isMe ? '#ffd700' : '#888'}; font-weight:bold;">${rankDisp}</td>
                 <td style="padding:12px 10px; color:${isMe ? '#ffd700' : '#fff'};">
-                    ${row.charName} ${row.isHardcore ? '<span style="color:#f44; font-size:9px; margin-left:5px;">[HC]</span>' : ''}
+                    ${row.charName || 'Unknown'} ${row.isHardcore === 'true' || row.isHardcore === true ? '<span style="color:#f44; font-size:9px; margin-left:5px;">[HC]</span>' : ''}
                 </td>
                 <td style="padding:12px 10px; color:#aaa; font-size:11px; text-transform:uppercase;">${row.classId}</td>
                 <td style="padding:12px 10px; text-align:right; color:#c080ff; font-weight:bold;">DEPTH ${depth}</td>
@@ -7901,6 +7935,27 @@ function handleBossDeath(boss) {
     else if (boss.isMephisto || zoneLevel === 15) { actNum = 3; actName = 'III'; actSubtitle = 'The Infernal Gate Cleared'; }
     else if (boss.isDiablo || zoneLevel === 20) { actNum = 4; actName = 'IV'; actSubtitle = 'The Chaos Sanctuary Cleared'; }
     else if (boss.isBaal || zoneLevel === 25) { actNum = 5; actName = 'V'; actSubtitle = 'The Lord of Destruction Slain'; }
+
+    // --- Phase 22: Rift Guardian Victory ---
+    if (boss.isRiftGuardian) {
+        addCombatLog("⚡ THE RIFT GUARDIAN IS VANQUISHED! ⚡", "log-crit");
+        fx.emitHolyBurst(boss.x, boss.y);
+        fx.shake(1000, 20);
+
+        // Spawn Descent Portal
+        const portal = new GameObject('rift_exit', boss.x + 40, boss.y, 'obj_portal');
+        portal.targetZone = null; // null triggers zoneLevel++
+        portal.name = `Descent to Depth ${window.riftLevel + 1}`;
+        portal.isRiftPortal = true;
+        gameObjects.push(portal);
+
+        // Reset progress for next depth, but KEEP riftGuardianSpawned=true for nextZone to detect
+        window.riftProgress = 0;
+        updateRiftHud();
+
+        // Immediate Save
+        saveGame();
+    }
 
     if (actNum > 0) {
         campaign.completeAct(actNum);

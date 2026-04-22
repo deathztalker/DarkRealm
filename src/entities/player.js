@@ -398,6 +398,18 @@ export class Player {
         this.maxCurses = ts.maxCurses || 1;
     }
 
+    _riftStats() {
+        const rl = window.riftLevel || 1;
+        if (rl <= 1) return {};
+        // Infinite Perk Scaling: +3% Dmg, +2% Armor, +1.5% HP, +10% MF per Rift level beyond 1
+        return {
+            pctDmg: (rl - 1) * 3,
+            pctArmor: (rl - 1) * 2,
+            pctHP: (rl - 1) * 1.5,
+            magicFind: (rl - 1) * 10
+        };
+    }
+
     _gearStats() {
         const s = {};
         const equip = this.equipment || {};

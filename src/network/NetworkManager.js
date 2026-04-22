@@ -609,16 +609,29 @@ export class NetworkManager {
     async getLeaderboardData(filter = 'global') {
         try {
             let query = DB.client.from('saves')
-                .select('charName, classId, isHardcore, extra_data')
+                .select(`
+                    charName:player->>charName,
+                    classId:player->>classId,
+                    isHardcore:player->>isHardcore,
+                    campaign,
+                    extra_data
+                `)
                 .order('extra_data->riftLevel', { ascending: false })
                 .limit(20);
 
-            if (filter === 'class' && this.game.player) query = query.eq('classId', this.game.player.classId);
-            if (filter === 'hardcore') query = query.eq('isHardcore', true);
+            if (filter === 'class' && this.game.player) query = query.eq('player->>classId', this.game.player.classId);
+            if (filter === 'hardcore') query = query.eq('player->>isHardcore', 'true');
 
             const { data, error } = await query;
             if (error) throw error;
-            return data;
+            
+            return data.map(row => ({
+                charName: row.charName,
+                classId: row.classId,
+                isHardcore: row.isHardcore === 'true' || row.isHardcore === true,
+                campaign: row.campaign,
+                extra_data: row.extra_data
+            }));
         } catch (e) {
             console.error("Leaderboard Query Error:", e);
             return [];
@@ -628,15 +641,39 @@ export class NetworkManager {
     joinZone(zoneId) {
         if (!this.isConnected || !this.game.player) return;
         
-        // --- Strict Mode Isolation (Layering) ---
+        // --- Layering Logic ---
         const modePrefix = this.game.player.isHardcore ? 'hc_' : 'std_';
-        const roomName = `${modePrefix}zone_${zoneId}`;
+        let roomName = `${modePrefix}zone_${zoneId}`;
+        
+        // If in a party and NOT in town, create a private instance (layer)
+        if (this.currentParty && zoneId !== 0) {
+            roomName = `${modePrefix}party_${this.currentParty.id}_zone_${zoneId}`;
+        }
 
-        console.log(`[Network] Joining Layer: ${roomName}`);
+        // Shared Seed Logic
+        let seed = 12345; // Default for Town
+        
+        if (zoneId !== 0) {
+            if (this.currentParty) {
+                // Shared seed for all party members
+                const hash = this.currentParty.id.split('-').reduce((acc, part) => acc + parseInt(part, 16), 0);
+                seed = Math.abs(hash + zoneId) % 1000000;
+            } else {
+                // Solo: Deterministic seed for this character
+                const nameHash = this.game.player.charName.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0);
+                seed = Math.abs(nameHash + zoneId) % 1000000;
+            }
+        }
+
+        console.log(`[Network] Joining Layer: ${roomName} | Seed: ${seed}`);
         this.socket.emit('join_zone', { 
             zoneId, 
-            roomName, // Server uses this to isolate players
+            roomName, 
+            seed,
             playerData: this.game.player.serialize() 
         });
+
+        // Store seed globally for Dungeon.generate calls
+        window._currentZoneSeed = seed;
     }
 }

@@ -80,6 +80,7 @@ export const DB = {
             mercenary: dbRow.mercenary || null,
             difficulty: dbRow.difficulty || 0,
             waypoints: dbRow.waypoints || [0],
+            campaign: dbRow.campaign || null,
             player: dbRow.player,
             timestamp: new Date(dbRow.updated_at).getTime()
         }));
@@ -97,6 +98,8 @@ export const DB = {
             mercenary: rawSaveData.mercenary,
             waypoints: rawSaveData.waypoints,
             difficulty: rawSaveData.difficulty,
+            campaign: rawSaveData.campaign,
+            extra_data: rawSaveData.extra_data || null,
             updated_at: new Date().toISOString()
         };
 

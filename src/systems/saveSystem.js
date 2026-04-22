@@ -65,7 +65,8 @@ export const SaveSystem = {
                 player: player.serialize(),
                 difficulty: extras?.difficulty || 0,
                 waypoints: extras?.waypoints || [0],
-                campaign: extras?.campaign || null,
+                campaign: (extras?.campaign && typeof extras.campaign.serialize === 'function') ? extras.campaign.serialize() : (extras?.campaign || null),
+                extra_data: { riftLevel: window.riftLevel || 0 },
             };
             const idx = slots.findIndex(s => s.id === slotId);
             if (idx >= 0) slots[idx] = entry;

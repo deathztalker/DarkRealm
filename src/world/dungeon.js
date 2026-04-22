@@ -3,7 +3,6 @@
  */
 
 export const TILE = { FLOOR: 0, WALL: 1, DOOR: 2, STAIRS_DOWN: 3, STAIRS_UP: 4, SPAWN: 5, GRASS: 6, PATH: 7, WATER: 8, TREE: 9, BRIDGE: 10, SAND: 11, CACTUS: 12, LAVA: 13, SNOW: 14, ICE: 15 };
-const TILE_ICONS = { 0: '·', 1: '█', 2: '+', 3: '▼', 4: '▲' };
 
 export const TILE_COLORS = {
     [TILE.FLOOR]: '#2c2838', [TILE.WALL]: '#161320', [TILE.DOOR]: '#5a3a20',
@@ -27,9 +26,19 @@ export class Dungeon {
         this.objectSpawns = [];
         this.playerStart = { x: 0, y: 0 };
         this.exitPos = { x: 0, y: 0 };
+        this._seed = 12345;
     }
 
-    generate(zoneLevel = 1, theme = 'cathedral') {
+    /** Simple LCG Random for Deterministic Generation */
+    rng() {
+        this._seed = (this._seed * 1664525 + 1013904223) % 4294967296;
+        return this._seed / 4294967296;
+    }
+
+    generate(zoneLevel = 1, theme = 'cathedral', seed = null) {
+        if (seed !== null) this._seed = seed;
+        else this._seed = Math.floor(Math.random() * 1000000);
+
         if (zoneLevel >= 26) return this.generateRift(zoneLevel);
 
         if (zoneLevel === 0 || zoneLevel === 6 || zoneLevel === 11 || zoneLevel === 16 || zoneLevel === 21) {
@@ -42,7 +51,7 @@ export class Dungeon {
 
     generateRift(zoneLevel) {
         const themes = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow'];
-        const theme = themes[Math.floor(Math.random() * themes.length)];
+        const theme = themes[Math.floor(this.rng() * themes.length)];
         return this._generateProcedural(zoneLevel, theme, false);
     }
 
@@ -88,7 +97,7 @@ export class Dungeon {
                     if (this.grid[r][c] === TILE.FLOOR) {
                         this.grid[r][c] = TILE.SAND;
                         // Random cacti in rooms
-                        if (Math.random() < 0.05) this.grid[r][c] = TILE.CACTUS;
+                        if (this.rng() < 0.05) this.grid[r][c] = TILE.CACTUS;
                     }
                 }
             }
@@ -99,14 +108,14 @@ export class Dungeon {
                 for (let c = 0; c < this.width; c++) {
                     if (this.grid[r][c] === TILE.FLOOR) {
                         this.grid[r][c] = TILE.GRASS;
-                        if (Math.random() < 0.1) this.grid[r][c] = TILE.TREE;
+                        if (this.rng() < 0.1) this.grid[r][c] = TILE.TREE;
                     }
                 }
             }
         } else if (theme === 'temple') {
             for (let r = 0; r < this.height; r++) {
                 for (let c = 0; c < this.width; c++) {
-                    if (this.grid[r][c] === TILE.FLOOR && Math.random() < 0.1) {
+                    if (this.grid[r][c] === TILE.FLOOR && this.rng() < 0.1) {
                         this.grid[r][c] = TILE.WATER;
                     }
                 }
@@ -114,7 +123,7 @@ export class Dungeon {
         } else if (theme === 'hell') {
             for (let r = 0; r < this.height; r++) {
                 for (let c = 0; c < this.width; c++) {
-                    if (this.grid[r][c] === TILE.FLOOR && Math.random() < 0.08) {
+                    if (this.grid[r][c] === TILE.FLOOR && this.rng() < 0.08) {
                         this.grid[r][c] = TILE.LAVA;
                     }
                 }
@@ -124,7 +133,7 @@ export class Dungeon {
                 for (let c = 0; c < this.width; c++) {
                     if (this.grid[r][c] === TILE.FLOOR) {
                         this.grid[r][c] = TILE.SNOW;
-                        if (Math.random() < 0.05) this.grid[r][c] = TILE.ICE;
+                        if (this.rng() < 0.05) this.grid[r][c] = TILE.ICE;
                     }
                 }
             }
@@ -160,12 +169,12 @@ export class Dungeon {
         // Spawn enemies in rooms 2+
         for (let i = 1; i < this.rooms.length; i++) {
             const room = this.rooms[i];
-            const count = 2 + Math.floor(Math.random() * 4) + Math.floor(zoneLevel / 3);
+            const count = 2 + Math.floor(this.rng() * 4) + Math.floor(zoneLevel / 3);
             for (let n = 0; n < count; n++) {
-                const sx = room.x + 1 + Math.floor(Math.random() * (room.w - 2));
-                const sy = room.y + 1 + Math.floor(Math.random() * (room.h - 2));
+                const sx = room.x + 1 + Math.floor(this.rng() * (room.w - 2));
+                const sy = room.y + 1 + Math.floor(this.rng() * (room.h - 2));
                 const isBoss = (i === this.rooms.length - 1 && n === 0);
-                const isElite = !isBoss && Math.random() < 0.15;
+                const isElite = !isBoss && this.rng() < 0.15;
 
                 const spawn = {
                     x: sx * this.tileSize + this.tileSize / 2,
@@ -185,7 +194,7 @@ export class Dungeon {
                     if (zoneLevel === 23) { spawn.name = "Frozenstein"; spawn.icon = "enemy_demon"; spawn.isFrozenstein = true; spawn.hpMult = 3.5; }
 
                     // Act I Unique: The Butcher in Zone 5 (Second to last room)
-                    if (zoneLevel === 5 && i === this.rooms.length - 2 && Math.random() < 0.3) {
+                    if (zoneLevel === 5 && i === this.rooms.length - 2 && this.rng() < 0.3) {
                         spawn.name = "The Butcher";
                         spawn.icon = "enemy_demon";
                         spawn.isButcher = true;
@@ -217,26 +226,26 @@ export class Dungeon {
                 this.enemySpawns.push(spawn);
             }
             // Maybe place loot chest
-            if (Math.random() < 0.3) {
+            if (this.rng() < 0.3) {
                 const cx2 = (room.x + Math.floor(room.w / 2)) * this.tileSize;
                 const cy2 = (room.y + Math.floor(room.h / 2)) * this.tileSize;
                 this.lootSpawns.push({ x: cx2, y: cy2 });
                 this.objectSpawns.push({ type: 'chest', x: cx2, y: cy2, icon: 'obj_chest' });
             }
             // Maybe place shrine (20% per room, not in first or last room)
-            if (i > 1 && i < this.rooms.length - 1 && Math.random() < 0.20) {
-                const sx2 = (room.x + 1 + Math.floor(Math.random() * (room.w - 2))) * this.tileSize + this.tileSize / 2;
+            if (i > 1 && i < this.rooms.length - 1 && this.rng() < 0.20) {
+                const sx2 = (room.x + 1 + Math.floor(this.rng() * (room.w - 2))) * this.tileSize + this.tileSize / 2;
                 const sy2 = (room.y + 1) * this.tileSize + this.tileSize / 2;
                 const shrineTypes = ['experience', 'armor', 'combat', 'mana', 'resist', 'speed'];
-                const sType = shrineTypes[Math.floor(Math.random() * shrineTypes.length)];
+                const sType = shrineTypes[Math.floor(this.rng() * shrineTypes.length)];
                 this.objectSpawns.push({ type: 'shrine', x: sx2, y: sy2, icon: 'obj_shrine', shrineType: sType });
             }
 
             // Place breakables (1-3 per room)
-            const numBreakables = 1 + Math.floor(Math.random() * 3);
+            const numBreakables = 1 + Math.floor(this.rng() * 3);
             for (let b = 0; b < numBreakables; b++) {
-                const bx = (room.x + 1 + Math.floor(Math.random() * (room.w - 2))) * this.tileSize;
-                const by = (room.y + 1 + Math.floor(Math.random() * (room.h - 2))) * this.tileSize;
+                const bx = (room.x + 1 + Math.floor(this.rng() * (room.w - 2))) * this.tileSize;
+                const by = (room.y + 1 + Math.floor(this.rng() * (room.h - 2))) * this.tileSize;
                 this.objectSpawns.push({ type: 'breakable', x: bx, y: by, icon: 'obj_barrel' });
 
             }
@@ -300,9 +309,9 @@ export class Dungeon {
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
                 if (x < 3 || x > this.width - 4 || y < 3 || y > this.height - 4) {
-                    if (Math.random() < 0.6) this.grid[y][x] = TILE.TREE;
+                    if (this.rng() < 0.6) this.grid[y][x] = TILE.TREE;
                 }
-                else if (this.grid[y][x] === TILE.GRASS && Math.random() < 0.05) {
+                else if (this.grid[y][x] === TILE.GRASS && this.rng() < 0.05) {
                     this.grid[y][x] = TILE.TREE;
                 }
             }
@@ -435,17 +444,18 @@ export class Dungeon {
         this.exitPos = { x: -1000, y: -1000 };
         return this;
     }
+
     _bsp(node, depth, maxDepth) {
         if (depth >= maxDepth || node.w < 12 || node.h < 12) return [node];
-        const horizontal = node.h > node.w ? true : node.w > node.h ? false : Math.random() < 0.5;
+        const horizontal = node.h > node.w ? true : node.w > node.h ? false : this.rng() < 0.5;
         const min = 5;
         let left, right;
         if (horizontal) {
-            const split = min + Math.floor(Math.random() * (node.h - min * 2));
+            const split = min + Math.floor(this.rng() * (node.h - min * 2));
             left = { x: node.x, y: node.y, w: node.w, h: split };
             right = { x: node.x, y: node.y + split, w: node.w, h: node.h - split };
         } else {
-            const split = min + Math.floor(Math.random() * (node.w - min * 2));
+            const split = min + Math.floor(this.rng() * (node.w - min * 2));
             left = { x: node.x, y: node.y, w: split, h: node.h };
             right = { x: node.x + split, y: node.y, w: node.w - split, h: node.h };
         }
@@ -455,7 +465,7 @@ export class Dungeon {
     _generateAutomata() {
         // Initial random fill
         let grid = Array.from({ length: this.height }, () =>
-            Array.from({ length: this.width }, () => Math.random() < 0.45 ? TILE.WALL : TILE.FLOOR)
+            Array.from({ length: this.width }, () => this.rng() < 0.45 ? TILE.WALL : TILE.FLOOR)
         );
 
         // Run iterations
@@ -513,10 +523,10 @@ export class Dungeon {
         const maxW = leaf.w - margin * 2;
         const maxH = leaf.h - margin * 2;
         if (maxW < 4 || maxH < 4) return null;
-        const rw = 4 + Math.floor(Math.random() * (maxW - 3));
-        const rh = 4 + Math.floor(Math.random() * (maxH - 3));
-        const rx = leaf.x + margin + Math.floor(Math.random() * (maxW - rw + 1));
-        const ry = leaf.y + margin + Math.floor(Math.random() * (maxH - rh + 1));
+        const rw = 4 + Math.floor(this.rng() * (maxW - 3));
+        const rh = 4 + Math.floor(this.rng() * (maxH - 3));
+        const rx = leaf.x + margin + Math.floor(this.rng() * (maxW - rw + 1));
+        const ry = leaf.y + margin + Math.floor(this.rng() * (maxH - rh + 1));
         for (let y = ry; y < ry + rh; y++) {
             for (let x = rx; x < rx + rw; x++) {
                 if (y > 0 && y < this.height - 1 && x > 0 && x < this.width - 1)
@@ -525,6 +535,7 @@ export class Dungeon {
         }
         return { x: rx, y: ry, w: rw, h: rh };
     }
+
     _corridor(roomA, roomB) {
         const ax = roomA.x + Math.floor(roomA.w / 2);
         const ay = roomA.y + Math.floor(roomA.h / 2);
@@ -534,6 +545,7 @@ export class Dungeon {
         while (cx !== bx) { this.grid[cy][cx] = TILE.FLOOR; cx += cx < bx ? 1 : -1; }
         while (cy !== by) { this.grid[cy][cx] = TILE.FLOOR; cy += cy < by ? 1 : -1; }
     }
+
     isWalkable(wx, wy) {
         const c = Math.floor(wx / this.tileSize), r = Math.floor(wy / this.tileSize);
         if (r < 0 || r >= this.height || c < 0 || c >= this.width) return false;
@@ -623,14 +635,15 @@ export class Dungeon {
         }
         camera.reset(ctx);
     }
+
     _populate(zl, theme) {
         if (!this.rooms || this.rooms.length === 0) return;
         const icon = theme === 'desert' || theme === 'tomb' ? 'obj_urn' : 'obj_barrel';
         for (const room of this.rooms) {
-            const count = 1 + Math.floor(Math.random() * 3);
+            const count = 1 + Math.floor(this.rng() * 3);
             for (let i = 0; i < count; i++) {
-                const bx = (room.x + Math.floor(Math.random() * room.w)) * this.tileSize;
-                const by = (room.y + Math.floor(room.h / 2)) * this.tileSize;
+                const bx = (room.x + Math.floor(this.rng() * room.w)) * this.tileSize;
+                const by = (room.y + Math.floor(this.rng() * room.h)) * this.tileSize;
                 this.objectSpawns.push({ type: 'breakable', x: bx, y: by, icon });
             }
         }
