@@ -132,7 +132,7 @@ function addSocialRequest(fromId, fromName, type) {
 function handleSocialInput(key) {
     if (pendingRequests.length === 0) return false;
     const req = pendingRequests[pendingRequests.length - 1]; // Get most recent
-    
+
     if (key === 'y') {
         addCombatLog(`Accepted ${req.type} from ${req.fromName}`, 'log-info');
         if (req.type === 'trade') network.acceptTrade();
@@ -141,7 +141,7 @@ function handleSocialInput(key) {
     } else {
         addCombatLog(`Declined ${req.type} from ${req.fromName}`, 'log-dmg');
     }
-    
+
     // Remove request
     pendingRequests = pendingRequests.filter(r => r !== req);
     return true;
@@ -247,12 +247,12 @@ function spawnRiftGuardian() {
         import('./engine/audio.js').then(a => a.playZoneTransition());
         fx.emitHolyBurst(tx, ty);
         fx.emitBurst(tx, ty, '#f0f', 60, 5);
-        
+
         // --- Rift Guardian Arrival FX ---
         fx.shake(2000, 25); // Violent tremor for 2s
-        for(let i=0; i<8; i++) {
+        for (let i = 0; i < 8; i++) {
             setTimeout(() => {
-                fx.emitBurst(tx + (Math.random()-0.5)*100, ty + (Math.random()-0.5)*100, '#333', 20, 3); // Dust clouds
+                fx.emitBurst(tx + (Math.random() - 0.5) * 100, ty + (Math.random() - 0.5) * 100, '#333', 20, 3); // Dust clouds
             }, i * 200);
         }
         addCombatLog('THE EARTH TREMBLES... A RIFT GUARDIAN HAS ARRIVED!', 'log-crit');
@@ -274,10 +274,10 @@ function checkRuneword(item) {
     const isWeapon = weaponTypes.includes(item.type);
 
     for (const rw of RUNEWORDS) {
-        const validMatch = rw.allowedTypes.includes(item.type) || 
-                          (rw.allowedTypes.includes('weapon') && isWeapon) ||
-                          (rw.allowedTypes.includes('armor') && item.slot === 'chest') ||
-                          (rw.allowedTypes.includes('head') && item.slot === 'head');
+        const validMatch = rw.allowedTypes.includes(item.type) ||
+            (rw.allowedTypes.includes('weapon') && isWeapon) ||
+            (rw.allowedTypes.includes('armor') && item.slot === 'chest') ||
+            (rw.allowedTypes.includes('head') && item.slot === 'head');
 
         if (!validMatch) continue;
         if (rw.runes.length !== item.sockets) continue;
@@ -292,8 +292,8 @@ function checkRuneword(item) {
             item.isRuneword = true;
             item.rwName = rw.name;
             const baseName = items[item.baseId]?.name || item.name;
-            item.name = `${rw.name} (${baseName})`; 
-            
+            item.name = `${rw.name} (${baseName})`;
+
             if (!item.mods) item.mods = [];
             for (const [stat, v] of Object.entries(rw.bonuses)) {
                 let finalVal = v;
@@ -334,54 +334,6 @@ const ZONE_NAMES = {
     102: 'Harrogath', 103: 'Bloody Foothills', 104: 'Frigid Highlands', 105: 'Abaddon', 106: 'Arreat Plateau', 107: 'Pit of Acheron', 108: 'Crystalline Passage', 109: 'Frozen River', 110: 'Glacial Trail', 111: 'Drifter Cavern', 112: 'Frozen Tundra', 113: 'Infernal Pit', 114: "The Ancients' Way", 115: 'Icy Cellar', 116: 'Arreat Summit', 117: "Nihlathak's Temple", 118: 'Halls of Anguish', 119: 'Halls of Pain', 120: 'Halls of Vaught', 121: 'Worldstone Keep Level 1', 122: 'Worldstone Keep Level 2', 123: 'Worldstone Keep Level 3', 124: 'Throne of Destruction', 125: 'Worldstone Chamber',
     126: 'Moo Moo Farm', 127: 'Uber Tristram', 128: 'Infernal Rift'
 };
-
-// --- Phase 37: resolveTheme Helper ---
-function resolveTheme(z, d, zn) {
-    if ([0, 38, 68, 96, 102].includes(z)) {
-        if (z === 102) return 'snow';
-        if (z === 96) return 'hell';
-        if (z === 68) return 'jungle';
-        if (z === 38) return 'desert';
-        return 'town';
-    }
-    if (z >= 128) {
-        const themes = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow'];
-        return themes[Math.floor(d.rng() * themes.length)];
-    }
-
-    const name = (zn || ZONE_NAMES[z] || 'Unknown').toLowerCase();
-    let theme = 'catacombs'; // Default
-
-    // Keyword mapping
-    if (name.includes('moor') || name.includes('plains') || name.includes('field') || name.includes('highland') || name.includes('marsh') || name.includes('steppes') || name.includes('despair')) theme = 'wilderness';
-    else if (name.includes('cave') || name.includes('lair') || name.includes('hole') || name.includes('pit') || name.includes('passage') || name.includes('cavern') || name.includes('den') || name.includes('tunnels')) theme = 'cave';
-    else if (name.includes('crypt') || name.includes('mausoleum') || name.includes('tomb') || name.includes('halls of the dead')) theme = 'tomb';
-    else if (name.includes('catacombs') || name.includes('cellar') || name.includes('durance')) theme = 'catacombs';
-    else if (name.includes('jail') || name.includes('prison') || name.includes('barracks')) theme = 'jail';
-    else if (name.includes('sewers') || name.includes('harem') || name.includes('palace')) theme = 'sewer';
-    else if (name.includes('desert') || name.includes('waste') || name.includes('city') || name.includes('canyon') || name.includes('oasis') || name.includes('rocky') || name.includes('hills')) theme = 'desert';
-    else if (name.includes('arcane') || name.includes('sanctuary')) theme = 'arcane';
-    else if (name.includes('jungle') || name.includes('forest')) theme = 'jungle';
-    else if (name.includes('hell') || name.includes('flame') || name.includes('chaos')) theme = 'hell';
-    else if (name.includes('fortress')) theme = 'fortress';
-    else if (name.includes('cathedral') || name.includes('temple') || name.includes('cloister') || name.includes('fane') || name.includes('reliquary') || name.includes('travincal') || name.includes('bazaar') || name.includes('kurast') || name.includes('causeway')) theme = 'temple';
-
-    // Act-level Fallback if still default
-    if (theme === 'catacombs' && !name.includes('catacombs') && !name.includes('cellar') && !name.includes('durance')) {
-        if (z <= 37) theme = (z <= 13) ? 'wilderness' : 'catacombs';
-        else if (z <= 67) theme = 'desert';
-        else if (z <= 95) theme = (z <= 79) ? 'jungle' : 'temple';
-        else if (z <= 101) theme = 'hell';
-        else if (z <= 125) theme = 'snow';
-    }
-
-    // Act 5 Override for Snow
-    if (z >= 103 && z <= 125) {
-        if (!['cave', 'tomb', 'jail'].includes(theme)) theme = 'snow';
-    }
-
-    return theme;
-}
 
 // --- Phase 37: resolveTheme Helper ---
 function resolveTheme(z, d, zn) {
@@ -509,7 +461,7 @@ function showClassInfo(classId) {
     const statsHtml = ['str', 'dex', 'vit', 'int'].map(s => `<div class="class-stat-bar"><span>${s.toUpperCase()}</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${cls.statBars[s]}%"></div></div></div>`).join('');
     if (statsEl) {
         statsEl.innerHTML = statsHtml;
-        
+
         // --- Hardcore Toggle ---
         const hcContainer = document.createElement('div');
         hcContainer.style.cssText = 'margin-top:15px; display:flex; align-items:center; gap:10px; padding:8px; background:rgba(255,0,0,0.05); border:1px solid rgba(255,0,0,0.2); border-radius:4px;';
@@ -648,7 +600,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     } else {
         player = new Player(selectedClass);
         if (charName) player.charName = charName;
-        
+
         const hcCheck = document.getElementById('hc-mode-checkbox');
         if (hcCheck && hcCheck.checked) {
             player.isHardcore = true;
@@ -760,11 +712,11 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     explored = Array.from({ length: dungeon.height }, () => Array(dungeon.width).fill(false));
 
     // ─── MMO NETWORK SETUP ────────────────────────────────────────────
-    network = new NetworkManager({ 
-        player, 
-        enemies, 
+    network = new NetworkManager({
+        player,
+        enemies,
         onChatMessage: (data) => addChatMessage(data.sender, data.text, data.isSystem ? 'system' : 'general'),
-        onWhisper: (data) => addChatMessage(data.sender, data.text, 'whisper') 
+        onWhisper: (data) => addChatMessage(data.sender, data.text, 'whisper')
     });
     window.networkManager = network; // Expose for Mercenary/Combat systems
     window.enemies = enemies; // Expose for proc engine AoE
@@ -859,7 +811,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     network.init();
     network.joinZone(zoneLevel); // JOIN MMO LAYER
     checkChampionStatus(); // CHECK FOR #1 RANK VISUALS
-    
+
     DB.trackPresence(player.charName, zoneLevel);
 
     lastTime = performance.now();
@@ -922,22 +874,22 @@ function gameLoop(timestamp) {
 
     if (player) {
         player.update(dt, input, enemies, dungeon, (aoe) => aoeZones.push(aoe));
-        
+
         // --- MMO POSITION SYNC ---
         if (network && network.isConnected) {
             network.sendMovement(player.x, player.y, player.animState, player.facingDir);
-            
+
             // Sync current active aura
             if (player.activeAura) {
-                network.socket.emit('move', { 
-                    x: player.x, 
-                    y: player.y, 
-                    animState: player.animState, 
+                network.socket.emit('move', {
+                    x: player.x,
+                    y: player.y,
+                    animState: player.animState,
                     facingDir: player.facingDir,
-                    activeAura: player.activeAura 
+                    activeAura: player.activeAura
                 });
             }
-            
+
             // Host-only: Sync all enemies & NPCs
             if (network.isHost) {
                 if (enemies.length > 0) {
@@ -976,7 +928,7 @@ function gameLoop(timestamp) {
         // --- Phase 32: Legendary Aura Pulsar & Visuals ---
         if (state === 'GAME') {
             processAuraPulsar(player, enemies, dt);
-            
+
             // Resonance Visual Effects
             if (player.itemAuras?.has('shadowmourne')) {
                 if (Math.random() < 0.15) fx.emitBurst(player.x, player.y - 15, '#a040ff', 1, 2.5);
@@ -1186,7 +1138,7 @@ function gameLoop(timestamp) {
     if (activePet) {
         activePet.update(dt, player, droppedGold, droppedItems);
     }
-    
+
     // --- Social Requests Expiry & Cleanup ---
     const nowMs = Date.now();
     pendingRequests = pendingRequests.filter(r => r.expires > nowMs);
@@ -1309,19 +1261,19 @@ function gameLoop(timestamp) {
     const allActiveAuraColors = [];
     if (player) {
         const auraColors = { might_aura: '#ffd700', prayer_aura: '#40c040', holy_fire_aura: '#ff4000', resist_all: '#4080ff', vigor: '#ffffff', fanaticism: '#ffa000', conviction: '#a040ff' };
-        
+
         // 1. Check own aura
         if (player.activeAura) allActiveAuraColors.push(auraColors[player.activeAura] || '#ffe880');
-        
+
         // 2. Check item/runeword auras (if implemented in future)
         if (player.itemAuras) player.itemAuras.forEach(id => allActiveAuraColors.push(auraColors[id] || '#ffe880'));
-        
+
         // 3. Check received auras from others
         if (network && network.isConnected) {
             const AURA_RANGE_SQ = 150 * 150;
             network.otherPlayers.forEach(op => {
                 if (op.activeAura) {
-                    const dSq = (op.x - player.x)**2 + (op.y - player.y)**2;
+                    const dSq = (op.x - player.x) ** 2 + (op.y - player.y) ** 2;
                     if (dSq < AURA_RANGE_SQ) {
                         const c = auraColors[op.activeAura] || '#ffe880';
                         if (!allActiveAuraColors.includes(c)) allActiveAuraColors.push(c);
@@ -1338,7 +1290,7 @@ function gameLoop(timestamp) {
 
             // --- UNIFIED AURA RENDERING (Style of the Paladin) ---
             const targetAuras = e === player ? allActiveAuraColors : (e.activeAura ? [('#ffd700')] : []); // Simplified for others, detailed for self
-            
+
             // For other players, we use their specific aura color
             let displayColor = '#ffe880';
             if (e === player && allActiveAuraColors.length > 0) {
@@ -1374,7 +1326,7 @@ function gameLoop(timestamp) {
                 if (req) {
                     const sx = (e.x - camera.x) * camera.zoom + renderer.width / 2;
                     const sy = (e.y - 25 - camera.y) * camera.zoom + renderer.height / 2;
-                    
+
                     renderer.ctx.save();
                     renderer.ctx.fillStyle = 'rgba(0,0,0,0.85)';
                     renderer.ctx.strokeStyle = '#ffd700';
@@ -1388,7 +1340,7 @@ function gameLoop(timestamp) {
                     renderer.ctx.font = 'bold 9px Arial';
                     renderer.ctx.textAlign = 'center';
                     renderer.ctx.fillText(`${req.type.toUpperCase()}?`, sx, sy - 18);
-                    
+
                     renderer.ctx.font = '8px Arial';
                     renderer.ctx.fillStyle = '#4f4';
                     renderer.ctx.fillText('[Y] Accept', sx - 22, sy - 8);
@@ -1403,22 +1355,22 @@ function gameLoop(timestamp) {
             if (bubble && Date.now() < bubble.expires) {
                 const sx = (e.x - camera.x) * camera.zoom + renderer.width / 2;
                 const sy = (e.y - 45 - camera.y) * camera.zoom + renderer.height / 2;
-                
+
                 renderer.ctx.save();
                 renderer.ctx.font = 'bold 10px Arial';
                 const metrics = renderer.ctx.measureText(bubble.text);
                 const bw = metrics.width + 12;
                 const bh = 16;
-                
+
                 // Bubble bg
                 renderer.ctx.fillStyle = 'white';
                 renderer.ctx.strokeStyle = '#000';
                 renderer.ctx.lineWidth = 1;
                 renderer.ctx.beginPath();
-                renderer.ctx.roundRect(sx - bw/2, sy - bh, bw, bh, 4);
+                renderer.ctx.roundRect(sx - bw / 2, sy - bh, bw, bh, 4);
                 renderer.ctx.fill();
                 renderer.ctx.stroke();
-                
+
                 // Tail
                 renderer.ctx.beginPath();
                 renderer.ctx.moveTo(sx - 4, sy);
@@ -1474,7 +1426,7 @@ function gameLoop(timestamp) {
                         'conviction': '#a040ff', 'resist_all': '#4080ff', 'vigor': '#ffffff'
                     };
                     const auraColor = auraColors[auraId] || '#ffffff';
-                    
+
                     ctx.save();
                     ctx.strokeStyle = auraColor;
                     ctx.globalAlpha = 0.4 / (idx + 1);
@@ -1554,14 +1506,14 @@ function gameLoop(timestamp) {
         // --- Rift Portal Suction FX ---
         if (obj.isRiftPortal || obj.id === 'rift_portal') {
             const pColor = '#0ff';
-            for(let i=0; i<2; i++) {
+            for (let i = 0; i < 2; i++) {
                 const angle = Math.random() * Math.PI * 2;
                 const dist = 30 + Math.random() * 20;
                 const px = obj.x + Math.cos(angle) * dist;
                 const py = obj.y + Math.sin(angle) * dist;
                 // Particles fly TOWARDS the center
                 if (fx && fx.emitParticle) {
-                    fx.emitParticle(px, py, (obj.x - px)*0.08, (obj.y - py)*0.08, pColor, 0.4);
+                    fx.emitParticle(px, py, (obj.x - px) * 0.08, (obj.y - py) * 0.08, pColor, 0.4);
                 }
             }
         }
@@ -1594,7 +1546,7 @@ function gameLoop(timestamp) {
         let flicker = Math.sin(Date.now() / 150) * 8;
 
         let ambient = 'rgba(0, 0, 0, 0.88)';
-        
+
         // --- Act-Specific Climate & Lighting ---
         if (zoneLevel === 0 || [38, 68, 96, 102].includes(zoneLevel)) ambient = 'rgba(0, 0, 10, 0.15)'; // Towns
         else if (zoneLevel <= 37) {
@@ -1604,32 +1556,32 @@ function gameLoop(timestamp) {
                 ambient = 'rgba(200, 200, 255, 0.1)';
                 flicker = 500;
             }
-            if (Math.random() < 0.4) fx.emitBurst(camera.x + Math.random()*camera.w, camera.y - 20, '#55a', 1, 0.5); // Rain
+            if (Math.random() < 0.4) fx.emitBurst(camera.x + Math.random() * camera.w, camera.y - 20, '#55a', 1, 0.5); // Rain
         }
         else if (zoneLevel <= 67) {
             // Act 2: Sandstorm
             ambient = 'rgba(25, 15, 0, 0.70)';
-            if (Math.random() < 0.3) fx.emitBurst(camera.x + camera.w + 20, camera.y + Math.random()*camera.h, '#dcb', 1, 0.8); // Sand
+            if (Math.random() < 0.3) fx.emitBurst(camera.x + camera.w + 20, camera.y + Math.random() * camera.h, '#dcb', 1, 0.8); // Sand
         }
         else if (zoneLevel <= 95) {
             // Act 3: Foggy Jungle
             ambient = 'rgba(10, 25, 10, 0.80)';
-            if (Math.random() < 0.1) fx.emitBurst(camera.x + Math.random()*camera.w, camera.y + Math.random()*camera.h, '#8f8', 1, 1.2); // Fireflies
+            if (Math.random() < 0.1) fx.emitBurst(camera.x + Math.random() * camera.w, camera.y + Math.random() * camera.h, '#8f8', 1, 1.2); // Fireflies
         }
         else if (zoneLevel <= 101) {
             // Act 4: Hell Fire
             ambient = 'rgba(35, 5, 0, 0.85)';
-            if (Math.random() < 0.2) fx.emitBurst(camera.x + Math.random()*camera.w, camera.y + camera.h + 10, '#f40', 1, 1.5); // Embers
+            if (Math.random() < 0.2) fx.emitBurst(camera.x + Math.random() * camera.w, camera.y + camera.h + 10, '#f40', 1, 1.5); // Embers
         }
         else if (zoneLevel <= 125) {
             // Act 5: Blizzard
             ambient = 'rgba(15, 20, 35, 0.75)';
-            if (Math.random() < 0.5) fx.emitBurst(camera.x + camera.w + 50, camera.y + Math.random()*camera.h, '#fff', 1, 0.4); // Snow wind
+            if (Math.random() < 0.5) fx.emitBurst(camera.x + camera.w + 50, camera.y + Math.random() * camera.h, '#fff', 1, 0.4); // Snow wind
         }
         else if (zoneLevel >= 128 || window.riftLevel > 0) {
             // Rift: Void particles
             ambient = 'rgba(20, 0, 30, 0.90)';
-            if (Math.random() < 0.1) fx.emitBurst(camera.x + Math.random()*camera.w, camera.y + Math.random()*camera.h, '#a0f', 1, 2.0);
+            if (Math.random() < 0.1) fx.emitBurst(camera.x + Math.random() * camera.w, camera.y + Math.random() * camera.h, '#a0f', 1, 2.0);
         }
 
         renderer.applyLighting(screen.x, screen.y, (baseRadius + flicker) * camera.zoom, ambient);
@@ -2226,7 +2178,7 @@ function spawnFloatingText(x, y, text, type = 'physical', isCrit = false) {
 
 function nextZone(targetZone = null) {
     if (isTransitioning) return;
-    
+
     // Safety check: Don't allow another transition for 3 seconds
     if (Date.now() - _lastPortalEntry < 3000) return;
     _lastPortalEntry = Date.now();
@@ -2261,7 +2213,7 @@ function nextZone(targetZone = null) {
                 if (overlay) overlay.style.opacity = '0';
                 return;
             }
-            
+
             // --- MMO: Ensure each town is generated with its specific NPCs ---
             const isTown = [0, 38, 68, 96, 102].includes(targetZone);
             if (isTown && !worldZones[targetZone]) {
@@ -2342,7 +2294,7 @@ function nextZone(targetZone = null) {
                 else if (n.includes('hell') || n.includes('steppes') || n.includes('despair') || n.includes('flame') || n.includes('chaos')) window.currentTheme = 'hell';
                 else if (n.includes('fortress')) window.currentTheme = 'fortress';
                 else if (n.includes('cathedral') || n.includes('temple') || n.includes('cloister') || n.includes('fane') || n.includes('reliquary')) window.currentTheme = 'temple';
-                
+
                 // Act 5 Override for Snow
                 if (zoneLevel >= 103 && zoneLevel <= 125) {
                     if (!['cave', 'tomb', 'jail'].includes(window.currentTheme)) window.currentTheme = 'snow';
@@ -2351,7 +2303,7 @@ function nextZone(targetZone = null) {
 
             console.log(`[Zone] ${name} (LVL ${zoneLevel}) using theme: ${window.currentTheme}`);
             dungeon.generate(zoneLevel, window.currentTheme, window._currentZoneSeed);
-            
+
             // finishZoneLoad will populate enemies/npcs/objects
             finishZoneLoad();
 
@@ -2393,7 +2345,7 @@ function nextZone(targetZone = null) {
 
         // --- MMO: Join correct layer ---
         if (window.networkManager) networkManager.joinZone(zoneLevel, window._currentZoneSeed);
-        
+
         // --- Prestige: Check for #1 rank ---
         checkChampionStatus();
 
@@ -2421,12 +2373,12 @@ function finishZoneLoad() {
     if (zoneLevel === 0) {
         npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
         gameObjects = dungeon.objectSpawns ? dungeon.objectSpawns.map(s => {
-        const obj = new GameObject(s.type, s.x, s.y, s.icon, s.id);
-        obj.isOpen = s.isOpen || false;
-        if (s.type === 'shrine') obj.shrineType = s.shrineType;
-        if (s.type === 'waypoint') obj.zone = s.zone;
-        return obj;
-    }) : [];
+            const obj = new GameObject(s.type, s.x, s.y, s.icon, s.id);
+            obj.isOpen = s.isOpen || false;
+            if (s.type === 'shrine') obj.shrineType = s.shrineType;
+            if (s.type === 'waypoint') obj.zone = s.zone;
+            return obj;
+        }) : [];
         enemies = [];
 
         // If we came from a dungeon, spawn a portal back
@@ -2513,7 +2465,7 @@ function finishZoneLoad() {
     // Endgame: zones beyond 7 scale infinitely
     let endgameMult = 1.0;
     const diffMult = window.DIFFICULTY_MULT[window._difficulty] || 1.0;
-    
+
     if (zoneLevel >= 128) {
         // Infinite Rift scaling: base from campaign end + 20% per rift level + difficulty
         endgameMult = Math.pow(1.15, 20) * Math.pow(1.2, window.riftLevel) * diffMult;
@@ -2787,7 +2739,7 @@ function updateHud() {
             el.className = 'status-icon';
             el.style.cssText = `width:28px;height:28px;border:1px solid ${color};background:rgba(0,0,0,0.6);border-radius:4px;display:flex;justify-content:center;align-items:center;font-size:14px;color:${color};position:relative;cursor:help;pointer-events:auto;box-shadow:inset 0 0 5px ${color};`;
             el.textContent = iconChar;
-            
+
             // Mouse Events for custom tooltips
             el.addEventListener('mouseenter', (e) => {
                 showBuffTooltip(id, titleText, buffData, e.clientX, e.clientY);
@@ -2796,7 +2748,7 @@ function updateHud() {
                 moveTooltip(e.clientX, e.clientY);
             });
             el.addEventListener('mouseleave', hideTooltip);
-            
+
             bb.appendChild(el);
         };
 
@@ -3406,7 +3358,7 @@ function updateSkillBar() {
         newSi.addEventListener('click', (e) => {
             if (draggedSkill) return;
             e.stopPropagation();
-            
+
             // If ALT is held OR slot is empty, open picker
             if (e.altKey || !skillId) {
                 openSkillPicker(i, e.clientX, e.clientY);
@@ -3497,7 +3449,7 @@ function addCombatLog(text, cls = '') {
     let channel = 'combat';
     if (cls === 'log-item' || cls === 'log-unique' || cls === 'log-crit') channel = 'loot';
     if (cls === 'log-level' || cls === 'log-info') channel = 'system';
-    
+
     addChatMessage(null, text, channel);
 }
 
@@ -4099,7 +4051,7 @@ function renderMercenaryPanel() {
 
     const mBaseDmg = Math.round(mercenary.totalDmg || mercenary.baseDmg);
     const mMaxDmg = Math.round(mBaseDmg + (mercenary.level * 2));
-    
+
     const statsHtml = `
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-size:11px;">
             <div style="color:#aaa;">Damage: <span style="color:#fff;">${mBaseDmg} - ${mMaxDmg}</span></div>
@@ -4133,7 +4085,7 @@ function renderMercenaryPanel() {
             </div>
             <div style="display:flex; flex-direction:column; gap:10px; max-height:220px; overflow-y:auto; padding-right:5px;">
         `;
-        
+
         treeData.forEach(tree => {
             skillsHtml += `<div style="font-size:10px; color:#ffd700; border-bottom:1px solid #444; padding-bottom:2px; margin-top:5px; text-transform:uppercase;">${tree.name}</div>`;
             tree.nodes.forEach(node => {
@@ -4393,47 +4345,47 @@ function openRuneCodex() {
                 <div style="font-size:10px; color:#aaa; margin-bottom:8px;">Base: ${rw.allowedTypes.join('/')} (${rw.runes.length} Sockets)</div>
                 <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
                     ${rw.runes.map(r => {
-                        const has = (runeCounts[r] || 0) > 0;
-                        const runeStyle = has 
-                            ? 'background:#2a2010; color:#ffd700; border-color:#ffd700; box-shadow: 0 0 8px #bf642f;' 
-                            : 'background:#111; color:#444; border-color:#333;';
-                        return `<span style="border:1px solid; padding:3px 8px; font-size:11px; border-radius:3px; font-weight:bold; ${runeStyle}">${r.toUpperCase()}</span>`;
-                    }).join('')}
+            const has = (runeCounts[r] || 0) > 0;
+            const runeStyle = has
+                ? 'background:#2a2010; color:#ffd700; border-color:#ffd700; box-shadow: 0 0 8px #bf642f;'
+                : 'background:#111; color:#444; border-color:#333;';
+            return `<span style="border:1px solid; padding:3px 8px; font-size:11px; border-radius:3px; font-weight:bold; ${runeStyle}">${r.toUpperCase()}</span>`;
+        }).join('')}
                 </div>
                 <div style="font-size:11px; color:#d6b068; margin-bottom:12px; font-style:italic; line-height:1.4; border-left:2px solid #bf642f; padding-left:10px;">
-                    ${Object.entries(rw.bonuses).map(([k,v]) => {
-                        const friendlyNames = {
-                            pctDmg: 'Enhanced Damage',
-                            pctIAS: 'Attack Speed',
-                            pctMoveSpeed: 'Move Speed',
-                            allRes: 'All Resistances',
-                            allSkills: 'All Skills',
-                            flatSTR: 'Strength',
-                            flatDEX: 'Dexterity',
-                            flatVIT: 'Vitality',
-                            flatINT: 'Intellect',
-                            flatHP: 'Life',
-                            flatMP: 'Mana',
-                            manaRegenPerSec: 'Mana Regen',
-                            lifeStealPct: 'Life Stolen per hit',
-                            manaStealPct: 'Mana Stolen per hit',
-                            crushingBlow: 'Crushing Blow',
-                            deadlyStrike: 'Deadly Strike',
-                            openWounds: 'Open Wounds',
-                            convictionAura: 'Conviction Aura',
-                            meditationAura: 'Meditation Aura',
-                            vigorAura: 'Vigor Aura',
-                            shadowAura: 'Shadow Aura',
-                            minionDmgPct: 'Minion Damage',
-                            cooldownReduct: 'Cooldown Reduction',
-                            shadowNovaOnHit: 'Shadow Nova on Hit',
-                            totemLifePct: 'Totem Life'
-                        };
-                        const label = friendlyNames[k] || k.replace('pct', '%').replace('flat', '+').replace('Res', ' Res').replace('Aura', ' Aura');
-                        const valStr = (typeof v === 'object') ? `${v.min}-${v.max}%` : (v > 0 ? `+${v}` : v);
-                        const suffix = (k.startsWith('pct') && typeof v !== 'object') ? '%' : '';
-                        return `<div style="margin-bottom:2px;">${label}: <span style="color:#fff;">${valStr}${suffix}</span></div>`;
-                    }).join('')}
+                    ${Object.entries(rw.bonuses).map(([k, v]) => {
+            const friendlyNames = {
+                pctDmg: 'Enhanced Damage',
+                pctIAS: 'Attack Speed',
+                pctMoveSpeed: 'Move Speed',
+                allRes: 'All Resistances',
+                allSkills: 'All Skills',
+                flatSTR: 'Strength',
+                flatDEX: 'Dexterity',
+                flatVIT: 'Vitality',
+                flatINT: 'Intellect',
+                flatHP: 'Life',
+                flatMP: 'Mana',
+                manaRegenPerSec: 'Mana Regen',
+                lifeStealPct: 'Life Stolen per hit',
+                manaStealPct: 'Mana Stolen per hit',
+                crushingBlow: 'Crushing Blow',
+                deadlyStrike: 'Deadly Strike',
+                openWounds: 'Open Wounds',
+                convictionAura: 'Conviction Aura',
+                meditationAura: 'Meditation Aura',
+                vigorAura: 'Vigor Aura',
+                shadowAura: 'Shadow Aura',
+                minionDmgPct: 'Minion Damage',
+                cooldownReduct: 'Cooldown Reduction',
+                shadowNovaOnHit: 'Shadow Nova on Hit',
+                totemLifePct: 'Totem Life'
+            };
+            const label = friendlyNames[k] || k.replace('pct', '%').replace('flat', '+').replace('Res', ' Res').replace('Aura', ' Aura');
+            const valStr = (typeof v === 'object') ? `${v.min}-${v.max}%` : (v > 0 ? `+${v}` : v);
+            const suffix = (k.startsWith('pct') && typeof v !== 'object') ? '%' : '';
+            return `<div style="margin-bottom:2px;">${label}: <span style="color:#fff;">${valStr}${suffix}</span></div>`;
+        }).join('')}
                 </div>
                 ${canCraft ? `<button onclick="forgeRuneword('${rw.id}')" style="width:100%; padding:8px; background:#bf642f; color:#fff; border:1px solid #ffd700; border-radius:2px; cursor:pointer; font-weight:bold; font-size:12px; text-transform:uppercase; letter-spacing:1px;">FORGE ON VALID BASE</button>` : ''}
             </div>
@@ -4453,10 +4405,10 @@ window.forgeRuneword = (rwId) => {
         if (!i || i.rarity !== 'normal' || i.sockets !== rw.runes.length) return false;
         const weaponTypes = ['sword', 'axe', 'mace', 'staff', 'orb', 'bow', 'dagger', 'totem', 'wand'];
         const isWeapon = weaponTypes.includes(i.type);
-        return rw.allowedTypes.includes(i.type) || 
-               (rw.allowedTypes.includes('weapon') && isWeapon) ||
-               (rw.allowedTypes.includes('armor') && i.slot === 'chest') ||
-               (rw.allowedTypes.includes('head') && i.slot === 'head');
+        return rw.allowedTypes.includes(i.type) ||
+            (rw.allowedTypes.includes('weapon') && isWeapon) ||
+            (rw.allowedTypes.includes('armor') && i.slot === 'chest') ||
+            (rw.allowedTypes.includes('head') && i.slot === 'head');
     });
 
     if (eligibleItems.length === 0) {
@@ -4469,7 +4421,7 @@ window.forgeRuneword = (rwId) => {
         const runeKey = rId.toLowerCase();
         return { id: `rune_${runeKey}`, baseId: `rune_${runeKey}`, name: runeKey.toUpperCase() + ' Rune', type: 'rune', rarity: 'unique' };
     });
-    
+
     checkRuneword(target);
 
     const runesToConsume = [...rw.runes];
@@ -4498,36 +4450,36 @@ window.forgeRuneword = (rwId) => {
     SaveSystem.save(player, activeSlotId);
     // Sync shared stash if needed
     SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
-    };
+};
 
-    // Add Leaderboard button to HUD
-    const lbBtn = document.getElementById('btn-leaderboard');
-    if (lbBtn) lbBtn.onclick = renderLeaderboard;
+// Add Leaderboard button to HUD
+const lbBtn = document.getElementById('btn-leaderboard');
+if (lbBtn) lbBtn.onclick = renderLeaderboard;
 
-    // Add Codex button to HUD
-    function injectCodexButton() {
-        const existing = document.getElementById('btn-rune-codex');
-        if (existing) existing.remove();
+// Add Codex button to HUD
+function injectCodexButton() {
+    const existing = document.getElementById('btn-rune-codex');
+    if (existing) existing.remove();
 
-        const hud = document.getElementById('hud-buttons');
-        if (!hud) return;
+    const hud = document.getElementById('hud-buttons');
+    if (!hud) return;
 
-        const btn = document.createElement('button');
-        btn.id = 'btn-rune-codex';
-        btn.className = 'hud-btn';
-        btn.innerHTML = '📜';
-        btn.title = 'Rune Codex (R)';
-        btn.onclick = openRuneCodex;
-        hud.appendChild(btn);
+    const btn = document.createElement('button');
+    btn.id = 'btn-rune-codex';
+    btn.className = 'hud-btn';
+    btn.innerHTML = '📜';
+    btn.title = 'Rune Codex (R)';
+    btn.onclick = openRuneCodex;
+    hud.appendChild(btn);
+}
+injectCodexButton();
+
+// Also bind R key to Codex
+window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'r' && !document.activeElement.tagName.match(/INPUT|TEXTAREA/)) {
+        openRuneCodex();
     }
-    injectCodexButton();
-
-    // Also bind R key to Codex
-    window.addEventListener('keydown', (e) => {
-        if (e.key.toLowerCase() === 'r' && !document.activeElement.tagName.match(/INPUT|TEXTAREA/)) {
-            openRuneCodex();
-        }
-    });
+});
 // ——— QUEST LOG ———
 function renderQuestJournal() {
     const list = $('quest-list');
@@ -5393,7 +5345,7 @@ function showBuffTooltip(id, titleText, data, x, y) {
 
     let html = `<div class="tooltip-header" style="color:#00ff00; font-weight:bold;">${data?.name || titleText}</div>`;
     html += `<div class="tooltip-rarity" style="color:#666;">— Active Effect —</div>`;
-    
+
     let stats = "";
     if (data?.type === 'aura') {
         const slvl = player._auraSlvl || 1;
@@ -5403,7 +5355,7 @@ function showBuffTooltip(id, titleText, data, x, y) {
         else if (id === 'conviction') stats = `<div style="color:#fff;">-${30 + slvl * 2}% Enemy Resist & Armor</div>`;
         else if (id === 'prayer_aura') stats = `<div style="color:#fff;">+${2 + slvl} HP Regen per second</div>`;
         else if (id === 'vigor') stats = `<div style="color:#fff;">+${10 + slvl * 2}% Move Speed</div>`;
-        
+
         html += `<div class="tooltip-stats" style="color:#ffd700; margin-top:8px;">★ Aura Active</div>`;
         if (stats) html += `<div class="tooltip-stats" style="margin-bottom:5px;">${stats}</div>`;
         html += `<div class="tooltip-desc" style="color:#ccc; font-size:11px;">Benefiting yourself and all allies in range.</div>`;
@@ -5562,7 +5514,7 @@ function itemTooltipText(item, isComparison = false) {
         let min = item.minDmg, max = item.maxDmg;
         const localED = item.mods?.reduce((acc, m) => m.stat === 'pctDmg' ? acc + m.value : acc, 0) || 0;
         const localFlat = item.mods?.reduce((acc, m) => m.stat === 'flatMinDmg' ? acc + m.value : acc, 0) || 0;
-        
+
         if (localED > 0 || localFlat > 0) {
             min = Math.floor(min * (1 + localED / 100)) + localFlat;
             max = Math.floor(max * (1 + localED / 100)) + localFlat;
@@ -5571,8 +5523,8 @@ function itemTooltipText(item, isComparison = false) {
         const avg = (min + max) / 2;
         const compAvg = compareItem ? (compareItem.minDmg + compareItem.maxDmg) / 2 : avg;
         const dmgColor = (localED > 0 || localFlat > 0) ? '#4850b8' : getCompareColor(avg, compAvg);
-        
-        t += `<div style="color:${dmgColor}; font-weight:${(localED>0)?'bold':'normal'}">Damage: ${min}–${max}${getDiffText(avg, compAvg)}</div>`;
+
+        t += `<div style="color:${dmgColor}; font-weight:${(localED > 0) ? 'bold' : 'normal'}">Damage: ${min}–${max}${getDiffText(avg, compAvg)}</div>`;
     }
     if (item.armor) t += `<div style="color:${getCompareColor(item.armor, compareItem?.armor)}">Armor: ${item.armor}${getDiffText(item.armor, compareItem?.armor)}</div>`;
     if (item.block) t += `<div style="color:${getCompareColor(item.block, compareItem?.block)}">Block: ${item.block}%${getDiffText(item.block, compareItem?.block)}</div>`;
@@ -6148,7 +6100,7 @@ function renderWaypointMenu(obj) {
     ];
 
     const wpZones = [...discoveredWaypoints].sort((a, b) => a - b);
-    
+
     // Filter available acts
     const availableActs = acts.filter(act => {
         const discoveredInAct = wpZones.filter(wz => wz >= act.range[0] && wz <= act.range[1]);
@@ -6172,7 +6124,7 @@ function renderWaypointMenu(obj) {
         if (!act) return;
 
         const discoveredInAct = wpZones.filter(wz => wz >= act.range[0] && wz <= act.range[1]);
-        
+
         // Split into two columns for better space usage if many waypoints
         const listGrid = document.createElement('div');
         listGrid.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px;';
@@ -6189,7 +6141,7 @@ function renderWaypointMenu(obj) {
                 border: 1px solid ${isCurrent ? '#333' : 'rgba(186, 145, 88, 0.2)'};
                 border-radius: 4px;
             `;
-            
+
             if (!isCurrent) {
                 btn.onmouseover = () => { btn.style.color = '#fff'; btn.style.background = 'rgba(191,100,47,0.2)'; btn.style.borderColor = '#bf642f'; };
                 btn.onmouseout = () => { btn.style.color = '#d8b068'; btn.style.background = 'rgba(191,100,47,0.05)'; btn.style.borderColor = 'rgba(186, 145, 88, 0.2)'; };
@@ -6200,7 +6152,7 @@ function renderWaypointMenu(obj) {
                     activeWaypointObj = null;
                 };
             }
-            
+
             btn.textContent = `${isCurrent ? '📍' : '⚡'} ${ZONE_NAMES[wz] || 'Area ' + wz}`;
             listGrid.appendChild(btn);
         });
@@ -6238,14 +6190,14 @@ function renderWaypointMenu(obj) {
 
     const footer = document.createElement('div');
     footer.style.cssText = 'padding: 10px; background: rgba(0,0,0,0.5); border-top: 1px solid #4a3520; text-align: center;';
-    
+
     const cancelBtn = document.createElement('div');
     cancelBtn.className = 'dialogue-option';
     cancelBtn.style.cssText = 'color: #888; cursor: pointer; padding: 6px; text-align: center; font-size: 12px; border: 1px solid #444; width: 100px; margin: 0 auto; border-radius: 4px;';
     cancelBtn.textContent = 'CLOSE';
     cancelBtn.onclick = () => { menu.remove(); activeWaypointObj = null; };
     footer.appendChild(cancelBtn);
-    
+
     menu.appendChild(footer);
 
     refreshWaypoints();
@@ -6524,7 +6476,7 @@ function renderStash() {
     sharedStashTabs.forEach((tab, idx) => {
         const btn = document.createElement('button');
         btn.className = `stash-tab-btn ${currentStashTab === idx ? 'active' : ''}`;
-        btn.style.cssText = `padding:6px 12px; background:${currentStashTab===idx?'#bf642f':'#333'}; color:${currentStashTab===idx?'#fff':'#aaa'}; border:1px solid #444; cursor:pointer; font-family:Cinzel,serif; font-size:11px; flex:1;`;
+        btn.style.cssText = `padding:6px 12px; background:${currentStashTab === idx ? '#bf642f' : '#333'}; color:${currentStashTab === idx ? '#fff' : '#aaa'}; border:1px solid #444; cursor:pointer; font-family:Cinzel,serif; font-size:11px; flex:1;`;
         btn.textContent = tab.name;
         btn.onclick = () => { currentStashTab = idx; renderStash(); };
         tc.appendChild(btn);
@@ -7256,7 +7208,7 @@ function offerQuest(giverId = null) {
 // ——— MERCENARY HIRE ———
 function hireMercenary(type = 'Rogue') {
     if (!player) return;
-    
+
     // Revive Logic (if we have one and it's dead)
     if (mercenary && mercenary.hp <= 0) {
         const reviveCost = Math.min(5000, mercenary.level * 100);
@@ -7303,9 +7255,9 @@ function hireMercenary(type = 'Rogue') {
         'Iron Wolf': ['Jarulf', 'Isenhart', 'Telash', 'Flux'],
         'Barbarian': ['Aengus', 'Bork', 'Hrothgar', 'Ulf']
     };
-    const icons = { 
-        'Rogue': 'class_ranger', 
-        'Desert Warrior': 'class_paladin', 
+    const icons = {
+        'Rogue': 'class_ranger',
+        'Desert Warrior': 'class_paladin',
         'Iron Wolf': 'class_sorceress',
         'Barbarian': 'class_warrior'
     };
@@ -7451,7 +7403,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // Preload all pixel art assets
     for (const name of ASSET_NAMES) {
         let path = `assets/${name}.png`;
-        
+
         // Use high-definition map objects if available
         if (name === 'obj_portal') path = 'assets/map_objects/town_portal.png';
         if (name === 'obj_waypoint') path = 'assets/map_objects/warp_point.png';
@@ -7459,7 +7411,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (name === 'obj_chest_open') path = 'assets/map_objects/treasure_chest_open.png';
         if (name === 'obj_shrine') path = 'assets/map_objects/arcane_shrine.png';
         if (name === 'obj_shrine_used') path = 'assets/map_objects/arcane_shrine_inactive.png';
-        
+
         Assets.load(name, path);
     }
 
@@ -7476,36 +7428,36 @@ window.addEventListener('DOMContentLoaded', () => {
         startGame(null, null, charName);
     });
 
-function renderDifficultySelection() {
-    const container = document.getElementById('difficulty-selector');
-    if (!container) return;
+    function renderDifficultySelection() {
+        const container = document.getElementById('difficulty-selector');
+        if (!container) return;
 
-    const maxUnlocked = player?.maxDifficulty || 0;
-    container.innerHTML = '';
+        const maxUnlocked = player?.maxDifficulty || 0;
+        container.innerHTML = '';
 
-    DIFFICULTY_NAMES.forEach((name, idx) => {
-        const isLocked = idx > maxUnlocked;
-        const btn = document.createElement('button');
-        btn.className = `diff-btn ${difficulty === idx ? 'active' : ''} ${isLocked ? 'locked' : ''}`;
-        btn.dataset.diff = idx;
-        btn.disabled = isLocked;
-        
-        btn.innerHTML = `
+        DIFFICULTY_NAMES.forEach((name, idx) => {
+            const isLocked = idx > maxUnlocked;
+            const btn = document.createElement('button');
+            btn.className = `diff-btn ${difficulty === idx ? 'active' : ''} ${isLocked ? 'locked' : ''}`;
+            btn.dataset.diff = idx;
+            btn.disabled = isLocked;
+
+            btn.innerHTML = `
             <div class="diff-name">${name}</div>
             ${isLocked ? '<div class="diff-lock">🔒 LOCKED</div>' : `<div class="diff-mult">${window.DIFFICULTY_MULT[idx]}x Monsters</div>`}
         `;
 
-        if (!isLocked) {
-            btn.onclick = () => {
-                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                window._difficulty = idx;
-                difficulty = idx;
-            };
-        }
-        container.appendChild(btn);
-    });
-}
+            if (!isLocked) {
+                btn.onclick = () => {
+                    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    window._difficulty = idx;
+                    difficulty = idx;
+                };
+            }
+            container.appendChild(btn);
+        });
+    }
 
     // Death Screen
     $('btn-respawn').addEventListener('click', () => {
@@ -7593,8 +7545,8 @@ async function renderSaveSlots(onlineUsers = {}) {
     let cloudSlots = []; if (DB.isLoggedIn()) { cloudSlots = await DB.getSaves(); cloudSlots.forEach(s => s._isCloud = true); }
     const localSlots = SaveSystem.listSlots(); localSlots.forEach(s => s._isCloud = false);
     const allSlots = [...cloudSlots, ...localSlots];
-    if (allSlots.length === 0) { if(screenSelect) screenSelect.classList.add('hidden'); if(screenCreate) screenCreate.classList.remove('hidden'); return; }
-    if(screenSelect) screenSelect.classList.remove('hidden'); if(screenCreate) screenCreate.classList.add('hidden'); listContainer.innerHTML = '';
+    if (allSlots.length === 0) { if (screenSelect) screenSelect.classList.add('hidden'); if (screenCreate) screenCreate.classList.remove('hidden'); return; }
+    if (screenSelect) screenSelect.classList.remove('hidden'); if (screenCreate) screenCreate.classList.add('hidden'); listContainer.innerHTML = '';
     allSlots.forEach(slot => {
         const card = document.createElement('div'); card.className = 'char-entry'; if (selectedCharSlot && selectedCharSlot.id === slot.id) card.classList.add('selected');
         const isOnline = onlineUsers[slot.id];
@@ -7917,11 +7869,11 @@ async function renderLeaderboard(filter = 'global') {
         data.forEach((row, i) => {
             const depth = row.player?.extra_data?.riftLevel || 0;
             const isMe = player && row.charName === player.charName;
-            
+
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid #222';
             if (isMe) tr.style.background = 'rgba(191, 100, 47, 0.2)';
-            
+
             let rankDisp = (i + 1);
             if (i === 0) rankDisp = '🥇';
             if (i === 1) rankDisp = '🥈';
@@ -7947,7 +7899,7 @@ function renderPantheonList() { renderLeaderboard(); }
 
 async function checkChampionStatus() {
     if (!player || !network) return;
-    
+
     // Check Global #1
     const globalData = await network.getLeaderboardData('global');
     if (globalData && globalData.length > 0) {
@@ -8161,8 +8113,8 @@ function handleBossDeath(boss) {
         // Immediate Cloud Save
         saveGame();
     }
-        // Rift Guardian Global Announcement
-        if (boss.isRiftGuardian && window.riftLevel >= 50) {
+    // Rift Guardian Global Announcement
+    if (boss.isRiftGuardian && window.riftLevel >= 50) {
         let msg = "";
         if (window.partyId && window.partyMembers && window.partyMembers.length > 1) {
             msg = `⚡ GLOBAL: A Party has defeated the Depth ${window.riftLevel} Guardian! ⚡`;
@@ -8172,7 +8124,8 @@ function handleBossDeath(boss) {
 
         if (window.networkManager?.socket) networkManager.socket.emit('system_message', msg);
         addCombatLog(msg, 'log-unique');
-        }}
+    }
+}
 
 function showActCleared(name, subtitle) {
     const splash = document.getElementById('act-splash-container');
@@ -8241,7 +8194,7 @@ async function refreshAuctions() {
     });
 }
 
-window.getItemColor = function(rarity) { return { normal: '#fff', magic: '#4850b8', rare: '#ffff00', set: '#00ff00', unique: '#bf642f' }[rarity] || '#fff'; };
+window.getItemColor = function (rarity) { return { normal: '#fff', magic: '#4850b8', rare: '#ffff00', set: '#00ff00', unique: '#bf642f' }[rarity] || '#fff'; };
 
 window.addEventListener('DOMContentLoaded', () => {
     DB.init(); initParticles(); initClassGrid();
@@ -8252,13 +8205,13 @@ window.addEventListener('DOMContentLoaded', () => {
         Assets.load(name, path);
     }
     renderSaveSlots();
-    
+
     // Auth UI
     if (document.getElementById('btn-open-auth')) document.getElementById('btn-open-auth').onclick = () => document.getElementById('auth-modal').classList.remove('hidden');
     if (document.getElementById('btn-auth-login')) document.getElementById('btn-auth-login').onclick = async () => { const e = document.getElementById('auth-email').value, p = document.getElementById('auth-password').value; const res = await DB.signIn(e, p); if (res.success) { document.getElementById('auth-modal').classList.add('hidden'); renderSaveSlots(); } };
     if (document.getElementById('btn-auth-register')) document.getElementById('btn-auth-register').onclick = async () => { const e = document.getElementById('auth-email').value, p = document.getElementById('auth-password').value; const res = await DB.signUp(e, p); if (res.success) { document.getElementById('auth-modal').classList.add('hidden'); renderSaveSlots(); } };
     if (document.getElementById('btn-logout')) document.getElementById('btn-logout').onclick = async () => { await DB.signOut(); renderSaveSlots(); };
-    
+
     // Commands
     const chatInput = document.getElementById('chat-input');
     if (chatInput) {
@@ -8332,9 +8285,9 @@ window.addEventListener('DOMContentLoaded', () => {
         const target = document.getElementById(`social-${t.dataset.tab}-list`);
         if (target) target.classList.remove('hidden');
     });
-    
+
     if (document.getElementById('btn-new-game')) document.getElementById('btn-new-game').onclick = () => { if (!selectedClass) return; const nameIn = document.getElementById('character-name'); const name = nameIn ? nameIn.value.trim() : null; if (!name) return; initAudio(); startGame(SaveSystem.newSlotId(), null, name); saveGame(); };
-    if (document.getElementById('btn-export-save')) document.getElementById('btn-export-save').onclick = () => { const data = SaveSystem.exportData(); if (data) { const blob = new Blob([data], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'save.json'; a.click(); } };
+    if (document.getElementById('btn-export-save')) document.getElementById('btn-export-save').onclick = () => { const data = SaveSystem.exportData(); if (data) { const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'save.json'; a.click(); } };
     if (document.getElementById('btn-import-save')) document.getElementById('btn-import-save').onclick = () => document.getElementById('import-file').click();
     if (document.getElementById('import-file')) document.getElementById('import-file').onchange = (e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => { if (SaveSystem.importData(ev.target.result)) renderSaveSlots(); }; r.readAsText(f); } };
     if (document.getElementById('btn-enter-world')) document.getElementById('btn-enter-world').onclick = async () => { if (!selectedCharSlot) return; let saveData = null; if (selectedCharSlot._isCloud) { const cloud = await DB.getSaves(); saveData = cloud.find(s => s.id === selectedCharSlot.id); } else { saveData = SaveSystem.loadSlot(selectedCharSlot.id); } if (saveData) { initAudio(); startGame(selectedCharSlot.id, saveData); } };
@@ -8366,7 +8319,7 @@ function updateRespawns() {
     const now = Date.now();
     const queue = worldZones[zoneLevel].respawnQueue;
     if (!queue) return;
-    
+
     for (let i = queue.length - 1; i >= 0; i--) {
         if (now >= queue[i].respawnAt) {
             const spawnData = queue[i].spawn;
@@ -8415,14 +8368,14 @@ function initDraggableChat() {
     container.onmousedown = (e) => {
         if (chatLocked) return;
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-        
+
         isDragging = true;
         startX = e.clientX;
         startY = e.clientY;
         const rect = container.getBoundingClientRect();
         initialX = rect.left;
         initialY = rect.top;
-        
+
         document.onmousemove = (ev) => {
             if (!isDragging) return;
             const dx = ev.clientX - startX;
