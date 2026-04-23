@@ -3189,7 +3189,7 @@ function getItemHtml(item, cantEquip = false, isGamble = false) {
     if (!item) return '';
     const rarity = item.rarity || 'normal';
     const rarityClass = isGamble ? 'rarity-normal' : `rarity-${rarity}`;
-    
+
     // Fallback icon logic if item.icon is missing
     let iconName = isGamble ? 'item_orb' : (item.icon || `item_${item.type || 'orb'}`);
 
@@ -6496,7 +6496,7 @@ function renderShop() {
     }
 }
 
-window.rescueSharedItems = async function() {
+window.rescueSharedItems = async function () {
     try {
         const response = await fetch('save.json');
         const data = await response.json();
@@ -7455,46 +7455,46 @@ window.addEventListener('DOMContentLoaded', () => {
     DB.init();
     VendorUI.init();
 
-    // Setup Auth UI Hooks
-    $('btn-open-auth').addEventListener('click', () => {
-        $('auth-modal').classList.remove('hidden');
-    });
+    // Auth UI Listeners (Consolidated)
+    if ($('btn-open-auth')) $('btn-open-auth').onclick = () => $('auth-modal').classList.remove('hidden');
+    if ($('auth-close')) $('auth-modal').onclick = () => $('auth-modal').classList.add('hidden');
 
-    $('btn-auth-login').addEventListener('click', async () => {
+    $('btn-auth-login')?.addEventListener('click', async () => {
         const e = $('auth-email').value, p = $('auth-password').value;
         if (!e || !p) { $('auth-error').textContent = 'Enter email and password'; return; }
-        $('auth-error').textContent = 'Logging in...';
+        $('auth-error').textContent = 'Authenticating...';
         const res = await DB.signIn(e, p);
         if (res.success) {
             $('auth-modal').classList.add('hidden');
-            renderSaveSlots(); // Reload saves
+            // UI will auto-refresh via auth:stateChanged
         } else {
             $('auth-error').textContent = res.error;
         }
     });
 
-    $('btn-auth-register').addEventListener('click', async () => {
+    $('btn-auth-register')?.addEventListener('click', async () => {
         const e = $('auth-email').value, p = $('auth-password').value;
         if (!e || !p) { $('auth-error').textContent = 'Enter email and password'; return; }
         $('auth-error').textContent = 'Registering...';
         const res = await DB.signUp(e, p);
         if (res.success) {
             $('auth-modal').classList.add('hidden');
-            renderSaveSlots();
+            // UI will auto-refresh via auth:stateChanged
         } else {
             $('auth-error').textContent = res.error;
         }
     });
 
-    $('btn-logout').addEventListener('click', async () => {
+    $('btn-logout')?.addEventListener('click', async () => {
         await DB.signOut();
-        renderSaveSlots();
+        // UI will auto-refresh via auth:stateChanged
     });
 
     bus.on('auth:stateChanged', (session) => {
         const text = $('auth-status-text');
         const btnLogin = $('btn-open-auth');
         const btnLogout = $('btn-logout');
+        
         if (session) {
             text.textContent = `Cloud Connected: ${session.user.email}`;
             text.style.color = 'var(--cyan)';
@@ -7506,7 +7506,114 @@ window.addEventListener('DOMContentLoaded', () => {
             btnLogin.classList.remove('hidden');
             btnLogout.classList.add('hidden');
         }
+
+        // Auto-refresh UI when login state changes
+        renderSaveSlots();
+        if (player) renderStash(); // Refresh stash if game is active
     });
+
+    // --- CONSOLIDATED CHARACTER LISTENERS ---
+    
+    // 1. Show Creation Screen
+    $('btn-show-create')?.addEventListener('click', () => {
+        $('screen-char-select').classList.add('hidden');
+        $('screen-char-create').classList.remove('hidden');
+    });
+
+    $('btn-back-to-select')?.addEventListener('click', () => {
+        $('screen-char-create').classList.add('hidden');
+        $('screen-char-select').classList.remove('hidden');
+    });
+
+    // 2. Create New Character
+    $('btn-new-game')?.addEventListener('click', async () => {
+        if (!selectedClass) return;
+        const nameInput = $('character-name');
+        const name = nameInput ? nameInput.value.trim() : null;
+        if (!name) { alert("Enter a hero name!"); return; }
+
+        initAudio();
+        const slotId = SaveSystem.newSlotId();
+        
+        // Start game logic
+        const activeDiffBtn = document.querySelector('.diff-btn.active');
+        window._difficulty = activeDiffBtn ? parseInt(activeDiffBtn.dataset.diff) : 0;
+        
+        startGame(slotId, null, name);
+        
+        // Immediate Dual Save
+        saveGame();
+        
+        addCombatLog(`A new legend is born: ${name}`, 'log-heal');
+    });
+
+    // 3. Enter World with Selected Character
+    $('btn-enter-world')?.addEventListener('click', async () => {
+        if (!selectedCharSlot) return;
+        
+        initAudio();
+        let saveData = null;
+        
+        // Always try to load the most up-to-date version
+        if (selectedCharSlot._isCloud) {
+            const cloud = await DB.getSaves();
+            saveData = cloud.find(s => s.id === selectedCharSlot.id);
+        } else {
+            saveData = SaveSystem.loadSlot(selectedCharSlot.id);
+        }
+        
+        if (saveData) {
+            startGame(selectedCharSlot.id, saveData);
+            addCombatLog(`Welcome back, ${selectedCharSlot.name}.`, 'log-info');
+        }
+    });
+
+    // 4. Save Export/Import
+    $('btn-export-save')?.addEventListener('click', () => {
+        const data = SaveSystem.exportData();
+        if (data) {
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'save.json';
+            a.click();
+        }
+    });
+
+    $('btn-import-save')?.addEventListener('click', () => $('import-file').click());
+
+    $('import-file')?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            if (SaveSystem.importData(ev.target.result)) {
+                alert('Save data imported successfully!');
+                const rescued = SaveSystem.getSharedStash();
+                sharedStashTabs = rescued.tabs;
+                sharedGold = rescued.gold;
+                renderSaveSlots();
+                renderStash();
+                addCombatLog(`Imported and merged shared items.`, 'log-heal');
+            } else {
+                alert('Failed to import save data. Invalid file format.');
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // MMO HUD Listeners
+    $('btn-inventory')?.addEventListener('click', () => togglePanel('inventory'));
+    $('btn-talents')?.addEventListener('click', () => togglePanel('talents'));
+    $('btn-character')?.addEventListener('click', () => togglePanel('character'));
+    $('btn-mercenary')?.addEventListener('click', () => togglePanel('mercenary'));
+    $('btn-social')?.addEventListener('click', () => togglePanel('social'));
+    $('btn-portal')?.addEventListener('click', () => bus.emit('action:town_portal'));
+    $('btn-stash')?.addEventListener('click', toggleTownPanels);
+    $('btn-cube')?.addEventListener('click', toggleTownPanels);
+    $('btn-quests')?.addEventListener('click', () => togglePanel('quests'));
+
 
     initParticles();
     initClassGrid();
@@ -7643,53 +7750,110 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// ——— SAVE SLOT UI ———
+// --- SAVE SLOT UI ---
 async function renderSaveSlots(onlineUsers = {}) {
-    const listContainer = document.getElementById('char-selection-list'), screenSelect = document.getElementById('screen-char-select'), screenCreate = document.getElementById('screen-char-create'), btnEnter = document.getElementById('btn-enter-world');
+    const listContainer = document.getElementById('char-selection-list'),
+        screenSelect = document.getElementById('screen-char-select'),
+        screenCreate = document.getElementById('screen-char-create'),
+        btnEnter = document.getElementById('btn-enter-world');
+
     if (!listContainer) return;
+    listContainer.innerHTML = '<div style="color:#aaa; padding:20px; font-family:Cinzel;">Connecting to the Abyss...</div>';
 
-    // Phase 31: Sync Shared Stash from cloud if logged in
-    if (DB.isLoggedIn()) {
-        const cloudStash = await DB.getSharedStash();
-        if (cloudStash) {
-            // SAFE SYNC: Only overwrite if local is empty OR cloud has more/different items
-            const localHasItems = sharedStashTabs.some(t => t.items && t.items.some(i => i !== null));
-            const cloudHasItems = cloudStash.tabs && cloudStash.tabs.some(t => t.items && t.items.some(i => i !== null));
-
-            if (cloudHasItems || !localHasItems) {
-                sharedStashTabs = cloudStash.tabs;
-                sharedGold = cloudStash.gold;
-                // Update local storage to keep it in sync
-                localStorage.setItem('DARK_REALM_SHARED_STASH', JSON.stringify({ tabs: sharedStashTabs, gold: sharedGold }));
-            } else {
-                console.log("Safe Sync: Local stash has items, keeping local version to prevent loss.");
-            }
+    const isLoggedIn = DB.isLoggedIn();
+    let cloudSlots = [];
+    if (isLoggedIn) {
+        try {
+            cloudSlots = await DB.getSaves();
+            cloudSlots.forEach(s => s._isCloud = true);
+        } catch (e) {
+            console.error("Cloud fetch failed:", e);
         }
     }
 
-    // Rescue Summary
-    const totalRescued = sharedStashTabs.reduce((acc, t) => acc + (t.items ? t.items.filter(i => i !== null).length : 0), 0);
-    if (totalRescued > 0) {
-        addCombatLog(`RESCUE: Found ${totalRescued} items in shared stash.`, 'log-heal');
+    const localSlots = SaveSystem.listSlots();
+    localSlots.forEach(s => s._isCloud = false);
+
+    // Hybrid Logic: 
+    // - Logged In: Only show Cloud slots (to prevent confusion).
+    // - Logged Out: Show Local slots.
+    // - Note: We ALWAYS save to both when logged in (local backup).
+    const allSlots = isLoggedIn ? cloudSlots : localSlots;
+
+    if (allSlots.length === 0) {
+        listContainer.innerHTML = `<div style="color:#666; padding:20px; font-style:italic; font-size:12px;">No ${isLoggedIn ? 'Cloud' : 'Local'} characters found.<br>Create a new hero to begin!</div>`;
+        if (screenSelect) screenSelect.classList.add('hidden');
+        if (screenCreate) screenCreate.classList.remove('hidden');
+        return;
     }
 
-    let cloudSlots = []; if (DB.isLoggedIn()) { cloudSlots = await DB.getSaves(); cloudSlots.forEach(s => s._isCloud = true); }
-    const localSlots = SaveSystem.listSlots(); localSlots.forEach(s => s._isCloud = false);
-    const allSlots = [...cloudSlots, ...localSlots];
-    if (allSlots.length === 0) { if (screenSelect) screenSelect.classList.add('hidden'); if (screenCreate) screenCreate.classList.remove('hidden'); return; }
-    if (screenSelect) screenSelect.classList.remove('hidden'); if (screenCreate) screenCreate.classList.add('hidden'); listContainer.innerHTML = '';
+    if (screenSelect) screenSelect.classList.remove('hidden');
+    if (screenCreate) screenCreate.classList.add('hidden');
+
+    listContainer.innerHTML = '';
     allSlots.forEach(slot => {
-        const card = document.createElement('div'); card.className = 'char-entry'; if (selectedCharSlot && selectedCharSlot.id === slot.id) card.classList.add('selected');
+        const card = document.createElement('div');
+        card.className = 'char-entry';
+        if (selectedCharSlot && selectedCharSlot.id === slot.id) card.classList.add('selected');
+
         const isOnline = onlineUsers[slot.id];
         const typeTag = slot._isCloud ? `<span style="color:var(--cyan); font-size:9px;">[CLOUD${isOnline ? ' - ONLINE' : ''}]</span>` : '<span style="color:#888; font-size:9px;">[LOCAL]</span>';
-        card.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; width:100%;"><div><div class="char-entry-name">${slot.name} ${typeTag}</div><div class="char-entry-details">Lvl ${slot.level} ${slot.className}</div></div>${(!slot._isCloud && DB.isLoggedIn()) ? `<button class="btn-migrate" title="Migrate to Cloud">☁️</button>` : ''}</div>`;
+
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <div>
+                    <div class="char-entry-name">${slot.name} ${typeTag}</div>
+                    <div class="char-entry-details">Lvl ${slot.level} ${slot.className}</div>
+                </div>
+                ${(!slot._isCloud && isLoggedIn) ? `<button class="btn-migrate" title="Migrate to Cloud" style="background:rgba(0,255,255,0.1); border:1px solid var(--cyan); border-radius:50%; width:24px; height:24px; cursor:pointer;">☁️</button>` : ''}
+                <button class="btn-delete-char" title="Delete Hero" style="background:none; border:none; color:#522; cursor:pointer; padding:5px;">✕</button>
+            </div>
+        `;
+
+        // Migration Logic (Local -> Cloud)
         const migrateBtn = card.querySelector('.btn-migrate');
-        if (migrateBtn) migrateBtn.onclick = async (e) => { e.stopPropagation(); if (confirm(`Migrate ${slot.name} to Cloud?`)) { const localData = SaveSystem.loadSlot(slot.id); if (localData && await DB.upsertSave(slot.id, localData)) { addCombatLog(`${slot.name} migrated!`, 'log-crit'); renderSaveSlots(); } } };
-        card.onclick = () => { document.querySelectorAll('.char-entry').forEach(e => e.classList.remove('selected')); card.classList.add('selected'); selectedCharSlot = slot; if (btnEnter) btnEnter.disabled = false; updateCharPreview(slot); };
+        if (migrateBtn) {
+            migrateBtn.onclick = async (e) => {
+                e.stopPropagation();
+                if (confirm(`Migrate ${slot.name} to Cloud? Progress will be synced.`)) {
+                    const localData = SaveSystem.loadSlot(slot.id);
+                    if (localData && await DB.upsertSave(slot.id, localData)) {
+                        addCombatLog(`${slot.name} migrated to Cloud!`, 'log-heal');
+                        renderSaveSlots();
+                    }
+                }
+            };
+        }
+
+        // Delete Logic
+        card.querySelector('.btn-delete-char').onclick = async (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete ${slot.name}? This is PERMANENT.`)) {
+                if (slot._isCloud) await DB.deleteSave(slot.id);
+                SaveSystem.deleteSlot(slot.id); // Also remove from local
+                selectedCharSlot = null;
+                renderSaveSlots();
+            }
+        };
+
+        card.onclick = () => {
+            document.querySelectorAll('.char-entry').forEach(e => e.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedCharSlot = slot;
+            if (btnEnter) btnEnter.disabled = false;
+            updateCharPreview(slot);
+        };
+
         listContainer.appendChild(card);
     });
-    if (!selectedCharSlot && allSlots.length > 0) listContainer.firstChild.click();
+
+    if (!selectedCharSlot && allSlots.length > 0) {
+        listContainer.firstChild.click();
+    }
 }
+
+// ... rest of character preview logic ...
+
 
 function updateCharPreview(slot) {
     const nameEl = document.getElementById('preview-name'), detailsEl = document.getElementById('preview-details'), renderDiv = document.getElementById('char-preview-render');
@@ -8336,6 +8500,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (name === 'obj_portal') path = 'assets/map_objects/town_portal.png';
         if (name === 'obj_waypoint') path = 'assets/map_objects/waypoint_hd.png';
         if (name === 'obj_tree_oak') path = 'assets/obj_tree_oak.png';
+        if (name === 'obj_tree_banyan') path = 'assets/obj_tree_banyan.png';
         if (name === 'obj_tree_palm') path = 'assets/obj_tree_palm.png';
         if (name === 'obj_tree_snowpine') path = 'assets/obj_tree_snowpine.png';
         if (name === 'obj_tree_dead') path = 'assets/obj_tree_dead.png';
@@ -8423,22 +8588,61 @@ window.addEventListener('DOMContentLoaded', () => {
         if (target) target.classList.remove('hidden');
     });
 
-    if (document.getElementById('btn-new-game')) document.getElementById('btn-new-game').onclick = () => { if (!selectedClass) return; const nameIn = document.getElementById('character-name'); const name = nameIn ? nameIn.value.trim() : null; if (!name) return; initAudio(); startGame(SaveSystem.newSlotId(), null, name); saveGame(); };
-    if (document.getElementById('btn-export-save')) document.getElementById('btn-export-save').onclick = () => { const data = SaveSystem.exportData(); if (data) { const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'save.json'; a.click(); } };
-    if (document.getElementById('btn-import-save')) document.getElementById('btn-import-save').onclick = () => document.getElementById('import-file').click();
-    if (document.getElementById('import-file')) document.getElementById('import-file').onchange = (e) => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = (ev) => { if (SaveSystem.importData(ev.target.result)) renderSaveSlots(); }; r.readAsText(f); } };
-    if (document.getElementById('btn-enter-world')) document.getElementById('btn-enter-world').onclick = async () => { if (!selectedCharSlot) return; let saveData = null; if (selectedCharSlot._isCloud) { const cloud = await DB.getSaves(); saveData = cloud.find(s => s.id === selectedCharSlot.id); } else { saveData = SaveSystem.loadSlot(selectedCharSlot.id); } if (saveData) { initAudio(); startGame(selectedCharSlot.id, saveData); } };
+    // --- CONSOLIDATED CHARACTER LISTENERS ---
+    
+    // 1. Show Creation Screen
+    $('btn-show-create')?.addEventListener('click', () => {
+        $('screen-char-select').classList.add('hidden');
+        $('screen-char-create').classList.remove('hidden');
+    });
 
-    // MMO HUD Listeners
-    if (document.getElementById('btn-inventory')) document.getElementById('btn-inventory').onclick = () => togglePanel('inventory');
-    if (document.getElementById('btn-talents')) document.getElementById('btn-talents').onclick = () => togglePanel('talents');
-    if (document.getElementById('btn-character')) document.getElementById('btn-character').onclick = () => togglePanel('character');
-    if (document.getElementById('btn-mercenary')) document.getElementById('btn-mercenary').onclick = () => togglePanel('mercenary');
-    if (document.getElementById('btn-social')) document.getElementById('btn-social').onclick = () => togglePanel('social');
-    if (document.getElementById('btn-portal')) document.getElementById('btn-portal').onclick = () => bus.emit('action:town_portal');
-    if (document.getElementById('btn-stash')) document.getElementById('btn-stash').onclick = toggleTownPanels;
-    if (document.getElementById('btn-cube')) document.getElementById('btn-cube').onclick = toggleTownPanels;
-    if (document.getElementById('btn-quests')) document.getElementById('btn-quests').onclick = () => togglePanel('quests');
+    $('btn-back-to-select')?.addEventListener('click', () => {
+        $('screen-char-create').classList.add('hidden');
+        $('screen-char-select').classList.remove('hidden');
+    });
+
+    // 2. Create New Character
+    $('btn-new-game')?.addEventListener('click', async () => {
+        if (!selectedClass) return;
+        const nameInput = $('character-name');
+        const name = nameInput ? nameInput.value.trim() : null;
+        if (!name) { alert("Enter a hero name!"); return; }
+
+        initAudio();
+        const slotId = SaveSystem.newSlotId();
+        
+        // Start game logic
+        const activeDiffBtn = document.querySelector('.diff-btn.active');
+        window._difficulty = activeDiffBtn ? parseInt(activeDiffBtn.dataset.diff) : 0;
+        
+        startGame(slotId, null, name);
+        
+        // Immediate Dual Save
+        saveGame();
+        
+        addCombatLog(`A new legend is born: ${name}`, 'log-heal');
+    });
+
+    // 3. Enter World with Selected Character
+    $('btn-enter-world')?.addEventListener('click', async () => {
+        if (!selectedCharSlot) return;
+        
+        initAudio();
+        let saveData = null;
+        
+        // Always try to load the most up-to-date version
+        if (selectedCharSlot._isCloud) {
+            const cloud = await DB.getSaves();
+            saveData = cloud.find(s => s.id === selectedCharSlot.id);
+        } else {
+            saveData = SaveSystem.loadSlot(selectedCharSlot.id);
+        }
+        
+        if (saveData) {
+            startGame(selectedCharSlot.id, saveData);
+            addCombatLog(`Welcome back, ${selectedCharSlot.name}.`, 'log-info');
+        }
+    });
 
     // WoW Chat Tab Switching
     document.querySelectorAll('.chat-tab').forEach(tab => {
