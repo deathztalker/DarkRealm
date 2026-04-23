@@ -3490,13 +3490,18 @@ function renderMinimap() {
                 }
             }
         } else if (camera) {
-            const camL = Math.max(0, Math.floor((camera.x - camera.w / 2) / dungeon.tileSize));
-            const camR = Math.min(dungeon.width - 1, Math.ceil((camera.x + camera.w / 2) / dungeon.tileSize));
-            const camT = Math.max(0, Math.floor((camera.y - camera.h / 2) / dungeon.tileSize));
-            const camB = Math.min(dungeon.height - 1, Math.ceil((camera.y + camera.h / 2) / dungeon.tileSize));
-            for (let r = camT; r <= camB; r++)
-                for (let c = camL; c <= camR; c++)
+            const ts = dungeon.tileSize;
+            const camL = Math.max(0, Math.floor(camera.x / ts));
+            const camR = Math.min(dungeon.width - 1, Math.ceil((camera.x + camera.w / camera.zoom) / ts));
+            const camT = Math.max(0, Math.floor(camera.y / ts));
+            const camB = Math.min(dungeon.height - 1, Math.ceil((camera.y + camera.h / camera.zoom) / ts));
+
+            for (let r = camT; r <= camB; r++) {
+                if (!explored[r]) continue;
+                for (let c = camL; c <= camR; c++) {
                     explored[r][c] = true;
+                }
+            }
         }
     }
 
