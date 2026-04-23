@@ -2195,34 +2195,30 @@ function spawnFloatingText(x, y, text, type = 'physical', isCrit = false) {
 
 function nextZone(targetZone = null) {
     if (isTransitioning) return;
-
-    // Safety check: Don't allow another transition for 3 seconds
-    if (Date.now() - _lastPortalEntry < 3000) return;
+    if (Date.now() - _lastPortalEntry < 2000) return;
     _lastPortalEntry = Date.now();
 
     isTransitioning = true;
-
-    const overlay = document.getElementById('transition-overlay');
+    const overlay = $('transition-overlay');
     if (overlay) {
         overlay.style.opacity = '1';
-        playZoneTransition();
+        if (typeof playZoneTransition === 'function') playZoneTransition();
     }
 
-    setTimeout(() => {
-        // --- PERSISTENCE: Save current zone state ---
+    setTimeout(async () => {
+        // --- 1. PERSISTENCE: Save Current Zone State ---
         if (dungeon) {
             worldZones[zoneLevel] = {
-                dungeon,
-                enemies: [...enemies],
-                npcs: [...npcs],
-                gameObjects: [...gameObjects],
-                droppedItems: [...droppedItems],
-                droppedGold: [...droppedGold],
-                respawnQueue: worldZones[zoneLevel]?.respawnQueue || []
+                dungeon, enemies: [...enemies], npcs: [...npcs],
+                gameObjects: [...gameObjects], droppedItems: [...droppedItems],
+                droppedGold: [...droppedGold], respawnQueue: worldZones[zoneLevel]?.respawnQueue || []
             };
         }
 
+        // --- 2. Determine Target & Progression Logic ---
+        let prevZone = zoneLevel;
         if (targetZone !== null) {
+            // Act Locking Logic
             const targetAct = campaign.getActForZone(targetZone);
             if (!campaign.isActUnlocked(targetAct) && targetZone !== 0 && targetZone < 128) {
                 addCombatLog(`! THE NEXT ACT IS LOCKED. Defeat the Act Boss first!`, 'log-dmg');
@@ -2230,80 +2226,54 @@ function nextZone(targetZone = null) {
                 if (overlay) overlay.style.opacity = '0';
                 return;
             }
-
-            // --- MMO: Ensure each town is generated with its specific NPCs ---
-            const isTown = [0, 38, 68, 96, 102].includes(targetZone);
-            if (isTown && !worldZones[targetZone]) {
-                const townDungeon = new Dungeon(120, 100);
-                townDungeon.generate(targetZone, null, 12345);
-                worldZones[targetZone] = {
-                    dungeon: townDungeon,
-                    enemies: [],
-                    npcs: townDungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, townDungeon)),
-                    gameObjects: townDungeon.objectSpawns.map(s => {
-                        const obj = new GameObject(s.id || s.type, s.x, s.y, s.icon, s.id);
-                        if (s.spriteSize) obj.spriteSize = s.spriteSize;
-                        if (s.type === 'portal') obj.targetZone = s.targetZone;
-                        return obj;
-                    }),
-                    droppedItems: [],
-                    droppedGold: [],
-                    respawnQueue: []
-                };
-            }
-
             zoneLevel = targetZone;
         } else {
             zoneLevel++;
             if (zoneLevel > 128 && riftGuardianSpawned) {
-                // We defeated the guardian and took the portal forward
-                riftLevel++;
+                riftLevel++; // Rift progression
             }
         }
 
-        // --- MMO: Update seed for synchronization ---
-        const charName = player ? player.charName : 'unknown';
-        const nameHash = (charName || 'unknown').split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0);
-        window._currentZoneSeed = Math.abs(nameHash + zoneLevel) % 1000000;
-        // Towns use a static seed
-        if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
-            window._currentZoneSeed = 12345;
+        // --- 3. Handle Precise Return (Portal Logic) & Seeds ---
+        let useReturnCoords = false;
+        const isTown = [0, 38, 68, 96, 102].includes(zoneLevel);
+
+        if (portalReturnZone === zoneLevel && portalReturnCoords) {
+            useReturnCoords = true;
+            window._currentZoneSeed = portalReturnSeed;
+        } else {
+            const charName = player ? player.charName : 'unknown';
+            const nameHash = (charName || 'unknown').split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0);
+            window._currentZoneSeed = isTown ? 12345 : Math.abs(nameHash + zoneLevel + (window._difficulty || 0)) % 1000000;
         }
 
         // Setup Rift state
         if (zoneLevel >= 128) {
             riftProgress = 0;
             riftGuardianSpawned = false;
-            generateRiftMods();
+            if (typeof generateRiftMods === 'function') generateRiftMods();
         }
 
-        // --- PERSISTENCE: Load or Generate ---
+        // --- 4. Load or Generate with Detailed Themes ---
         if (worldZones[zoneLevel]) {
-            const state = worldZones[zoneLevel];
-            dungeon = state.dungeon;
-            enemies = state.enemies;
-            npcs = state.npcs;
-            gameObjects = state.gameObjects;
-            droppedItems = state.droppedItems;
-            droppedGold = state.droppedGold;
+            const s = worldZones[zoneLevel];
+            dungeon = s.dungeon; enemies = s.enemies; npcs = s.npcs;
+            gameObjects = s.gameObjects; droppedItems = s.droppedItems; droppedGold = s.droppedGold;
         } else {
-            // Create dungeon first to have a deterministic RNG
             dungeon = new Dungeon(150, 120, 16);
             dungeon._seed = window._currentZoneSeed;
-
-            // --- SMART THEME SELECTION BASED ON NAME ---
-            const name = ZONE_NAMES[zoneLevel] || 'Unknown';
+            
+            // --- DETAILED THEME SELECTION ---
+            const zoneName = ZONE_NAMES[zoneLevel] || 'Unknown';
             window.currentTheme = 'catacombs'; // Default
 
-            if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
+            if (isTown) {
                 window.currentTheme = 'town';
             } else if (zoneLevel >= 128) {
-                // Infinite Rifts: Random theme
                 const themes = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow'];
                 window.currentTheme = themes[Math.floor(dungeon.rng() * themes.length)];
             } else {
-                // Keyword-based biome mapping
-                const n = name.toLowerCase();
+                const n = zoneName.toLowerCase();
                 if (n.includes('moor') || n.includes('plains') || n.includes('field') || n.includes('highland') || n.includes('marsh')) window.currentTheme = 'wilderness';
                 else if (n.includes('cave') || n.includes('lair') || n.includes('hole') || n.includes('pit') || n.includes('passage') || n.includes('cavern') || n.includes('den')) window.currentTheme = 'cave';
                 else if (n.includes('crypt') || n.includes('mausoleum') || n.includes('tomb')) window.currentTheme = 'tomb';
@@ -2323,149 +2293,98 @@ function nextZone(targetZone = null) {
                 }
             }
 
-            console.log(`[Zone] ${name} (LVL ${zoneLevel}) using theme: ${window.currentTheme}`);
             dungeon.generate(zoneLevel, window.currentTheme, window._currentZoneSeed);
-
-            // finishZoneLoad will populate enemies/npcs/objects
             finishZoneLoad();
-
-            // Initial save
-            worldZones[zoneLevel] = {
-                dungeon,
-                enemies: [...enemies],
-                npcs: [...npcs],
-                gameObjects: [...gameObjects],
-                droppedItems: [...droppedItems],
-                droppedGold: [...droppedGold],
-                respawnQueue: []
-            };
         }
 
-        player.x = dungeon.playerStart.x;
-        player.y = dungeon.playerStart.y;
+        // --- 5. Precise Placement ---
+        if (useReturnCoords) {
+            player.x = portalReturnCoords.x;
+            player.y = portalReturnCoords.y;
+            portalReturnZone = null; 
+            portalReturnCoords = null;
+        } else {
+            player.x = dungeon.playerStart.x;
+            player.y = dungeon.playerStart.y;
+        }
         player.path = [];
         player.attackTarget = null;
-
-        // --- Critical: Teleport Party ---
-        if (window.mercenary) {
-            mercenary.x = player.x;
-            mercenary.y = player.y;
-            if (mercenary.path) mercenary.path = [];
-        }
-        if (player.minions) {
-            player.minions.forEach(m => {
-                m.x = player.x; m.y = player.y;
-                if (m.path) m.path = [];
-            });
-        }
+        if (window.mercenary) { mercenary.x = player.x; mercenary.y = player.y; mercenary.path = []; }
+        if (player.minions) player.minions.forEach(m => { m.x = player.x; m.y = player.y; m.path = []; });
 
         isTransitioning = false;
+        if (overlay) overlay.style.opacity = '0';
 
-        if (overlay) {
-            setTimeout(() => overlay.style.opacity = '0', 200);
-        }
-
-        // --- MMO: Join correct layer ---
-        if (window.networkManager) networkManager.joinZone(zoneLevel, window._currentZoneSeed);
-
-        // --- Prestige: Check for #1 rank ---
+        // MMO: Join correct difficulty-aware layer
+        if (window.networkManager) networkManager.joinZone(zoneLevel);
         checkChampionStatus();
-
     }, 500);
 }
 
 function finishZoneLoad() {
+    const isTown = [0, 38, 68, 96, 102].includes(zoneLevel);
+    
+    // 1. Clear state for new zone
+    npcs = [];
+    enemies = [];
+    gameObjects = [];
+    droppedItems = [];
+    droppedGold = [];
+    aoeZones = [];
+    dialogue = null;
 
-    // If we're entering Town from a portal, we should spawn a return portal
-    player.x = dungeon.playerStart.x;
-    player.y = dungeon.playerStart.y;
-    player.path = [];
-    player.attackTarget = null;
+    // 2. Base object spawn from dungeon data
+    gameObjects = (dungeon.objectSpawns || []).map(s => {
+        const obj = new GameObject(s.type, s.x, s.y, s.icon, s.id);
+        if (s.spriteSize) obj.spriteSize = s.spriteSize;
+        if (s.type === 'portal') obj.targetZone = s.targetZone;
+        if (s.type === 'waypoint') obj.zone = s.zone;
+        if (s.shrineType) obj.shrineType = s.shrineType;
+        obj.isOpen = s.isOpen || false;
+        return obj;
+    });
 
-    // --- Phase 36: Return Portal Auto-Spawn ---
-    if ([0, 38, 68, 96, 102].includes(zoneLevel) && portalReturnZone !== null) {
-        const tp = new GameObject('portal_return', player.x + 40, player.y, 'obj_portal');
-        tp.targetZone = portalReturnZone;
-        tp.name = `Portal to Zone ${portalReturnZone}`;
-        gameObjects.push(tp);
-        if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 40, 3);
-        portalReturnZone = null; // Clear so it doesn't duplicate
-    }
-
-    // Spawn appropriate entities
-    if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
+    if (isTown) {
         npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
-        gameObjects = dungeon.objectSpawns ? dungeon.objectSpawns.map(s => {
-            const obj = new GameObject(s.type, s.x, s.y, s.icon, s.id);
-            obj.isOpen = s.isOpen || false;
-            if (s.type === 'shrine') obj.shrineType = s.shrineType;
-            if (s.type === 'waypoint') obj.zone = s.zone;
-            if (s.type === 'portal') obj.targetZone = s.targetZone;
-            if (s.spriteSize) obj.spriteSize = s.spriteSize;
-            return obj;
-        }) : [];
-        enemies = [];
-
-        // If we came from a dungeon, spawn a portal back
-        if (portalReturnZone > 0) {
-            const portal = new GameObject('portal', player.x + 40, player.y, 'env_water');
-            portal.targetZone = portalReturnZone;
-            gameObjects.push(portal);
+        
+        // SPAWN RETURN PORTAL if we just came from a dungeon
+        if (portalReturnZone !== null) {
+            const retPortal = new GameObject('portal', player.x + 40, player.y, 'obj_portal', 'town_return_tp');
+            retPortal.targetZone = portalReturnZone;
+            retPortal.name = "Return to Dungeon";
+            gameObjects.push(retPortal);
+            if (window.fx) window.fx.emitBurst(retPortal.x, retPortal.y, '#30ccff', 40, 3);
         }
 
-        // --- Phase 3 Wave 6: Wirt's Leg Drop (Zone 3 - Dark Wood) ---
-        if (zoneLevel === 13) {
-            const corpse = new GameObject('wirts_corpse', player.x - 100, player.y + 100, 'env_grave');
-            corpse.interactable = true;
-            corpse.onInteract = () => {
-                if (!player.inventory.some(it => it && it.baseId === 'wirts_leg')) {
-                    const leg = loot.generateFixedUnique('wirts_leg'); // Assuming fixed unique logic or similar
-                    if (loot.addItemToInventory(player, leg)) {
-                        addCombatLog("You found Wirt's Leg!", 'log-unique');
-                        corpse.interactable = false;
-                        corpse.icon = 'env_grave_open'; // Visual change
-                    }
-                } else {
-                    addCombatLog("You already have Wirt's Leg.", 'log-info');
-                }
-            };
-            gameObjects.push(corpse);
-        }
-
-        // --- Phase 30: Pantheon Monument ---
+        // Pantheon Monument
         const monument = new GameObject('pantheon_monument', 550, 350, 'ra-pillar');
         monument.name = "Monument of Valor";
         monument.description = "A monolith inscribed with the names of fallen legends.";
         gameObjects.push(monument);
 
-        // --- Phase 30: Pet Initialization ---
-        if (!activePet) {
+        // Pet Initialization
+        if (!activePet && typeof Pet === 'function') {
             activePet = new Pet({ name: "Wolf Cub", type: "wolf", x: player.x, y: player.y });
         }
     } else {
-        npcs = [];
-        gameObjects = dungeon.objectSpawns ? dungeon.objectSpawns.map(s => {
-            const obj = new GameObject(s.type, s.x, s.y, s.icon, s.id);
-            obj.isOpen = s.isOpen || false;
-            if (s.type === 'shrine') obj.shrineType = s.shrineType;
-            if (s.type === 'waypoint') obj.zone = s.zone;
-            if (s.type === 'portal') obj.targetZone = s.targetZone;
-            if (s.spriteSize) obj.spriteSize = s.spriteSize;
-            return obj;
-        }) : [];
         enemies = dungeon.enemySpawns.map(s => new Enemy(s));
-        // Apply difficulty scaling
-        if (difficulty > 0) {
-            const mult = window.DIFFICULTY_MULT[window._difficulty];
-            const immunityTypes = ['physical', 'fire', 'cold', 'lightning', 'poison'];
-            for (const e of enemies) {
-                e.maxHp = Math.round(e.maxHp * mult);
-                e.hp = e.maxHp;
-                e.dmg = Math.round(e.dmg * mult);
-                e.xpReward = Math.round(e.xpReward * mult);
+        
+        // --- DIFFICULTY & RIFT SCALING ---
+        const diff = window._difficulty || 0;
+        const diffMult = window.DIFFICULTY_MULT[diff] || 1;
+        let riftMult = 1.0;
+        if (zoneLevel >= 128) {
+            riftMult = Math.pow(1.15, zoneLevel - 127);
+        }
+        const totalMult = diffMult * riftMult;
+        const immunityTypes = ['physical', 'fire', 'cold', 'lightning', 'poison'];
 
-                // Immunities in Nightmare (10%) and Hell (35%)
-                const immChance = difficulty === 1 ? 0.10 : 0.35;
+        enemies.forEach(e => {
+            e.maxHp *= totalMult; e.hp = e.maxHp; e.dmg *= totalMult; e.xpReward *= totalMult;
+            
+            // Immunities in Nightmare (10%) and Hell (35%)
+            if (diff > 0) {
+                const immChance = diff === 1 ? 0.10 : 0.35;
                 if (Math.random() < immChance) {
                     const imm = immunityTypes[Math.floor(Math.random() * immunityTypes.length)];
                     e[`${imm}Immune`] = true;
@@ -2473,86 +2392,39 @@ function finishZoneLoad() {
                     e.name += ` [${imm.charAt(0).toUpperCase() + imm.slice(1)} Immune]`;
                 }
             }
+        });
+
+        // Wirt's Leg Drop (Zone 13 - Dark Wood)
+        if (zoneLevel === 13) {
+            const corpse = new GameObject('wirts_corpse', player.x - 100, player.y + 100, 'env_grave');
+            corpse.interactable = true;
+            corpse.onInteract = () => {
+                if (!player.inventory.some(it => it && it.baseId === 'wirts_leg')) {
+                    const leg = loot.generateFixedUnique('wirts_leg');
+                    if (loot.addItemToInventory(player, leg)) {
+                        addCombatLog("You found Wirt's Leg!", 'log-unique');
+                        corpse.interactable = false;
+                        corpse.icon = 'env_grave_open';
+                    }
+                } else {
+                    addCombatLog("You already have Wirt's Leg.", 'log-info');
+                }
+            };
+            gameObjects.push(corpse);
         }
     }
 
-    player.setRefs(dungeon, camera, enemies);
-    droppedItems = [];
-    droppedGold = [];
-    aoeZones = []; // Clear old AoEs
-    dialogue = null;
+    if (player) player.setRefs(dungeon, camera, enemies);
 
     const zoneName = ZONE_NAMES[zoneLevel] || `Rift Level ${zoneLevel - 127}`;
-    const diffLabel = (difficulty > 0 && difficulty < 3) ? ` (${DIFFICULTY_NAMES[difficulty]})` : (difficulty === 3 ? ' (Rift Mode)' : '');
+    const diffLabel = (window._difficulty > 0) ? ` (${DIFFICULTY_NAMES[window._difficulty]})` : '';
+    addCombatLog(`Entered ${zoneName}${diffLabel}!`, 'log-level');
+    $('zone-name').textContent = zoneName + diffLabel;
 
     // Check if boss zone
     isBossZone = [37, 67, 95, 101, 125, 127].includes(zoneLevel) || (zoneLevel >= 128 && zoneLevel % 5 === 0);
     isZoneLocked = isBossZone;
-
-    // Endgame: zones beyond 7 scale infinitely
-    let endgameMult = 1.0;
-    const diffMult = window.DIFFICULTY_MULT[window._difficulty] || 1.0;
-
-    if (zoneLevel >= 128) {
-        // Infinite Rift scaling: base from campaign end + 20% per rift level + difficulty
-        endgameMult = Math.pow(1.15, 20) * Math.pow(1.2, window.riftLevel) * diffMult;
-    } else if (zoneLevel > 128) {
-        endgameMult = Math.pow(1.15, zoneLevel - 127) * diffMult;
-    }
-    $('zone-name').textContent = zoneName + diffLabel;
-    addCombatLog(`Entered ${zoneName}${diffLabel}!`, 'log-level');
     saveGame();
-
-    // Apply thematic changes
-    function getTheme(z, hz) {
-        if (z === 0 || z === 38 || z === 68 || z === 96 || z === 102) {
-            if (z === 102) return 'snow';
-            if (z === 96) return 'hell';
-            if (z === 68) return 'jungle';
-            if (z === 38) return 'desert';
-            return 'town';
-        } else {
-            if (z >= 128) { const t = ['cathedral', 'desert', 'tomb', 'jungle', 'temple', 'hell', 'snow']; return t[Math.floor(Math.random() * t.length)]; }
-            if (z >= 102) return 'snow';
-            if (z >= 96) return 'hell';
-            if (z >= 68) return 'jungle';
-            if (z >= 38) return 'desert';
-            return 'cathedral';
-        }
-    }
-    window.currentTheme = getTheme(zoneLevel);
-
-    // Apply endgame scaling
-    if (endgameMult > 1 && enemies.length > 0) {
-        for (const e of enemies) {
-            e.maxHp = Math.round(e.maxHp * endgameMult);
-            e.hp = e.maxHp;
-            e.dmg = Math.round(e.dmg * endgameMult);
-            e.xpReward = Math.round(e.xpReward * endgameMult);
-        }
-    }
-
-    // Discover waypoint
-    discoveredWaypoints.add(zoneLevel);
-    // Town zones automatically discover their waypoint if it exists
-    if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
-        discoveredWaypoints.add(zoneLevel);
-    }
-
-    // Difficulty advancement: clearing Zone 5 advances difficulty (Legacy logic, handled by Baal now)
-    // if (zoneLevel > 5 && difficulty < 2) { ... }
-
-    // Ambient Audio Update
-    if (zoneLevel === 37) {
-        startAmbientBoss();
-    } else if (zoneLevel > 0) {
-        startAmbientDungeon();
-    } else {
-        stopAmbient();
-    }
-
-    // Reset explored for minimap
-    explored = Array.from({ length: dungeon.height }, () => Array(dungeon.width).fill(false));
 }
 
 // ——— HUD ———
@@ -4215,11 +4087,17 @@ function tryCastTownPortal() {
         return;
     }
 
-    // Portal is now a built-in ability for all heroes
+    // Capture precise return info
     portalReturnZone = zoneLevel;
+    portalReturnCoords = { x: player.x, y: player.y };
+    portalReturnSeed = window._currentZoneSeed;
+
     const portalId = `tp_${player.charName}_${Date.now()}`;
     const tp = new GameObject('portal', player.x, player.y - 10, 'obj_portal', portalId);
-    tp.targetZone = [0, 38, 68, 96, 102][campaign.getActForZone(zoneLevel) - 1] || 0; // Go to current act town
+    
+    // Determine Act Town
+    const actTowns = [0, 38, 68, 96, 102];
+    tp.targetZone = actTowns[campaign.getActForZone(zoneLevel) - 1] || 0;
     tp.name = `${player.charName}'s Portal`;
     gameObjects.push(tp);
 
