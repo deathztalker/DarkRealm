@@ -6496,6 +6496,47 @@ function renderShop() {
     }
 }
 
+window.rescueSharedItems = async function() {
+    try {
+        const response = await fetch('save.json');
+        const data = await response.json();
+        if (!data || !data.sharedStash) {
+            addCombatLog("Error: Could not find shared stash in save.json", "log-dmg");
+            return;
+        }
+
+        const backupStash = data.sharedStash;
+        let itemsAdded = 0;
+
+        if (backupStash.tabs) {
+            backupStash.tabs.forEach((backupTab, tIdx) => {
+                if (tIdx < sharedStashTabs.length) {
+                    backupTab.items.forEach((item, iIdx) => {
+                        if (item && iIdx < sharedStashTabs[tIdx].items.length) {
+                            if (!sharedStashTabs[tIdx].items[iIdx]) {
+                                sharedStashTabs[tIdx].items[iIdx] = item;
+                                itemsAdded++;
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        if (itemsAdded > 0) {
+            SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+            renderStash();
+            addCombatLog(`SUCCESS: Restored ${itemsAdded} items from backup!`, "log-heal");
+            alert(`Restored ${itemsAdded} items into your Shared Stash!`);
+        } else {
+            addCombatLog("No new items were added (slots might be occupied).", "log-info");
+        }
+    } catch (e) {
+        console.error("Rescue failed:", e);
+        addCombatLog("Rescue failed. Check console.", "log-dmg");
+    }
+};
+
 // ——— STASH & CUBE ———
 function renderStash() {
     const grid = $('stash-grid');
