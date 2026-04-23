@@ -7513,6 +7513,13 @@ window.addEventListener('DOMContentLoaded', () => {
         if (name === 'obj_chest_open') path = 'assets/map_objects/treasure_chest_open.png';
         if (name === 'obj_shrine') path = 'assets/map_objects/arcane_shrine.png';
         if (name === 'obj_shrine_used') path = 'assets/map_objects/arcane_shrine_inactive.png';
+        
+        // Tree Overrides (Transparent HD)
+        if (name === 'obj_tree_oak') path = 'assets/obj_tree_oak.png';
+        if (name === 'obj_tree_palm') path = 'assets/obj_tree_palm.png';
+        if (name === 'obj_tree_snowpine') path = 'assets/obj_tree_snowpine.png';
+        if (name === 'obj_tree_dead') path = 'assets/obj_tree_dead.png';
+        if (name === 'obj_tree_banyan') path = 'assets/obj_tree_banyan.png';
 
         Assets.load(name, path);
     }
