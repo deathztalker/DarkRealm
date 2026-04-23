@@ -79,7 +79,7 @@ let lastHitTime = 0;
 let explored = null; // for minimap fog
 let difficulty = 0; // 0=Normal, 1=Nightmare, 2=Hell
 let discoveredWaypoints = new Set([0]); // Always have Town
-let stash = Array(20).fill(null); // Personal stash
+let stash = Array(100).fill(null); // Personal stash (increased to 100)
 let cube = Array(9).fill(null); // Horadric Cube
 let activeQuests = []; // { id, desc, target, progress, reward }
 let activeBounties = []; // Phase 28: { id, desc, target, progress, targetCount, reward }
@@ -5284,7 +5284,7 @@ function renderInventory() {
                         if (item.baseId === 'tome_tp') {
                             if ([0, 38, 68, 96, 102].includes(zoneLevel)) { addCombatLog('Cannot cast in Town!', 'log-dmg'); return; }
                             const tp = new GameObject('portal', player.x, player.y - 40, 'obj_portal');
-                            tp.targetZone = [0, 38, 68, 96, 102][campaign.getActForZone(zoneLevel) - 1] || 0; 
+                            tp.targetZone = [0, 38, 68, 96, 102][campaign.getActForZone(zoneLevel) - 1] || 0;
                             portalReturnZone = zoneLevel;
                             gameObjects.push(tp);
                             if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 50, 4);
@@ -6518,13 +6518,13 @@ function renderStash() {
     } else {
         tc.style.display = 'flex';
         if (goldControls) goldControls.style.display = 'flex';
-        
+
         tc.innerHTML = '';
         sharedStashTabs.forEach((tab, idx) => {
             const btn = document.createElement('button');
             btn.className = `stash-tab-btn ${currentStashTab === idx ? 'active' : ''}`;
-            btn.style.cssText = `padding:6px 12px; background:${currentStashTab === idx ? '#bf642f' : '#333'}; color:${currentStashTab === idx ? '#fff' : '#aaa'}; border:1px solid #444; cursor:pointer; font-family:Cinzel,serif; font-size:11px; flex:1;`;
-            btn.textContent = tab.name;
+            btn.style.cssText = `padding:10px 15px; background:${currentStashTab === idx ? '#bf642f' : '#333'}; color:${currentStashTab === idx ? '#fff' : '#aaa'}; border:1px solid #555; cursor:pointer; font-family:Cinzel,serif; font-size:13px; font-weight:bold; flex:1; transition:all 0.2s;`;
+            btn.textContent = tab.name.toUpperCase();
             btn.onclick = () => { currentStashTab = idx; renderStash(); };
             tc.appendChild(btn);
         });
@@ -6532,12 +6532,10 @@ function renderStash() {
 
     const items = (stashMode === 'personal') ? stash : sharedStashTabs[currentStashTab].items;
 
-    // Adjust grid layout based on stash size
-    if (stashMode === 'personal') {
-        grid.style.gridTemplateColumns = 'repeat(5, 40px)';
-    } else {
-        grid.style.gridTemplateColumns = 'repeat(10, 40px)';
-    }
+    // Unified 10-column grid for 'New Stash' look
+    grid.style.gridTemplateColumns = 'repeat(10, 40px)';
+    grid.style.width = '440px'; // Ensure panel can accommodate 10 columns
+    grid.style.margin = '0 auto';
 
     for (let i = 0; i < items.length; i++) {
         const cell = document.createElement('div');
@@ -7475,7 +7473,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
         // Use high-definition map objects if available
         if (name === 'obj_portal') path = 'assets/map_objects/town_portal.png';
-        if (name === 'obj_waypoint') path = 'assets/map_objects/warp_point_v2.png';
+        if (name === 'obj_waypoint') path = 'assets/map_objects//waypoint_hd.png';
         if (name === 'obj_chest') path = 'assets/map_objects/treasure_chest.png';
         if (name === 'obj_chest_open') path = 'assets/map_objects/treasure_chest_open.png';
         if (name === 'obj_shrine') path = 'assets/map_objects/arcane_shrine.png';
@@ -7497,14 +7495,14 @@ window.addEventListener('DOMContentLoaded', () => {
         startGame(null, null, charName);
     });
 
-    window.renderDifficultySelection = function(slot = null) {
+    window.renderDifficultySelection = function (slot = null) {
         const container = document.getElementById('difficulty-selector');
         if (!container) return;
 
         const maxUnlocked = slot?.player?.maxDifficulty || 0;
         let selectedDiff = slot?.difficulty || 0;
         if (selectedDiff > maxUnlocked) selectedDiff = maxUnlocked;
-        
+
         window._difficulty = selectedDiff;
 
         container.innerHTML = '';
@@ -7641,7 +7639,7 @@ async function renderSaveSlots(onlineUsers = {}) {
 function updateCharPreview(slot) {
     const nameEl = document.getElementById('preview-name'), detailsEl = document.getElementById('preview-details'), renderDiv = document.getElementById('char-preview-render');
     if (nameEl) nameEl.innerText = slot.name; if (detailsEl) detailsEl.innerText = `Level ${slot.level} ${slot.className}`;
-    
+
     if (typeof window.renderDifficultySelection === 'function') {
         window.renderDifficultySelection(slot);
     }

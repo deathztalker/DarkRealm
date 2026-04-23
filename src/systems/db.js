@@ -158,6 +158,17 @@ export const DB = {
             gold: 0
         };
 
+        // Cloud Data Migration: if 'items' exists but 'tabs' is missing
+        if (data.items && !data.tabs) {
+            const items = Array.isArray(data.items) ? data.items : [];
+            data.tabs = [
+                { name: 'Shared 1', items: items.concat(Array(Math.max(0, 100 - items.length)).fill(null)) },
+                { name: 'Shared 2', items: Array(100).fill(null) },
+                { name: 'Shared 3', items: Array(100).fill(null) },
+                { name: 'Private', items: Array(100).fill(null) }
+            ];
+        }
+
         return data;
     },
 

@@ -148,7 +148,7 @@ export class Renderer {
             }
             
             this.ctx.save();
-            const isPixelArt = img.naturalWidth <= 128 && img.naturalHeight <= 128;
+            const isPixelArt = img.naturalWidth <= 64 && img.naturalHeight <= 64;
             this.ctx.imageSmoothingEnabled = !isPixelArt;
             
             this.ctx.drawImage(img, x - dw / 2, (drawY - 4) - dh / 2, dw, dh);
@@ -202,7 +202,7 @@ export class Renderer {
         const jitterY = ((seed * 10) % 1) * 1.0;
         
         this.ctx.save();
-        const isPixelArt = img.naturalWidth <= 128 && img.naturalHeight <= 128;
+        const isPixelArt = img.naturalWidth <= 64 && img.naturalHeight <= 64;
         this.ctx.imageSmoothingEnabled = !isPixelArt;
         
         this.ctx.drawImage(img, x + jitterX - size / 2, y + jitterY - size / 2, size, size);
@@ -239,7 +239,7 @@ export class Renderer {
         const drawH = sh * scale;
 
         this.ctx.save();
-        const isPixelArt = sw <= 128 && sh <= 128;
+        const isPixelArt = sw <= 64 && sh <= 64;
         this.ctx.imageSmoothingEnabled = !isPixelArt;
 
         if (filter) this.ctx.filter = filter;
