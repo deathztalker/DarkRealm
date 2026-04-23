@@ -159,32 +159,76 @@ export const SaveSystem = {
         try {
             // Priority list of keys used in different versions
             const keys = [
-                SHARED_STASH_KEY,           // 'DARK_REALM_SHARED_STASH'
+                'DARK_REALM_SHARED_STASH',
                 'darkRealm_sharedStash',
                 'shared_stash',
                 'stash',
                 'darkrealm_shared_stash'
             ];
 
-            let rawData = null;
+            let mergedTabs = null;
+            let totalGold = 0;
+
             for (const key of keys) {
                 const found = localStorage.getItem(key);
                 if (found) {
-                    const parsed = JSON.parse(found);
-                    // Check if it actually contains items
-                    const hasItems = (parsed && parsed.tabs && parsed.tabs.some(t => t.items && t.items.some(i => i !== null))) ||
-                                     (parsed && parsed.items && parsed.items.some(i => i !== null)) ||
-                                     (Array.isArray(parsed) && parsed.some(i => i !== null));
-                    
-                    if (hasItems) {
-                        rawData = found;
-                        console.log(`Rescue: Found items in key "${key}"`);
-                        break;
-                    }
+                    try {
+                        const parsed = JSON.parse(found);
+                        let extractedTabs = null;
+
+                        // Case 1: Full format
+                        if (parsed && parsed.tabs && Array.isArray(parsed.tabs)) {
+                            extractedTabs = parsed.tabs;
+                            totalGold = Math.max(totalGold, parsed.gold || 0);
+                        }
+                        // Case 2: Just tabs array
+                        else if (Array.isArray(parsed) && parsed.length > 0 && (parsed[0].items || parsed[0].name)) {
+                            extractedTabs = parsed;
+                        }
+                        // Case 3: Old items format
+                        else if (parsed && Array.isArray(parsed.items)) {
+                            extractedTabs = [{ name: 'Shared 1', items: parsed.items }];
+                            totalGold = Math.max(totalGold, parsed.gold || 0);
+                        }
+                        // Case 4: Raw items array
+                        else if (Array.isArray(parsed)) {
+                            extractedTabs = [{ name: 'Shared 1', items: parsed }];
+                        }
+
+                        if (extractedTabs) {
+                            if (!mergedTabs) {
+                                mergedTabs = [
+                                    { name: 'Shared 1', items: Array(100).fill(null) },
+                                    { name: 'Shared 2', items: Array(100).fill(null) },
+                                    { name: 'Shared 3', items: Array(100).fill(null) },
+                                    { name: 'Private', items: Array(100).fill(null) }
+                                ];
+                            }
+
+                            // Merge items into tabs
+                            extractedTabs.forEach((tab, tIdx) => {
+                                if (tIdx < mergedTabs.length && tab.items) {
+                                    tab.items.forEach((item, iIdx) => {
+                                        if (item && iIdx < mergedTabs[tIdx].items.length) {
+                                            // Only place if slot is empty to avoid overwriting newer data
+                                            if (!mergedTabs[tIdx].items[iIdx]) {
+                                                mergedTabs[tIdx].items[iIdx] = item;
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    } catch (e) { console.error(`Error parsing key ${key}:`, e); }
                 }
             }
 
-            const defaultStash = {
+            if (mergedTabs) {
+                return { tabs: mergedTabs, gold: totalGold };
+            }
+
+            // Default empty stash
+            return {
                 tabs: [
                     { name: 'Shared 1', items: Array(100).fill(null) },
                     { name: 'Shared 2', items: Array(100).fill(null) },
@@ -193,56 +237,10 @@ export const SaveSystem = {
                 ],
                 gold: 0
             };
-
-            if (rawData) {
-                const parsed = JSON.parse(rawData);
-                
-                // Case 1: Data is already in the new format { tabs, gold }
-                if (parsed && parsed.tabs && Array.isArray(parsed.tabs)) {
-                    return parsed;
-                }
-
-                // Case 2: Data is just an array of tabs (some intermediate versions)
-                if (Array.isArray(parsed) && parsed.length > 0 && (parsed[0].items || parsed[0].name)) {
-                    const fixedTabs = parsed.map(t => ({
-                        name: t.name || 'Shared',
-                        items: t.items ? t.items.concat(Array(Math.max(0, 100 - t.items.length)).fill(null)) : Array(100).fill(null)
-                    }));
-                    return { tabs: fixedTabs, gold: 0 };
-                }
-
-                // Case 3: Data is the old single-array format { items, gold }
-                if (parsed && Array.isArray(parsed.items)) {
-                    const newTabs = [
-                        { name: 'Shared 1', items: parsed.items.concat(Array(Math.max(0, 100 - parsed.items.length)).fill(null)) },
-                        { name: 'Shared 2', items: Array(100).fill(null) },
-                        { name: 'Shared 3', items: Array(100).fill(null) },
-                        { name: 'Private', items: Array(100).fill(null) }
-                    ];
-                    return { tabs: newTabs, gold: parsed.gold || 0 };
-                }
-
-                // Case 4: Data is just the old items array directly
-                if (Array.isArray(parsed)) {
-                    const newTabs = [
-                        { name: 'Shared 1', items: parsed.concat(Array(Math.max(0, 100 - parsed.length)).fill(null)) },
-                        { name: 'Shared 2', items: Array(100).fill(null) },
-                        { name: 'Shared 3', items: Array(100).fill(null) },
-                        { name: 'Private', items: Array(100).fill(null) }
-                    ];
-                    return { tabs: newTabs, gold: 0 };
-                }
-            }
-            return defaultStash;
         } catch (e) { 
-            console.error('Error loading shared stash:', e);
+            console.error('Final Rescue Error:', e);
             return {
-                tabs: [
-                    { name: 'Shared 1', items: Array(100).fill(null) },
-                    { name: 'Shared 2', items: Array(100).fill(null) },
-                    { name: 'Shared 3', items: Array(100).fill(null) },
-                    { name: 'Private', items: Array(100).fill(null) }
-                ],
+                tabs: [ { name: 'Shared 1', items: Array(100).fill(null) }, { name: 'Shared 2', items: Array(100).fill(null) }, { name: 'Shared 3', items: Array(100).fill(null) }, { name: 'Private', items: Array(100).fill(null) } ],
                 gold: 0
             };
         }

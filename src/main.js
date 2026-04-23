@@ -3187,8 +3187,11 @@ window.getIconForSkill = getIconForSkill;
 
 function getItemHtml(item, cantEquip = false, isGamble = false) {
     if (!item) return '';
-    const rarityClass = isGamble ? 'rarity-normal' : `rarity-${item.rarity || 'normal'}`;
-    let iconName = isGamble ? 'item_orb' : item.icon;
+    const rarity = item.rarity || 'normal';
+    const rarityClass = isGamble ? 'rarity-normal' : `rarity-${rarity}`;
+    
+    // Fallback icon logic if item.icon is missing
+    let iconName = isGamble ? 'item_orb' : (item.icon || `item_${item.type || 'orb'}`);
 
     // Icon Aliasing System
     const iconAliases = {
@@ -7584,16 +7587,13 @@ window.addEventListener('DOMContentLoaded', () => {
         reader.onload = (ev) => {
             if (SaveSystem.importData(ev.target.result)) {
                 alert('Save data imported successfully!');
-                // Reload shared stash and slots
-                sharedStashData = SaveSystem.getSharedStash();
-                sharedStashTabs = sharedStashData.tabs || [
-                    { name: 'Shared 1', items: Array(100).fill(null) },
-                    { name: 'Shared 2', items: Array(100).fill(null) },
-                    { name: 'Shared 3', items: Array(100).fill(null) },
-                    { name: 'Private', items: Array(100).fill(null) }
-                ];
-                sharedGold = sharedStashData.gold;
+                // Reload using the hyper-robust rescue logic
+                const rescued = SaveSystem.getSharedStash();
+                sharedStashTabs = rescued.tabs;
+                sharedGold = rescued.gold;
                 renderSaveSlots();
+                renderStash();
+                addCombatLog(`Imported and merged shared items.`, 'log-heal');
             } else {
                 alert('Failed to import save data. Invalid file format.');
             }
@@ -7624,6 +7624,12 @@ async function renderSaveSlots(onlineUsers = {}) {
                 console.log("Safe Sync: Local stash has items, keeping local version to prevent loss.");
             }
         }
+    }
+
+    // Rescue Summary
+    const totalRescued = sharedStashTabs.reduce((acc, t) => acc + (t.items ? t.items.filter(i => i !== null).length : 0), 0);
+    if (totalRescued > 0) {
+        addCombatLog(`RESCUE: Found ${totalRescued} items in shared stash.`, 'log-heal');
     }
 
     let cloudSlots = []; if (DB.isLoggedIn()) { cloudSlots = await DB.getSaves(); cloudSlots.forEach(s => s._isCloud = true); }
