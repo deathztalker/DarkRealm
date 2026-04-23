@@ -586,9 +586,15 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
             while (stash.length < 20) stash.push(null);
         }
         // Restore difficulty and waypoints
-        if (typeof loadPlayerData.difficulty === 'number') {
+        // DIFFICULTY SYNC: Use the globally set window._difficulty from the menu buttons
+        // to ensure it overrides whatever was in the old save.
+        if (window._difficulty !== undefined) {
+            difficulty = window._difficulty;
+        } else if (typeof loadPlayerData.difficulty === 'number') {
             difficulty = loadPlayerData.difficulty;
+            window._difficulty = difficulty;
         }
+        
         if (Array.isArray(loadPlayerData.waypoints)) {
             discoveredWaypoints = new Set(loadPlayerData.waypoints);
             discoveredWaypoints.add(0); // Always have town
