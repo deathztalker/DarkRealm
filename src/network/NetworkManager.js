@@ -66,6 +66,7 @@ export class NetworkManager {
         // ── Anti-spam: chat rate limiter ────────────────────────────────────
         this._lastChatTime = 0;
         this._CHAT_COOLDOWN_MS = 500;
+        this._pendingZoneId = null;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -164,12 +165,19 @@ export class NetworkManager {
             this.startPingLoop();
 
             if (this.game.player) {
-                s.emit('join', {
-                    x: this.game.player.x,
-                    y: this.game.player.y,
-                    classId: this.game.player.classId,
-                    name: this.game.player.charName,
-                });
+                // If we had a pending join, execute it now
+                if (this._pendingZoneId !== null) {
+                    this.joinZone(this._pendingZoneId);
+                    this._pendingZoneId = null;
+                } else {
+                    // Fallback to basic join
+                    s.emit('join', {
+                        x: this.game.player.x,
+                        y: this.game.player.y,
+                        classId: this.game.player.classId,
+                        name: this.game.player.charName,
+                    });
+                }
             }
         });
 
@@ -184,11 +192,12 @@ export class NetworkManager {
         s.on('reconnect', () => {
             console.log('[Network] Reconnected.');
             // Re-join current zone automatically
-            if (this.game.currentZoneId != null) this.joinZone(this.game.currentZoneId);
+            if (window.zoneLevel != null) this.joinZone(window.zoneLevel);
         });
 
         // ── Player roster ──────────────────────────────────────────────────
         s.on('current_players', (players) => this._safeCall(() => {
+            this.otherPlayers.clear(); // Clear old state
             for (const [id, pData] of Object.entries(players)) {
                 if (id !== s.id) {
                     this.otherPlayers.set(id, { ...pData, charName: pData.name ?? 'Traveler' });
