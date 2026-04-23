@@ -127,6 +127,9 @@ export class Player {
         const ts = this._talentStats();
         for (const k in ts) s[k] = (s[k] || 0) + ts[k];
 
+        // Ensure pctDmg is initialized
+        this.pctDmg = s.pctDmg || 0;
+
         // Reset On-Hit imbuements
         this.poisonDmgPerSec = s.poisonDmgPerSec || 0;
         this.holyDmgOnHit = 0;
