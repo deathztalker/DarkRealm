@@ -3483,6 +3483,7 @@ function renderMinimap() {
             const px = Math.floor(player.x / dungeon.tileSize);
             const py = Math.floor(player.y / dungeon.tileSize);
             for (let r = Math.max(0, py - radius); r <= Math.min(dungeon.height - 1, py + radius); r++) {
+                if (!explored[r]) continue;
                 for (let c = Math.max(0, px - radius); c <= Math.min(dungeon.width - 1, px + radius); c++) {
                     const dist = Math.sqrt((r - py) ** 2 + (c - px) ** 2);
                     if (dist <= radius) explored[r][c] = true;
