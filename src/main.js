@@ -8335,6 +8335,10 @@ window.addEventListener('DOMContentLoaded', () => {
         let path = `assets/${name}.png`;
         if (name === 'obj_portal') path = 'assets/map_objects/town_portal.png';
         if (name === 'obj_waypoint') path = 'assets/map_objects/waypoint_hd.png';
+        if (name === 'obj_tree_oak') path = 'assets/obj_tree_oak.png';
+        if (name === 'obj_tree_palm') path = 'assets/obj_tree_palm.png';
+        if (name === 'obj_tree_snowpine') path = 'assets/obj_tree_snowpine.png';
+        if (name === 'obj_tree_dead') path = 'assets/obj_tree_dead.png';
         Assets.load(name, path);
     }
     renderSaveSlots();
