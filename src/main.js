@@ -5018,6 +5018,8 @@ function renderInventory() {
             const innerDiv = div.firstChild; // The .inv-item div
             setupTooltip(innerDiv, item);
 
+tem);
+
             // Drag vs Click support (Threshold-based)
             innerDiv.onmousedown = (e) => {
                 if (e.button !== 0) return;
@@ -5058,7 +5060,7 @@ function renderInventory() {
                         SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
                         addCombatLog(`Moved ${item.name} to Stash.`, 'log-info');
                         hideTooltip();
-                        renderInventory();
+                   erInventory();
                         renderStash();
                         return;
                     } else {
@@ -7789,7 +7791,7 @@ window.addEventListener('mouseup', (e) => {
             const getContainer = (name) => {
                 if (name === 'inventory') return player.inventory;
                 if (name === 'belt') return player.belt;
-                if (name === 'stash') return (currentStashTab === 'personal') ? stash : sharedStash;
+                if (name === 'stash') return sharedStashTabs[currentStashTab].items;
                 if (name === 'cube') return cube;
                 return null;
             };
@@ -8480,4 +8482,6 @@ function setChatChannel(channel) {
         }
     });
     container.scrollTop = container.scrollHeight;
+}
+tainer.scrollHeight;
 }
