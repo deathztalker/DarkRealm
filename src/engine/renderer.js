@@ -141,8 +141,10 @@ export class Renderer {
             }
             
             this.ctx.save();
-            // Critical for items and objects to remain crisp pixel art
-            this.ctx.imageSmoothingEnabled = false;
+            // Use smoothing for HD assets, disable only for low-res pixel art
+            const isPixelArt = img.naturalWidth <= 128 && img.naturalHeight <= 128;
+            this.ctx.imageSmoothingEnabled = !isPixelArt;
+            
             this.ctx.drawImage(img, x - dw / 2, (drawY - 4) - dh / 2, dw, dh);
             this.ctx.restore();
             
@@ -191,7 +193,14 @@ export class Renderer {
         const seed = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
         const jitterX = (seed % 1) * 1.0;
         const jitterY = ((seed * 10) % 1) * 1.0;
+        
+        this.ctx.save();
+        // Use smoothing for HD tiles, disable only for low-res pixel art
+        const isPixelArt = img.naturalWidth <= 128 && img.naturalHeight <= 128;
+        this.ctx.imageSmoothingEnabled = !isPixelArt;
+        
         this.ctx.drawImage(img, x + jitterX - size / 2, y + jitterY - size / 2, size, size);
+        this.ctx.restore();
     }
 
     drawAnim(spriteName, x, y, size, state, dir, time, filter = null, equipment = null, hitFlash = 0) {
@@ -219,25 +228,21 @@ export class Renderer {
         const sx = col * sw;
         const sy = row * sh;
 
-        // Dynamic scaling: preserves aspect ratio perfectly
-        // "size" represents the game logic radius (e.g. 26 for heroes, 36 for bosses)
-        // We use it as a multiplier so bosses look massive and heroes look normal.
         const scale = size / 22; 
         const drawW = sw * scale;
         const drawH = sh * scale;
 
         this.ctx.save();
         
-        // Critical for crisp pixel art
-        this.ctx.imageSmoothingEnabled = false;
+        // Use smoothing for HD animations, disable only for low-res pixel art
+        const isPixelArt = sw <= 128 && sh <= 128;
+        this.ctx.imageSmoothingEnabled = !isPixelArt;
 
         if (filter) this.ctx.filter = filter;
         if (hitFlash > 0) this.ctx.filter = (filter || '') + ' brightness(5)';
         
-        // Shadow sized based on drawing width
         this.drawShadow(x, y + drawH * 0.3, drawW * 0.35);
         
-        // Draw perfectly scaled native resolution frame
         this.ctx.drawImage(img, sx, sy, sw, sh, x - drawW / 2, y - drawH * 0.6, drawW, drawH);
         this.ctx.restore();
     }
