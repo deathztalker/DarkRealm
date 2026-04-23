@@ -157,11 +157,31 @@ export const SaveSystem = {
     loadGame() { return null; },
     getSharedStash() {
         try {
-            let data = localStorage.getItem(SHARED_STASH_KEY);
-            
-            // Fallback for very old local storage key
-            if (!data) {
-                data = localStorage.getItem('darkRealm_sharedStash');
+            // Priority list of keys used in different versions
+            const keys = [
+                SHARED_STASH_KEY,           // 'DARK_REALM_SHARED_STASH'
+                'darkRealm_sharedStash',
+                'shared_stash',
+                'stash',
+                'darkrealm_shared_stash'
+            ];
+
+            let rawData = null;
+            for (const key of keys) {
+                const found = localStorage.getItem(key);
+                if (found) {
+                    const parsed = JSON.parse(found);
+                    // Check if it actually contains items
+                    const hasItems = (parsed && parsed.tabs && parsed.tabs.some(t => t.items && t.items.some(i => i !== null))) ||
+                                     (parsed && parsed.items && parsed.items.some(i => i !== null)) ||
+                                     (Array.isArray(parsed) && parsed.some(i => i !== null));
+                    
+                    if (hasItems) {
+                        rawData = found;
+                        console.log(`Rescue: Found items in key "${key}"`);
+                        break;
+                    }
+                }
             }
 
             const defaultStash = {
@@ -174,8 +194,8 @@ export const SaveSystem = {
                 gold: 0
             };
 
-            if (data) {
-                const parsed = JSON.parse(data);
+            if (rawData) {
+                const parsed = JSON.parse(rawData);
                 
                 // Case 1: Data is already in the new format { tabs, gold }
                 if (parsed && parsed.tabs && Array.isArray(parsed.tabs)) {
@@ -184,7 +204,6 @@ export const SaveSystem = {
 
                 // Case 2: Data is just an array of tabs (some intermediate versions)
                 if (Array.isArray(parsed) && parsed.length > 0 && (parsed[0].items || parsed[0].name)) {
-                    // Ensure each tab has 100 slots
                     const fixedTabs = parsed.map(t => ({
                         name: t.name || 'Shared',
                         items: t.items ? t.items.concat(Array(Math.max(0, 100 - t.items.length)).fill(null)) : Array(100).fill(null)

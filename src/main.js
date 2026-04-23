@@ -7611,10 +7611,18 @@ async function renderSaveSlots(onlineUsers = {}) {
     if (DB.isLoggedIn()) {
         const cloudStash = await DB.getSharedStash();
         if (cloudStash) {
-            sharedStashTabs = cloudStash.tabs;
-            sharedGold = cloudStash.gold;
-            // Update local storage to keep it in sync
-            localStorage.setItem('DARK_REALM_SHARED_STASH', JSON.stringify({ tabs: sharedStashTabs, gold: sharedGold }));
+            // SAFE SYNC: Only overwrite if local is empty OR cloud has more/different items
+            const localHasItems = sharedStashTabs.some(t => t.items && t.items.some(i => i !== null));
+            const cloudHasItems = cloudStash.tabs && cloudStash.tabs.some(t => t.items && t.items.some(i => i !== null));
+
+            if (cloudHasItems || !localHasItems) {
+                sharedStashTabs = cloudStash.tabs;
+                sharedGold = cloudStash.gold;
+                // Update local storage to keep it in sync
+                localStorage.setItem('DARK_REALM_SHARED_STASH', JSON.stringify({ tabs: sharedStashTabs, gold: sharedGold }));
+            } else {
+                console.log("Safe Sync: Local stash has items, keeping local version to prevent loss.");
+            }
         }
     }
 
