@@ -157,7 +157,13 @@ export const SaveSystem = {
     loadGame() { return null; },
     getSharedStash() {
         try {
-            const data = localStorage.getItem(SHARED_STASH_KEY);
+            let data = localStorage.getItem(SHARED_STASH_KEY);
+            
+            // Fallback for very old local storage key
+            if (!data) {
+                data = localStorage.getItem('darkRealm_sharedStash');
+            }
+
             const defaultStash = {
                 tabs: [
                     { name: 'Shared 1', items: Array(100).fill(null) },
@@ -177,8 +183,13 @@ export const SaveSystem = {
                 }
 
                 // Case 2: Data is just an array of tabs (some intermediate versions)
-                if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].items) {
-                    return { tabs: parsed, gold: 0 };
+                if (Array.isArray(parsed) && parsed.length > 0 && (parsed[0].items || parsed[0].name)) {
+                    // Ensure each tab has 100 slots
+                    const fixedTabs = parsed.map(t => ({
+                        name: t.name || 'Shared',
+                        items: t.items ? t.items.concat(Array(Math.max(0, 100 - t.items.length)).fill(null)) : Array(100).fill(null)
+                    }));
+                    return { tabs: fixedTabs, gold: 0 };
                 }
 
                 // Case 3: Data is the old single-array format { items, gold }
