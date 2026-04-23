@@ -6287,13 +6287,13 @@ function renderGambleShop() {
 let currentStashTab = 0; // Index 0-3
 let stashMode = 'personal'; // 'personal' or 'shared'
 let sharedStashData = SaveSystem.getSharedStash();
-let sharedStashTabs = sharedStashData.tabs || [
+let sharedStashTabs = (sharedStashData && sharedStashData.tabs) ? sharedStashData.tabs : [
     { name: 'Shared 1', items: Array(100).fill(null) },
     { name: 'Shared 2', items: Array(100).fill(null) },
     { name: 'Shared 3', items: Array(100).fill(null) },
     { name: 'Private', items: Array(100).fill(null) }
 ];
-let sharedGold = sharedStashData.gold || 0;
+let sharedGold = (sharedStashData && sharedStashData.gold) ? sharedStashData.gold : 0;
 
 // Wire Stash Main Toggles
 $('btn-stash-personal')?.addEventListener('click', () => {

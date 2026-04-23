@@ -158,22 +158,7 @@ export const SaveSystem = {
     getSharedStash() {
         try {
             const data = localStorage.getItem(SHARED_STASH_KEY);
-            // New structure: { tabs: [ {name, items}, ... ], gold: 0 }
-            if (data) {
-                const parsed = JSON.parse(data);
-                // Migración de datos viejos
-                if (Array.isArray(parsed.items)) {
-                    const newTabs = [
-                        { name: 'Shared 1', items: parsed.items.concat(Array(100 - parsed.items.length).fill(null)) },
-                        { name: 'Shared 2', items: Array(100).fill(null) },
-                        { name: 'Shared 3', items: Array(100).fill(null) },
-                        { name: 'Private', items: Array(100).fill(null) }
-                    ];
-                    return { tabs: newTabs, gold: parsed.gold || 0 };
-                }
-                return parsed;
-            }
-            return {
+            const defaultStash = {
                 tabs: [
                     { name: 'Shared 1', items: Array(100).fill(null) },
                     { name: 'Shared 2', items: Array(100).fill(null) },
@@ -182,7 +167,45 @@ export const SaveSystem = {
                 ],
                 gold: 0
             };
-        } catch { 
+
+            if (data) {
+                const parsed = JSON.parse(data);
+                
+                // Case 1: Data is already in the new format { tabs, gold }
+                if (parsed && parsed.tabs && Array.isArray(parsed.tabs)) {
+                    return parsed;
+                }
+
+                // Case 2: Data is just an array of tabs (some intermediate versions)
+                if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].items) {
+                    return { tabs: parsed, gold: 0 };
+                }
+
+                // Case 3: Data is the old single-array format { items, gold }
+                if (parsed && Array.isArray(parsed.items)) {
+                    const newTabs = [
+                        { name: 'Shared 1', items: parsed.items.concat(Array(Math.max(0, 100 - parsed.items.length)).fill(null)) },
+                        { name: 'Shared 2', items: Array(100).fill(null) },
+                        { name: 'Shared 3', items: Array(100).fill(null) },
+                        { name: 'Private', items: Array(100).fill(null) }
+                    ];
+                    return { tabs: newTabs, gold: parsed.gold || 0 };
+                }
+
+                // Case 4: Data is just the old items array directly
+                if (Array.isArray(parsed)) {
+                    const newTabs = [
+                        { name: 'Shared 1', items: parsed.concat(Array(Math.max(0, 100 - parsed.length)).fill(null)) },
+                        { name: 'Shared 2', items: Array(100).fill(null) },
+                        { name: 'Shared 3', items: Array(100).fill(null) },
+                        { name: 'Private', items: Array(100).fill(null) }
+                    ];
+                    return { tabs: newTabs, gold: 0 };
+                }
+            }
+            return defaultStash;
+        } catch (e) { 
+            console.error('Error loading shared stash:', e);
             return {
                 tabs: [
                     { name: 'Shared 1', items: Array(100).fill(null) },

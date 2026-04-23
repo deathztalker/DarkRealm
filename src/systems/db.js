@@ -148,7 +148,7 @@ export const DB = {
             return null;
         }
 
-        if (!data) return {
+        const defaultStash = {
             tabs: [
                 { name: 'Shared 1', items: Array(100).fill(null) },
                 { name: 'Shared 2', items: Array(100).fill(null) },
@@ -158,18 +158,35 @@ export const DB = {
             gold: 0
         };
 
-        // Cloud Data Migration: if 'items' exists but 'tabs' is missing
-        if (data.items && !data.tabs) {
-            const items = Array.isArray(data.items) ? data.items : [];
-            data.tabs = [
-                { name: 'Shared 1', items: items.concat(Array(Math.max(0, 100 - items.length)).fill(null)) },
-                { name: 'Shared 2', items: Array(100).fill(null) },
-                { name: 'Shared 3', items: Array(100).fill(null) },
-                { name: 'Private', items: Array(100).fill(null) }
-            ];
+        if (!data) return defaultStash;
+
+        // Cloud Data Migration: Handle various formats
+        
+        // 1. Newest format { tabs: [...], gold: N }
+        if (data.tabs && Array.isArray(data.tabs)) {
+            return data;
         }
 
-        return data;
+        // 2. Data is just the array of tabs stored in the 'data' field?
+        if (Array.isArray(data) && data.length > 0 && data[0].items) {
+             return { tabs: data, gold: 0 };
+        }
+
+        // 3. Old format { items: [...], gold: N }
+        if (data.items && !data.tabs) {
+            const items = Array.isArray(data.items) ? data.items : [];
+            return {
+                tabs: [
+                    { name: 'Shared 1', items: items.concat(Array(Math.max(0, 100 - items.length)).fill(null)) },
+                    { name: 'Shared 2', items: Array(100).fill(null) },
+                    { name: 'Shared 3', items: Array(100).fill(null) },
+                    { name: 'Private', items: Array(100).fill(null) }
+                ],
+                gold: data.gold || 0
+            };
+        }
+
+        return data || defaultStash;
     },
 
     async upsertSharedStash(tabs, gold) {
