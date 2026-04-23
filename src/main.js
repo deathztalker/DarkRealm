@@ -7542,7 +7542,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 alert('Save data imported successfully!');
                 // Reload shared stash and slots
                 sharedStashData = SaveSystem.getSharedStash();
-                sharedStashTabs = sharedStashData.tabs;
+                sharedStash = sharedStashData.items;
                 sharedGold = sharedStashData.gold;
                 renderSaveSlots();
             } else {
@@ -7562,10 +7562,10 @@ async function renderSaveSlots(onlineUsers = {}) {
     if (DB.isLoggedIn()) {
         const cloudStash = await DB.getSharedStash();
         if (cloudStash) {
-            sharedStashTabs = cloudStash.tabs;
+            sharedStash = cloudStash.items;
             sharedGold = cloudStash.gold;
             // Update local storage to keep it in sync
-            localStorage.setItem('DARK_REALM_SHARED_STASH', JSON.stringify({ tabs: sharedStashTabs, gold: sharedGold }));
+            localStorage.setItem('DARK_REALM_SHARED_STASH', JSON.stringify({ items: sharedStash, gold: sharedGold }));
         }
     }
 
@@ -7794,7 +7794,7 @@ window.addEventListener('mouseup', (e) => {
             const getContainer = (name) => {
                 if (name === 'inventory') return player.inventory;
                 if (name === 'belt') return player.belt;
-                if (name === 'stash') return (currentStashTab === 'personal') ? stash : sharedStashTabs[currentStashTab].items;
+                if (name === 'stash') return (currentStashTab === 'personal') ? stash : sharedStash;
                 if (name === 'cube') return cube;
                 return null;
             };
@@ -8286,19 +8286,16 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         });
         window.addEventListener('keydown', (e) => {
-            if (!e.key) return;
-            const key = e.key.toLowerCase();
-            
             if (e.key === 'Enter' && document.activeElement !== chatInput && state === 'GAME') { chatInput.focus(); e.preventDefault(); }
-            if (key === 'y' && document.activeElement !== chatInput && state === 'GAME') {
+            if (e.key.toLowerCase() === 'y' && document.activeElement !== chatInput && state === 'GAME') {
                 if (handleSocialInput('y')) e.preventDefault();
             }
-            if (key === 'n' && document.activeElement !== chatInput && state === 'GAME') {
+            if (e.key.toLowerCase() === 'n' && document.activeElement !== chatInput && state === 'GAME') {
                 if (handleSocialInput('n')) e.preventDefault();
             }
-            if (key === 'o' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('social');
-            if (key === 'p' && state === 'GAME' && document.activeElement !== chatInput) bus.emit('action:town_portal');
-            if (key === 'm' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('mercenary');
+            if (e.key.toLowerCase() === 'o' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('social');
+            if (e.key.toLowerCase() === 'p' && state === 'GAME' && document.activeElement !== chatInput) bus.emit('action:town_portal');
+            if (e.key.toLowerCase() === 'm' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('mercenary');
         });
     }
 
