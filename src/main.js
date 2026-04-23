@@ -7429,7 +7429,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
         // Use high-definition map objects if available
         if (name === 'obj_portal') path = 'assets/map_objects/town_portal.png';
-        if (name === 'obj_waypoint') path = 'assets/map_objects/warp_point.png';
+        if (name === 'obj_waypoint') path = 'assets/map_objects/warp_point_v2.png';
         if (name === 'obj_chest') path = 'assets/map_objects/treasure_chest.png';
         if (name === 'obj_chest_open') path = 'assets/map_objects/treasure_chest_open.png';
         if (name === 'obj_shrine') path = 'assets/map_objects/arcane_shrine.png';

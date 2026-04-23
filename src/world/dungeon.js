@@ -200,9 +200,9 @@ export class Dungeon {
             fill(py1 - 3, px1 - 3, py1, px1, TILE.WALL);
 
             // === Bonfire + waypoint in plaza center ===
-            addObj('bonfire', 'decoration', 'Campfire', 0, 1, 'obj_bonfire');
+            addObj('bonfire', 'decoration', 'Campfire', 3, 1, 'obj_bonfire', { spriteSize: 32 });
             addObj('fountain_main', 'decoration', 'Plaza Fountain', -2, -3, 'obj_fountain_ornate');
-            addObj('waypoint', 'waypoint', 'Waypoint', 3, 1, 'obj_waypoint', { zone: zoneLevel });
+            addObj('waypoint', 'waypoint', 'Waypoint', 3, 1, 'obj_waypoint', { zone: zoneLevel, spriteSize: 48 });
             addObj('stash', 'stash', 'Stash', -4, 2, 'obj_chest');
             addObj('cube', 'cube', 'Horadric Cube', -6, 2, 'item_horadric_fragment');
 
@@ -316,7 +316,7 @@ export class Dungeon {
             addObj('fountain', 'decoration', 'Plaza Fountain', 0, -2, 'obj_fountain_ornate');
 
             // === Waypoint & services ===
-            addObj('waypoint', 'waypoint', 'Waypoint', 8, 2, 'obj_waypoint', { zone: zoneLevel });
+            addObj('waypoint', 'waypoint', 'Waypoint', 8, 2, 'obj_waypoint', { zone: zoneLevel, spriteSize: 48 });
             addObj('stash', 'stash', 'Stash', -10, 2, 'obj_chest');
             addObj('cube', 'cube', 'Horadric Cube', -12, 2, 'item_horadric_fragment');
 
@@ -407,7 +407,7 @@ export class Dungeon {
             }
 
             // === Services ===
-            addObj('waypoint', 'waypoint', 'Waypoint', 6, 2, 'obj_waypoint', { zone: zoneLevel });
+            addObj('waypoint', 'waypoint', 'Waypoint', 6, 2, 'obj_waypoint', { zone: zoneLevel, spriteSize: 48 });
             addObj('stash', 'stash', 'Stash', -8, 2, 'obj_chest');
             addObj('cube', 'cube', 'Horadric Cube', -10, 2, 'item_horadric_fragment');
 
@@ -492,7 +492,7 @@ export class Dungeon {
 
             // === Pandemonium altar in throne room ===
             addObj('altar', 'altar', 'Pandemonium Altar', 0, -6, 'obj_pandemonium_altar');
-            addObj('waypoint', 'waypoint', 'Waypoint', 6, 4, 'obj_waypoint', { zone: zoneLevel });
+            addObj('waypoint', 'waypoint', 'Waypoint', 6, 4, 'obj_waypoint', { zone: zoneLevel, spriteSize: 48 });
             addObj('stash', 'stash', 'Stash', -8, 4, 'obj_chest');
             addObj('cube', 'cube', 'Horadric Cube', -10, 4, 'item_horadric_fragment');
 
@@ -600,7 +600,7 @@ export class Dungeon {
             }
 
             // === Services ===
-            addObj('waypoint', 'waypoint', 'Waypoint', 4, 2, 'obj_waypoint', { zone: zoneLevel });
+            addObj('waypoint', 'waypoint', 'Waypoint', 4, 2, 'obj_waypoint', { zone: zoneLevel, spriteSize: 48 });
             addObj('stash', 'stash', 'Stash', -8, 2, 'obj_chest');
             addObj('cube', 'cube', 'Horadric Cube', -10, 2, 'item_horadric_fragment');
 
@@ -721,7 +721,7 @@ export class Dungeon {
 
         this.objectSpawns.push({
             type: 'waypoint', x: this.playerStart.x + 48, y: this.playerStart.y,
-            icon: 'obj_waypoint', zone: zoneLevel
+            icon: 'obj_waypoint', zone: zoneLevel, spriteSize: 48
         });
 
         if (placeExit && this.rooms.length > 0) {
