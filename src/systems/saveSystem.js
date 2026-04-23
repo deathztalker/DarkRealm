@@ -215,7 +215,7 @@ export const SaveSystem = {
             const stash = localStorage.getItem(SHARED_STASH_KEY);
             const data = {
                 slots: slots ? JSON.parse(slots) : [],
-                sharedStash: stash ? JSON.parse(stash) : { items: Array(20).fill(null), gold: 0 }
+                sharedStash: stash ? JSON.parse(stash) : { tabs: Array(4).fill(null).map((_, i) => ({ name: `Shared ${i+1}`, items: Array(100).fill(null) })), gold: 0 }
             };
             return JSON.stringify(data);
         } catch (e) {
