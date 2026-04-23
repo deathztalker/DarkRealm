@@ -1,5 +1,5 @@
 /**
- * Renderer â€” Canvas 2D layer manager & Asset Loader
+ * Renderer — Canvas 2D layer manager & Asset Loader
  */
 
 export const Assets = {
@@ -8,6 +8,12 @@ export const Assets = {
         if (this.images[name]) return;
         const img = new Image();
         img.src = path;
+        img.onload = () => {
+            // Track completion if needed
+        };
+        img.onerror = () => {
+            console.warn(`Failed to load asset: ${name} from ${path}`);
+        };
         this.images[name] = img;
     },
     get: function (name) {
@@ -126,7 +132,8 @@ export class Renderer {
         let drawY = y;
         this.drawShadow(x, y + size * 0.4, size * 0.6);
         if (animate) drawY += Math.sin(time * 0.005) * 2;
-        if (img && img.complete && img.naturalWidth > 0) {
+        
+        if (img && (img.complete || img.naturalWidth > 0)) {
             if (filter) this.ctx.filter = filter;
             
             const aspect = img.naturalWidth / img.naturalHeight;
@@ -141,7 +148,6 @@ export class Renderer {
             }
             
             this.ctx.save();
-            // Use smoothing for HD assets, disable only for low-res pixel art
             const isPixelArt = img.naturalWidth <= 128 && img.naturalHeight <= 128;
             this.ctx.imageSmoothingEnabled = !isPixelArt;
             
@@ -189,13 +195,13 @@ export class Renderer {
 
     drawTile(name, x, y, size) {
         const img = Assets.get(name);
-        if (!img || !img.complete || img.naturalWidth === 0) return;
+        if (!img || (img.naturalWidth === 0 && !img.complete)) return;
+        
         const seed = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
         const jitterX = (seed % 1) * 1.0;
         const jitterY = ((seed * 10) % 1) * 1.0;
         
         this.ctx.save();
-        // Use smoothing for HD tiles, disable only for low-res pixel art
         const isPixelArt = img.naturalWidth <= 128 && img.naturalHeight <= 128;
         this.ctx.imageSmoothingEnabled = !isPixelArt;
         
@@ -205,7 +211,7 @@ export class Renderer {
 
     drawAnim(spriteName, x, y, size, state, dir, time, filter = null, equipment = null, hitFlash = 0) {
         const img = Assets.get(spriteName);
-        if (!img || !img.complete || img.naturalWidth === 0) return;
+        if (!img || (img.naturalWidth === 0 && !img.complete)) return;
 
         if (img.width === img.height || img.width <= 64) {
             this.drawSprite(spriteName, x, y, size, state === 'idle', time, filter);
@@ -233,8 +239,6 @@ export class Renderer {
         const drawH = sh * scale;
 
         this.ctx.save();
-        
-        // Use smoothing for HD animations, disable only for low-res pixel art
         const isPixelArt = sw <= 128 && sh <= 128;
         this.ctx.imageSmoothingEnabled = !isPixelArt;
 
