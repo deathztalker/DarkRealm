@@ -5055,12 +5055,14 @@ function renderInventory() {
             div.addEventListener('click', (e) => {
                 // 1. Move to Stash (if open)
                 if (!$('panel-stash').classList.contains('hidden')) {
-                    const targetStash = sharedStashTabs[currentStashTab].items;
+                    const targetStash = stashMode === 'personal' ? stash : sharedStashTabs[currentStashTab].items;
                     const emptySlot = targetStash.indexOf(null);
                     if (emptySlot !== -1) {
                         targetStash[emptySlot] = item;
                         player.inventory[i] = null;
-                        SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+                        if (stashMode === 'shared') {
+                            SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+                        }
                         addCombatLog(`Moved ${item.name} to Stash.`, 'log-info');
                         hideTooltip();
                         renderInventory();
@@ -6283,6 +6285,7 @@ function renderGambleShop() {
 }
 
 let currentStashTab = 0; // Index 0-3
+let stashMode = 'personal'; // 'personal' or 'shared'
 let sharedStashData = SaveSystem.getSharedStash();
 let sharedStashTabs = sharedStashData.tabs || [
     { name: 'Shared 1', items: Array(100).fill(null) },
@@ -6291,6 +6294,20 @@ let sharedStashTabs = sharedStashData.tabs || [
     { name: 'Private', items: Array(100).fill(null) }
 ];
 let sharedGold = sharedStashData.gold || 0;
+
+// Wire Stash Main Toggles
+$('btn-stash-personal')?.addEventListener('click', () => {
+    stashMode = 'personal';
+    $('btn-stash-personal').classList.add('active');
+    $('btn-stash-shared').classList.remove('active');
+    renderStash();
+});
+$('btn-stash-shared')?.addEventListener('click', () => {
+    stashMode = 'shared';
+    $('btn-stash-shared').classList.add('active');
+    $('btn-stash-personal').classList.remove('active');
+    renderStash();
+});
 
 function renderShop() {
     if (document.body.classList.contains('is-mobile') || window.innerWidth < 1024) {
@@ -6480,6 +6497,7 @@ function renderShop() {
 function renderStash() {
     const grid = $('stash-grid');
     const tabContainer = $('panel-stash')?.querySelector('.stash-tabs');
+    const goldControls = $('panel-stash')?.querySelector('div[style*="border-top"]'); // The gold deposit/withdraw UI
     if (!grid) return;
     grid.innerHTML = '';
 
@@ -6489,21 +6507,37 @@ function renderStash() {
         const tc = document.createElement('div');
         tc.className = 'stash-tabs';
         tc.style.cssText = 'display:flex; gap:5px; margin-bottom:10px; background:#1a1a1a; padding:5px; border-radius:4px; border:1px solid #444;';
+        // Insert before the grid
         p.insertBefore(tc, grid);
     }
 
     const tc = $('panel-stash').querySelector('.stash-tabs');
-    tc.innerHTML = '';
-    sharedStashTabs.forEach((tab, idx) => {
-        const btn = document.createElement('button');
-        btn.className = `stash-tab-btn ${currentStashTab === idx ? 'active' : ''}`;
-        btn.style.cssText = `padding:6px 12px; background:${currentStashTab === idx ? '#bf642f' : '#333'}; color:${currentStashTab === idx ? '#fff' : '#aaa'}; border:1px solid #444; cursor:pointer; font-family:Cinzel,serif; font-size:11px; flex:1;`;
-        btn.textContent = tab.name;
-        btn.onclick = () => { currentStashTab = idx; renderStash(); };
-        tc.appendChild(btn);
-    });
+    if (stashMode === 'personal') {
+        tc.style.display = 'none';
+        if (goldControls) goldControls.style.display = 'none';
+    } else {
+        tc.style.display = 'flex';
+        if (goldControls) goldControls.style.display = 'flex';
+        
+        tc.innerHTML = '';
+        sharedStashTabs.forEach((tab, idx) => {
+            const btn = document.createElement('button');
+            btn.className = `stash-tab-btn ${currentStashTab === idx ? 'active' : ''}`;
+            btn.style.cssText = `padding:6px 12px; background:${currentStashTab === idx ? '#bf642f' : '#333'}; color:${currentStashTab === idx ? '#fff' : '#aaa'}; border:1px solid #444; cursor:pointer; font-family:Cinzel,serif; font-size:11px; flex:1;`;
+            btn.textContent = tab.name;
+            btn.onclick = () => { currentStashTab = idx; renderStash(); };
+            tc.appendChild(btn);
+        });
+    }
 
-    const items = sharedStashTabs[currentStashTab].items;
+    const items = (stashMode === 'personal') ? stash : sharedStashTabs[currentStashTab].items;
+
+    // Adjust grid layout based on stash size
+    if (stashMode === 'personal') {
+        grid.style.gridTemplateColumns = 'repeat(5, 40px)';
+    } else {
+        grid.style.gridTemplateColumns = 'repeat(10, 40px)';
+    }
 
     for (let i = 0; i < items.length; i++) {
         const cell = document.createElement('div');
@@ -6536,8 +6570,12 @@ function renderStash() {
                 const empty = player.inventory.indexOf(null);
                 if (empty !== -1) {
                     player.inventory[empty] = item;
-                    sharedStashTabs[currentStashTab].items[i] = null;
-                    SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+                    if (stashMode === 'personal') {
+                        stash[i] = null;
+                    } else {
+                        sharedStashTabs[currentStashTab].items[i] = null;
+                        SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+                    }
                     addCombatLog(`Took ${item.name} from Stash`, 'log-info');
                     hideTooltip(); renderStash(); renderInventory();
                 } else { addCombatLog('Inventory full!', 'log-dmg'); }
@@ -6571,7 +6609,7 @@ $('btn-stash-withdraw')?.addEventListener('click', () => {
 });
 
 function sortStash() {
-    const items = sharedStashTabs[currentStashTab].items;
+    const items = (stashMode === 'personal') ? stash : sharedStashTabs[currentStashTab].items;
     const itemsRef = items.filter(it => it !== null);
 
     const rarityWeights = { unique: 10, set: 9, rare: 8, magic: 7, normal: 6 };
@@ -6586,16 +6624,24 @@ function sortStash() {
         const rb = rarityWeights[b.rarity] || 0;
         if (ra !== rb) return rb - ra;
 
-        if (a.baseId !== b.baseId) return (a.baseId || "").localeCompare(b.baseId || "");
-        return (b.quantity || 1) - (a.quantity || 1) || (b.ilvl || 0) - (a.ilvl || 0);
+        return a.name.localeCompare(b.name);
     });
 
-    // Replace contents of original array
+    // Fill with nulls
     items.fill(null);
     itemsRef.forEach((it, i) => items[i] = it);
 
-    SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+    if (stashMode === 'shared') {
+        SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+    }
+    renderStash();
+    addCombatLog('Stash Sorted', 'log-info');
 }
+
+// Wire Sort Button (re-wire to the new function)
+$('btn-sort-stash')?.addEventListener('click', () => {
+    sortStash();
+});
 
 function saveGame() {
     if (!player || !activeSlotId) return;
@@ -6619,7 +6665,7 @@ function handleDrop(target, idx) {
     const getContainer = (name) => {
         if (name === 'inventory') return player.inventory;
         if (name === 'belt') return player.belt;
-        if (name === 'stash') return sharedStashTabs[currentStashTab].items;
+        if (name === 'stash') return stashMode === 'personal' ? stash : sharedStashTabs[currentStashTab].items;
         if (name === 'cube') return cube;
         return null;
     };
@@ -7542,7 +7588,12 @@ window.addEventListener('DOMContentLoaded', () => {
                 alert('Save data imported successfully!');
                 // Reload shared stash and slots
                 sharedStashData = SaveSystem.getSharedStash();
-                sharedStash = sharedStashData.items;
+                sharedStashTabs = sharedStashData.tabs || [
+                    { name: 'Shared 1', items: Array(100).fill(null) },
+                    { name: 'Shared 2', items: Array(100).fill(null) },
+                    { name: 'Shared 3', items: Array(100).fill(null) },
+                    { name: 'Private', items: Array(100).fill(null) }
+                ];
                 sharedGold = sharedStashData.gold;
                 renderSaveSlots();
             } else {
@@ -7794,7 +7845,7 @@ window.addEventListener('mouseup', (e) => {
             const getContainer = (name) => {
                 if (name === 'inventory') return player.inventory;
                 if (name === 'belt') return player.belt;
-                if (name === 'stash') return (currentStashTab === 'personal') ? stash : sharedStash;
+                if (name === 'stash') return stashMode === 'personal' ? stash : sharedStashTabs[currentStashTab].items;
                 if (name === 'cube') return cube;
                 return null;
             };
