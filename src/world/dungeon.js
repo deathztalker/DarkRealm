@@ -202,7 +202,7 @@ export class Dungeon {
             // === Bonfire + waypoint in plaza center ===
             addObj('bonfire', 'decoration', 'Campfire', 3, 1, 'obj_bonfire', { spriteSize: 32 });
             addObj('fountain_main', 'decoration', 'Plaza Fountain', -2, -3, 'obj_fountain_ornate');
-            addObj('waypoint', 'waypoint', 'Waypoint', 3, 1, 'obj_waypoint', { zone: zoneLevel, spriteSize: 48 });
+            addObj('waypoint', 'waypoint', 'Waypoint', 3, 1, 'obj_waypoint', { zone: zoneLevel, spriteSize: 32 });
             addObj('stash', 'stash', 'Stash', -4, 2, 'obj_chest');
             addObj('cube', 'cube', 'Horadric Cube', -6, 2, 'item_horadric_fragment');
 
@@ -305,7 +305,7 @@ export class Dungeon {
 
             // Scattered Palm Trees
             for (let i = 0; i < 6; i++) {
-                addObj(`palm_${i}`, 'decoration', 'Palm Tree', -20 + i * 8, -25, 'obj_tree_palm', { spriteSize: 48 });
+                addObj(`palm_${i}`, 'decoration', 'Palm Tree', -20 + i * 8, -25, 'obj_tree_palm', { spriteSize: 32 });
             }
 
             // === Palace courtyard pillars ===
@@ -316,7 +316,7 @@ export class Dungeon {
             addObj('fountain', 'decoration', 'Plaza Fountain', 0, -2, 'obj_fountain_ornate');
 
             // === Waypoint & services ===
-            addObj('waypoint', 'waypoint', 'Waypoint', 8, 2, 'obj_waypoint', { zone: zoneLevel, spriteSize: 48 });
+            addObj('waypoint', 'waypoint', 'Waypoint', 8, 2, 'obj_waypoint', { zone: zoneLevel, spriteSize: 32 });
             addObj('stash', 'stash', 'Stash', -10, 2, 'obj_chest');
             addObj('cube', 'cube', 'Horadric Cube', -12, 2, 'item_horadric_fragment');
 
@@ -407,7 +407,7 @@ export class Dungeon {
             }
 
             // === Services ===
-            addObj('waypoint', 'waypoint', 'Waypoint', 6, 2, 'obj_waypoint', { zone: zoneLevel, spriteSize: 48 });
+            addObj('waypoint', 'waypoint', 'Waypoint', 6, 2, 'obj_waypoint', { zone: zoneLevel, spriteSize: 32 });
             addObj('stash', 'stash', 'Stash', -8, 2, 'obj_chest');
             addObj('cube', 'cube', 'Horadric Cube', -10, 2, 'item_horadric_fragment');
 
@@ -492,16 +492,16 @@ export class Dungeon {
 
             // === Pandemonium altar in throne room ===
             addObj('altar', 'altar', 'Pandemonium Altar', 0, -6, 'obj_pandemonium_altar');
-            addObj('waypoint', 'waypoint', 'Waypoint', 6, 4, 'obj_waypoint', { zone: zoneLevel, spriteSize: 48 });
+            addObj('waypoint', 'waypoint', 'Waypoint', 6, 4, 'obj_waypoint', { zone: zoneLevel, spriteSize: 32 });
             addObj('stash', 'stash', 'Stash', -8, 4, 'obj_chest');
             addObj('cube', 'cube', 'Horadric Cube', -10, 4, 'item_horadric_fragment');
 
             // Decorative soulstones and statues
             for (let i = -2; i <= 2; i += 2) {
-                addObj(`soul_${i}`, 'decoration', 'Soulstone', i, -14, 'obj_cluster_soulstone', { spriteSize: 48 });
+                addObj(`soul_${i}`, 'decoration', 'Soulstone', i, -14, 'obj_cluster_soulstone', { spriteSize: 32 });
             }
-            addObj(`statue_w`, 'decoration', 'Angel Statue', -10, -6, 'obj_statue_angel', { spriteSize: 48 });
-            addObj(`statue_e`, 'decoration', 'Angel Statue', 10, -6, 'obj_statue_angel', { spriteSize: 48 });
+            addObj(`statue_w`, 'decoration', 'Angel Statue', -10, -6, 'obj_statue_angel', { spriteSize: 32 });
+            addObj(`statue_e`, 'decoration', 'Angel Statue', 10, -6, 'obj_statue_angel', { spriteSize: 32 });
 
             // Hell torches
             for (let i = -26; i <= 26; i += 6) {
@@ -600,7 +600,7 @@ export class Dungeon {
             }
 
             // === Services ===
-            addObj('waypoint', 'waypoint', 'Waypoint', 4, 2, 'obj_waypoint', { zone: zoneLevel, spriteSize: 48 });
+            addObj('waypoint', 'waypoint', 'Waypoint', 4, 2, 'obj_waypoint', { zone: zoneLevel, spriteSize: 32 });
             addObj('stash', 'stash', 'Stash', -8, 2, 'obj_chest');
             addObj('cube', 'cube', 'Horadric Cube', -10, 2, 'item_horadric_fragment');
 

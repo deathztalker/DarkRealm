@@ -61,7 +61,7 @@ export class GameObject {
             glowColor = '#00aaff';
             glowBlur = 20 + Math.sin(time * 0.005) * 5;
         } else if (this.icon === 'obj_waypoint') {
-            drawSize = 42; // Increased from 22 (waypoint is 64x32, now it will be roughly 84x42)
+            drawSize = 24; // Normalized for 64x64 HD sprite to match tile scale
             glowColor = '#4080ff';
             glowBlur = 15 + Math.sin(time * 0.002) * 10; // Slow pulse
         } else if (this.icon === 'obj_shrine' && !this.isOpen) {

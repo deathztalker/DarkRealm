@@ -8281,7 +8281,7 @@ window.addEventListener('DOMContentLoaded', () => {
     for (const name of ASSET_NAMES) {
         let path = `assets/${name}.png`;
         if (name === 'obj_portal') path = 'assets/map_objects/town_portal.png';
-        if (name === 'obj_waypoint') path = 'assets/map_objects/warp_point.png';
+        if (name === 'obj_waypoint') path = 'assets/map_objects/waypoint_hd.png';
         Assets.load(name, path);
     }
     renderSaveSlots();
