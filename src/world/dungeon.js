@@ -200,7 +200,7 @@ export class Dungeon {
             fill(py1 - 3, px1 - 3, py1, px1, TILE.WALL);
 
             // === Bonfire + waypoint in plaza center ===
-            addObj('bonfire', 'decoration', 'Campfire', 1, -1, 'obj_bonfire', { spriteSize: 32 });
+            addObj('bonfire', 'decoration', 'Campfire', 0.5, 0.5, 'obj_bonfire', { spriteSize: 32 });
             addObj('fountain_main', 'decoration', 'Plaza Fountain', -2, -3, 'obj_fountain_ornate');
             addObj('waypoint', 'waypoint', 'Waypoint', 7, 1, 'obj_waypoint', { zone: zoneLevel, spriteSize: 32 });
             addObj('stash', 'stash', 'Stash', -4, 2, 'obj_chest');
