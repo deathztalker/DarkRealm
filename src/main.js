@@ -7562,10 +7562,10 @@ async function renderSaveSlots(onlineUsers = {}) {
     if (DB.isLoggedIn()) {
         const cloudStash = await DB.getSharedStash();
         if (cloudStash) {
-            sharedStash = cloudStash.items;
+            sharedStashTabs = cloudStash.tabs;
             sharedGold = cloudStash.gold;
             // Update local storage to keep it in sync
-            localStorage.setItem('DARK_REALM_SHARED_STASH', JSON.stringify({ items: sharedStash, gold: sharedGold }));
+            localStorage.setItem('DARK_REALM_SHARED_STASH', JSON.stringify({ tabs: sharedStashTabs, gold: sharedGold }));
         }
     }
 
