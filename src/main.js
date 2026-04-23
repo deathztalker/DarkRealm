@@ -2254,11 +2254,20 @@ function nextZone(targetZone = null) {
             if (typeof generateRiftMods === 'function') generateRiftMods();
         }
 
-        // --- 4. Load or Generate with Detailed Themes ---
+        // --- 4. PERSISTENCE: Load or Generate ---
         if (worldZones[zoneLevel]) {
             const s = worldZones[zoneLevel];
             dungeon = s.dungeon; enemies = s.enemies; npcs = s.npcs;
             gameObjects = s.gameObjects; droppedItems = s.droppedItems; droppedGold = s.droppedGold;
+
+            // PORTAL FIX: Ensure return portal appears in town even if cached
+            if (isTown && portalReturnZone !== null && !gameObjects.some(o => o.id === 'town_return_tp')) {
+                const retPortal = new GameObject('portal', dungeon.playerStart.x + 40, dungeon.playerStart.y, 'obj_portal', 'town_return_tp');
+                retPortal.targetZone = portalReturnZone;
+                retPortal.name = "Return to Dungeon";
+                gameObjects.push(retPortal);
+                if (window.fx) window.fx.emitBurst(retPortal.x, retPortal.y, '#30ccff', 40, 3);
+            }
         } else {
             dungeon = new Dungeon(150, 120, 16);
             dungeon._seed = window._currentZoneSeed;
@@ -4180,10 +4189,6 @@ bus.on('action:interact', () => {
 });
 
 function toggleTownPanels() {
-    if (zoneLevel !== 0) {
-        addCombatLog('Stash and Cube are only available in town!', 'log-dmg');
-        return;
-    }
     togglePanel('stash');
     if (!$('panel-stash').classList.contains('hidden')) {
         $('panel-inventory').classList.remove('hidden');
