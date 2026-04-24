@@ -17,9 +17,9 @@ export const SORCERESS_CLASS = {
             nodes: [
                 {
                     id: 'fire_bolt', row: 0, col: 1, type: 'active', icon: '🔥', name: 'Fire Bolt',
-                    desc: 'Active · Fire bolt dealing base + 110% weapon damage as fire.',
-                    tip: 'Max lvl (20): Fast scaling synergy builder.',
-                    maxPts: 20, mana: 3, cd: 0, group: 'fire', dmgBase: 5, dmgPerLvl: 4, wepPct: 110
+                    desc: 'Active · Hurl a rapid fire bolt dealing 5 + 4 per point fire damage. No cooldown — spam freely.',
+                    tip: 'Max lvl (20): 85 damage each · primarily used as a synergy booster.',
+                    maxPts: 20, mana: 3, cd: 0, group: 'fire', dmgBase: 5, dmgPerLvl: 4
                 },
                 {
                     id: 'warmth', row: 1, col: 0, type: 'passive', icon: '♨️', name: 'Warmth',
@@ -29,9 +29,9 @@ export const SORCERESS_CLASS = {
                 },
                 {
                     id: 'fireball', row: 1, col: 2, type: 'active', icon: '💥', name: 'Fireball',
-                    desc: 'Active · Fireball dealing base + 140% weapon damage in an AoE splash.',
-                    tip: 'Max lvl (20): Primary scaling spam skill.',
-                    maxPts: 20, mana: 9, cd: 0, group: 'fire', dmgBase: 12, dmgPerLvl: 9, wepPct: 140, req: 'fire_bolt:3',
+                    desc: 'Active · Launch an explosive fireball dealing 12 + 9 per point fire damage with a small AoE splash on impact.',
+                    tip: 'Max lvl (20): 192 fire damage + AoE splash. Your primary spam skill.',
+                    maxPts: 20, mana: 9, cd: 0, group: 'fire', dmgBase: 12, dmgPerLvl: 9, req: 'fire_bolt:3',
                     synergies: [{ from: 'fire_bolt', pctPerPt: 3 }, { from: 'meteor', pctPerPt: 4 }]
                 },
                 {
@@ -42,42 +42,42 @@ export const SORCERESS_CLASS = {
                 },
                 {
                     id: 'immolate', row: 2, col: 1, type: 'active', icon: '🌡️', name: 'Immolate',
-                    desc: 'Active · Ignite target: base + 60% weapon damage per second as fire.',
-                    tip: 'Max lvl (20): Scaling fire DoT.',
-                    maxPts: 20, mana: 11, cd: 0, group: 'fire', dmgBase: 6, dmgPerLvl: 4, wepPct: 60, req: 'fireball:3'
+                    desc: 'Active · Ignite a target, dealing 6 + 4 per point fire damage every second for 3 + 0.1 per point seconds.',
+                    tip: 'Max lvl (20): 86 per second for 5s = 430 total DoT.',
+                    maxPts: 20, mana: 11, cd: 0, group: 'fire', dmgBase: 6, dmgPerLvl: 4, req: 'fireball:3'
                 },
                 {
                     id: 'fire_wall', row: 3, col: 0, type: 'active', icon: '🧱', name: 'Fire Wall',
-                    desc: 'Active · Fire wall dealing base + 100% weapon damage per second.',
-                    tip: 'Max lvl (20): High scaling area denial.',
-                    maxPts: 20, mana: 15, cd: 4, group: 'fire', dmgBase: 25, dmgPerLvl: 15, wepPct: 100, req: 'fire_mastery:5',
+                    desc: 'Active · Create a wall of flames dealing 25 + 15 per point fire damage per second to enemies standing in it. Lasts 6 seconds.',
+                    tip: 'Max lvl (20): 325 fire dmg/sec. Great for chokepoints.',
+                    maxPts: 20, mana: 15, cd: 4, group: 'fire', dmgBase: 25, dmgPerLvl: 15, req: 'fire_mastery:5',
                     synergies: [{ from: 'warmth', pctPerPt: 2 }]
                 },
                 {
                     id: 'enchant', row: 3, col: 2, type: 'active', icon: '✨', name: 'Enchant',
-                    desc: 'Active · Add base + 50% weapon damage as fire to every hit.',
-                    tip: 'Max lvl (20): Gear-based melee/summon buff.',
-                    maxPts: 20, mana: 20, cd: 0, group: 'buff', dmgBase: 15, dmgPerLvl: 8, wepPct: 50, req: 'fireball:5'
+                    desc: 'Active · Touch a weapon to add 15 + 8 per point fire damage to every hit for 60 + 5 per point seconds.',
+                    tip: 'Max lvl (20): +175 fire damage on every hit for 160s.',
+                    maxPts: 20, mana: 20, cd: 0, group: 'buff', dmgBase: 15, dmgPerLvl: 8, req: 'fireball:5'
                 },
                 {
                     id: 'meteor', row: 4, col: 1, type: 'active', icon: '☄️', name: 'Meteor',
-                    desc: 'Active · Impact for base + 300% weapon damage and leaves burning ground.',
-                    tip: 'Max lvl (20): Massive scaling impact nuke.',
-                    maxPts: 20, mana: 20, cd: 12, group: 'fire', dmgBase: 60, dmgPerLvl: 22, wepPct: 300, req: 'immolate:5',
+                    desc: 'Active · Call a meteor after a 1.5s delay. On impact: 60 + 22 per point fire AoE damage and leaves burning ground.',
+                    tip: 'Max lvl (20): 500 impact + 200/s burning ground.',
+                    maxPts: 20, mana: 20, cd: 12, group: 'fire', dmgBase: 60, dmgPerLvl: 22, req: 'immolate:5',
                     synergies: [{ from: 'fireball', pctPerPt: 5 }, { from: 'fire_mastery', pctPerPt: 3 }]
                 },
                 {
                     id: 'hydra', row: 5, col: 0, type: 'active', icon: '🐉', name: 'Hydra',
-                    desc: 'Active · Summon hydra shooting bolts for base + 60% weapon damage each.',
-                    tip: 'Max lvl (20): Scaling multi-head turret.',
-                    maxPts: 20, mana: 25, cd: 2, group: 'fire', dmgBase: 10, dmgPerLvl: 6, wepPct: 60, req: 'fire_wall:5',
+                    desc: 'Active · Summon a 3-headed fire hydra that shoots firebolts at nearby enemies for 10 + 6 per point damage per shot. Lasts 10 seconds.',
+                    tip: 'Max lvl (20): 130 damage per shot. Place around corners.',
+                    maxPts: 20, mana: 25, cd: 2, group: 'fire', dmgBase: 10, dmgPerLvl: 6, req: 'fire_wall:5',
                     synergies: [{ from: 'fire_bolt', pctPerPt: 3 }]
                 },
                 {
                     id: 'fire_storm', row: 5, col: 2, type: 'active', icon: '🌠', name: 'Fire Storm',
-                    desc: 'Active · Rain fireballs dealing base + 120% weapon damage each in AoE.',
-                    tip: 'Max lvl (20): High scaling room clear.',
-                    maxPts: 20, mana: 35, cd: 45, group: 'fire', dmgBase: 20, dmgPerLvl: 10, wepPct: 120, req: 'meteor:5',
+                    desc: 'Active · Rain dozens of fireballs across the screen for 6 seconds. Each fireball deals 20 + 10 per point damage.',
+                    tip: 'Max lvl (20): Ultimate room-clear.',
+                    maxPts: 20, mana: 35, cd: 45, group: 'fire', dmgBase: 20, dmgPerLvl: 10, req: 'meteor:5',
                     synergies: [{ from: 'fire_mastery', pctPerPt: 4 }]
                 },
                 {
@@ -95,15 +95,15 @@ export const SORCERESS_CLASS = {
             nodes: [
                 {
                     id: 'ice_bolt', row: 0, col: 1, type: 'active', icon: '🧊', name: 'Ice Bolt',
-                    desc: 'Active · Cold shard dealing base + 100% weapon damage and slowing.',
-                    tip: 'Max lvl (20): Scaling cold utility.',
-                    maxPts: 20, mana: 6, cd: 0, group: 'cold', dmgBase: 8, dmgPerLvl: 6, wepPct: 100
+                    desc: 'Active · Shoot a cold shard for 8 + 6 per point cold damage that slows the target by 40% for 2 seconds.',
+                    tip: 'Max lvl (20): 128 cold damage + slow.',
+                    maxPts: 20, mana: 6, cd: 0, group: 'cold', dmgBase: 8, dmgPerLvl: 6
                 },
                 {
                     id: 'frost_nova', row: 1, col: 0, type: 'active', icon: '💫', name: 'Frost Nova',
-                    desc: 'Active · Nova dealing base + 110% weapon damage as cold in 360° AoE.',
-                    tip: 'Max lvl (20): Scaling AoE CC.',
-                    maxPts: 20, mana: 14, cd: 8, group: 'cold', dmgBase: 15, dmgPerLvl: 8, wepPct: 110, req: 'ice_bolt:1'
+                    desc: 'Active · Release a 360° burst of cold dealing 15 + 8 per point cold damage to all nearby enemies and slowing them.',
+                    tip: 'Max lvl (20): 175 AoE cold + crowd control.',
+                    maxPts: 20, mana: 14, cd: 8, group: 'cold', dmgBase: 15, dmgPerLvl: 8, req: 'ice_bolt:1'
                 },
                 {
                     id: 'frozen_armor', row: 1, col: 2, type: 'active', icon: '🧊', name: 'Frozen Armor',
@@ -119,9 +119,9 @@ export const SORCERESS_CLASS = {
                 },
                 {
                     id: 'ice_blast', row: 2, col: 1, type: 'active', icon: '💨', name: 'Ice Blast',
-                    desc: 'Active · Blast dealing base + 130% weapon damage as cold and freeze.',
-                    tip: 'Max lvl (20): High scaling cold burst.',
-                    maxPts: 20, mana: 13, cd: 2, group: 'cold', dmgBase: 25, dmgPerLvl: 12, wepPct: 130, req: 'frost_nova:3',
+                    desc: 'Active · Fire a powerful ice blast dealing 25 + 12 per point cold damage with a 30% chance to freeze.',
+                    tip: 'Max lvl (20): 265 cold + 30% freeze chance.',
+                    maxPts: 20, mana: 13, cd: 2, group: 'cold', dmgBase: 25, dmgPerLvl: 12, req: 'frost_nova:3',
                     synergies: [{ from: 'ice_bolt', pctPerPt: 4 }]
                 },
                 {
@@ -132,30 +132,30 @@ export const SORCERESS_CLASS = {
                 },
                 {
                     id: 'blizzard', row: 3, col: 2, type: 'active', icon: '🌨️', name: 'Blizzard',
-                    desc: 'Active · Blizzard dealing base + 80% weapon damage per second AoE.',
-                    tip: 'Max lvl (20): High scaling area CC.',
-                    maxPts: 20, mana: 18, cd: 12, group: 'cold', dmgBase: 10, dmgPerLvl: 7, wepPct: 80, req: 'frozen_armor:3',
+                    desc: 'Active · Summon a blizzard dealing 10 + 7 per point cold AoE damage per second for 4 seconds.',
+                    tip: 'Max lvl (20): 150/s × 4s = 600 AoE cold.',
+                    maxPts: 20, mana: 18, cd: 12, group: 'cold', dmgBase: 10, dmgPerLvl: 7, req: 'frozen_armor:3',
                     synergies: [{ from: 'ice_bolt', pctPerPt: 5 }, { from: 'ice_blast', pctPerPt: 4 }]
                 },
                 {
                     id: 'glacial_spike', row: 4, col: 1, type: 'active', icon: '🏔️', name: 'Glacial Spike',
-                    desc: 'Active · Impact for base + 240% weapon damage and freeze target.',
-                    tip: 'Max lvl (20): Massive scaling single-target CC.',
-                    maxPts: 20, mana: 18, cd: 6, group: 'cold', dmgBase: 50, dmgPerLvl: 20, wepPct: 240, req: 'ice_blast:5',
+                    desc: 'Active · Hurl a massive spike of ice dealing 50 + 20 per point cold damage. Always freezes the target for 2s.',
+                    tip: 'Max lvl (20): 450 cold damage + guaranteed freeze.',
+                    maxPts: 20, mana: 18, cd: 6, group: 'cold', dmgBase: 50, dmgPerLvl: 20, req: 'ice_blast:5',
                     synergies: [{ from: 'ice_blast', pctPerPt: 5 }]
                 },
                 {
                     id: 'frozen_orb', row: 5, col: 0, type: 'active', icon: '🔵', name: 'Frozen Orb',
-                    desc: 'Active · Launch orb firing bolts for base + 50% weapon damage each.',
-                    tip: 'Max lvl (20): High scaling room-clear cold.',
-                    maxPts: 20, mana: 25, cd: 10, group: 'cold', dmgBase: 40, dmgPerLvl: 15, wepPct: 50, req: 'shatter:5',
+                    desc: 'Active · Launch an orb firing ice bolts in all directions. Total damage: 40 + 15 per point over 2 seconds.',
+                    tip: 'Max lvl (20): 340 total cold damage across a wide area.',
+                    maxPts: 20, mana: 25, cd: 10, group: 'cold', dmgBase: 40, dmgPerLvl: 15, req: 'shatter:5',
                     synergies: [{ from: 'ice_bolt', pctPerPt: 2 }]
                 },
                 {
                     id: 'absolute_zero', row: 5, col: 2, type: 'active', icon: '☃️', name: 'Absolute Zero',
-                    desc: 'Active · Impact for base + 350% weapon damage as cold and freeze all.',
-                    tip: 'Max lvl (20): Ultimate scaling cold nuke.',
-                    maxPts: 20, mana: 40, cd: 60, group: 'cold', dmgBase: 80, dmgPerLvl: 30, wepPct: 350, req: 'blizzard:10',
+                    desc: 'Active · Freeze ALL enemies in view for 4 seconds and deal 80 + 30 per point cold damage. Enemies shatter on thaw.',
+                    tip: 'Max lvl (20): 680 damage · then AoE shatter.',
+                    maxPts: 20, mana: 40, cd: 60, group: 'cold', dmgBase: 80, dmgPerLvl: 30, req: 'blizzard:10',
                     synergies: [{ from: 'cold_mastery', pctPerPt: 5 }]
                 },
             ]
@@ -167,9 +167,9 @@ export const SORCERESS_CLASS = {
             nodes: [
                 {
                     id: 'charged_bolt', row: 0, col: 1, type: 'active', icon: '⚡', name: 'Charged Bolt',
-                    desc: 'Active · Bolts dealing base + 70% weapon damage as lightning each.',
-                    tip: 'Max lvl (20): Scaling erratic lightning bolts.',
-                    maxPts: 20, mana: 5, cd: 0, group: 'lightning', dmgBase: 5, dmgPerLvl: 3, wepPct: 70
+                    desc: 'Active · Release 3 + 0.15 per point erratic bolts dealing 5 + 3 per point lightning damage each.',
+                    tip: 'Max lvl (20): 6 bolts × 65 damage = 390 total.',
+                    maxPts: 20, mana: 5, cd: 0, group: 'lightning', dmgBase: 5, dmgPerLvl: 3
                 },
                 {
                     id: 'static_field', row: 1, col: 0, type: 'active', icon: '🌩️', name: 'Static Field',
@@ -179,9 +179,9 @@ export const SORCERESS_CLASS = {
                 },
                 {
                     id: 'nova', row: 1, col: 2, type: 'active', icon: '💫', name: 'Nova',
-                    desc: 'Active · Lightning ring dealing base + 120% weapon damage in 360° AoE.',
-                    tip: 'Max lvl (20): Scaling area clear.',
-                    maxPts: 20, mana: 11, cd: 0, group: 'lightning', dmgBase: 12, dmgPerLvl: 8, wepPct: 120, req: 'charged_bolt:3'
+                    desc: 'Active · Release a ring of lightning dealing 12 + 8 per point lightning damage. Hits ALL enemies around you.',
+                    tip: 'Max lvl (20): 172 damage 360° AoE.',
+                    maxPts: 20, mana: 11, cd: 0, group: 'lightning', dmgBase: 12, dmgPerLvl: 8, req: 'charged_bolt:3'
                 },
                 {
                     id: 'lightning_mastery', row: 2, col: 0, type: 'passive', icon: '🟡', name: 'Lightning Mastery',
@@ -191,9 +191,9 @@ export const SORCERESS_CLASS = {
                 },
                 {
                     id: 'lightning_surge', row: 2, col: 1, type: 'active', icon: '⚡', name: 'Lightning Surge',
-                    desc: 'Active · Piercing beam dealing base + 160% weapon damage as lightning.',
-                    tip: 'Max lvl (20): High scaling line nuke.',
-                    maxPts: 20, mana: 12, cd: 0, group: 'lightning', dmgBase: 20, dmgPerLvl: 12, wepPct: 160, req: 'charged_bolt:5',
+                    desc: 'Active · Fire a piercing beam of lightning dealing 20 + 12 per point damage to all enemies in a line.',
+                    tip: 'Max lvl (20): 260 line AoE damage.',
+                    maxPts: 20, mana: 12, cd: 0, group: 'lightning', dmgBase: 20, dmgPerLvl: 12, req: 'charged_bolt:5',
                     synergies: [{ from: 'charged_bolt', pctPerPt: 4 }]
                 },
                 {
@@ -210,9 +210,9 @@ export const SORCERESS_CLASS = {
                 },
                 {
                     id: 'chain_lightning', row: 4, col: 1, type: 'active', icon: '⚡', name: 'Chain Lightning',
-                    desc: 'Active · Strike for base + 150% weapon damage and chain to 3 targets.',
-                    tip: 'Max lvl (20): High scaling multi-hit lightning.',
-                    maxPts: 20, mana: 15, cd: 1.5, group: 'lightning', dmgBase: 30, dmgPerLvl: 15, wepPct: 150, req: 'lightning_surge:5',
+                    desc: 'Active · Strike a target for 30 + 15 per point lightning damage, chaining to 3 nearby enemies.',
+                    tip: 'Max lvl (20): 330 primary + chains.',
+                    maxPts: 20, mana: 15, cd: 1.5, group: 'lightning', dmgBase: 30, dmgPerLvl: 15, req: 'lightning_surge:5',
                     synergies: [{ from: 'lightning_surge', pctPerPt: 5 }]
                 },
                 {
@@ -223,9 +223,9 @@ export const SORCERESS_CLASS = {
                 },
                 {
                     id: 'thunder_storm', row: 5, col: 2, type: 'active', icon: '🌩️', name: 'Thunder Storm',
-                    desc: 'Active (Toggle) · Lightning strikes for base + 140% weapon damage every 2s.',
-                    tip: 'Max lvl (20): Scaling passive lightning dps.',
-                    maxPts: 20, mana: 15, cd: 0, group: 'lightning', dmgBase: 50, dmgPerLvl: 20, wepPct: 140, req: 'chain_lightning:5',
+                    desc: 'Active (Toggle) · A storm strikes a random enemy with 50 + 20 per point lightning damage every 2 seconds.',
+                    tip: 'Max lvl (20): 450 lightning every 2s.',
+                    maxPts: 20, mana: 15, cd: 0, group: 'lightning', dmgBase: 50, dmgPerLvl: 20, req: 'chain_lightning:5',
                     synergies: [{ from: 'lightning_mastery', pctPerPt: 4 }]
                 },
                 {

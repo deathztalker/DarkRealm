@@ -1,0 +1,65 @@
+{
+  "character": {
+    "id": "d248621b-f7f1-4071-b44f-189f13e984e7",
+    "name": "Zombie Enemy",
+    "prompt": "rotting undead zombie, torn rags, green pale skin, 48x48, low top-down view, pixel art",
+    "size": {
+      "width": 68,
+      "height": 68
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:25:45.807134+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {
+      "walking-3ce6c5a5": {
+        "south": [
+          "animations/walking-3ce6c5a5/south/frame_000.png",
+          "animations/walking-3ce6c5a5/south/frame_001.png",
+          "animations/walking-3ce6c5a5/south/frame_002.png",
+          "animations/walking-3ce6c5a5/south/frame_003.png",
+          "animations/walking-3ce6c5a5/south/frame_004.png",
+          "animations/walking-3ce6c5a5/south/frame_005.png"
+        ]
+      },
+      "walking-b762c52f": {
+        "north": [
+          "animations/walking-b762c52f/north/frame_000.png",
+          "animations/walking-b762c52f/north/frame_001.png",
+          "animations/walking-b762c52f/north/frame_002.png",
+          "animations/walking-b762c52f/north/frame_003.png",
+          "animations/walking-b762c52f/north/frame_004.png",
+          "animations/walking-b762c52f/north/frame_005.png"
+        ],
+        "east": [
+          "animations/walking-b762c52f/east/frame_000.png",
+          "animations/walking-b762c52f/east/frame_001.png",
+          "animations/walking-b762c52f/east/frame_002.png",
+          "animations/walking-b762c52f/east/frame_003.png",
+          "animations/walking-b762c52f/east/frame_004.png",
+          "animations/walking-b762c52f/east/frame_005.png"
+        ]
+      },
+      "walking-aeb88e03": {
+        "west": [
+          "animations/walking-aeb88e03/west/frame_000.png",
+          "animations/walking-aeb88e03/west/frame_001.png",
+          "animations/walking-aeb88e03/west/frame_002.png",
+          "animations/walking-aeb88e03/west/frame_003.png",
+          "animations/walking-aeb88e03/west/frame_004.png",
+          "animations/walking-aeb88e03/west/frame_005.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-18T22:28:51.897082"
+}

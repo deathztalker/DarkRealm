@@ -1,0 +1,63 @@
+{
+  "character": {
+    "id": "297a5aeb-0b6b-4201-8dd2-6f479530eb90",
+    "name": "Cultist Enemy",
+    "prompt": "dark cultist in crimson robes holding a sacrificial dagger, 48x48, low top-down view, pixel art",
+    "size": {
+      "width": 68,
+      "height": 68
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:25:45.779125+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {
+      "walking-638a5027": {
+        "south": [
+          "animations/walking-638a5027/south/frame_000.png",
+          "animations/walking-638a5027/south/frame_001.png",
+          "animations/walking-638a5027/south/frame_002.png",
+          "animations/walking-638a5027/south/frame_003.png",
+          "animations/walking-638a5027/south/frame_004.png",
+          "animations/walking-638a5027/south/frame_005.png"
+        ]
+      },
+      "walking-15c39e8e": {
+        "west": [
+          "animations/walking-15c39e8e/west/frame_000.png",
+          "animations/walking-15c39e8e/west/frame_001.png",
+          "animations/walking-15c39e8e/west/frame_002.png",
+          "animations/walking-15c39e8e/west/frame_003.png",
+          "animations/walking-15c39e8e/west/frame_004.png",
+          "animations/walking-15c39e8e/west/frame_005.png"
+        ],
+        "north": [
+          "animations/walking-15c39e8e/north/frame_000.png",
+          "animations/walking-15c39e8e/north/frame_001.png",
+          "animations/walking-15c39e8e/north/frame_002.png",
+          "animations/walking-15c39e8e/north/frame_003.png",
+          "animations/walking-15c39e8e/north/frame_004.png",
+          "animations/walking-15c39e8e/north/frame_005.png"
+        ],
+        "east": [
+          "animations/walking-15c39e8e/east/frame_000.png",
+          "animations/walking-15c39e8e/east/frame_001.png",
+          "animations/walking-15c39e8e/east/frame_002.png",
+          "animations/walking-15c39e8e/east/frame_003.png",
+          "animations/walking-15c39e8e/east/frame_004.png",
+          "animations/walking-15c39e8e/east/frame_005.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-18T22:28:47.788982"
+}

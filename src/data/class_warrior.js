@@ -5,7 +5,7 @@
 export const WARRIOR_CLASS = {
     id: 'warrior', name: 'Warrior', icon: '⚔️',
     description: 'A master of melee combat who overwhelms enemies with brute force or anchors the party with impenetrable defenses.',
-    stats: { str: 30, dex: 15, vit: 20, int: 5 },
+    stats: { str: 30, dex: 20, vit: 25, int: 5 },
     hitDie: 12,
     primaryStat: 'str',
     trees: [
@@ -18,7 +18,7 @@ export const WARRIOR_CLASS = {
                     id: 'bash', row: 0, col: 1, type: 'active', icon: '🪓', name: 'Bash',
                     desc: 'Active · Strike for 15 + 8 per point physical damage. Each hit has a 20% chance to stun for 0.8s. A reliable bread-and-butter attack.',
                     tip: 'Max lvl (20): 175 damage · stun chance 20% always.',
-                    maxPts: 20, mana: 3, cd: 1.5, group: 'melee', dmgBase: 15, dmgPerLvl: 8, wepPct: 100
+                    maxPts: 20, mana: 3, cd: 1.5, group: 'melee', dmgBase: 15, dmgPerLvl: 8
                 },
                 {
                     id: 'combat_mastery', row: 1, col: 0, type: 'passive', icon: '💪', name: 'Combat Mastery',
@@ -30,28 +30,28 @@ export const WARRIOR_CLASS = {
                     id: 'bloodthirst', row: 1, col: 2, type: 'active', icon: '🩸', name: 'Bloodthirst',
                     desc: 'Active · Instantly strike the enemy for 25 + 12 per point damage and heal for 4% of your maximum health. 4s cooldown.',
                     tip: 'Max lvl (20): 265 damage · 4% max HP heal per hit. Essential sustain.',
-                    maxPts: 20, mana: 5, cd: 4, group: 'melee', dmgBase: 25, dmgPerLvl: 12, wepPct: 120, req: 'bash:3',
+                    maxPts: 20, mana: 5, cd: 4, group: 'melee', dmgBase: 25, dmgPerLvl: 12, req: 'bash:3',
                     synergies: [{ from: 'combat_mastery', pctPerPt: 2 }]
                 },
                 {
                     id: 'double_swing', row: 2, col: 0, type: 'active', icon: '⚔️', name: 'Double Swing',
                     desc: 'Active · Swing twice in quick succession dealing 20 + 7 per point each hit. If both hit the same target, the second hit is always a critical strike.',
                     tip: 'Max lvl (20): 2× 160 damage · 2nd hit guaranteed crit.',
-                    maxPts: 20, mana: 5, cd: 2, group: 'melee', dmgBase: 20, dmgPerLvl: 7, wepPct: 85, req: 'bash:5',
+                    maxPts: 20, mana: 5, cd: 2, group: 'melee', dmgBase: 20, dmgPerLvl: 7, req: 'bash:5',
                     synergies: [{ from: 'bash', pctPerPt: 5 }]
                 },
                 {
                     id: 'whirlwind', row: 2, col: 1, type: 'active', icon: '🌀', name: 'Whirlwind',
                     desc: 'Active · Spin and hit ALL nearby enemies for 30 + 10 per point physical damage. 2.5s channel, zero mana cost. Your best AoE clear tool.',
                     tip: 'Max lvl (20): 230 damage to every enemy in melee range · 0 mana.',
-                    maxPts: 20, mana: 0, cd: 5, group: 'melee', dmgBase: 30, dmgPerLvl: 10, wepPct: 110, req: 'double_swing:3',
+                    maxPts: 20, mana: 0, cd: 5, group: 'melee', dmgBase: 30, dmgPerLvl: 10, req: 'double_swing:3',
                     synergies: [{ from: 'double_swing', pctPerPt: 5 }, { from: 'bash', pctPerPt: 5 }]
                 },
                 {
                     id: 'colossus_strike', row: 3, col: 0, type: 'active', icon: '🔨', name: 'Colossus Strike',
                     desc: 'Active · A heavy smash that deals 60 + 25 per point damage and reduces the target\'s armor by 50% for 8 seconds. 20s cooldown.',
                     tip: 'Max lvl (20): 560 damage · -50% enemy armor. Huge damage multiplier.',
-                    maxPts: 20, mana: 15, cd: 20, group: 'melee', dmgBase: 60, dmgPerLvl: 25, wepPct: 200, req: 'whirlwind:5',
+                    maxPts: 20, mana: 15, cd: 20, group: 'melee', dmgBase: 60, dmgPerLvl: 25, req: 'whirlwind:5',
                     synergies: [{ from: 'execute', pctPerPt: 5 }]
                 },
                 {
@@ -64,28 +64,28 @@ export const WARRIOR_CLASS = {
                     id: 'execute', row: 4, col: 1, type: 'active', icon: '💀', name: 'Execute',
                     desc: 'Active · A powerful finisher dealing 50 + 20 per point damage. Against enemies below 30% HP it deals TRIPLE damage.',
                     tip: 'Max lvl (20): 450 base · 1,350 vs low-HP targets.',
-                    maxPts: 20, mana: 15, cd: 6, group: 'melee', dmgBase: 50, dmgPerLvl: 20, wepPct: 250, req: 'berserk:10',
+                    maxPts: 20, mana: 15, cd: 6, group: 'melee', dmgBase: 50, dmgPerLvl: 20, req: 'berserk:10',
                     synergies: [{ from: 'combat_mastery', pctPerPt: 5 }]
                 },
                 {
                     id: 'bladestorm', row: 5, col: 1, type: 'active', icon: '🌪️', name: 'Bladestorm',
                     desc: 'Active · Become an unstoppable whirlwind of steel for 6 seconds, hitting all nearby enemies twice per second for 40 + 15 per point damage. You are immune to all CC while active. 90s cooldown.',
                     tip: 'Max lvl (20): 120 hits × 340 damage = 4,080 total AoE. The ultimate combat capstone.',
-                    maxPts: 20, mana: 25, cd: 90, group: 'melee', dmgBase: 40, dmgPerLvl: 15, wepPct: 150, req: 'execute:5',
+                    maxPts: 20, mana: 25, cd: 90, group: 'melee', dmgBase: 40, dmgPerLvl: 15, req: 'execute:5',
                     synergies: [{ from: 'whirlwind', pctPerPt: 10 }]
                 },
                 {
                     id: 'mortal_strike', row: 5, col: 0, type: 'active', icon: '🩸', name: 'Mortal Strike',
                     desc: 'Active · A vicious strike dealing 40 + 15 per point damage and reducing the target\'s healing received by 50% for 10s.',
                     tip: 'Max lvl (20): 340 damage + 50% anti-heal. Counters vampiric enemies.',
-                    maxPts: 20, mana: 12, cd: 6, group: 'melee', dmgBase: 40, dmgPerLvl: 15, wepPct: 180, req: 'colossus_strike:5',
+                    maxPts: 20, mana: 12, cd: 6, group: 'melee', dmgBase: 40, dmgPerLvl: 15, req: 'colossus_strike:5',
                     synergies: [{ from: 'bash', pctPerPt: 10 }]
                 },
                 {
                     id: 'overpower', row: 5, col: 2, type: 'active', icon: '⚡', name: 'Overpower',
                     desc: 'Active · Instantly strike for 30 + 10 per point damage. This attack CANNOT be dodged or blocked, and has a +50% chance to crit.',
                     tip: 'Max lvl (20): 230 unblockable damage. Perfect against evasive targets.',
-                    maxPts: 20, mana: 5, cd: 4, group: 'melee', dmgBase: 30, dmgPerLvl: 10, wepPct: 130, req: 'berserk:5'
+                    maxPts: 20, mana: 5, cd: 4, group: 'melee', dmgBase: 30, dmgPerLvl: 10, req: 'berserk:5'
                 }
             ]
         },
@@ -98,7 +98,7 @@ export const WARRIOR_CLASS = {
                     id: 'shield_bash', row: 0, col: 1, type: 'active', icon: '🛡️', name: 'Shield Bash',
                     desc: 'Active · Slam your shield for 18 + 6 per point damage and stun the target for 1.5 + 0.05 per point seconds. Requires a shield equipped.',
                     tip: 'Max lvl (20): 138 damage · 2.5s stun. Primary crowd control.',
-                    maxPts: 20, mana: 6, cd: 6, group: 'melee', dmgBase: 18, dmgPerLvl: 6, wepPct: 80,
+                    maxPts: 20, mana: 6, cd: 6, group: 'melee', dmgBase: 18, dmgPerLvl: 6,
                     synergies: [{ from: 'iron_skin', pctPerPt: 5 }]
                 },
                 {
@@ -123,7 +123,7 @@ export const WARRIOR_CLASS = {
                     id: 'revenge', row: 2, col: 1, type: 'active', icon: '⚡', name: 'Revenge',
                     desc: 'Active · After blocking an attack, your NEXT hit deals 25 + 10 per point damage and heals you for 20% of damage dealt. No mana cost.',
                     tip: 'Max lvl (20): 225 damage · heals you for up to 45 HP per proc.',
-                    maxPts: 20, mana: 0, cd: 2, group: 'melee', dmgBase: 25, dmgPerLvl: 10, wepPct: 140, req: 'block_mastery:5',
+                    maxPts: 20, mana: 0, cd: 2, group: 'melee', dmgBase: 25, dmgPerLvl: 10, req: 'block_mastery:5',
                     synergies: [{ from: 'block_mastery', pctPerPt: 10 }]
                 },
                 {
@@ -183,9 +183,9 @@ export const WARRIOR_CLASS = {
                 },
                 {
                     id: 'leap_attack', row: 1, col: 2, type: 'active', icon: '🦘', name: 'Leap Attack',
-                    desc: 'Active · Leap to a location, dealing base + 110% weapon damage on landing and stunning for 0.5s.',
-                    tip: 'Max lvl (20): Mobility + AoE scaling.',
-                    maxPts: 20, mana: 9, cd: 8, group: 'melee', dmgBase: 25, dmgPerLvl: 12, wepPct: 110,
+                    desc: 'Active · Leap to a target location, dealing 25 + 12 per point physical AoE damage on landing and stunning enemies for 0.5s.',
+                    tip: 'Max lvl (20): 265 AoE damage on landing.',
+                    maxPts: 20, mana: 9, cd: 8, group: 'melee', dmgBase: 25, dmgPerLvl: 12,
                     synergies: [{ from: 'slam', pctPerPt: 5 }]
                 },
                 {
@@ -197,23 +197,23 @@ export const WARRIOR_CLASS = {
                 },
                 {
                     id: 'shockwave', row: 3, col: 0, type: 'active', icon: '🌊', name: 'Shockwave',
-                    desc: 'Active · Bellow a shout dealing base + 90% weapon damage and stunning for 2s.',
-                    tip: 'Max lvl (20): AoE shout with gear scaling.',
-                    maxPts: 20, mana: 12, cd: 12, group: 'melee', dmgBase: 40, dmgPerLvl: 15, wepPct: 90, req: 'shout:5',
+                    desc: 'Active · Bellow a mighty shout that sends a wave of force forward, dealing 40 + 15 per point damage and stunning all enemies hit for 2 seconds. 12s cooldown.',
+                    tip: 'Max lvl (20): 340 damage · 2s AoE stun. Massive control.',
+                    maxPts: 20, mana: 12, cd: 12, group: 'melee', dmgBase: 40, dmgPerLvl: 15, req: 'shout:5',
                     synergies: [{ from: 'warcry', pctPerPt: 5 }]
                 },
                 {
                     id: 'slam', row: 3, col: 2, type: 'active', icon: '💥', name: 'Ground Slam',
-                    desc: 'Active · Smash the ground for base + 130% weapon damage in a line.',
-                    tip: 'Max lvl (20): Heavy shockwave scaling.',
-                    maxPts: 20, mana: 14, cd: 10, group: 'melee', dmgBase: 40, dmgPerLvl: 18, wepPct: 130, req: 'leap_attack:5',
+                    desc: 'Active · Smash the ground to send a shockwave in a line, dealing 40 + 18 per point physical AoE damage.',
+                    tip: 'Max lvl (20): 400 AoE shockwave damage.',
+                    maxPts: 20, mana: 14, cd: 10, group: 'melee', dmgBase: 40, dmgPerLvl: 18, req: 'leap_attack:5',
                     synergies: [{ from: 'leap_attack', pctPerPt: 10 }]
                 },
                 {
                     id: 'shattering_throw', row: 4, col: 1, type: 'active', icon: '🎯', name: 'Shattering Throw',
-                    desc: 'Active · Throw weapon for base + 180% weapon damage. Shatters shields and deals double to invulnerable.',
-                    tip: 'Max lvl (20): Shield-breaking scaling nuke.',
-                    maxPts: 20, mana: 20, cd: 30, dmgBase: 80, dmgPerLvl: 30, wepPct: 180, req: 'battle_orders:5',
+                    desc: 'Active · Throw your weapon at a target, dealing 80 + 30 per point damage and shattering all magical shields/absorbs. Deals double damage to invulnerable targets. 30s cooldown.',
+                    tip: 'Max lvl (20): 680 damage · breaks Divine Shield / Bone Armor. The ultimate utility nuke.',
+                    maxPts: 20, mana: 20, cd: 30, dmgBase: 80, dmgPerLvl: 30, req: 'battle_orders:5',
                     synergies: [{ from: 'combat_mastery', pctPerPt: 5 }]
                 },
                 {
@@ -236,9 +236,9 @@ export const WARRIOR_CLASS = {
                 },
                 {
                     id: 'heroic_leap', row: 5, col: 2, type: 'active', icon: '☄️', name: 'Heroic Leap',
-                    desc: 'Active · Leap through the air for base + 140% weapon damage on landing.',
-                    tip: 'Max lvl (20): Extreme mobility and AoE scaling.',
-                    maxPts: 20, mana: 15, cd: 12, group: 'teleport', dmgBase: 30, dmgPerLvl: 15, wepPct: 140, req: 'slam:5',
+                    desc: 'Active · Leap through the air to a target location, dealing 30 + 15 per point physical damage to all enemies within 50px upon landing.',
+                    tip: 'Max lvl (20): 330 AoE damage + extreme mobility.',
+                    maxPts: 20, mana: 15, cd: 12, group: 'teleport', dmgBase: 30, dmgPerLvl: 15, req: 'slam:5',
                     synergies: [{ from: 'leap_attack', pctPerPt: 10 }]
                 },
                 {

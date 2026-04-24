@@ -14,9 +14,9 @@ export const NECROMANCER_CLASS = {
             nodes: [
                 {
                     id: 'raise_skeleton', row: 0, col: 1, type: 'active', icon: '🦴', name: 'Raise Skeleton',
-                    desc: 'Active · Raise a skeleton warrior dealing base + 30% weapon damage.',
-                    tip: 'Max lvl (20): 10 skeletons each scaling with gear.',
-                    maxPts: 20, mana: 12, cd: 0, dmgBase: 8, dmgPerLvl: 4, wepPct: 30,
+                    desc: 'Active · Raise a skeleton warrior dealing 8 + 4 per point damage.',
+                    tip: 'Max lvl (20): 10 skeletons each dealing 88 damage.',
+                    maxPts: 20, mana: 12, cd: 0,
                     synergies: [
                         { from: 'skeletal_mage', pctPerPt: 5 },
                         { from: 'clay_golem', pctPerPt: 5 }
@@ -24,9 +24,9 @@ export const NECROMANCER_CLASS = {
                 },
                 {
                     id: 'skeletal_mage', row: 1, col: 0, type: 'active', icon: '🧙', name: 'Skeletal Mage',
-                    desc: 'Active · Raise a skeleton mage dealing base + 25% weapon damage as elemental.',
+                    desc: 'Active · Raise a skeleton mage that deals elemental damage.',
                     tip: 'Max lvl (20): Ranged elemental support army.',
-                    maxPts: 20, mana: 15, cd: 0, dmgBase: 10, dmgPerLvl: 5, wepPct: 25, req: 'raise_skeleton:3',
+                    maxPts: 20, mana: 15, cd: 0, req: 'raise_skeleton:3',
                     synergies: [
                         { from: 'raise_skeleton', pctPerPt: 5 }
                     ]
@@ -39,18 +39,18 @@ export const NECROMANCER_CLASS = {
                 },
                 {
                     id: 'clay_golem', row: 2, col: 1, type: 'active', icon: '🗿', name: 'Clay Golem',
-                    desc: 'Active · Summon a golem dealing base + 50% weapon damage that slows enemies.',
+                    desc: 'Active · Summon a golem with 200 + 50 per point HP that slows enemies.',
                     tip: 'Max lvl (20): 1,200 HP tank.',
-                    maxPts: 20, mana: 35, cd: 5, dmgBase: 15, dmgPerLvl: 6, wepPct: 50, req: 'skeleton_mastery:5',
+                    maxPts: 20, mana: 35, cd: 5, req: 'skeleton_mastery:5',
                     synergies: [
                         { from: 'blood_golem', pctPerPt: 10 }
                     ]
                 },
                 {
                     id: 'blood_golem', row: 3, col: 0, type: 'active', icon: '🩸', name: 'Blood Golem',
-                    desc: 'Active · Summon a golem dealing base + 60% weapon damage. When it deals damage, you heal.',
+                    desc: 'Active · Summon a golem that shares life with you. When it deals damage, you heal.',
                     tip: 'Max lvl (20): Life-stealing tank golem.',
-                    maxPts: 40, mana: 40, cd: 10, dmgBase: 20, dmgPerLvl: 8, wepPct: 60, req: 'clay_golem:3',
+                    maxPts: 40, mana: 40, cd: 10, req: 'clay_golem:3',
                     synergies: [
                         { from: 'clay_golem', pctPerPt: 10 }
                     ]
@@ -76,16 +76,16 @@ export const NECROMANCER_CLASS = {
             nodes: [
                 {
                     id: 'bone_spear', row: 0, col: 1, type: 'active', icon: '🔱', name: 'Bone Spear',
-                    desc: 'Active · Launch a spear dealing base + 120% weapon damage.',
-                    tip: 'Max lvl (20): High shadow damage piercing.',
-                    maxPts: 20, mana: 11, cd: 0, group: 'shadow', dmgBase: 20, dmgPerLvl: 10, wepPct: 120,
+                    desc: 'Active · Launch a spear dealing 20 + 10 per point shadow damage.',
+                    tip: 'Max lvl (20): 220 shadow damage piercing.',
+                    maxPts: 20, mana: 11, cd: 0, group: 'shadow', dmgBase: 20, dmgPerLvl: 10,
                     synergies: [{ from: 'bone_mastery', pctPerPt: 5 }]
                 },
                 {
                     id: 'poison_nova', row: 1, col: 0, type: 'active', icon: '🤢', name: 'Poison Nova',
-                    desc: 'Active · Emit a ring of poison dealing base + 40% weapon damage per second.',
-                    tip: 'Max lvl (20): Massive poison AoE.',
-                    maxPts: 20, mana: 20, cd: 3, group: 'poison', dmgBase: 15, dmgPerLvl: 8, wepPct: 40, req: 'bone_spear:3',
+                    desc: 'Active · Emit a ring of poison dealing 15 + 8 per point damage per second for 5s.',
+                    tip: 'Max lvl (20): 175/s poison AoE.',
+                    maxPts: 20, mana: 20, cd: 3, group: 'poison', dmgBase: 15, dmgPerLvl: 8, req: 'bone_spear:3',
                     synergies: [{ from: 'poison_blade', pctPerPt: 4 }]
                 },
                 {
@@ -115,9 +115,9 @@ export const NECROMANCER_CLASS = {
                 },
                 {
                     id: 'bone_spirit', row: 5, col: 1, type: 'active', icon: '👻', name: 'Bone Spirit',
-                    desc: 'Active · Release a homing spirit dealing base + 250% weapon damage. Costs 10% HP.',
-                    tip: 'Max lvl (20): Ultimate homing shadow nuke.',
-                    maxPts: 20, mana: 0, cd: 2, group: 'shadow', dmgBase: 80, dmgPerLvl: 35, wepPct: 250, req: 'blood_mastery:5',
+                    desc: 'Active · Release a homing spirit that seeks a target dealing 80 + 35 per point shadow damage. Costs 10% of your current HP instead of mana.',
+                    tip: 'Max lvl (20): 780 homing shadow damage.',
+                    maxPts: 20, mana: 0, cd: 2, group: 'shadow', dmgBase: 80, dmgPerLvl: 35, req: 'blood_mastery:5',
                     synergies: [{ from: 'bone_spear', pctPerPt: 8 }]
                 }
             ]

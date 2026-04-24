@@ -1,0 +1,63 @@
+{
+  "character": {
+    "id": "2559b8d0-16e8-4b18-9558-81ee3c056342",
+    "name": "Spider Enemy",
+    "prompt": "giant cave spider with hairy legs and multiple glowing red eyes, 48x48, low top-down view, pixel art",
+    "size": {
+      "width": 68,
+      "height": 68
+    },
+    "template_id": "mannequin",
+    "directions": 4,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:25:45.788884+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "west": "rotations/west.png",
+      "east": "rotations/east.png",
+      "north": "rotations/north.png"
+    },
+    "animations": {
+      "walking-c31694c5": {
+        "south": [
+          "animations/walking-c31694c5/south/frame_000.png",
+          "animations/walking-c31694c5/south/frame_001.png",
+          "animations/walking-c31694c5/south/frame_002.png",
+          "animations/walking-c31694c5/south/frame_003.png",
+          "animations/walking-c31694c5/south/frame_004.png",
+          "animations/walking-c31694c5/south/frame_005.png"
+        ]
+      },
+      "walking-99ce2ca5": {
+        "west": [
+          "animations/walking-99ce2ca5/west/frame_000.png",
+          "animations/walking-99ce2ca5/west/frame_001.png",
+          "animations/walking-99ce2ca5/west/frame_002.png",
+          "animations/walking-99ce2ca5/west/frame_003.png",
+          "animations/walking-99ce2ca5/west/frame_004.png",
+          "animations/walking-99ce2ca5/west/frame_005.png"
+        ],
+        "east": [
+          "animations/walking-99ce2ca5/east/frame_000.png",
+          "animations/walking-99ce2ca5/east/frame_001.png",
+          "animations/walking-99ce2ca5/east/frame_002.png",
+          "animations/walking-99ce2ca5/east/frame_003.png",
+          "animations/walking-99ce2ca5/east/frame_004.png",
+          "animations/walking-99ce2ca5/east/frame_005.png"
+        ],
+        "north": [
+          "animations/walking-99ce2ca5/north/frame_000.png",
+          "animations/walking-99ce2ca5/north/frame_001.png",
+          "animations/walking-99ce2ca5/north/frame_002.png",
+          "animations/walking-99ce2ca5/north/frame_003.png",
+          "animations/walking-99ce2ca5/north/frame_004.png",
+          "animations/walking-99ce2ca5/north/frame_005.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-18T22:28:49.685272"
+}

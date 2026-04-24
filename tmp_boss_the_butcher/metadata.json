@@ -1,0 +1,97 @@
+{
+  "character": {
+    "id": "7bccc472-12fe-4a99-b64b-5628642fcb56",
+    "name": "Boss The Butcher",
+    "prompt": "The Butcher: massive grotesque demon butcher, blood-stained leather apron, holding a giant meat cleaver and a rusted chain hook, pro mode, 96px, low top-down view, dark fantasy RPG style",
+    "size": {
+      "width": 156,
+      "height": 156
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:29:06.391652+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {
+      "walking-a646178c": {
+        "south": [
+          "animations/walking-a646178c/south/frame_000.png",
+          "animations/walking-a646178c/south/frame_001.png",
+          "animations/walking-a646178c/south/frame_002.png",
+          "animations/walking-a646178c/south/frame_003.png",
+          "animations/walking-a646178c/south/frame_004.png",
+          "animations/walking-a646178c/south/frame_005.png"
+        ],
+        "west": [
+          "animations/walking-a646178c/west/frame_000.png",
+          "animations/walking-a646178c/west/frame_001.png",
+          "animations/walking-a646178c/west/frame_002.png",
+          "animations/walking-a646178c/west/frame_003.png",
+          "animations/walking-a646178c/west/frame_004.png",
+          "animations/walking-a646178c/west/frame_005.png"
+        ],
+        "north-west": [
+          "animations/walking-a646178c/north-west/frame_000.png",
+          "animations/walking-a646178c/north-west/frame_001.png",
+          "animations/walking-a646178c/north-west/frame_002.png",
+          "animations/walking-a646178c/north-west/frame_003.png",
+          "animations/walking-a646178c/north-west/frame_004.png",
+          "animations/walking-a646178c/north-west/frame_005.png"
+        ],
+        "east": [
+          "animations/walking-a646178c/east/frame_000.png",
+          "animations/walking-a646178c/east/frame_001.png",
+          "animations/walking-a646178c/east/frame_002.png",
+          "animations/walking-a646178c/east/frame_003.png",
+          "animations/walking-a646178c/east/frame_004.png",
+          "animations/walking-a646178c/east/frame_005.png"
+        ],
+        "north": [
+          "animations/walking-a646178c/north/frame_000.png",
+          "animations/walking-a646178c/north/frame_001.png",
+          "animations/walking-a646178c/north/frame_002.png",
+          "animations/walking-a646178c/north/frame_003.png",
+          "animations/walking-a646178c/north/frame_004.png",
+          "animations/walking-a646178c/north/frame_005.png"
+        ],
+        "south-west": [
+          "animations/walking-a646178c/south-west/frame_000.png",
+          "animations/walking-a646178c/south-west/frame_001.png",
+          "animations/walking-a646178c/south-west/frame_002.png",
+          "animations/walking-a646178c/south-west/frame_003.png",
+          "animations/walking-a646178c/south-west/frame_004.png",
+          "animations/walking-a646178c/south-west/frame_005.png"
+        ],
+        "south-east": [
+          "animations/walking-a646178c/south-east/frame_000.png",
+          "animations/walking-a646178c/south-east/frame_001.png",
+          "animations/walking-a646178c/south-east/frame_002.png",
+          "animations/walking-a646178c/south-east/frame_003.png",
+          "animations/walking-a646178c/south-east/frame_004.png",
+          "animations/walking-a646178c/south-east/frame_005.png"
+        ],
+        "north-east": [
+          "animations/walking-a646178c/north-east/frame_000.png",
+          "animations/walking-a646178c/north-east/frame_001.png",
+          "animations/walking-a646178c/north-east/frame_002.png",
+          "animations/walking-a646178c/north-east/frame_003.png",
+          "animations/walking-a646178c/north-east/frame_004.png",
+          "animations/walking-a646178c/north-east/frame_005.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-18T02:20:17.923493"
+}

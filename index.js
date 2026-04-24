@@ -6,144 +6,219 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Log inicial inmediato
-console.log('>>> Inicianzando Dark Realm MMO Server (v2.0 Luxury) <<<');
+console.log('>>> SISTEMA INICIANDO - MODO MMO COMPLETO CON INSTANCIAMIENTO <<<');
 
-// 1. CORS CONFIGURATION
+// 1. CORS TOTAL
 app.use(cors());
+
+// 2. HEALTH CHECK INSTANTÁNEO
+app.get('/', (req, res) => res.status(200).send('HEALTHY'));
 
 const server = http.createServer(app);
 
-// 2. SOCKET.IO CONFIGURATION
+// 3. SOCKET.IO CON TODO EL PODER
 const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"],
-        credentials: true
-    },
+    cors: { origin: "*", methods: ["GET", "POST"] },
     transports: ['websocket', 'polling']
 });
 
-// 3. HEALTH CHECK
-app.get('/', (req, res) => {
-    res.status(200).send('OK');
-});
-
-// --- GLOBAL STATE ---
-const players = {}; 
-const zoneHosts = {}; 
-const activeTrades = {};
-
-function sanitize(text) {
-    if (typeof text !== 'string') return '';
-    return text.replace(/<[^>]*>?/gm, '').trim().substring(0, 255);
-}
+// --- ESTADO GLOBAL ---
+const players = {};
+const friends = {};
+const activeTrades = {}; 
+const rooms = {}; // roomName -> { hostId }
 
 function electNewHost(roomName) {
-    const playersInRoom = Object.values(players).filter(p => p.roomName === roomName);
-    if (playersInRoom.length > 0) {
-        zoneHosts[roomName] = playersInRoom[0].id;
-        io.to(zoneHosts[roomName]).emit('host_assignment', true);
+    const room = io.sockets.adapter.rooms.get(roomName);
+    if (room && room.size > 0) {
+        const firstId = Array.from(room)[0];
+        io.to(firstId).emit('host_assignment', true);
+        if (!rooms[roomName]) rooms[roomName] = {};
+        rooms[roomName].hostId = firstId;
+        console.log(`[Host] Elected ${players[firstId]?.name || firstId} for room ${roomName}`);
     } else {
-        delete zoneHosts[roomName];
+        delete rooms[roomName];
     }
 }
 
 io.on('connection', (socket) => {
-    console.log(`+ Player Connected: ${socket.id}`);
+    console.log(`[Socket] + ${socket.id}`);
 
-    socket.on('join_zone', (data) => {
+    socket.on('join', (data) => {
         if (!data) return;
-        const zoneLevel = data.zoneId || 0;
-        const roomName = data.roomName || `zone_${zoneLevel}`;
-        
-        // Leave previous room
-        if (players[socket.id] && players[socket.id].roomName) {
-            const oldRoom = players[socket.id].roomName;
-            socket.leave(oldRoom);
-            socket.broadcast.to(oldRoom).emit('player_left', socket.id);
-            if (zoneHosts[oldRoom] === socket.id) electNewHost(oldRoom);
-        }
-
-        socket.join(roomName);
         players[socket.id] = {
             id: socket.id,
-            x: data.playerData?.x || 0,
-            y: data.playerData?.y || 0,
+            x: data.x || 0,
+            y: data.y || 0,
             animState: 'idle',
             facingDir: 'down',
-            classId: data.playerData?.classId,
-            name: sanitize(data.playerData?.charName || 'Stranger').substring(0, 20),
-            zoneLevel: zoneLevel,
-            roomName: roomName
+            classId: data.classId,
+            name: data.name || 'Stranger'
         };
+        // Initial join defaults to global lobby or previous room logic
+        // But join_zone will handle the actual instancing
+    });
 
-        if (!zoneHosts[roomName]) electNewHost(roomName);
+    socket.on('join_zone', (data) => {
+        if (!data || !data.roomName) return;
+        
+        const oldRoom = players[socket.id]?.roomName;
+        if (oldRoom) {
+            socket.leave(oldRoom);
+            if (rooms[oldRoom]?.hostId === socket.id) electNewHost(oldRoom);
+        }
 
-        // Sync room players
-        const playersInRoom = Object.fromEntries(Object.entries(players).filter(([_, p]) => p.roomName === roomName));
-        socket.emit('current_players', playersInRoom);
-        socket.broadcast.to(roomName).emit('player_joined', players[socket.id]);
-        console.log(`[MMO] Player ${players[socket.id].name} joined room: ${roomName}`);
+        socket.join(data.roomName);
+        if (!players[socket.id]) {
+            players[socket.id] = { id: socket.id };
+        }
+        players[socket.id].zoneId = data.zoneId;
+        players[socket.id].roomName = data.roomName;
+        players[socket.id].name = data.playerData?.charName || players[socket.id].name || 'Stranger';
+        Object.assign(players[socket.id], data.playerData); // Sync full stats
+
+        console.log(`[Zone] ${players[socket.id].name} joined layer: ${data.roomName}`);
+
+        // Sync with others in the same room
+        const roomPlayers = {};
+        const room = io.sockets.adapter.rooms.get(data.roomName);
+        if (room) {
+            room.forEach(id => {
+                if (id !== socket.id && players[id]) {
+                    roomPlayers[id] = players[id];
+                }
+            });
+        }
+        
+        socket.emit('current_players', roomPlayers);
+        socket.to(data.roomName).emit('player_joined', players[socket.id]);
+
+        // Host Election for this specific room
+        if (!rooms[data.roomName] || !rooms[data.roomName].hostId) {
+            electNewHost(data.roomName);
+        } else {
+            socket.emit('host_assignment', false);
+        }
     });
 
     socket.on('move', (data) => {
         const p = players[socket.id];
         if (data && p) {
-            p.x = data.x; p.y = data.y;
-            p.animState = data.animState; p.facingDir = data.facingDir;
-            if (data.activeAura) p.activeAura = data.activeAura;
-            socket.broadcast.to(p.roomName).emit('player_moved', p);
+            Object.assign(p, data);
+            if (p.roomName) {
+                socket.to(p.roomName).emit('player_moved', p);
+            } else {
+                socket.broadcast.emit('player_moved', p);
+            }
         }
     });
 
-    // Host authority events
+    // --- MMO ENHANCED SYNC: Skills & Minions ---
+    socket.on('skill_use', (data) => {
+        const p = players[socket.id];
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('player_skill', { id: socket.id, ...data });
+        }
+    });
+
+    socket.on('minion_sync', (minions) => {
+        const p = players[socket.id];
+        if (p) {
+            p.minions = minions;
+            if (p.roomName) {
+                socket.to(p.roomName).emit('player_minions_sync', { id: socket.id, minions });
+            }
+        }
+    });
+
+    socket.on('merc_sync', (mercData) => {
+        const p = players[socket.id];
+        if (p) {
+            p.mercenary = mercData;
+            if (p.roomName) {
+                socket.to(p.roomName).emit('player_merc_sync', { id: socket.id, mercenary: mercData });
+            }
+        }
+    });
+
     socket.on('enemy_sync', (data) => {
         const p = players[socket.id];
-        if (p && zoneHosts[p.roomName] === socket.id) socket.broadcast.to(p.roomName).emit('enemy_sync', data);
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('enemy_sync', data);
+        }
     });
 
     socket.on('npc_sync', (data) => {
         const p = players[socket.id];
-        if (p && zoneHosts[p.roomName] === socket.id) socket.broadcast.to(p.roomName).emit('npc_sync', data);
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('npc_sync', data);
+        }
     });
 
-    socket.on('portal_spawn', (data) => {
+    socket.on('object_interact', (data) => {
         const p = players[socket.id];
-        if (p && zoneHosts[p.roomName] === socket.id) socket.broadcast.to(p.roomName).emit('portal_spawn', data);
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('object_update', data);
+        }
     });
 
-    // Chat and Social
+    socket.on('projectile_fire', (data) => {
+        const p = players[socket.id];
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('projectile_spawn', { ownerId: socket.id, ...data });
+        }
+    });
+
+    socket.on('loot_spawn', (data) => {
+        const p = players[socket.id];
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('loot_spawn', data);
+        }
+    });
+
+    socket.on('loot_pickup', (lootId) => {
+        const p = players[socket.id];
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('loot_pickup', lootId);
+        }
+    });
+
+    socket.on('zone_theme_sync', (theme) => {
+        const p = players[socket.id];
+        if (p && p.roomName) {
+            socket.to(p.roomName).emit('zone_theme_sync', theme);
+        }
+    });
+
     socket.on('chat_message', (text) => {
         const p = players[socket.id];
         if (p && text) {
-            const cleanText = sanitize(text).substring(0, 200);
-            if (!cleanText) return;
-            io.to(p.roomName).emit('chat_message', { id: Date.now(), sender: p.name, text: cleanText, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+            io.emit('chat_message', {
+                id: Date.now(),
+                sender: p.name,
+                text: text,
+                time: new Date().toLocaleTimeString()
+            });
         }
     });
 
     socket.on('system_message', (text) => {
-        const cleanText = sanitize(text).substring(0, 500);
-        if (!cleanText) return;
-        io.emit('chat_message', { id: Date.now(), sender: 'System', text: cleanText, isSystem: true, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+        io.emit('chat_message', { sender: 'System', text, isSystem: true });
     });
 
     socket.on('whisper', (data) => {
-        if (!data || !data.targetName || !data.text) return;
+        if (!data) return;
         const sender = players[socket.id];
-        const targetId = Object.keys(players).find(id => players[id].name === data.targetName);
-        if (sender && targetId) {
-            const cleanText = sanitize(data.text).substring(0, 300);
-            if (!cleanText) return;
-            const whisper = { id: Date.now(), sender: sender.name, target: data.targetName, text: cleanText, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+        const targetSocketId = Object.keys(players).find(id => players[id].name === data.targetName);
+        if (sender && targetSocketId) {
+            const whisper = { id: Date.now(), sender: sender.name, target: data.targetName, text: data.text, time: new Date().toLocaleTimeString() };
             socket.emit('whisper', whisper);
-            io.to(targetId).emit('whisper', whisper);
+            io.to(targetSocketId).emit('whisper', whisper);
         }
     });
 
-    socket.on('trade_invite', (name) => {
-        const tid = Object.keys(players).find(id => players[id].name === name);
+    socket.on('trade_invite', (targetName) => {
+        const tid = Object.keys(players).find(id => players[id].name === targetName);
         if (tid && tid !== socket.id) io.to(tid).emit('trade_invite', { from: players[socket.id].name, fromId: socket.id });
     });
 
@@ -156,19 +231,48 @@ io.on('connection', (socket) => {
         io.to(socket.id).emit('trade_start', { tradeId, partner: players[fromId].name });
     });
 
+    socket.on('party_invite', (targetName) => {
+        const targetId = Object.keys(players).find(id => players[id].name === targetName);
+        if (targetId && targetId !== socket.id) {
+            io.to(targetId).emit('party_invite', { 
+                from: players[socket.id].name, 
+                fromId: socket.id 
+            });
+        }
+    });
+
+    socket.on('party_accept', (fromId) => {
+        if (players[fromId] && players[socket.id]) {
+            const partyId = `party_${Date.now()}`;
+            const partyData = {
+                id: partyId,
+                leaderId: fromId,
+                members: [
+                    { id: fromId, name: players[fromId].name },
+                    { id: socket.id, name: players[socket.id].name }
+                ]
+            };
+            io.to(fromId).emit('party_joined', partyData);
+            io.to(socket.id).emit('party_joined', partyData);
+        }
+    });
+
     socket.on('disconnect', () => {
-        console.log(`- Player Disconnected: ${socket.id}`);
+        console.log(`[Socket] - Player disconnected: ${socket.id}`);
         const p = players[socket.id];
         if (p) {
-            socket.broadcast.to(p.roomName).emit('player_left', socket.id);
-            if (zoneHosts[p.roomName] === socket.id) electNewHost(p.roomName);
+            const roomName = p.roomName;
+            io.emit('player_left', socket.id);
             delete players[socket.id];
+            if (roomName && rooms[roomName]?.hostId === socket.id) {
+                electNewHost(roomName);
+            }
         }
     });
 });
 
-process.on('uncaughtException', (err) => console.error('CRITICAL ERROR:', err));
+process.on('uncaughtException', (err) => console.error('CRITICAL:', err));
 
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`>>> DARK REALM MMO SERVER LIVE ON PORT ${PORT} <<<`);
+    console.log(`>>> MMO SERVER LIVE ON PORT ${PORT} <<<`);
 });

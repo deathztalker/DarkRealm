@@ -61,8 +61,7 @@ export const DB = {
         if (!this.isLoggedIn()) return [];
         const { data, error } = await this.client
             .from('saves')
-            .select('*')
-            .eq('user_id', this.session.user.id);
+            .select('*');
         if (error) {
             console.error('Fetch saves error:', error);
             return [];

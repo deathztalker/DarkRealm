@@ -14,9 +14,9 @@ export const WARLOCK_CLASS = {
             nodes: [
                 {
                     id: 'corruption', row: 0, col: 1, type: 'active', icon: '☠️', name: 'Corruption',
-                    desc: 'Active · Curse dealing base + 55% weapon damage per second for 6s.',
-                    tip: 'Max lvl (20): Scaling shadow DoT.',
-                    maxPts: 20, mana: 8, cd: 0, group: 'shadow', dmgBase: 8, dmgPerLvl: 4, wepPct: 55
+                    desc: 'Active · Instantly apply a powerful curse doing 8 + 4 per point shadow damage per second for 6 seconds.',
+                    tip: 'Max lvl (20): 88/s × 6s = 528 DoT.',
+                    maxPts: 20, mana: 8, cd: 0, group: 'shadow', dmgBase: 8, dmgPerLvl: 4
                 },
                 {
                     id: 'shadow_mastery', row: 1, col: 0, type: 'passive', icon: '🟣', name: 'Shadow Mastery',
@@ -26,15 +26,15 @@ export const WARLOCK_CLASS = {
                 },
                 {
                     id: 'siphon_life', row: 1, col: 2, type: 'active', icon: '🩸', name: 'Siphon Life',
-                    desc: 'Active · Drain dealing base + 35% weapon damage per second as healing.',
-                    tip: 'Max lvl (20): Scaling life drain.',
-                    maxPts: 20, mana: 12, cd: 0, group: 'shadow', dmgBase: 4, dmgPerLvl: 2, wepPct: 35, req: 'corruption:1'
+                    desc: 'Active · Deals 4 + 2 per point shadow damage per second for 10 seconds, healing you for 100% of the damage dealt.',
+                    tip: 'Max lvl (20): 44/s DoT and Heal.',
+                    maxPts: 20, mana: 12, cd: 0, group: 'shadow', dmgBase: 4, dmgPerLvl: 2, req: 'corruption:1'
                 },
                 {
                     id: 'haunt', row: 2, col: 1, type: 'active', icon: '👻', name: 'Haunt',
-                    desc: 'Active · Haunt dealing base + 75% weapon damage per second + debuff.',
-                    tip: 'Max lvl (20): High scaling shadow nuke + DoT.',
-                    maxPts: 20, mana: 14, cd: 8, group: 'shadow', dmgBase: 10, dmgPerLvl: 6, wepPct: 75, req: 'corruption:3'
+                    desc: 'Active · Send a haunt that deals 10 + 6 per point shadow damage per second for 8 seconds AND increases all shadow damage taken by 20%.',
+                    tip: 'Max lvl (20): 1,040 DoT + 20% debuff.',
+                    maxPts: 20, mana: 14, cd: 8, group: 'shadow', dmgBase: 10, dmgPerLvl: 6, req: 'corruption:3'
                 },
                 {
                     id: 'soul_siphon', row: 3, col: 0, type: 'passive', icon: '🌀', name: 'Soul Siphon',
@@ -44,28 +44,28 @@ export const WARLOCK_CLASS = {
                 },
                 {
                     id: 'agony', row: 3, col: 2, type: 'active', icon: '😱', name: 'Agony',
-                    desc: 'Active · Ramping DoT starting at base + 20% weapon damage per second.',
-                    tip: 'Max lvl (20): Massive scaling late-tick damage.',
-                    maxPts: 20, mana: 12, cd: 0, group: 'shadow', dmgBase: 2, dmgPerLvl: 1, wepPct: 20, req: 'haunt:3',
+                    desc: 'Active · Apply a ramping DoT starting at 2 + 1 per point shadow damage per second, doubling every 2 seconds up to 6 ticks.',
+                    tip: 'Max lvl (20): Tick 6 = 704/s.',
+                    maxPts: 20, mana: 12, cd: 0, group: 'shadow', dmgBase: 2, dmgPerLvl: 1, req: 'haunt:3',
                     synergies: [{ from: 'shadow_mastery', pctPerPt: 4 }]
                 },
                 {
                     id: 'unstable_affliction', row: 4, col: 1, type: 'active', icon: '☣️', name: 'Unstable Affliction',
-                    desc: 'Active · Shadow nuke dealing base + 110% weapon damage over 5s.',
-                    tip: 'Max lvl (20): Scaling shadow explosion potential.',
-                    maxPts: 20, mana: 16, cd: 0, group: 'shadow', dmgBase: 15, dmgPerLvl: 8, wepPct: 110, req: 'haunt:5'
+                    desc: 'Active · Deals 15 + 8 per point shadow damage over 5 seconds. If the target dies, it explodes dealing the remaining damage as AoE.',
+                    tip: 'Max lvl (20): 175/s DoT.',
+                    maxPts: 20, mana: 16, cd: 0, group: 'shadow', dmgBase: 15, dmgPerLvl: 8, req: 'haunt:5'
                 },
                 {
                     id: 'soul_fire', row: 5, col: 0, type: 'active', icon: '🔥', name: 'Soul Fire',
-                    desc: 'Active · Destructive bolt dealing base + 350% weapon damage.',
-                    tip: 'Max lvl (20): Ultimate scaling warlock nuke.',
-                    maxPts: 20, mana: 25, cd: 0, group: 'shadow', dmgBase: 70, dmgPerLvl: 25, wepPct: 350, req: 'agony:5'
+                    desc: 'Active · Channel 1s to unleash a bolt of shadow fire dealing 70 + 25 per point damage. Instant if target has 3+ DoTs.',
+                    tip: 'Max lvl (20): 570 damage nuke.',
+                    maxPts: 20, mana: 25, cd: 0, group: 'shadow', dmgBase: 70, dmgPerLvl: 25, req: 'agony:5'
                 },
                 {
                     id: 'seed', row: 5, col: 2, type: 'active', icon: '🌑', name: 'Seed of Corruption',
-                    desc: 'Active · Explodes for base + 180% weapon damage as shadow AoE.',
-                    tip: 'Max lvl (20): High scaling area shadow damage.',
-                    maxPts: 20, mana: 20, cd: 3, group: 'shadow', dmgBase: 60, dmgPerLvl: 20, wepPct: 180, req: 'unstable_affliction:3'
+                    desc: 'Active · Plant a ticking bomb. When they take 200 + 50 per point total shadow damage they explode for 60 + 20 per point AoE shadow damage.',
+                    tip: 'Max lvl (20): 460 AoE explosion.',
+                    maxPts: 20, mana: 20, cd: 3, group: 'shadow', dmgBase: 60, dmgPerLvl: 20, req: 'unstable_affliction:3'
                 },
                 {
                     id: 'pandemic', row: 6, col: 1, type: 'active', icon: '🦠', name: 'Pandemic',
@@ -82,9 +82,9 @@ export const WARLOCK_CLASS = {
             nodes: [
                 {
                     id: 'summon_imp', row: 0, col: 1, type: 'active', icon: '😈', name: 'Summon Imp',
-                    desc: 'Active · Summon Imp shooting for base + 60% weapon damage as fire.',
-                    tip: 'Max lvl (20): Scaling demon companion.',
-                    maxPts: 20, mana: 20, cd: 5, dmgBase: 10, dmgPerLvl: 5, wepPct: 60
+                    desc: 'Active · Summon a fire imp companion that shoots fire bolts for 10 + 5 per point fire damage.',
+                    tip: 'Max lvl (20): Imp deals 110 fire per shot.',
+                    maxPts: 20, mana: 20, cd: 5
                 },
                 {
                     id: 'demon_armor', row: 1, col: 0, type: 'passive', icon: '🛡️', name: 'Demon Armor',
@@ -94,9 +94,9 @@ export const WARLOCK_CLASS = {
                 },
                 {
                     id: 'summon_succubus', row: 1, col: 2, type: 'active', icon: '💃', name: 'Summon Succubus',
-                    desc: 'Active · Summon Succubus dealing base + 110% weapon damage in melee.',
-                    tip: 'Max lvl (20): High scaling physical demon.',
-                    maxPts: 20, mana: 30, cd: 5, dmgBase: 25, dmgPerLvl: 10, wepPct: 110, req: 'summon_imp:3'
+                    desc: 'Active · Replace your demon with a Succubus dealing 25 + 10 physical damage that periodically charms enemies.',
+                    tip: 'Max lvl (20): High melee DPS and CC.',
+                    maxPts: 20, mana: 30, cd: 5, req: 'summon_imp:3'
                 },
                 {
                     id: 'soul_link', row: 2, col: 0, type: 'passive', icon: '🔗', name: 'Soul Link',
@@ -106,9 +106,9 @@ export const WARLOCK_CLASS = {
                 },
                 {
                     id: 'summon_voidwalker', row: 2, col: 2, type: 'active', icon: '🌑', name: 'Summon Voidwalker',
-                    desc: 'Active · Summon Voidwalker tank with base + 100% weapon damage as aggro.',
-                    tip: 'Max lvl (20): Scaling demon tank.',
-                    maxPts: 20, mana: 35, cd: 5, dmgBase: 30, dmgPerLvl: 12, wepPct: 100, req: 'summon_succubus:3'
+                    desc: 'Active · Replace your demon with a Voidwalker, a tank with 300 + 80 per point HP that taunts enemies.',
+                    tip: 'Max lvl (20): Voidwalker has 1,900 HP.',
+                    maxPts: 20, mana: 35, cd: 5, req: 'summon_succubus:3'
                 },
                 {
                     id: 'demonic_sacrifice', row: 3, col: 1, type: 'active', icon: '💀', name: 'Demonic Sacrifice',
@@ -143,9 +143,9 @@ export const WARLOCK_CLASS = {
             nodes: [
                 {
                     id: 'shadow_bolt', row: 0, col: 1, type: 'active', icon: '🌑', name: 'Shadow Bolt',
-                    desc: 'Active · Shadow bolt dealing base + 130% weapon damage.',
-                    tip: 'Max lvl (20): Primary scaling shadow spam.',
-                    maxPts: 20, mana: 10, cd: 0.5, group: 'shadow', dmgBase: 18, dmgPerLvl: 10, wepPct: 130
+                    desc: 'Active · Fire a bolt of shadow energy dealing 18 + 10 per point shadow damage.',
+                    tip: 'Max lvl (20): 218 shadow damage per cast.',
+                    maxPts: 20, mana: 10, cd: 0.5, group: 'shadow', dmgBase: 18, dmgPerLvl: 10
                 },
                 {
                     id: 'aff_mastery', row: 1, col: 0, type: 'passive', icon: '🔴', name: 'Chaos Mastery',
@@ -155,21 +155,21 @@ export const WARLOCK_CLASS = {
                 },
                 {
                     id: 'immolate_warlock', row: 1, col: 2, type: 'active', icon: '🔥', name: 'Immolate',
-                    desc: 'Active · Burn dealing base + 100% weapon damage + DoT.',
-                    tip: 'Max lvl (20): Scaling fire impact + DoT.',
-                    maxPts: 20, mana: 14, cd: 0, group: 'fire', dmgBase: 20, dmgPerLvl: 5, wepPct: 100, req: 'shadow_bolt:1'
+                    desc: 'Active · Burns the enemy for 20 + 5 per point fire damage, then 10 + 4 per point per sec for 15s.',
+                    tip: 'Max lvl (20): 120 impact + 90/s.',
+                    maxPts: 20, mana: 14, cd: 0, group: 'fire', dmgBase: 20, dmgPerLvl: 5, req: 'shadow_bolt:1'
                 },
                 {
                     id: 'conflagrate', row: 2, col: 1, type: 'active', icon: '💥', name: 'Conflagrate',
-                    desc: 'Active · Explode for base + 210% weapon damage as chaos fire.',
-                    tip: 'Max lvl (20): High scaling destruction nuke.',
-                    maxPts: 20, mana: 16, cd: 6, group: 'fire', dmgBase: 50, dmgPerLvl: 20, wepPct: 210, req: 'immolate_warlock:3'
+                    desc: 'Active · Cause a burning target to explode for 50 + 20 per point fire/shadow damage.',
+                    tip: 'Max lvl (20): 450 chaos damage.',
+                    maxPts: 20, mana: 16, cd: 6, group: 'fire', dmgBase: 50, dmgPerLvl: 20, req: 'immolate_warlock:3'
                 },
                 {
                     id: 'incinerate', row: 3, col: 0, type: 'active', icon: '🐍', name: 'Incinerate',
-                    desc: 'Active · Wave of fire dealing base + 150% weapon damage.',
-                    tip: 'Max lvl (20): Scaling fire destruction.',
-                    maxPts: 20, mana: 12, cd: 0, group: 'fire', dmgBase: 30, dmgPerLvl: 12, wepPct: 150, req: 'conflagrate:3'
+                    desc: 'Active · Sends a wave of fire dealing 30 + 12 per point. Deals +50% damage if target is Immolated.',
+                    tip: 'Max lvl (20): 270 base fire damage.',
+                    maxPts: 20, mana: 12, cd: 0, group: 'fire', dmgBase: 30, dmgPerLvl: 12, req: 'conflagrate:3'
                 },
                 {
                     id: 'backdraft', row: 3, col: 2, type: 'passive', icon: '💨', name: 'Backdraft',
@@ -179,23 +179,23 @@ export const WARLOCK_CLASS = {
                 },
                 {
                     id: 'chaos_bolt', row: 4, col: 1, type: 'active', icon: '💥', name: 'Chaos Bolt',
-                    desc: 'Active · Unstoppable bolt dealing base + 320% weapon damage.',
-                    tip: 'Max lvl (20): Massive scaling chaos impact.',
-                    maxPts: 20, mana: 22, cd: 8, group: 'shadow', dmgBase: 60, dmgPerLvl: 25, wepPct: 320, req: 'conflagrate:5',
+                    desc: 'Active · Hurl a bolt of chaos energy that CANNOT be resisted or blocked, dealing 60 + 25 per point damage.',
+                    tip: 'Max lvl (20): 560 damage.',
+                    maxPts: 20, mana: 22, cd: 8, group: 'shadow', dmgBase: 60, dmgPerLvl: 25, req: 'conflagrate:5',
                     synergies: [{ from: 'aff_mastery', pctPerPt: 4 }]
                 },
                 {
                     id: 'rain_of_fire', row: 5, col: 0, type: 'active', icon: '🌋', name: 'Rain of Fire',
-                    desc: 'Active · Column of fire dealing base + 90% weapon damage per second.',
-                    tip: 'Max lvl (20): High scaling area destruction.',
-                    maxPts: 20, mana: 30, cd: 12, group: 'fire', dmgBase: 25, dmgPerLvl: 10, wepPct: 90, req: 'chaos_bolt:5',
+                    desc: 'Active · Call a column of fire that scorches the earth dealing 25 + 10 per point fire damage per second.',
+                    tip: 'Max lvl (20): 225/s × 5s = 1,125 total.',
+                    maxPts: 20, mana: 30, cd: 12, group: 'fire', dmgBase: 25, dmgPerLvl: 10, req: 'chaos_bolt:5',
                     synergies: [{ from: 'aff_mastery', pctPerPt: 3 }]
                 },
                 {
                     id: 'hellfire', row: 5, col: 2, type: 'active', icon: '🔥', name: 'Hellfire',
-                    desc: 'Active · Pulse fire for base + 110% weapon damage around you.',
-                    tip: 'Max lvl (20): Scaling point-blank AoE.',
-                    maxPts: 20, mana: 25, cd: 0, group: 'fire', dmgBase: 40, dmgPerLvl: 15, wepPct: 110, req: 'chaos_bolt:5'
+                    desc: 'Active · Ignites the area around you, dealing 40 + 15 per point fire damage to enemies and 10% of that to yourself per second.',
+                    tip: 'Max lvl (20): 340/s point-blank AoE.',
+                    maxPts: 20, mana: 25, cd: 0, group: 'fire', dmgBase: 40, dmgPerLvl: 15, req: 'chaos_bolt:5'
                 },
             ]
         },

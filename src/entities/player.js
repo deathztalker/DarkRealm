@@ -33,7 +33,7 @@ export class Player {
         // Base stats
         this.level = 1;
         this.xp = 0;
-
+        
         // Paragon System
         this.paragonLevel = 0;
         this.paragonXp = 0;
@@ -63,7 +63,7 @@ export class Player {
         this._statsDirty = true;
         this.talents = new TalentTree(classId);
 
-        this.equipment = {};
+        this.equipment = {}; 
         this.secondaryEquipment = { mainhand: null, offhand: null };
         this.activeWeaponSet = 1;
         this.inventory = Array(40).fill(null);
@@ -89,15 +89,6 @@ export class Player {
         this.mpBuffer = 0;
 
         this.activeAuras = new Map();
-
-        // Combat Luxury: Dash & Parry System
-        this.isDashing = false;
-        this.dashTimer = 0;
-        this.dashCooldown = 0;
-        this.dashDirection = { x: 0, y: 0 };
-        this.isInvulnerable = false;
-        this.perfectBlockTimer = 0; // Window for parry
-        this.isBlocking = false;
 
         this.permanentResists = 0;
         this.hasLarzukReward = false;
@@ -145,12 +136,12 @@ export class Player {
         this.fireDmgOnHit = 0;
 
         for (const b of this._buffs) {
-            if (b.id === 'battle_orders') { s.flatHP = (s.flatHP || 0) + b.base * 5; s.flatMP = (s.flatMP || 0) + b.base * 2; }
-            if (b.id === 'shout') s.pctArmor = (s.pctArmor || 0) + b.base;
-            if (b.id === 'fortify') s.flatArmor = (s.flatArmor || 0) + b.base * 15;
-            if (b.id === 'burst_of_speed') { s.pctMoveSpeed = (s.pctMoveSpeed || 0) + b.base; s.pctIAS = (s.pctIAS || 0) + b.base * 2; }
-            if (b.id === 'holy_shield' || b.id === 'divine_shield') { s.blockChance = (s.blockChance || 0) + b.base / 2; s.pctArmor = (s.pctArmor || 0) + b.base; }
-
+            if (b.id === 'battle_orders') { s.flatHP = (s.flatHP||0) + b.base*5; s.flatMP = (s.flatMP||0) + b.base*2; }
+            if (b.id === 'shout') s.pctArmor = (s.pctArmor||0) + b.base;
+            if (b.id === 'fortify') s.flatArmor = (s.flatArmor||0) + b.base * 15;
+            if (b.id === 'burst_of_speed') { s.pctMoveSpeed = (s.pctMoveSpeed||0) + b.base; s.pctIAS = (s.pctIAS||0) + b.base*2; }
+            if (b.id === 'holy_shield' || b.id === 'divine_shield') { s.blockChance = (s.blockChance||0) + b.base/2; s.pctArmor = (s.pctArmor||0) + b.base; }
+            
             if (b.id === 'avenging_wrath' || b.id === 'king_of_the_jungle' || b.id === 'death_commander') {
                 s.pctDmg = (s.pctDmg || 0) + 50;
                 s.pctIAS = (s.pctIAS || 0) + 30;
@@ -173,7 +164,7 @@ export class Player {
                 s.pctDmg = (s.pctDmg || 0) + 80;
                 s.pctArmor = (s.pctArmor || 0) - 25;
             }
-
+            
             // Imbuement checks
             if (b.id === 'seal_of_command' || b.id === 'seal_of_righteousness') {
                 s.pctHolyDmg = (s.pctHolyDmg || 0) + 20;
@@ -187,16 +178,16 @@ export class Player {
                 s.pctFireDmg = (s.pctFireDmg || 0) + 20;
                 this.fireDmgOnHit = (this.fireDmgOnHit || 0) + b.base;
             }
-
-            if (b.id === 'shrine_armor') s.pctArmor = (s.pctArmor || 0) + b.value;
-            if (b.id === 'shrine_damage') s.pctDmg = (s.pctDmg || 0) + b.value;
-            if (b.id === 'shrine_mana') s.manaRegenPerSec = (s.manaRegenPerSec || 0) + (this.maxMp * (b.value / 100));
-            if (b.id === 'shrine_resist') s.allRes = (s.allRes || 0) + b.value;
-            if (b.id === 'shrine_speed') s.pctMoveSpeed = (s.pctMoveSpeed || 0) + b.value;
+            
+            if (b.id === 'shrine_armor') s.pctArmor = (s.pctArmor||0) + b.value;
+            if (b.id === 'shrine_damage') s.pctDmg = (s.pctDmg||0) + b.value;
+            if (b.id === 'shrine_mana') s.manaRegenPerSec = (s.manaRegenPerSec||0) + (this.maxMp * (b.value / 100));
+            if (b.id === 'shrine_resist') s.allRes = (s.allRes||0) + b.value;
+            if (b.id === 'shrine_speed') s.pctMoveSpeed = (s.pctMoveSpeed||0) + b.value;
         }
 
         const ps = this._paragonStats();
-
+        
         this.str = Math.round((this.baseStr + (s.str || 0) + (s.flatSTR || 0) + (ps.flatSTR || 0)) * (1 + (s.pctStr || 0) / 100));
         this.dex = Math.round((this.baseDex + (s.dex || 0) + (s.flatDEX || 0) + (ps.flatDEX || 0)) * (1 + (s.pctDex || 0) / 100));
         this.vit = Math.round((this.baseVit + (s.vit || 0) + (s.flatVIT || 0) + (ps.flatVIT || 0)) * (1 + (s.pctVit || 0) / 100));
@@ -231,7 +222,7 @@ export class Player {
         this.itemAuras = new Map();
         for (const item of Object.values(this.equipment)) {
             if (!item) continue;
-
+            
             const lowName = (item.name || "").toLowerCase();
             if (item.id === 'ashbringer' || lowName.includes('ashbringer')) this.itemAuras.set('ashbringer', 10);
             if (item.id === 'frostmourne' || lowName.includes('frostmourne')) this.itemAuras.set('frostmourne', 10);
@@ -265,8 +256,8 @@ export class Player {
 
             for (const [auraId, level] of allAuras) {
                 const scaledLvl = level * auraScale;
-                switch (auraId) {
-                    case 'might': case 'might_aura':
+                switch(auraId) {
+                    case 'might': case 'might_aura': 
                         s.pctDmg = (s.pctDmg || 0) + (20 + scaledLvl * 2.5);
                         s.crushingBlow = (s.crushingBlow || 0) + (Math.floor(scaledLvl / 3));
                         break;
@@ -340,7 +331,7 @@ export class Player {
         this.goldFind = (s.goldFind || 0) + diffMF;
 
         const wep = (this.equipment && this.equipment.mainhand);
-
+        
         // 1. Calculate Base Weapon Damage (Local ED applied here)
         let weaponMin = wep ? (wep.minDmg || 1) : 1;
         let weaponMax = wep ? (wep.maxDmg || 3) : 3;
@@ -357,16 +348,16 @@ export class Player {
         // 2. Base Damage = Modified Weapon Damage + Flat Damage from gear/charms
         const baseMin = weaponMin + (s.flatMinDmg || 0);
         const baseMax = weaponMax + (s.flatMaxDmg || 0);
-
+        
         // 3. Stat Bonus (1% per point): Str for most, Dex for Bows/Javelins
         const statBonusPct = (wep?.type === 'bow' || wep?.type === 'javelin') ? this.dex : this.str;
-
+        
         // 4. Global ED (Skills, Auras, Off-weapon gear like Fortitude/Jewels in armor)
         // Note: s.pctDmg now contains ONLY non-weapon ED because we'll handle weapon ED locally
         const globalED = (s.pctDmg || 0);
-
+        
         const totalMultiplier = 1 + (statBonusPct + globalED) / 100;
-
+        
         let finalMin = Math.round(baseMin * totalMultiplier);
         let finalMax = Math.round(baseMax * totalMultiplier);
 
@@ -387,7 +378,7 @@ export class Player {
 
         this.wepMin = finalMin;
         this.wepMax = finalMax;
-
+        
         let baseAtkSpd = (wep?.atkSpd || 1.0) * (1 + (this.pctIAS || 0) / 100);
         this.atkSpd = baseAtkSpd * (this._auraSlowFactor < 1 ? (1 - (1 - this._auraSlowFactor) * 0.5) : 1);
         this.attackRange = wep && wep.range ? Math.max(30, wep.range) : 30;
@@ -475,18 +466,18 @@ export class Player {
 
             // WARRIOR
             if (skillId === 'combat_mastery') {
-                ts.pctDmg = (ts.pctDmg || 0) + 5 * slvl;
-                ts.critChance = (ts.critChance || 0) + 2 * slvl;
-                if (slvl >= 10) ts.critMulti = (ts.critMulti || 0) + 15;
+                ts.pctDmg = (ts.pctDmg||0) + 5*slvl;
+                ts.critChance = (ts.critChance||0) + 2*slvl;
+                if (slvl >= 10) ts.critMulti = (ts.critMulti||0) + 15;
             }
             if (skillId === 'iron_skin') {
-                ts.pctArmor = (ts.pctArmor || 0) + 8 * slvl;
-                if (slvl >= 10) ts.pctDmgReduce = (ts.pctDmgReduce || 0) + 5;
+                ts.pctArmor = (ts.pctArmor||0) + 8*slvl;
+                if (slvl >= 10) ts.pctDmgReduce = (ts.pctDmgReduce||0) + 5;
             }
-            if (skillId === 'block_mastery') ts.blockChance = (ts.blockChance || 0) + 3 * slvl;
+            if (skillId === 'block_mastery') ts.blockChance = (ts.blockChance||0) + 3*slvl;
             if (skillId === 'life_tap') {
-                ts.lifeStealPct = (ts.lifeStealPct || 0) + 0.5 * slvl;
-                if (slvl >= 15) ts.lifeRegenPerSec = (ts.lifeRegenPerSec || 0) + 5;
+                ts.lifeStealPct = (ts.lifeStealPct||0) + 0.5*slvl;
+                if (slvl >= 15) ts.lifeRegenPerSec = (ts.lifeRegenPerSec||0) + 5;
             }
             if (skillId === 'vanguard') {
                 ts.pctDmgReduce = (ts.pctDmgReduce || 0) + 2 * slvl;
@@ -506,19 +497,19 @@ export class Player {
                 ts.manaRegenPerSec = (ts.manaRegenPerSec || 0) + (this.maxMp * 0.10 * slvl);
             }
             if (skillId === 'fire_mastery') {
-                ts.pctFireDmg = (ts.pctFireDmg || 0) + 5 * slvl;
-                if (slvl >= 10) ts.firePiercing = (ts.firePiercing || 0) + 10;
+                ts.pctFireDmg = (ts.pctFireDmg||0) + 5*slvl;
+                if (slvl >= 10) ts.firePiercing = (ts.firePiercing||0) + 10;
             }
             if (skillId === 'cold_mastery') {
-                ts.pctColdDmg = (ts.pctColdDmg || 0) + 5 * slvl;
-                if (slvl >= 10) ts.freezeDurationBonus = (ts.freezeDurationBonus || 0) + 0.25;
+                ts.pctColdDmg = (ts.pctColdDmg||0) + 5*slvl;
+                if (slvl >= 10) ts.freezeDurationBonus = (ts.freezeDurationBonus||0) + 0.25;
             }
             if (skillId === 'shatter') {
                 ts.pctDmgVsFrozen = (ts.pctDmgVsFrozen || 0) + 3 * slvl;
             }
             if (skillId === 'light_mastery' || skillId === 'lightning_mastery') {
-                ts.pctLightDmg = (ts.pctLightDmg || 0) + 5 * slvl;
-                if (slvl >= 10) ts.chainBounses = (ts.chainBounses || 0) + 1;
+                ts.pctLightDmg = (ts.pctLightDmg||0) + 5*slvl;
+                if (slvl >= 10) ts.chainBounses = (ts.chainBounses||0) + 1;
             }
             if (skillId === 'arcane_shield') {
                 ts.arcaneShieldAbsorb = (ts.arcaneShieldAbsorb || 0) + 5 + (3 * slvl);
@@ -588,13 +579,13 @@ export class Player {
 
             // NECROMANCER
             if (skillId === 'skeleton_mastery') {
-                ts.minionDmgPct = (ts.minionDmgPct || 0) + 15 * slvl;
-                ts.minionHpPct = (ts.minionHpPct || 0) + 10 * slvl;
+                ts.minionDmgPct = (ts.minionDmgPct||0) + 15*slvl;
+                ts.minionHpPct  = (ts.minionHpPct||0)  + 10*slvl;
             }
             if (skillId === 'golem_mastery') {
-                ts.minionDmgPct = (ts.minionDmgPct || 0) + 5 * slvl;
-                ts.minionHpPct = (ts.minionHpPct || 0) + 20 * slvl;
-                if (slvl >= 10) ts.minionRegenPct = (ts.minionRegenPct || 0) + 10;
+                ts.minionDmgPct = (ts.minionDmgPct||0) + 5*slvl;
+                ts.minionHpPct  = (ts.minionHpPct||0)  + 20*slvl;
+                if (slvl >= 10) ts.minionRegenPct = (ts.minionRegenPct||0) + 10;
             }
             if (skillId === 'minion_instability') ts.minionExplodeDmg = (ts.minionExplodeDmg || 0) + 10 * slvl;
             if (skillId === 'toxic_spores') ts.healReductionPct = (ts.healReductionPct || 0) + 5 * slvl;
@@ -603,12 +594,12 @@ export class Player {
                 ts.lifeStealPct = (ts.lifeStealPct || 0) + 0.5 * slvl;
             }
             if (skillId === 'summon_resist') {
-                ts.allRes = (ts.allRes || 0) + 2 * slvl;
-                ts.minionResistPct = (ts.minionResistPct || 0) + 5 * slvl;
+                ts.allRes = (ts.allRes||0) + 2*slvl;
+                ts.minionResistPct = (ts.minionResistPct||0) + 5*slvl;
             }
             if (skillId === 'bone_mastery') {
-                ts.pctShadowDmg = (ts.pctShadowDmg || 0) + 5 * slvl;
-                ts.boneCdReduce = (ts.boneCdReduce || 0) + 0.3 * slvl;
+                ts.pctShadowDmg = (ts.pctShadowDmg||0) + 5*slvl;
+                ts.boneCdReduce = (ts.boneCdReduce||0) + 0.3*slvl;
             }
             if (skillId === 'curse_mastery') {
                 ts.maxCurses = 2;
@@ -621,7 +612,7 @@ export class Player {
                 ts.critMulti = (ts.critMulti || 0) + 10 * slvl;
             }
             if (skillId === 'assassinate') {
-                ts.executeThreshold = (ts.executeThreshold || 0) + 20;
+                ts.executeThreshold = (ts.executeThreshold || 0) + 20; 
                 ts.bossExecuteDmg = 5.0;
             }
             if (skillId === 'master_poisoner') {
@@ -632,76 +623,76 @@ export class Player {
             if (skillId === 'unfair_advantage') ts.pctDmgVsCC = (ts.pctDmgVsCC || 0) + 2 * slvl;
             if (skillId === 'evasion') ts.dodgeChance = (ts.dodgeChance || 0) + 1 + (0.5 * slvl);
             if (skillId === 'venom') {
-                ts.pctPoisonDmg = (ts.pctPoisonDmg || 0) + 5 * slvl;
-                ts.poisonDurationBonus = (ts.poisonDurationBonus || 0) + 0.2 * slvl;
+                ts.pctPoisonDmg = (ts.pctPoisonDmg||0) + 5*slvl;
+                ts.poisonDurationBonus = (ts.poisonDurationBonus||0) + 0.2*slvl;
             }
             if (skillId === 'lethality') {
-                ts.critMulti = (ts.critMulti || 0) + 10 * slvl;
+                ts.critMulti = (ts.critMulti||0) + 10*slvl;
                 if (slvl >= 10) ts.critBleed = true;
             }
             if (skillId === 'chain_reaction') {
-                ts.critChance = (ts.critChance || 0) + 1 * slvl;
-                ts.trapRadiusBonus = (ts.trapRadiusBonus || 0) + 5 * slvl;
+                ts.critChance = (ts.critChance||0) + 1*slvl;
+                ts.trapRadiusBonus = (ts.trapRadiusBonus||0) + 5*slvl;
             }
             if (skillId === 'virulence') {
-                ts.pctPoisonDmg = (ts.pctPoisonDmg || 0) + 4 * slvl;
-                ts.pctIAS = (ts.pctIAS || 0) + 2 * slvl;
+                ts.pctPoisonDmg = (ts.pctPoisonDmg||0) + 4*slvl;
+                ts.pctIAS = (ts.pctIAS||0) + 2*slvl;
             }
 
             // PALADIN
             if (skillId === 'aura_mastery') {
-                ts.pctHolyDmg = (ts.pctHolyDmg || 0) + 5 * slvl;
-                ts.auraRadiusBonus = (ts.auraRadiusBonus || 0) + 4 * slvl;
+                ts.pctHolyDmg      = (ts.pctHolyDmg||0)      + 5*slvl;
+                ts.auraRadiusBonus = (ts.auraRadiusBonus||0)  + 4*slvl;
             }
             if (skillId === 'crusader_mastery') {
                 ts.pctHolyDmg = (ts.pctHolyDmg || 0) + 5 * slvl;
                 ts.pctStr = (ts.pctStr || 0) + 2 * slvl;
             }
             if (skillId === 'ret_mastery') {
-                ts.pctHolyDmg = (ts.pctHolyDmg || 0) + 2 * slvl;
-                ts.retDoTDmgPerPt = (ts.retDoTDmgPerPt || 0) + 2 * slvl;
+                ts.pctHolyDmg     = (ts.pctHolyDmg||0)     + 2*slvl;
+                ts.retDoTDmgPerPt = (ts.retDoTDmgPerPt||0) + 2*slvl;
             }
-            if (skillId === 'art_of_war') ts.artOfWarCdReduce = (ts.artOfWarCdReduce || 0) + 0.5 * slvl;
+            if (skillId === 'art_of_war') ts.artOfWarCdReduce = (ts.artOfWarCdReduce||0) + 0.5*slvl;
             if (skillId === 'sacred_duty') {
-                ts.divineCdReduce = (ts.divineCdReduce || 0) + 1.5 * slvl;
-                ts.critChance = (ts.critChance || 0) + 1 * slvl;
+                ts.divineCdReduce = (ts.divineCdReduce||0) + 1.5*slvl;
+                ts.critChance     = (ts.critChance||0)     + 1*slvl;
             }
             if (skillId === 'prot_mastery' || skillId === 'protection_mastery') {
-                ts.pctVit = (ts.pctVit || 0) + 3 * slvl;
+                ts.pctVit    = (ts.pctVit||0)    + 3*slvl;
                 ts.pctArmor = (ts.pctArmor || 0) + 5 * slvl;
             }
             if (skillId === 'ardent_defender') {
-                ts.ardentDrPct = (ts.ardentDrPct || 0) + 1 * slvl;
+                ts.ardentDrPct = (ts.ardentDrPct||0) + 1*slvl;
                 if (slvl >= 10) ts.cheatDeath = true;
             }
 
             // DRUID
             if (skillId === 'nature_mastery') {
-                ts.pctFireDmg = (ts.pctFireDmg || 0) + 3 * slvl;
-                ts.pctColdDmg = (ts.pctColdDmg || 0) + 3 * slvl;
-                ts.pctLightDmg = (ts.pctLightDmg || 0) + 3 * slvl;
-                if (slvl >= 10) ts.natureRootChance = (ts.natureRootChance || 0) + 0.10;
+                ts.pctFireDmg  = (ts.pctFireDmg||0)  + 3*slvl;
+                ts.pctColdDmg  = (ts.pctColdDmg||0)  + 3*slvl;
+                ts.pctLightDmg = (ts.pctLightDmg||0) + 3*slvl;
+                if (slvl >= 10) ts.natureRootChance = (ts.natureRootChance||0) + 0.10;
             }
             if (skillId === 'feral_mastery') {
-                ts.pctDmg = (ts.pctDmg || 0) + 5 * slvl;
-                ts.critChance = (ts.critChance || 0) + 2 * slvl;
-                if (slvl >= 10) ts.pctHP = (ts.pctHP || 0) + 15;
+                ts.pctDmg = (ts.pctDmg||0) + 5*slvl;
+                ts.critChance = (ts.critChance||0) + 2*slvl;
+                if (slvl >= 10) ts.pctHP = (ts.pctHP||0) + 15;
             }
             if (skillId === 'natural_armor') {
-                ts.pctArmor = (ts.pctArmor || 0) + 6 * slvl;
-                ts.lifeRegenPerSec = (ts.lifeRegenPerSec || 0) + 1 * slvl;
+                ts.pctArmor = (ts.pctArmor||0) + 6*slvl;
+                ts.lifeRegenPerSec = (ts.lifeRegenPerSec||0) + 1*slvl;
             }
 
             // UNIVERSAL
-            if (skillId === 'radiance') ts.allRes = (ts.allRes || 0) + 2 * slvl;
-            if (skillId === 'blade_efficiency' || skillId === 'swift_assault') ts.pctIAS = (ts.pctIAS || 0) + 3 * slvl;
+            if (skillId === 'radiance') ts.allRes = (ts.allRes||0) + 2*slvl;
+            if (skillId === 'blade_efficiency' || skillId === 'swift_assault') ts.pctIAS = (ts.pctIAS||0) + 3*slvl;
             if (skillId === 'arcane_reservoir' || skillId === 'mana_tap') {
-                ts.flatMP = (ts.flatMP || 0) + 20 * slvl;
-                ts.manaRegenPerSec = (ts.manaRegenPerSec || 0) + slvl;
+                ts.flatMP = (ts.flatMP||0) + 20*slvl;
+                ts.manaRegenPerSec = (ts.manaRegenPerSec||0) + slvl;
             }
             if (skillId === 'vitality_mastery' || skillId === 'endurance') {
-                ts.flatHP = (ts.flatHP || 0) + 15 * slvl;
-                ts.lifeRegenPerSec = (ts.lifeRegenPerSec || 0) + slvl * 0.5;
+                ts.flatHP = (ts.flatHP||0) + 15*slvl;
+                ts.lifeRegenPerSec = (ts.lifeRegenPerSec||0) + slvl * 0.5;
             }
         }
         return ts;
@@ -727,9 +718,9 @@ export class Player {
             }
         }
         if (item.socketed) {
-            const itemClass = (item.type === 'shield' || item.type === 'source') ? 'shield'
-                : (item.type === 'helm' || item.type === 'armor' || item.type === 'gloves' || item.type === 'boots' || item.type === 'belt') ? 'armor'
-                    : 'weapon';
+            const itemClass = (item.type === 'shield' || item.type === 'source') ? 'shield' 
+                : (item.type === 'helm' || item.type === 'armor' || item.type === 'gloves' || item.type === 'boots' || item.type === 'belt') ? 'armor' 
+                : 'weapon';
             for (const gem of item.socketed) {
                 if (gem && gem.socketEffect && gem.socketEffect[itemClass]) {
                     const eff = gem.socketEffect[itemClass];
@@ -830,49 +821,8 @@ export class Player {
         this._enemies = enemies;
     }
 
-    dash() {
-        if (this.dashCooldown > 0 || this.hp <= 0) return;
-
-        this.isDashing = true;
-        this.dashTimer = 0.3; // Duration of dash
-        this.dashCooldown = 1.0; // Cooldown between dashes
-        this.isInvulnerable = true;
-
-        // Dash in facing direction or move direction
-        const angleMap = { 'up': { x: 0, y: -1 }, 'down': { x: 0, y: 1 }, 'left': { x: -1, y: 0 }, 'right': { x: 1, y: 0 } };
-        const dir = angleMap[this.facingDir] || { x: 0, y: 1 };
-        this.dashDirection = { ...dir };
-
-        if (fx) fx.emitBurst(this.x, this.y, '#ffffff', 15, 2);
-        bus.emit('combat:log', { text: "DASH!", cls: 'log-info' });
-    }
-
     update(dt, input, enemies, dungeon, addAoE) {
         if (this.hp <= 0) return;
-
-        // --- Combat Luxury: Dash & Parry Timers ---
-        if (this.dashCooldown > 0) this.dashCooldown -= dt;
-        if (this.perfectBlockTimer > 0) this.perfectBlockTimer -= dt;
-
-        if (this.isDashing) {
-            this.dashTimer -= dt;
-            const dashSpeed = 400;
-            const dx = this.dashDirection.x * dashSpeed * dt;
-            const dy = this.dashDirection.y * dashSpeed * dt;
-
-            if (dungeon && dungeon.isWalkable(this.x + dx, this.y + dy)) {
-                this.x += dx;
-                this.y += dy;
-            }
-
-            if (this.dashTimer <= 0) {
-                this.isDashing = false;
-                this.isInvulnerable = false;
-            }
-            // After-image effect
-            if (fx && Math.random() < 0.3) fx.emitShadow(this.x, this.y);
-        }
-
         if (Math.abs(this.pushX) > 0.5 || Math.abs(this.pushY) > 0.5) {
             const nextX = this.x + this.pushX * dt;
             const nextY = this.y + this.pushY * dt;
@@ -915,8 +865,8 @@ export class Player {
                 if (this.activeAura === 'holy_fire_aura') {
                     if (enemies) enemies.forEach(e => {
                         if (e.hp <= 0) return;
-                        if ((e.x - this.x) ** 2 + (e.y - this.y) ** 2 < 150 * 150) {
-                            applyDamage(this, e, { dealt: 3 + slvl * 2, isCrit: false, type: 'fire' }, 'holy_fire_aura');
+                        if ((e.x - this.x)**2 + (e.y - this.y)**2 < 150*150) {
+                            applyDamage(this, e, { dealt: 3 + slvl*2, isCrit: false, type: 'fire' }, 'holy_fire_aura');
                             if (fx) fx.emitBurst(e.x, e.y, '#ff4000', 5);
                         }
                     });
@@ -924,8 +874,8 @@ export class Player {
                 if (this.activeAura === 'conviction') {
                     if (enemies) enemies.forEach(e => {
                         if (e.hp <= 0) { e.armorDebuff = 0; e.resDebuff = 0; return; }
-                        if ((e.x - this.x) ** 2 + (e.y - this.y) ** 2 < 180 * 180) {
-                            e.armorDebuff = 30 + slvl * 2; e.resDebuff = 30 + slvl * 2;
+                        if ((e.x - this.x)**2 + (e.y - this.y)**2 < 180*180) {
+                            e.armorDebuff = 30 + slvl*2; e.resDebuff = 30 + slvl*2;
                             if (Math.random() < 0.3) fx.emitBurst(e.x, e.y, '#a040ff', 3);
                         } else { e.armorDebuff = 0; e.resDebuff = 0; }
                     });
@@ -961,10 +911,10 @@ export class Player {
             const walls = (window.aoeZones || []).filter(z => z.active && z.isWall);
             const isBlockedByWall = (tx, ty) => walls.some(w => Math.hypot(tx - w.x, ty - w.y) < w.radius);
             const canMove = (tx, ty) => dungeon.isWalkable(tx - PLAYER_RADIUS, ty - PLAYER_RADIUS)
-                && dungeon.isWalkable(tx + PLAYER_RADIUS, ty - PLAYER_RADIUS)
-                && dungeon.isWalkable(tx - PLAYER_RADIUS, ty + PLAYER_RADIUS)
-                && dungeon.isWalkable(tx + PLAYER_RADIUS, ty + PLAYER_RADIUS)
-                && !isBlockedByWall(tx, ty);
+                    && dungeon.isWalkable(tx + PLAYER_RADIUS, ty - PLAYER_RADIUS)
+                    && dungeon.isWalkable(tx - PLAYER_RADIUS, ty + PLAYER_RADIUS)
+                    && dungeon.isWalkable(tx + PLAYER_RADIUS, ty + PLAYER_RADIUS)
+                    && !isBlockedByWall(tx, ty);
             const nx = this.x + dx, ny = this.y + dy;
             if (canMove(nx, ny)) {
                 this.x = nx; this.y = ny;
@@ -982,7 +932,7 @@ export class Player {
             if (input.isDown('KeyA') || input.isDown('ArrowLeft')) kx -= 1;
             if (input.isDown('KeyD') || input.isDown('ArrowRight')) kx += 1;
             if (kx !== 0 || ky !== 0) {
-                const len = Math.sqrt(kx * kx + ky * ky);
+                const len = Math.sqrt(kx*kx + ky*ky);
                 const spd = finalMoveSpeed * dt;
                 tryMove((kx / len) * spd, (ky / len) * spd);
                 this.path = []; this.attackTarget = null;
@@ -1030,15 +980,15 @@ export class Player {
     _autoAttack(target) {
         const baseDmg = this.wepMin + Math.random() * (this.wepMax - this.wepMin);
         applyDamage(this, target, calcDamage(this, baseDmg, DMG_TYPE.PHYSICAL, target), 'autoAttack');
-
+        
         // --- Imbuement / On-Hit Effects ---
         if (this.poisonDmgPerSec > 0) applyDot(target, this.poisonDmgPerSec, 'poison', 3, 'player_imbuement_poison');
         if (this.holyDmgOnHit > 0) applyDamage(this, target, { dealt: this.holyDmgOnHit, isCrit: false, type: 'holy' }, 'player_imbuement_holy');
         if (this.fireDmgOnHit > 0) applyDamage(this, target, { dealt: this.fireDmgOnHit, isCrit: false, type: 'fire' }, 'player_imbuement_fire');
 
-        this.attackCd = 1 / this.atkSpd;
+        this.attackCd = 1 / this.atkSpd; 
         this._setAnimState('attack');
-
+        
         const dx = target.x - this.x, dy = target.y - this.y;
         if (Math.abs(dx) > Math.abs(dy)) this.facingDir = dx > 0 ? 'right' : 'left';
         else this.facingDir = dy > 0 ? 'down' : 'up';
@@ -1047,7 +997,7 @@ export class Player {
     _useSkill(slotIdx, data) {
         const skillId = this.hotbar[slotIdx];
         if (!skillId) return;
-
+        
         const skill = this.skillMap[skillId];
         if (!skill) return;
 
@@ -1055,24 +1005,24 @@ export class Player {
             bus.emit('combat:log', { text: `${skill.name} is on cooldown!`, cls: 'log-dmg' });
             return;
         }
-
+        
         if (skill.type !== 'active' && skill.type !== 'toggle') {
             bus.emit('combat:log', { text: `Cannot use passive skill: ${skill.name}`, cls: 'log-dmg' });
             return;
         }
-
+        
         if (this.mp < (skill.mana || 0)) {
             bus.emit('combat:log', { text: `Not enough mana for ${skill.name}`, cls: 'log-mp' });
             return;
         }
-
+        
         const slvl = this.effectiveSkillLevel(skillId);
         if (slvl <= 0) {
             bus.emit('combat:log', { text: `You haven't learned ${skill.name} yet! (Lv ${slvl})`, cls: 'log-dmg' });
             return;
         }
-
-        this.mp -= (skill.mana || 0);
+        
+        this.mp -= (skill.mana || 0); 
         this.cooldowns[slotIdx] = skill.cd || 0;
 
         const isSummon = skill.group === 'summon' || ['summon_', 'imp', 'infernal', 'companion_', 'raven', 'grizzly', 'oak_sage', 'golem', 'skeleton_mage', 'revive', 'spirit_wolf', 'vine', 'voidwalker', 'succubus', 'ancestral_'].some(k => skillId.startsWith(k));
@@ -1083,14 +1033,8 @@ export class Player {
         if (isSummon) { this._spawnMinion(skillId, slvl, skill); bus.emit('skill:used', { skillId, slotIdx }); this._setAnimState('cast'); this.attackCd = 0.5; return; }
 
         const synBonus = this.talents.synergyBonus(skillId);
-        
-        // --- Weapon & Base Damage ---
         let baseDmg = (skill.dmgBase || 10) + (skill.dmgPerLvl || 5) * slvl;
-        if (skill.wepPct) {
-            const avgWep = (this.wepMin + this.wepMax) / 2;
-            baseDmg += (avgWep * skill.wepPct) / 100;
-        }
-
+        
         // --- Stat-based Scaling ---
         let scaleStat = skill.scaleStat;
         if (!scaleStat) {
@@ -1098,15 +1042,11 @@ export class Player {
             if (['melee', 'physical', 'earth'].includes(group)) scaleStat = 'str';
             else if (['poison', 'traps', 'arrow', 'assassination'].includes(group)) scaleStat = 'dex';
             else if (['fire', 'cold', 'lightning', 'shadow', 'holy', 'magic', 'arcane'].includes(group)) scaleStat = 'int';
-            else scaleStat = this.primaryStat || 'str';
-
-            // Class-specific overrides (e.g. Paladin uses STR for Holy Retribution)
-            if (this.classId === 'paladin' && group === 'holy') scaleStat = 'str';
+            else scaleStat = 'str';
         }
-        
         const statValue = this[scaleStat] || 10;
         const statMult = 1 + (statValue / 100);
-
+        
         const totalBase = baseDmg * (1 + synBonus) * statMult;
         const type = skillType(skill);
         const isAoE = ['blizzard', 'nova', 'wall', 'storm', 'meteor', 'armageddon', 'hurricane', 'volcano', 'fissure', 'earthquake', 'rain_of', 'consecration', 'trap', 'static'].some(kw => skillId.includes(kw));
@@ -1163,7 +1103,7 @@ export class Player {
             } else {
                 this._buffs.push({ id: skillId, duration: 15 + slvl, base: totalBase });
             }
-
+            
             this._recalcStats();
             if (fx) {
                 if (skillId.includes('holy') || skillId.includes('divine')) fx.emitHolyBurst(this.x, this.y);
@@ -1175,7 +1115,7 @@ export class Player {
                 else fx.emitBurst(this.x, this.y, '#ffe880', 10, 1.5);
             }
             if (skillId === 'blood_rage') {
-                this.hp = Math.max(1, this.hp - (this.maxHp * 0.2));
+                this.hp = Math.max(1, this.hp - (this.maxHp * 0.2)); 
             }
             this._setAnimState('cast'); this.attackCd = 0.5; bus.emit('skill:used', { skillId, slotIdx }); return;
         } else if (isMelee) {
@@ -1194,7 +1134,7 @@ export class Player {
                     target.boneArmor = 0;
                     bus.emit('combat:log', { text: "SHIELD SHATTERED!", cls: 'log-dmg' });
                 }
-
+                
                 const hitCount = (skillId === 'zeal') ? Math.floor(3 + 0.2 * slvl) : 1;
                 for (let i = 0; i < hitCount; i++) {
                     setTimeout(() => {
@@ -1223,7 +1163,7 @@ export class Player {
             const dur = ['blizzard', 'fire_wall', 'consecration'].some(k => skillId.includes(k)) ? 6 : 0.6;
             if (['meteor', 'volcano', 'fissure'].some(k => skillId === k)) {
                 setTimeout(() => { bus.emit('combat:spawnAoE', { aoe: new AoEZone(targetX, targetY, 60, 0.5, totalBase, type, this, 0.5, skillId) }); if (fx) { fx.emitShockwave(targetX, targetY, 60, '#ff6000'); fx.shake(400, 6); } }, 1500);
-                if (fx) for (let i = 0; i < 15; i++) setTimeout(() => fx.emitFireTrail(targetX + (Math.random() - 0.5) * 20, targetY - 30 + i * 3), i * 100);
+                if (fx) for (let i = 0; i < 15; i++) setTimeout(() => fx.emitFireTrail(targetX + (Math.random()-0.5)*20, targetY - 30 + i * 3), i * 100);
             } else {
                 bus.emit('combat:spawnAoE', { aoe: new AoEZone(aX, aY, rad, dur, totalBase * (dur > 1 ? 0.3 : 0.8), type, this, 0.5, skillId) });
                 if (fx && isNova) fx.emitBurst(this.x, this.y, type === 'cold' ? '#80d0ff' : type === 'fire' ? '#ff6000' : '#ffff00', 20, 3);
@@ -1233,9 +1173,9 @@ export class Player {
             const colors = { fire: '#ff4000', cold: '#4080ff', poison: '#00ff00', lightning: '#ffff00' };
             const piercing = ['bone_spear', 'lightning', 'frozen_orb'].includes(skillId);
             const aoeR = (skillId === 'fireball' || skillId === 'chaos_bolt') ? 40 : 0;
-            const bnc = skillId === 'chain_lightning' ? 3 + Math.floor(slvl / 4) : 0;
+            const bnc = skillId === 'chain_lightning' ? 3 + Math.floor(slvl/4) : 0;
             const pR = (['fireball', 'frozen_orb', 'chaos_bolt'].includes(skillId)) ? 10 : (skillId === 'bone_spear' ? 6 : 8);
-            bus.emit('combat:spawnProjectile', { proj: new Projectile(this.x, this.y, targetX, targetY, speeds[type] || 180, colors[type] || '#cccccc', totalBase, type, this, piercing, pR, aoeR, bnc, skillId) });
+            bus.emit('combat:spawnProjectile', { proj: new Projectile(this.x, this.y, targetX, targetY, speeds[type]||180, colors[type]||'#cccccc', totalBase, type, this, piercing, pR, aoeR, bnc, skillId) });
         }
         this._setAnimState('cast');
         this.attackCd = 0.5 * (1 - Math.min(0.75, (this.pctFCR || 0) / 100));
@@ -1248,16 +1188,9 @@ export class Player {
     _spawnMinion(skillId, slvl, skill) {
         if (this.minions.length >= this.maxMinions) this.minions.shift();
         const synBonus = this.talents.synergyBonus(skillId);
-        const statScaling = 1 + (this.int / 100);
-        
-        let baseDmg = (skill.dmgBase || 8) + (skill.dmgPerLvl || 4) * slvl;
-        if (skill.wepPct) {
-            const avgWep = (this.wepMin + this.wepMax) / 2;
-            baseDmg += (avgWep * skill.wepPct) / 100;
-        }
-
+        const statScaling = 1 + (this.int / 100); 
         const hp = Math.round((30 + slvl * 15) * (1 + (this.minionHpPct || 0) / 100) * (1 + synBonus));
-        const dmg = Math.round(baseDmg * (1 + (this.minionDmgPct || 0) / 100) * (1 + synBonus) * statScaling);
+        const dmg = Math.round(((skill.dmgBase || 8) + (skill.dmgPerLvl || 4) * slvl) * (1 + (this.minionDmgPct || 0) / 100) * (1 + synBonus) * statScaling);
 
         let sprite = 'summon_skeleton'; // fallback
         if (skillId.includes('golem')) sprite = 'summon_clay_golem';
@@ -1273,7 +1206,7 @@ export class Player {
         const minion = {
             id: `minion_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
             name: skill.name || skillId.replace(/_/g, ' '), skillId,
-            x: this.x + (Math.random() - 0.5) * 30, y: this.y + (Math.random() - 0.5) * 30,
+            x: this.x + (Math.random()-0.5)*30, y: this.y + (Math.random()-0.5)*30,
             hp, maxHp: hp, damage: dmg,
             moveSpeed: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k))) ? 0 : 80,
             isStationary: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k))),
@@ -1281,7 +1214,7 @@ export class Player {
             attackCd: 0, attackSpeed: 1.2, age: 0, duration: 20 + slvl * 2, icon: `skill_${skillId}`, sprite,
             animState: 'idle', facingDir: 'south',
             size: (skillId.includes('golem') || skillId.includes('grizzly') || skillId.includes('valkyrie')) ? 24 : 16,
-            formationOffset: { x: (Math.random() - 0.5) * 80, y: (Math.random() - 0.5) * 80 }
+            formationOffset: { x: (Math.random()-0.5)*80, y: (Math.random()-0.5)*80 }
         };
         this.minions.push(minion); bus.emit('minion:spawned', { minion });
     }
@@ -1291,10 +1224,10 @@ export class Player {
             m.age += dt; if (m.age >= m.duration || m.hp <= 0) return false;
             m.attackCd = Math.max(0, m.attackCd - dt);
             let moved = false;
-
+            
             if (m.isStationary) {
                 let near = null, nD = m.attackRange || 200;
-                for (const e of enemies) { if (e.hp > 0 && e.state !== 'dead') { const d = Math.hypot(e.x - m.x, e.y - m.y); if (d < nD) { near = e; nD = d; } } }
+                for (const e of enemies) { if (e.hp > 0 && e.state !== 'dead') { const d = Math.hypot(e.x-m.x, e.y-m.y); if (d < nD) { near = e; nD = d; } } }
                 if (near && m.attackCd <= 0) { applyDamage(this, near, calcDamage(this, m.damage, 'physical', near), m.skillId); m.attackCd = m.attackSpeed; if (fx) fx.emitBurst(near.x, near.y, '#ffff00', 5); }
                 return true;
             }
@@ -1302,29 +1235,29 @@ export class Player {
             if (dist > 800) { m.x = this.x + m.formationOffset.x; m.y = this.y + m.formationOffset.y; if (fx) fx.emitBurst(m.x, m.y, '#a0ffa0', 10, 1.5); return true; }
             if (dist < 250) {
                 let near = null, nD = 300;
-                for (const e of enemies) { if (e.hp > 0 && e.state !== 'dead') { const d = Math.hypot(e.x - m.x, e.y - m.y); if (d < nD) { near = e; nD = d; } } }
+                for (const e of enemies) { if (e.hp > 0 && e.state !== 'dead') { const d = Math.hypot(e.x-m.x, e.y-m.y); if (d < nD) { near = e; nD = d; } } }
                 if (near) {
-                    const ang = Math.atan2(near.y - m.y, near.x - m.x);
-                    if (nD > m.attackRange) {
-                        const nx = m.x + Math.cos(ang) * m.moveSpeed * dt, ny = m.y + Math.sin(ang) * m.moveSpeed * dt;
-                        if (!dungeon || dungeon.isWalkable(nx, ny)) { m.x = nx; m.y = ny; moved = true; }
+                    const ang = Math.atan2(near.y-m.y, near.x-m.x);
+                    if (nD > m.attackRange) { 
+                        const nx = m.x + Math.cos(ang)*m.moveSpeed*dt, ny = m.y + Math.sin(ang)*m.moveSpeed*dt; 
+                        if (!dungeon || dungeon.isWalkable(nx, ny)) { m.x = nx; m.y = ny; moved = true; } 
                         m.facingDir = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang)) ? (Math.cos(ang) > 0 ? 'right' : 'left') : (Math.sin(ang) > 0 ? 'down' : 'up');
                         m.animState = 'walk';
                     }
-                    else if (m.attackCd <= 0) {
-                        applyDamage(this, near, calcDamage(this, m.damage, 'physical', near), m.skillId);
-                        m.attackCd = m.attackSpeed;
-                        m.animState = 'attack';
-                        m.facingDir = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang)) ? (Math.cos(ang) > 0 ? 'right' : 'left') : (Math.sin(ang) > 0 ? 'down' : 'up');
+                    else if (m.attackCd <= 0) { 
+                        applyDamage(this, near, calcDamage(this, m.damage, 'physical', near), m.skillId); 
+                        m.attackCd = m.attackSpeed; 
+                        m.animState = 'attack'; 
+                        m.facingDir = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang)) ? (Math.cos(ang) > 0 ? 'right' : 'left') : (Math.sin(ang) > 0 ? 'down' : 'up'); 
                     } else if (m.attackCd < m.attackSpeed * 0.7) {
                         m.animState = 'idle';
                     }
                     return true;
                 }
             }
-            if (dist > 40) {
-                const s = (dist > 250 ? m.moveSpeed * 1.5 : m.moveSpeed), nx = m.x + (dx / dist) * s * dt, ny = m.y + (dy / dist) * s * dt;
-                if (!dungeon || dungeon.isWalkable(nx, ny)) { m.x = nx; m.y = ny; moved = true; }
+            if (dist > 40) { 
+                const s = (dist > 250 ? m.moveSpeed * 1.5 : m.moveSpeed), nx = m.x + (dx/dist)*s*dt, ny = m.y + (dy/dist)*s*dt; 
+                if (!dungeon || dungeon.isWalkable(nx, ny)) { m.x = nx; m.y = ny; moved = true; } 
                 m.facingDir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
             }
             m.animState = moved ? 'walk' : 'idle';
@@ -1336,16 +1269,16 @@ export class Player {
         for (const m of this.minions) {
             renderer.ctx.fillStyle = 'rgba(0,200,0,0.25)'; renderer.ctx.beginPath(); renderer.ctx.ellipse(m.x, m.y + 5, 6, 2.5, 0, 0, Math.PI * 2); renderer.ctx.fill();
             renderer.drawAnim(m.sprite, m.x, m.y - 4, m.size || 16, m.animState || 'idle', m.facingDir || 'south', time);
-            const bW = 14, bH = 2; renderer.ctx.fillStyle = '#222'; renderer.ctx.fillRect(m.x - bW / 2, m.y - 12 - (m.size || 16) / 2, bW, bH);
-            renderer.ctx.fillStyle = '#4c4'; renderer.ctx.fillRect(m.x - bW / 2, m.y - 12 - (m.size || 16) / 2, bW * (m.hp / m.maxHp), bH);
-            renderer.ctx.font = '4px Cinzel, serif'; renderer.ctx.textAlign = 'center'; renderer.ctx.fillStyle = '#8f8'; renderer.ctx.fillText(m.name, m.x, m.y - 14 - (m.size || 16) / 2);
+            const bW = 14, bH = 2; renderer.ctx.fillStyle = '#222'; renderer.ctx.fillRect(m.x - bW / 2, m.y - 12 - (m.size||16)/2, bW, bH);
+            renderer.ctx.fillStyle = '#4c4'; renderer.ctx.fillRect(m.x - bW / 2, m.y - 12 - (m.size||16)/2, bW * (m.hp / m.maxHp), bH);
+            renderer.ctx.font = '4px Cinzel, serif'; renderer.ctx.textAlign = 'center'; renderer.ctx.fillStyle = '#8f8'; renderer.ctx.fillText(m.name, m.x, m.y - 14 - (m.size||16)/2);
         }
     }
 
     _nearestEnemy() {
         if (!this._enemies) return null;
         let best = null, bD = Infinity;
-        for (const e of this._enemies) { if (e.hp > 0) { const d = (e.x - this.x) ** 2 + (e.y - this.y) ** 2; if (d < bD) { bD = d; best = e; } } }
+        for (const e of this._enemies) { if (e.hp > 0) { const d = (e.x-this.x)**2 + (e.y-this.y)**2; if (d < bD) { bD = d; best = e; } } }
         return bD < 300 * 300 ? best : null;
     }
 
@@ -1463,7 +1396,7 @@ export class Player {
         const items = this.inventory.filter(x => x !== null), types = ['gem', 'rune', 'scroll'];
         for (let i = 0; i < items.length; i++) {
             if (!items[i] || !types.includes(items[i].type) || items[i].quantity >= 20) continue;
-            for (let j = i + 1; j < items.length; j++) {
+            for (let j = i+1; j < items.length; j++) {
                 if (items[j] && items[j].baseId === items[i].baseId && items[j].type === items[i].type && items[j].quantity < 20) {
                     const r = 20 - items[i].quantity, t = Math.min(r, items[j].quantity);
                     items[i].quantity += t; items[j].quantity -= t; if (items[j].quantity <= 0) items[j] = null;
@@ -1472,7 +1405,7 @@ export class Player {
             }
         }
         const srt = items.filter(x => x !== null), rW = { unique: 10, set: 9, rare: 8, magic: 7, normal: 6 }, tW = { weapon: 10, armor: 9, helm: 8, shield: 7, gloves: 6, boots: 5, belt: 4, amulet: 3, ring: 2, charm: 1, gem: 0, rune: 0, scroll: 0, potion: 0 };
-        srt.sort((a, b) => (tW[b.type] || -1) - (tW[a.type] || -1) || (rW[b.rarity] || 0) - (rW[a.rarity] || 0) || (a.baseId || "").localeCompare(b.baseId || ""));
+        srt.sort((a, b) => (tW[b.type]||-1) - (tW[a.type]||-1) || (rW[b.rarity]||0) - (rW[a.rarity]||0) || (a.baseId||"").localeCompare(b.baseId||""));
         this.inventory = [...srt]; while (this.inventory.length < 40) this.inventory.push(null);
         this.autoRefillBelt();
     }
@@ -1495,7 +1428,7 @@ export class Player {
             ctx.strokeStyle = `rgba(255, 215, 0, ${0.3 + glowPulse * 0.2})`;
             ctx.lineWidth = 3;
             ctx.beginPath(); ctx.arc(this.x, this.y, 20, 0, Math.PI * 2); ctx.stroke();
-
+            
             // --- ARCHANGEL WINGS ---
             const flap = Math.sin(time * 6) * 5;
             ctx.fillStyle = `rgba(255, 255, 200, ${0.4 + glowPulse * 0.2})`;
@@ -1507,7 +1440,7 @@ export class Player {
             ctx.quadraticCurveTo(this.x + 20, this.y - 30 + flap, this.x + 25, this.y - 5 + flap);
             ctx.lineTo(this.x + 5, this.y - 5);
             ctx.fill();
-
+            
             if (Math.random() < 0.15) {
                 this._auraParticles = this._auraParticles || [];
                 this._auraParticles.push({
@@ -1547,7 +1480,7 @@ export class Player {
         if (this.itemAuras) {
             let radiusOffset = 0;
             this._auraParticles = this._auraParticles || [];
-
+            
             const drawAuraRing = (color, type) => {
                 const radius = 22 + radiusOffset;
                 const pulse = Math.sin(time * 5) * 2;
@@ -1595,12 +1528,12 @@ export class Player {
                 } else if (p.type === 'ice') {
                     ctx.fillRect(p.x, p.y, 2, 2);
                 } else if (p.type === 'glory') {
-                    ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill();
                 } else if (p.type === 'shadow_soul') {
-                    ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
                     ctx.shadowBlur = 5; ctx.shadowColor = '#fff';
                 } else {
-                    ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI*2); ctx.fill();
                 }
                 ctx.restore();
                 if (p.life <= 0) this._auraParticles.splice(i, 1);
@@ -1615,7 +1548,7 @@ export class Player {
 
     serialize() {
         return {
-            classId: this.classId, level: this.level, xp: this.xp, charName: this.charName, isHardcore: this.isHardcore,
+            classId: this.classId, level: this.level, xp: this.xp, charName: this.charName, isHardcore: this.isHardcore, 
             maxDifficulty: this.maxDifficulty || 0,
             x: this.x, y: this.y, hp: this.hp, mp: this.mp, baseStr: this.baseStr, baseDex: this.baseDex, baseVit: this.baseVit, baseInt: this.baseInt,
             statPoints: this.statPoints, gold: this.gold, totalMonstersSlain: this.totalMonstersSlain, totalGoldCollected: this.totalGoldCollected,
@@ -1633,17 +1566,11 @@ export class Player {
         p.baseStr = data.baseStr; p.baseDex = data.baseDex; p.baseVit = data.baseVit; p.baseInt = data.baseInt;
         p.statPoints = data.statPoints; p.gold = data.gold; p.totalMonstersSlain = data.totalMonstersSlain || 0; p.totalGoldCollected = data.totalGoldCollected || 0;
         p.talents = TalentTree.deserialize(data.talents); p.equipment = data.equipment || {}; p.secondaryEquipment = data.secondaryEquipment || { mainhand: null, offhand: null };
-        p.activeWeaponSet = data.activeWeaponSet || 1;
-        // Ensure inventory is always 40 slots
-        p.inventory = Array.isArray(data.inventory) ? data.inventory : [];
-        while (p.inventory.length < 40) p.inventory.push(null);
-        // Ensure belt is always 4 slots
-        p.belt = Array.isArray(data.belt) ? data.belt : [];
-        while (p.belt.length < 4) p.belt.push(null);
+        p.activeWeaponSet = data.activeWeaponSet || 1; p.inventory = data.inventory || Array(40).fill(null); p.belt = data.belt || [null, null, null, null];
         p.hotbar = data.hotbar || [null, null, null, null, null]; p.permanentResists = data.permanentResists || 0; p.hasLarzukReward = !!data.hasLarzukReward;
         p.hasAnyaReward = !!data.hasAnyaReward; p.hasImbue = !!data.hasImbue; p.magicFind = data.magicFind || 0; p.goldFind = data.goldFind || 0;
         p.crushingBlow = data.crushingBlow || 0; p.allSkillBonus = data.allSkillBonus || 0; p.activeAura = data.activeAura || null; p._auraSlvl = data._auraSlvl || 0;
-
+        
         if (data.mercenary) {
             import('./mercenary.js').then(({ Mercenary }) => {
                 window.mercenary = Mercenary.deserialize(data.mercenary);

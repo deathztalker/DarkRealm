@@ -1,0 +1,151 @@
+{
+  "character": {
+    "id": "3080de8c-2ad5-414c-ac79-9fb2490e3413",
+    "name": "Boss Baal",
+    "prompt": "Baal, Lord of Destruction: demonic spider-like entity with multiple sharp legs and a humanoid upper body, horns, dark fantasy, pro mode, 128px, low top-down view",
+    "size": {
+      "width": 256,
+      "height": 256
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-16T23:54:43.023999+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {
+      "walking-ae363755": {
+        "south": [
+          "animations/walking-ae363755/south/frame_000.png",
+          "animations/walking-ae363755/south/frame_001.png",
+          "animations/walking-ae363755/south/frame_002.png",
+          "animations/walking-ae363755/south/frame_003.png",
+          "animations/walking-ae363755/south/frame_004.png",
+          "animations/walking-ae363755/south/frame_005.png"
+        ],
+        "south-west": [
+          "animations/walking-ae363755/south-west/frame_000.png",
+          "animations/walking-ae363755/south-west/frame_001.png",
+          "animations/walking-ae363755/south-west/frame_002.png",
+          "animations/walking-ae363755/south-west/frame_003.png",
+          "animations/walking-ae363755/south-west/frame_004.png",
+          "animations/walking-ae363755/south-west/frame_005.png"
+        ],
+        "west": [
+          "animations/walking-ae363755/west/frame_000.png",
+          "animations/walking-ae363755/west/frame_001.png",
+          "animations/walking-ae363755/west/frame_002.png",
+          "animations/walking-ae363755/west/frame_003.png",
+          "animations/walking-ae363755/west/frame_004.png",
+          "animations/walking-ae363755/west/frame_005.png"
+        ],
+        "north-west": [
+          "animations/walking-ae363755/north-west/frame_000.png",
+          "animations/walking-ae363755/north-west/frame_001.png",
+          "animations/walking-ae363755/north-west/frame_002.png",
+          "animations/walking-ae363755/north-west/frame_003.png",
+          "animations/walking-ae363755/north-west/frame_004.png",
+          "animations/walking-ae363755/north-west/frame_005.png"
+        ],
+        "north": [
+          "animations/walking-ae363755/north/frame_000.png",
+          "animations/walking-ae363755/north/frame_001.png",
+          "animations/walking-ae363755/north/frame_002.png",
+          "animations/walking-ae363755/north/frame_003.png",
+          "animations/walking-ae363755/north/frame_004.png",
+          "animations/walking-ae363755/north/frame_005.png"
+        ],
+        "east": [
+          "animations/walking-ae363755/east/frame_000.png",
+          "animations/walking-ae363755/east/frame_001.png",
+          "animations/walking-ae363755/east/frame_002.png",
+          "animations/walking-ae363755/east/frame_003.png",
+          "animations/walking-ae363755/east/frame_004.png",
+          "animations/walking-ae363755/east/frame_005.png"
+        ],
+        "south-east": [
+          "animations/walking-ae363755/south-east/frame_000.png",
+          "animations/walking-ae363755/south-east/frame_001.png",
+          "animations/walking-ae363755/south-east/frame_002.png",
+          "animations/walking-ae363755/south-east/frame_003.png",
+          "animations/walking-ae363755/south-east/frame_004.png",
+          "animations/walking-ae363755/south-east/frame_005.png"
+        ],
+        "north-east": [
+          "animations/walking-ae363755/north-east/frame_000.png",
+          "animations/walking-ae363755/north-east/frame_001.png",
+          "animations/walking-ae363755/north-east/frame_002.png",
+          "animations/walking-ae363755/north-east/frame_003.png",
+          "animations/walking-ae363755/north-east/frame_004.png",
+          "animations/walking-ae363755/north-east/frame_005.png"
+        ]
+      },
+      "animating-9c88d051": {
+        "south": [
+          "animations/animating-9c88d051/south/frame_000.png",
+          "animations/animating-9c88d051/south/frame_001.png",
+          "animations/animating-9c88d051/south/frame_002.png",
+          "animations/animating-9c88d051/south/frame_003.png"
+        ]
+      },
+      "animating-7d77d18d": {
+        "east": [
+          "animations/animating-7d77d18d/east/frame_000.png",
+          "animations/animating-7d77d18d/east/frame_001.png",
+          "animations/animating-7d77d18d/east/frame_002.png",
+          "animations/animating-7d77d18d/east/frame_003.png"
+        ],
+        "north-west": [
+          "animations/animating-7d77d18d/north-west/frame_000.png",
+          "animations/animating-7d77d18d/north-west/frame_001.png",
+          "animations/animating-7d77d18d/north-west/frame_002.png",
+          "animations/animating-7d77d18d/north-west/frame_003.png"
+        ],
+        "south-east": [
+          "animations/animating-7d77d18d/south-east/frame_000.png",
+          "animations/animating-7d77d18d/south-east/frame_001.png",
+          "animations/animating-7d77d18d/south-east/frame_002.png",
+          "animations/animating-7d77d18d/south-east/frame_003.png"
+        ],
+        "north-east": [
+          "animations/animating-7d77d18d/north-east/frame_000.png",
+          "animations/animating-7d77d18d/north-east/frame_001.png",
+          "animations/animating-7d77d18d/north-east/frame_002.png",
+          "animations/animating-7d77d18d/north-east/frame_003.png"
+        ],
+        "north": [
+          "animations/animating-7d77d18d/north/frame_000.png",
+          "animations/animating-7d77d18d/north/frame_001.png",
+          "animations/animating-7d77d18d/north/frame_002.png",
+          "animations/animating-7d77d18d/north/frame_003.png"
+        ]
+      },
+      "animating-270596c4": {
+        "south-west": [
+          "animations/animating-270596c4/south-west/frame_000.png",
+          "animations/animating-270596c4/south-west/frame_001.png",
+          "animations/animating-270596c4/south-west/frame_002.png",
+          "animations/animating-270596c4/south-west/frame_003.png"
+        ],
+        "west": [
+          "animations/animating-270596c4/west/frame_000.png",
+          "animations/animating-270596c4/west/frame_001.png",
+          "animations/animating-270596c4/west/frame_002.png",
+          "animations/animating-270596c4/west/frame_003.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-18T22:27:40.320413"
+}

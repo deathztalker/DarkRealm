@@ -44,75 +44,6 @@ window.addSocialRequest = addSocialRequest;
 window.showSpeechBubble = showSpeechBubble;
 window.GameObjectClass = GameObject;
 
-// ——— HELPERS ———
-function calculateSellPrice(item) {
-    if (!item) return 0;
-    let base = item.price || 10;
-    if (item.rarity === 'magic') base *= 3;
-    if (item.rarity === 'rare') base *= 10;
-    if (item.rarity === 'unique') base *= 25;
-    if (item.ilvl) base += (item.ilvl * 5);
-    return Math.floor(base * 0.25); // Sell for 25% of absolute value
-}
-
-function showTooltip(item, x, y) {
-    const tt = $('custom-tooltip');
-    if (!tt) return;
-    let html = itemTooltipText(item);
-
-    // Item comparison logic
-    if (player && item.slot && item.slot !== 'none' && item.identified !== false) {
-        const mercPanelOpen = !$('panel-mercenary').classList.contains('hidden');
-        const targetEntity = (mercPanelOpen && mercenary) ? mercenary : player;
-
-        // Find if we have an item equipped in this slot
-        let equippedItem = null;
-        if (item.slot === 'ring') {
-            equippedItem = targetEntity.equipment['ring1'] || targetEntity.equipment['ring2'];
-        } else {
-            equippedItem = targetEntity.equipment[item.slot];
-        }
-
-        // Make sure we aren't hovering the equipped item itself
-        if (equippedItem && equippedItem !== item) {
-            const equippedHtml = itemTooltipText(equippedItem, true);
-            html = `<div class="tooltip-compare-container">${html}${equippedHtml}</div>`;
-        }
-    }
-
-    tt.innerHTML = html;
-    tt.style.display = 'block';
-    moveTooltip(x, y);
-}
-
-function hideTooltip() {
-    const tt = $('custom-tooltip');
-    if (tt) tt.style.display = 'none';
-}
-
-function moveTooltip(x, y) {
-    const tt = $('custom-tooltip');
-    if (!tt) return;
-    const offset = 15;
-    let tx = x + offset;
-    let ty = y + offset;
-
-    // Bounds check
-    if (tx + tt.offsetWidth > window.innerWidth) tx = x - tt.offsetWidth - offset;
-    if (ty + tt.offsetHeight > window.innerHeight) ty = y - tt.offsetHeight - offset;
-
-    tt.style.left = `${tx}px`;
-    tt.style.top = `${ty}px`;
-}
-
-function setupTooltip(el, item) {
-    if (!el || !item) return;
-    el.addEventListener('mouseenter', (e) => showTooltip(item, e.clientX, e.clientY));
-    el.addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
-    el.addEventListener('mouseleave', hideTooltip);
-}
-
-
 // --- Phase 37: Localization Helper ---
 const TRANSLATIONS = {
     'portal.toTown': 'To Town'
@@ -889,285 +820,855 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
 }
 
 
-// ——— UTILITIES & SYSTEMS ———
-
-function unlockAchievement(id, name) {
-    if (unlockedAchievements.has(id)) return;
-    unlockedAchievements.add(id);
-    const pop = $('achievement-popup');
-    if (pop) {
-        pop.querySelector('.ach-name').textContent = name;
-        pop.classList.add('active');
-        if (input.isMobile) input.vibrate([20, 50, 100]);
-        setTimeout(() => pop.classList.remove('active'), 4000);
-    }
-}
-
-function updateWeather(dt) {
-    if (state !== 'GAME' || !player) return;
-    const theme = window.currentTheme || 'town';
-    if (theme === 'snow') fx.emitBlizzard(renderer.width, renderer.height);
-    else if (theme === 'desert') fx.emitSand(renderer.width, renderer.height);
-    else if (theme === 'hell') fx.emitEmbers(renderer.width, renderer.height);
-    else if (theme === 'jungle' || theme === 'temple' || theme === 'grass') fx.emitRain(renderer.width, renderer.height);
-}
-
-async function fadeTransition(action) {
-    const fade = $('fade-overlay');
-    if (fade) fade.classList.add('active');
-    await new Promise(r => setTimeout(r, 500));
-    await action();
-    if (fade) fade.classList.remove('active');
-}
-
-function checkSecretAchievement(enemy) {
-    if (enemy.isBoss && bossDamageTaken === 0) {
-        unlockAchievement('secret_immortal', 'The Untouchable (Defeat boss without taking damage)');
-    }
-}
-
-bus.on('player:damaged', (amt) => {
-    if (bossFightActive) bossDamageTaken += amt;
-});
-
-let lastSentX = 0, lastSentY = 0;
-let bossFightActive = false;
-let bossDamageTaken = 0;
-
+// ——— GAME LOOP ———
 function gameLoop(timestamp) {
-    if (state !== 'GAME' || !player) return;
+    if (state !== 'GAME') return;
     const rawDt = Math.min(0.1, (timestamp - lastTime) / 1000);
     const dt = rawDt * timeScale;
     lastTime = timestamp;
 
-    updateWeather(dt);
+    // TimeScale Recovery (Lerp back to 1.0)
+    if (timeScale < 1.0) {
+        timeScale = Math.min(1.0, timeScale + rawDt * 0.8);
+    }
 
-    if (timeScale < 1.0) timeScale = Math.min(1.0, timeScale + rawDt * 0.8);
+    // Boss Proximity Logic
+    let closestBoss = null;
+    let minDist = 400; // Activation range
+    for (const e of enemies) {
+        if (e.type === 'boss' && e.hp > 0) {
+            const d = Math.hypot(e.x - player.x, e.y - player.y);
+            if (d < minDist) {
+                minDist = d;
+                closestBoss = e;
+            }
+            // Emit aura
+            fx.emitBossAura(e.x, e.y, e.color || '#f0f');
+        }
+    }
+    uiActiveBoss = closestBoss;
 
-    // --- Systems Update ---
+    // Update
+    // --- Phase 29: World Time Tick (1 sec real = 10 game mins) ---
+    worldTime = (worldTime + dt * 10) % 1440;
+    const hour = worldTime / 60;
+    window.isNight = (hour >= 20 || hour < 6);
+
     if (input) input.update();
-    if (network) network.update(dt);
     if (window.mobileControls) window.mobileControls.update(player);
 
-    if (camera) {
-        camera.w = renderer.width; camera.h = renderer.height;
-        camera.update(dt);
-        renderer.setCamera(camera.x, camera.y);
-        renderer.updateShake(dt);
+    // --- Phase 3.1: Atmospheric Weather System ---
+    if (window.fx && player) {
+        const theme = window.currentTheme;
+        if (theme === 'snow') {
+            window.fx.emitBlizzard(renderer.width, renderer.height);
+        } else if (theme === 'desert') {
+            window.fx.emitSand(renderer.width, renderer.height);
+        } else if (theme === 'hell') {
+            window.fx.emitEmbers(renderer.width, renderer.height);
+        } else if (theme === 'jungle' || theme === 'temple') {
+            window.fx.emitRain(renderer.width, renderer.height);
+        } else if (theme === 'wilderness') {
+            window.fx.emitMist(renderer.width, renderer.height);
+        }
     }
 
-    // Player & Network Sync
-    player.update(dt, input, enemies, dungeon, (aoe) => aoeZones.push(aoe));
+    if (player) {
+        player.update(dt, input, enemies, dungeon, (aoe) => aoeZones.push(aoe));
 
-    if (network && network.isConnected) {
-        const distMoved = Math.sqrt(Math.pow(player.x - lastSentX, 2) + Math.pow(player.y - lastSentY, 2));
-        if (distMoved > 2 || player.animState !== player._lastSentAnim) {
+        // --- MMO POSITION SYNC ---
+        if (network && network.isConnected) {
             network.sendMovement(player.x, player.y, player.animState, player.facingDir);
-            lastSentX = player.x; lastSentY = player.y; player._lastSentAnim = player.animState;
+
+            // Sync current active aura
+            if (player.activeAura) {
+                network.socket.emit('move', {
+                    x: player.x,
+                    y: player.y,
+                    animState: player.animState,
+                    facingDir: player.facingDir,
+                    activeAura: player.activeAura
+                });
+            }
+
+            // Host-only: Sync all enemies & NPCs
+            if (network.isHost) {
+                if (enemies.length > 0) {
+                    const enemyData = enemies.map(e => ({
+                        id: e.syncId,
+                        x: e.x,
+                        y: e.y,
+                        hp: e.hp,
+                        anim: e.animState,
+                        dir: e.facingDir
+                    }));
+                    network.sendEnemySync(enemyData);
+                }
+                if (npcs.length > 0) {
+                    const npcData = npcs.map(n => ({
+                        id: n.id,
+                        x: n.x,
+                        y: n.y
+                    }));
+                    network.socket.emit('npc_sync', npcData);
+                }
+            }
+
+            // Sync minions & mercenary stats
+            if (player.minions.length > 0) {
+                const minionData = player.minions.map(m => ({ x: m.x, y: m.y, icon: m.icon, hp: m.hp, maxHp: m.maxHp }));
+                network.socket.emit('minion_sync', minionData);
+            }
+            if (mercenary && mercenary.hp > 0) {
+                network.socket.emit('merc_sync', { x: mercenary.x, y: mercenary.y, icon: mercenary.icon, hp: mercenary.hp, maxHp: mercenary.maxHp });
+            }
         }
-        if (network.isHost) {
-            if (enemies.length > 0) network.sendEnemySync(enemies.map(e => ({ id: e.syncId, x: e.x, y: e.y, hp: e.hp, anim: e.animState, dir: e.facingDir })));
-            if (npcs.length > 0) network.socket.emit('npc_sync', npcs.map(n => ({ id: n.id, x: n.x, y: n.y })));
+
+        fx.update(dt * 1000); // Particle update expects ms
+
+        // --- Phase 32: Legendary Aura Pulsar & Visuals ---
+        if (state === 'GAME') {
+            processAuraPulsar(player, enemies, dt);
+
+            // Resonance Visual Effects
+            if (player.itemAuras?.has('shadowmourne')) {
+                if (Math.random() < 0.15) fx.emitBurst(player.x, player.y - 15, '#a040ff', 1, 2.5);
+            }
+            if (player.itemAuras?.has('frostmourne')) {
+                if (Math.random() < 0.15) fx.emitBurst(player.x, player.y + 5, '#6af', 2, 1.2);
+            }
+            if (player.itemAuras?.has('ashbringer')) {
+                if (Math.random() < 0.15) fx.emitHolyBurst(player.x, player.y, 1);
+            }
         }
-        if (player.minions.length > 0) network.socket.emit('minion_sync', player.minions.map(m => ({ x: m.x, y: m.y, icon: m.icon, hp: m.hp, maxHp: m.maxHp })));
-        if (mercenary && mercenary.hp > 0) network.socket.emit('merc_sync', { x: mercenary.x, y: mercenary.y, icon: mercenary.icon, hp: mercenary.hp, maxHp: mercenary.maxHp });
+
+        // HP Regen out of combat (passive) + gear-based regen (always active)
+        if (player.hp > 0 && player.hp < player.maxHp) {
+            let hpRegen = (player.lifeRegenPerSec || 0) * dt;
+
+            // Rift Mod: Cursed (Armor/Res reduction)
+            const cursedMod = activeRiftMods.find(m => m.id === 'cursed');
+            if (cursedMod) {
+                // Apply invisible debuff or handle in calcDamage
+            }
+
+            if (performance.now() - lastHitTime > 5000) {
+                hpRegen += player.maxHp * 0.005 * dt; // Passive OOC regen
+            }
+            if (hpRegen > 0) player.hp = Math.min(player.maxHp, player.hp + hpRegen);
+        }
+        // MP Regen (always, slower) + gear-based regen
+        if (player.mp < player.maxMp && player.hp > 0) {
+            const mpRegen = player.maxMp * 0.003 * dt + (player.manaRegenPerSec || 0) * dt;
+            player.mp = Math.min(player.maxMp, player.mp + mpRegen);
+        }
+
+        // Moved to centralized Atmospheric Weather System block above
+    }
+    if (camera) {
+        camera.w = renderer.width;
+        camera.h = renderer.height;
+        camera.update(dt);
     }
 
-    // Regen & Aura Pulsar
-    if (player.hp > 0 && player.hp < player.maxHp) {
-        let hpReg = (player.lifeRegenPerSec || 0) * dt;
-        if (performance.now() - lastHitTime > 5000) hpReg += player.maxHp * 0.005 * dt;
-        player.hp = Math.min(player.maxHp, player.hp + hpReg);
-    }
-    if (player.mp < player.maxMp && player.hp > 0) player.mp = Math.min(player.maxMp, player.mp + (player.maxMp * 0.003 + (player.manaRegenPerSec || 0)) * dt);
-
-    if (fx) {
-        fx.update(dt * 1000);
-        processAuraPulsar(player, enemies, dt);
-        if (player.itemAuras?.has('shadowmourne') && Math.random() < 0.15) fx.emitBurst(player.x, player.y - 15, '#a040ff', 1, 2.5);
-        if (player.itemAuras?.has('frostmourne') && Math.random() < 0.15) fx.emitBurst(player.x, player.y + 5, '#6af', 2, 1.2);
-        if (player.itemAuras?.has('ashbringer') && Math.random() < 0.15) fx.emitHolyBurst(player.x, player.y, 1);
-    }
-
-    // AI & Entities
+    // Update entities — pass dungeon for collision checks
     for (const e of (enemies || [])) e.update(dt, player, dungeon, enemies);
     for (const n of npcs) n.update(dt);
-    if (activePet) activePet.update(dt, player, droppedGold, droppedItems);
-    player.updateMinions(dt, enemies, dungeon);
+    if (activePet) activePet.update(dt, player, droppedGold);
+    if (player) player.updateMinions(dt, enemies, dungeon);
 
-    if (mercenary && mercenary.hp > 0) {
-        mercenary.update(dt, player, enemies, dungeon);
+    // Update Projectiles & AoEs
+    projectiles.forEach(p => {
+        if (p && p.update) p.update(dt, enemies, player, dungeon, (aoe) => { if (aoe) aoeZones.push(aoe); });
+    });
+    projectiles = projectiles.filter(p => p && p.active);
+
+    aoeZones.forEach(a => {
+        if (a && a.update) a.update(dt, enemies, player);
+    });
+    aoeZones = aoeZones.filter(a => a && a.active);
+
+    // Update Statuses, DoTs, and physics (knockback)
+    const statusTargets = [player, ...enemies, ...npcs];
+    if (mercenary) statusTargets.push(mercenary);
+    updateStatuses(statusTargets, dt);
+
+    // Filter out destroyed objects (Phase 36 Refinement)
+    gameObjects = gameObjects.filter(obj => !obj.destroyed);
+    if (worldZones[zoneLevel]) {
+        worldZones[zoneLevel].gameObjects = worldZones[zoneLevel].gameObjects.filter(obj => !obj.destroyed);
     }
 
-    checkDeaths();
-    updateRespawns();
-    checkAchievements();
-
-    // Projectiles & AoE
-    projectiles.forEach(p => { if (p && p.update) p.update(dt, enemies, player, dungeon, (aoe) => aoeZones.push(aoe)); });
-    projectiles = projectiles.filter(p => p && p.active);
-    aoeZones.forEach(a => { if (a && a.update) a.update(dt, enemies, player); });
-    aoeZones = aoeZones.filter(a => a && a.active);
-    updateStatuses([player, ...enemies, ...npcs, ...(mercenary ? [mercenary] : [])], dt);
-
-    // Interaction & Pickups
-    if (input.click) { checkInteractions(input.click); input.click = null; }
-    for (let i = droppedGold.length - 1; i >= 0; i--) {
-        const dg = droppedGold[i];
-        if (Math.hypot(player.x - dg.x, player.y - dg.y) < 45 || dg._pickedByPet) {
-            player.gold += dg.amount;
-            addCombatLog(`Picked ${dg.amount} Gold`, 'log-heal');
-            bus.emit('gold:pickup', { amount: dg.amount });
-            droppedGold.splice(i, 1);
-            updateHud();
+    // Update Loot Beams (Tick the particle system for persistence)
+    for (const drop of droppedItems) {
+        if (drop.rarity === 'unique' || drop.rarity === 'set') {
+            const color = drop.rarity === 'unique' ? '#bf642f' : '#00ff00';
+            if (fx && Math.random() < 0.1) fx.emitLootBeam(drop.x, drop.y, color);
         }
     }
 
-    // Dialogue Pos
+    // Phase 15: Update Floating Text
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.y -= 30 * dt; // Float up
+        ft.life -= dt;
+        if (ft.life <= 0) {
+            floatingTexts.splice(i, 1);
+        }
+    }
+
+    if (dialogue) {
+        dialogue.timer -= dt;
+        if (dialogue.timer <= 0) dialogue = null;
+    }
+
+    if (input.click) {
+        checkInteractions(input.click);
+        input.click = null;
+    }
+
+    // Gold Auto-Pickup (radius 45px)
+    if (player && droppedGold.length > 0) {
+        for (let i = droppedGold.length - 1; i >= 0; i--) {
+            const dg = droppedGold[i];
+            const dist = Math.sqrt((player.x - dg.x) ** 2 + (player.y - dg.y) ** 2);
+            if (dist < 45) {
+                player.gold += dg.amount;
+                addCombatLog(`Auto-picked ${dg.amount} Gold`, 'log-heal');
+                bus.emit('gold:pickup', { amount: dg.amount });
+                droppedGold.splice(i, 1);
+                updateHud();
+                renderInventory();
+            }
+        }
+    }
+
+    // Update Floating Dialogue Position
     const currentMenuFocus = activeDialogueNpc || activeWaypointObj;
     if (currentMenuFocus) {
-        const picker = $('dialogue-picker');
+        const picker = document.getElementById('dialogue-picker');
         if (picker) {
             const screen = camera.toScreen(currentMenuFocus.x, currentMenuFocus.y);
-            picker.style.left = `${screen.x - 110}px`; picker.style.top = `${screen.y - 180}px`;
-            if (Math.hypot(player.x - currentMenuFocus.x, player.y - currentMenuFocus.y) > 120) {
-                picker.remove(); activeDialogueNpc = null; activeWaypointObj = null;
+            picker.style.left = `${screen.x - 110}px`;
+            picker.style.top = `${screen.y - 180}px`;
+
+            // Auto-close if too far
+            const d = Math.sqrt((player.x - currentMenuFocus.x) ** 2 + (player.y - currentMenuFocus.y) ** 2);
+            if (d > 120) {
+                picker.remove();
+                activeDialogueNpc = null;
+                activeWaypointObj = null;
             }
-        } else { activeDialogueNpc = null; activeWaypointObj = null; }
-    }
-
-    if (player.hp <= 0) { checkDeaths(); return; }
-
-    // --- Render Start ---
-    renderer.clear();
-    dungeon.render(renderer, camera);
-    camera.apply(renderer.ctx);
-
-    // Path trail
-    if (player.path?.length > 0) {
-        renderer.ctx.save(); renderer.ctx.globalAlpha = 0.4; renderer.ctx.fillStyle = '#ff0';
-        for (let i = 0; i < player.path.length; i++) {
-            const p = player.path[i];
-            renderer.ctx.beginPath(); renderer.ctx.arc(p.x, p.y, Math.max(0.5, 2 - i / player.path.length), 0, Math.PI * 2); renderer.ctx.fill();
+        } else {
+            activeDialogueNpc = null;
+            activeWaypointObj = null;
         }
-        renderer.ctx.restore();
     }
 
-    // Dropped Items
-    for (const di of droppedItems) {
-        if (lootFilter >= 1 && (!di.rarity || di.rarity === 'normal')) continue;
-        if (lootFilter >= 2 && di.rarity === 'magic') continue;
-        if (['unique', 'set', 'rare'].includes(di.rarity) && fx && Math.random() < 0.1) fx.emitLootBeam(di.x, di.y, di.rarity === 'unique' ? '#bf642f' : (di.rarity === 'set' ? '#0f0' : '#f0d030'));
-        renderer.drawSprite(di.icon, di.x, di.y, 14);
-        renderer.ctx.font = '4px Cinzel'; renderer.ctx.textAlign = 'center';
-        renderer.ctx.fillStyle = di.rarity === 'unique' ? '#e8a020' : (di.rarity === 'set' ? '#0f0' : '#aaa');
-        renderer.ctx.fillText(di.name, di.x, di.y + 10);
-    }
-
-    // Boss Phase HUD
+    // Boss check
+    // Boss check
     const boss = enemies.find(e => e.type === 'boss');
     const hpBar = $('boss-hp-bar');
-    if (boss && boss.hp > 0) {
+    if (boss && boss.hp > 0 && state === 'GAME') {
         hpBar.classList.remove('hidden');
         const pct = Math.max(0, (boss.hp / boss.maxHp) * 100);
         $('boss-hp-fill').style.width = `${pct}%`;
         $('boss-hp-text').textContent = `${Math.ceil(pct)}%`;
         $('boss-name').textContent = boss.name || 'Act Boss';
+
+        // --- Phase 3.1: Boss Phase Triggers ---
         if (pct < 50 && !boss._phase2Triggered) {
             boss._phase2Triggered = true;
-            boss.moveSpeed *= 1.4; boss.atkSpeed *= 1.3;
-            renderer.shake(15);
-            if (fx) fx.emitBurst(boss.x, boss.y, '#ff0000', 40, 4);
+            boss.moveSpeed *= 1.4;
+            boss.atkSpeed *= 1.3;
+            fx.shake(1000, 10);
+            fx.emitBurst(boss.x, boss.y, '#ff0000', 40, 4);
             addCombatLog(`${boss.name} enters a FURY!`, 'log-crit');
+            // Subtle visual change (flag for renderer)
             boss.isEnraged = true;
         }
-    } else if (hpBar) hpBar.classList.add('hidden');
+    } else {
+        if (hpBar) hpBar.classList.add('hidden');
+    }
 
-    // Sorting Entities
-    const drawEntities = [...(enemies || []), player, ...(mercenary && mercenary.hp > 0 ? [mercenary] : [])].filter(e => e).sort((a, b) => a.y - b.y);
-    const auraColors = { might_aura: '#ffd700', prayer_aura: '#40c040', holy_fire_aura: '#ff4000', resist_all: '#4080ff', vigor: '#ffffff', fanaticism: '#ffa000', conviction: '#a040ff' };
+    // Mercenary follow & attack AI
+    if (mercenary) {
+        if (mercenary.hp > 0) {
+            mercenary.update(dt, player, enemies, dungeon);
+            mercenary._deadNotified = false;
+        } else if (!mercenary._deadNotified) {
+            addCombatLog(`Your companion ${mercenary.name} has fallen!`, 'log-dmg');
+            playDeathSfx();
+            mercenary._deadNotified = true;
+            updateHud();
+        }
+    }
 
-    // Unified Aura & Character Render
-    for (const e of drawEntities) {
+    checkDeaths();
+    updateRespawns();
+
+    // Achievement checker (every frame is fine, checks are cheap)
+    checkAchievements();
+
+    // Check portal walk-over collisions
+    for (const o of gameObjects) {
+        if (o.type === 'portal' || o.type === 'uber_portal' || o.type === 'rift_exit') {
+            const dist = Math.sqrt((player.x - o.x) ** 2 + (player.y - o.y) ** 2);
+            if (dist < 20) {
+                const now = Date.now();
+                if (player._lastPortalEntry && now - player._lastPortalEntry < 2000) continue;
+                player._lastPortalEntry = now;
+
+                if (o.type === 'portal') {
+                    const res = o.interact(player);
+                    if (res && res.type === 'PORTAL') {
+                        addCombatLog('Entering Portal...', 'log-level');
+                        nextZone(res.targetZone);
+                        break;
+                    }
+                } else {
+                    // Direct targetZone objects
+                    addCombatLog('Entering Portal...', 'log-level');
+                    nextZone(o.targetZone);
+                    break;
+                }
+            }
+        }
+    }
+    // Update Pets
+    if (activePet) {
+        activePet.update(dt, player, droppedGold, droppedItems);
+    }
+
+    // --- Social Requests Expiry & Cleanup ---
+    const nowMs = Date.now();
+    pendingRequests = pendingRequests.filter(r => r.expires > nowMs);
+
+    // Secondary cleanup for items picked by pet
+    for (let i = droppedGold.length - 1; i >= 0; i--) {
+        if (droppedGold[i]._pickedByPet) {
+            droppedGold.splice(i, 1);
+            updateHud();
+        }
+    }
+
+    if (player.hp <= 0 && state === 'GAME') {
+        checkDeaths(); // Triggers final sequence
+        return;
+    }
+
+    const distToExit = Math.sqrt((player.x - dungeon.exitPos.x) ** 2 + (player.y - dungeon.exitPos.y) ** 2);
+    if (distToExit < 20) {
+        if (isZoneLocked) {
+            if (player.path) player.path = []; // stop moving
+            // Move player back slightly to prevent spam
+            player.x -= (dungeon.exitPos.x - player.x) * 0.1;
+            player.y -= (dungeon.exitPos.y - player.y) * 0.1;
+            bus.emit('combat:log', { text: "The ancient evil blocks your path forward!", type: 'log-dmg' });
+        } else {
+            nextZone();
+        }
+    }
+
+    // Render
+    renderer.clear();
+    dungeon.render(renderer, camera);
+
+    camera.apply(renderer.ctx);
+
+    // Path Breadcrumbs (Phase 31 Mastery)
+    if (player.path && player.path.length > 0) {
+        renderer.ctx.save();
+        renderer.ctx.globalAlpha = 0.4;
+        renderer.ctx.fillStyle = '#ffff00';
+        for (let i = 0; i < player.path.length; i++) {
+            const p = player.path[i];
+            const size = 2 - (i / player.path.length); // Tapering trail
+            renderer.ctx.beginPath();
+            renderer.ctx.arc(p.x, p.y, Math.max(0.5, size), 0, Math.PI * 2);
+            renderer.ctx.fill();
+        }
+        renderer.ctx.restore();
+    }
+
+    // Dropped items (with loot filter)
+    for (const di of droppedItems) {
+        if (lootFilter >= 1 && (!di.rarity || di.rarity === 'normal')) continue;
+        if (lootFilter >= 2 && di.rarity === 'magic') continue;
+
+        // Loot Beam & Ground Glow
+        if (di.rarity === 'unique' || di.rarity === 'rare' || di.rarity === 'set') {
+            const ctx = renderer.ctx;
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            const color = di.rarity === 'unique' ? 'rgba(232, 160, 32, 0.6)' : di.rarity === 'set' ? 'rgba(0, 255, 0, 0.5)' : 'rgba(240, 208, 48, 0.5)';
+
+            // Ground Glow
+            const radial = ctx.createRadialGradient(di.x, di.y, 2, di.x, di.y, 12);
+            radial.addColorStop(0, color);
+            radial.addColorStop(1, 'transparent');
+            ctx.fillStyle = radial;
+            ctx.beginPath(); ctx.arc(di.x, di.y, 12, 0, Math.PI * 2); ctx.fill();
+
+            // Rhythmic Shimmer
+            const shimmer = 0.6 + Math.sin(lastTime * 0.005) * 0.3;
+            ctx.globalAlpha = shimmer;
+
+            const g = ctx.createLinearGradient(0, di.y, 0, di.y - 120);
+            g.addColorStop(0, color);
+            g.addColorStop(1, 'transparent');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(di.x - 4, di.y);
+            ctx.lineTo(di.x + 4, di.y);
+            ctx.lineTo(di.x + 1, di.y - 120);
+            ctx.lineTo(di.x - 1, di.y - 120);
+            ctx.closePath();
+            ctx.fill();
+
+            // Core beam
+            const g2 = ctx.createLinearGradient(0, di.y, 0, di.y - 100);
+            g2.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+            g2.addColorStop(1, 'transparent');
+            ctx.fillStyle = g2;
+            ctx.fillRect(di.x - 0.5, di.y - 100, 1, 100);
+            ctx.restore();
+        }
+
+        renderer.drawSprite(di.icon, di.x, di.y, 14);
+        renderer.ctx.font = '4px Cinzel, serif';
+        renderer.ctx.textAlign = 'center';
+        renderer.ctx.fillStyle = di.rarity === 'unique' ? '#e8a020' : di.rarity === 'set' ? '#00ff00' : di.rarity === 'rare' ? '#f0d030' : di.rarity === 'magic' ? '#4080ff' : '#aaa';
+        renderer.ctx.fillText(di.name, di.x, di.y + 10);
+    }
+
+    // --- Phase 29: World Time Overlay (Post-Objects) ---
+    renderWorldOverlay(renderer.ctx, renderer.width, renderer.height);
+
+    // Old vignette system (Removed to prevent over-darkening in favor of primary Narrative Vision pass)
+
+    for (const g of droppedGold) {
+        renderer.fillCircle(g.x, g.y, 4, '#ffd700');
+        renderer.strokeCircle(g.x, g.y, 4, '#c8972a', 1);
+        renderer.ctx.font = '4px Cinzel, serif';
+        renderer.ctx.textAlign = 'center';
+        renderer.ctx.fillStyle = '#fff';
+        renderer.ctx.fillText(g.amount, g.x, g.y + 7);
+    }
+
+    const entities = [...(enemies || []), player].filter(e => e).sort((a, b) => a.y - b.y);
+
+    // --- MMO AURAS: Combined Aura Logic (Own + Received) ---
+    const allActiveAuraColors = [];
+    if (player) {
+        const auraColors = { might_aura: '#ffd700', prayer_aura: '#40c040', holy_fire_aura: '#ff4000', resist_all: '#4080ff', vigor: '#ffffff', fanaticism: '#ffa000', conviction: '#a040ff' };
+
+        // 1. Check own aura
+        if (player.activeAura) allActiveAuraColors.push(auraColors[player.activeAura] || '#ffe880');
+
+        // 2. Check item/runeword auras (if implemented in future)
+        if (player.itemAuras) player.itemAuras.forEach(id => allActiveAuraColors.push(auraColors[id] || '#ffe880'));
+
+        // 3. Check received auras from others
+        if (network && network.isConnected) {
+            const AURA_RANGE_SQ = 150 * 150;
+            network.otherPlayers.forEach(op => {
+                if (op.activeAura) {
+                    const dSq = (op.x - player.x) ** 2 + (op.y - player.y) ** 2;
+                    if (dSq < AURA_RANGE_SQ) {
+                        const c = auraColors[op.activeAura] || '#ffe880';
+                        if (!allActiveAuraColors.includes(c)) allActiveAuraColors.push(c);
+                    }
+                }
+            });
+        }
+    }
+
+    for (const e of entities) {
         if (e.isPlayer) {
+            renderer.ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            renderer.ctx.beginPath(); renderer.ctx.ellipse(e.x, e.y + 6, 8, 3, 0, 0, Math.PI * 2); renderer.ctx.fill();
+
+            // --- UNIFIED AURA RENDERING (Style of the Paladin) ---
+            const targetAuras = e === player ? allActiveAuraColors : (e.activeAura ? [('#ffd700')] : []); // Simplified for others, detailed for self
+
+            // For other players, we use their specific aura color
             let displayColor = '#ffe880';
-            if (e === player && allActiveAuraColors.length > 0) displayColor = allActiveAuraColors[Math.floor(lastTime / 1500) % allActiveAuraColors.length];
-            else if (e.activeAura) displayColor = auraColors[e.activeAura] || '#ffe880';
+            if (e === player && allActiveAuraColors.length > 0) {
+                // Rotate through colors every 1.5s
+                const colorIdx = Math.floor(lastTime / 1500) % allActiveAuraColors.length;
+                displayColor = allActiveAuraColors[colorIdx];
+            } else if (e.activeAura) {
+                const auraColors = { might_aura: '#ffd700', prayer_aura: '#40c040', holy_fire_aura: '#ff4000', resist_all: '#4080ff', vigor: '#ffffff', fanaticism: '#ffa000', conviction: '#a040ff' };
+                displayColor = auraColors[e.activeAura] || '#ffe880';
+            }
 
             if ((e === player && allActiveAuraColors.length > 0) || (e !== player && e.activeAura)) {
                 const pulse = 0.3 + Math.sin(lastTime * 0.004) * 0.15;
                 const auraRadius = 25 + Math.sin(lastTime * 0.003) * 3;
-                renderer.ctx.save(); renderer.ctx.globalAlpha = pulse; renderer.ctx.strokeStyle = displayColor; renderer.ctx.lineWidth = 1.5;
-                renderer.ctx.beginPath(); renderer.ctx.ellipse(e.x, e.y + 2, auraRadius, auraRadius * 0.4, 0, 0, Math.PI * 2); renderer.ctx.stroke();
+                renderer.ctx.save();
+                renderer.ctx.globalAlpha = pulse;
+                renderer.ctx.strokeStyle = displayColor;
+                renderer.ctx.lineWidth = 1.5;
+                renderer.ctx.shadowColor = displayColor;
+                renderer.ctx.shadowBlur = 8;
+                renderer.ctx.beginPath();
+                renderer.ctx.ellipse(e.x, e.y + 2, auraRadius, auraRadius * 0.4, 0, 0, Math.PI * 2);
+                renderer.ctx.stroke();
                 renderer.ctx.restore();
             }
+
             renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 18, e.animState, e.facingDir, lastTime, null, e.equipment, e.hitFlashTimer);
             e.renderMinions(renderer, lastTime);
-        } else e.render(renderer, lastTime);
-    }
 
-    // Other Players & MMO UI
-    if (network?.otherPlayers) {
-        network.otherPlayers.forEach(op => {
-            renderer.drawAnim(`class_${op.classId || 'warrior'}`, op.x, op.y - 4, 18, op.animState || 'idle', op.facingDir || 'south', lastTime);
-            renderer.ctx.font = 'bold 7px Cinzel'; renderer.ctx.textAlign = 'center'; renderer.ctx.fillStyle = '#8af';
-            renderer.ctx.fillText(op.name || 'Player', op.x, op.y - 20);
+            // --- DRAW SOCIAL REQUEST UI ABOVE HEAD ---
+            if (e !== player) {
+                const req = pendingRequests.find(r => r.fromName === e.charName);
+                if (req) {
+                    const sx = (e.x - camera.x) * camera.zoom + renderer.width / 2;
+                    const sy = (e.y - 25 - camera.y) * camera.zoom + renderer.height / 2;
 
-            // Speech Bubble
-            const bubble = speechBubbles.get(op.charName || op.name);
+                    renderer.ctx.save();
+                    renderer.ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                    renderer.ctx.strokeStyle = '#ffd700';
+                    renderer.ctx.lineWidth = 1;
+                    renderer.ctx.beginPath();
+                    renderer.ctx.roundRect(sx - 45, sy - 30, 90, 28, 4);
+                    renderer.ctx.fill();
+                    renderer.ctx.stroke();
+
+                    renderer.ctx.fillStyle = '#fff';
+                    renderer.ctx.font = 'bold 9px Arial';
+                    renderer.ctx.textAlign = 'center';
+                    renderer.ctx.fillText(`${req.type.toUpperCase()}?`, sx, sy - 18);
+
+                    renderer.ctx.font = '8px Arial';
+                    renderer.ctx.fillStyle = '#4f4';
+                    renderer.ctx.fillText('[Y] Accept', sx - 22, sy - 8);
+                    renderer.ctx.fillStyle = '#f44';
+                    renderer.ctx.fillText('[N] No', sx + 22, sy - 8);
+                    renderer.ctx.restore();
+                }
+            }
+
+            // --- DRAW SPEECH BUBBLE ABOVE HEAD ---
+            const bubble = speechBubbles.get(e.charName || e.name);
             if (bubble && Date.now() < bubble.expires) {
-                renderer.ctx.save(); renderer.ctx.font = 'bold 10px Arial';
+                const sx = (e.x - camera.x) * camera.zoom + renderer.width / 2;
+                const sy = (e.y - 45 - camera.y) * camera.zoom + renderer.height / 2;
+
+                renderer.ctx.save();
+                renderer.ctx.font = 'bold 10px Arial';
                 const metrics = renderer.ctx.measureText(bubble.text);
-                const bw = metrics.width + 12; const bh = 16;
-                renderer.ctx.fillStyle = 'white'; renderer.ctx.strokeStyle = '#000'; renderer.ctx.lineWidth = 1;
-                renderer.ctx.beginPath(); renderer.ctx.roundRect(op.x - bw / 2, op.y - 45, bw, bh, 4); renderer.ctx.fill(); renderer.ctx.stroke();
-                renderer.ctx.fillStyle = '#000'; renderer.ctx.textAlign = 'center'; renderer.ctx.fillText(bubble.text, op.x, op.y - 40);
+                const bw = metrics.width + 12;
+                const bh = 16;
+
+                // Bubble bg
+                renderer.ctx.fillStyle = 'white';
+                renderer.ctx.strokeStyle = '#000';
+                renderer.ctx.lineWidth = 1;
+                renderer.ctx.beginPath();
+                renderer.ctx.roundRect(sx - bw / 2, sy - bh, bw, bh, 4);
+                renderer.ctx.fill();
+                renderer.ctx.stroke();
+
+                // Tail
+                renderer.ctx.beginPath();
+                renderer.ctx.moveTo(sx - 4, sy);
+                renderer.ctx.lineTo(sx + 4, sy);
+                renderer.ctx.lineTo(sx, sy + 4);
+                renderer.ctx.fill();
+                renderer.ctx.stroke();
+
+                renderer.ctx.fillStyle = '#000';
+                renderer.ctx.textAlign = 'center';
+                renderer.ctx.fillText(bubble.text, sx, sy - 5);
                 renderer.ctx.restore();
             }
+        } else {
+            e.render(renderer, lastTime);
+        }
+    }
+
+    // Render mercenary
+    if (mercenary && mercenary.hp > 0) {
+        mercenary.render(renderer, lastTime);
+    }
+
+    // ─── RENDER OTHER MMO PLAYERS ───────────────────────────────────────
+    if (network && network.otherPlayers && network.otherPlayers.size > 0) {
+        const ctx = renderer.ctx;
+        network.otherPlayers.forEach((op) => {
+            // Shadow beneath
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,80,255,0.25)';
+            ctx.beginPath();
+            ctx.ellipse(op.x, op.y + 6, 8, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Character sprite
+            renderer.drawAnim(
+                `class_${op.classId || 'warrior'}`,
+                op.x, op.y - 4, 18,
+                op.animState || 'idle', op.facingDir || 'south',
+                lastTime
+            );
+
+            // --- MMO AURAS RENDER (DYNAMIC MULTI-AURA) ---
+            const activeAuras = [];
+            if (op.activeAura) activeAuras.push(op.activeAura);
+            if (op.itemAuras) activeAuras.push(...op.itemAuras);
+
+            if (activeAuras.length > 0) {
+                activeAuras.forEach((auraId, idx) => {
+                    const auraRadius = (16 + idx * 4) + Math.sin(lastTime * 0.004 + idx) * 2;
+                    const auraColors = {
+                        'might_aura': '#ffcc00', 'holy_fire_aura': '#ff4400', 'prayer_aura': '#00ffcc',
+                        'thorns_aura': '#cc00ff', 'holy_freeze_aura': '#00ccff', 'fanaticism': '#ffa000',
+                        'conviction': '#a040ff', 'resist_all': '#4080ff', 'vigor': '#ffffff'
+                    };
+                    const auraColor = auraColors[auraId] || '#ffffff';
+
+                    ctx.save();
+                    ctx.strokeStyle = auraColor;
+                    ctx.globalAlpha = 0.4 / (idx + 1);
+                    ctx.lineWidth = 1.5;
+                    ctx.shadowColor = auraColor;
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.ellipse(op.x, op.y + 2, auraRadius, auraRadius * 0.4, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            }
+
+            // --- MMO MINIONS & MERCENARY RENDER ---
+            if (op.minions && Array.isArray(op.minions)) {
+                op.minions.forEach(m => {
+                    renderer.drawAnim(m.icon || 'enemy_skeleton', m.x, m.y - 4, 14, 'idle', 'south', lastTime);
+                    // Tiny health bar for remote minions
+                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                    ctx.fillRect(m.x - 5, m.y - 12, 10, 1.5);
+                    ctx.fillStyle = '#4caf50';
+                    ctx.fillRect(m.x - 5, m.y - 12, (m.hp / m.maxHp) * 10, 1.5);
+                });
+            }
+            if (op.mercenary && op.mercenary.hp > 0) {
+                const merc = op.mercenary;
+                renderer.drawAnim(merc.icon || 'class_rogue', merc.x, merc.y - 4, 16, 'idle', 'south', lastTime);
+                // Tiny health bar for remote mercenary
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(merc.x - 6, merc.y - 14, 12, 2);
+                ctx.fillStyle = '#4caf50';
+                ctx.fillRect(merc.x - 6, merc.y - 14, (merc.hp / merc.maxHp) * 12, 2);
+            }
+
+            // Nameplate
+            ctx.font = 'bold 7px Cinzel, serif';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#0044ff';
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = '#88aaff';
+            ctx.fillText(op.name || 'Player', op.x, op.y - 20);
+            ctx.shadowBlur = 0;
+            ctx.restore();
         });
     }
 
-    npcs.forEach(n => n.render(renderer, lastTime));
-    gameObjects.forEach(obj => {
+
+    for (const n of npcs) {
+        // Subtle glow for town NPCs
+        if (zoneLevel === 0) {
+            const pulse = 0.5 + Math.sin(lastTime * 0.005) * 0.3;
+            renderer.ctx.fillStyle = `rgba(216, 176, 104, ${pulse * 0.2})`;
+            renderer.ctx.beginPath();
+            renderer.ctx.ellipse(n.x, n.y + 4, 12, 5, 0, 0, Math.PI * 2);
+            renderer.ctx.fill();
+        }
+        n.render(renderer, lastTime);
+    }
+
+    // --- Phase 3.1: Pulsing Interactive Objects ---
+    for (const obj of gameObjects) {
+        if (obj.type === 'shrine' || obj.type === 'waypoint' || obj.type === 'altar') {
+            const pulse = 0.4 + Math.sin(lastTime * 0.004) * 0.2;
+            const color = obj.type === 'shrine' ? 'rgba(0, 255, 255,' : 'rgba(255, 215, 0,';
+            renderer.ctx.save();
+            renderer.ctx.globalCompositeOperation = 'screen';
+            const radial = renderer.ctx.createRadialGradient(obj.x, obj.y, 4, obj.x, obj.y, 25);
+            radial.addColorStop(0, `${color} ${pulse})`);
+            radial.addColorStop(1, 'transparent');
+            renderer.ctx.fillStyle = radial;
+            renderer.ctx.beginPath();
+            renderer.ctx.arc(obj.x, obj.y, 25, 0, Math.PI * 2);
+            renderer.ctx.fill();
+            renderer.ctx.restore();
+        }
+
+        // --- Rift Portal Suction FX ---
         if (obj.isRiftPortal || obj.id === 'rift_portal') {
+            const pColor = '#0ff';
             for (let i = 0; i < 2; i++) {
-                const angle = Math.random() * Math.PI * 2; const dist = 30 + Math.random() * 20;
-                fx.getParticle().reset(obj.x + Math.cos(angle) * dist, obj.y + Math.sin(angle) * dist, (obj.x - (obj.x + Math.cos(angle) * dist)) * 0.08, (obj.y - (obj.y + Math.sin(angle) * dist)) * 0.08, 400, '#0ff', 1);
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 30 + Math.random() * 20;
+                const px = obj.x + Math.cos(angle) * dist;
+                const py = obj.y + Math.sin(angle) * dist;
+                // Particles fly TOWARDS the center
+                if (fx && fx.emitParticle) {
+                    fx.emitParticle(px, py, (obj.x - px) * 0.08, (obj.y - py) * 0.08, pColor, 0.4);
+                }
             }
         }
-        obj.render(renderer, lastTime);
-    });
+    }
+    for (const obj of gameObjects) obj.render(renderer, lastTime);
 
     projectiles.forEach(p => p.render(renderer, lastTime));
     aoeZones.forEach(a => a.render(renderer, lastTime));
 
-    renderer.ctx.restore(); // Exit camera space
+    renderer.ctx.restore(); // END CAMERA TRANSLATION (Switching to Screen Space for UI)
 
-    // VFX Pass
-    if (fx) fx.renderScreen(renderer.ctx, camera);
+    // Phase 15 & 16: Unified FX & Combat Text Layer
+    // We use fx.renderScreen to handle all particles and floating text in a single pass
+    // that correctly accounts for camera coordinates and mobile scaling.
+    renderer.ctx.save();
+    renderer.ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    // Narrative Vision lighting
+    if (fx && fx.renderScreen) {
+        fx.renderScreen(renderer.ctx, camera);
+    }
+
+    renderer.ctx.restore();
+
+    bus.emit('render:effects', { renderer, lastTime });
+
+    // --- Phase 20: Narrative Vision: Atmospheric Lighting & Climate ---
     if (player && renderer && camera) {
         const screen = camera.toScreen(player.x, player.y - 15);
         const baseRadius = (160 + (player.lightRadius || 0));
         let flicker = Math.sin(Date.now() / 150) * 8;
+
         let ambient = 'rgba(0, 0, 0, 0.88)';
-        if (zoneLevel === 0 || [38, 68, 96, 102].includes(zoneLevel)) ambient = 'rgba(0, 0, 10, 0.15)';
-        else if (zoneLevel <= 37) ambient = 'rgba(5, 5, 20, 0.75)';
-        else if (zoneLevel <= 67) ambient = 'rgba(25, 15, 0, 0.70)';
-        else if (zoneLevel <= 95) ambient = 'rgba(10, 25, 10, 0.80)';
-        else if (zoneLevel <= 101) ambient = 'rgba(35, 5, 0, 0.85)';
-        else if (zoneLevel <= 125) ambient = 'rgba(15, 20, 35, 0.75)';
-        else if (zoneLevel >= 128 || window.riftLevel > 0) ambient = 'rgba(20, 0, 30, 0.90)';
+
+        // --- Act-Specific Climate & Lighting ---
+        if (zoneLevel === 0 || [38, 68, 96, 102].includes(zoneLevel)) ambient = 'rgba(0, 0, 10, 0.15)'; // Towns
+        else if (zoneLevel <= 37) {
+            // Act 1: Rainy/Stormy
+            ambient = 'rgba(5, 5, 20, 0.75)';
+            if (Math.random() < 0.005) { // Lightning strike
+                ambient = 'rgba(200, 200, 255, 0.1)';
+                flicker = 500;
+            }
+            if (Math.random() < 0.4) fx.emitBurst(camera.x + Math.random() * camera.w, camera.y - 20, '#55a', 1, 0.5); // Rain
+        }
+        else if (zoneLevel <= 67) {
+            // Act 2: Sandstorm
+            ambient = 'rgba(25, 15, 0, 0.70)';
+            if (Math.random() < 0.3) fx.emitBurst(camera.x + camera.w + 20, camera.y + Math.random() * camera.h, '#dcb', 1, 0.8); // Sand
+        }
+        else if (zoneLevel <= 95) {
+            // Act 3: Foggy Jungle
+            ambient = 'rgba(10, 25, 10, 0.80)';
+            if (Math.random() < 0.1) fx.emitBurst(camera.x + Math.random() * camera.w, camera.y + Math.random() * camera.h, '#8f8', 1, 1.2); // Fireflies
+        }
+        else if (zoneLevel <= 101) {
+            // Act 4: Hell Fire
+            ambient = 'rgba(35, 5, 0, 0.85)';
+            if (Math.random() < 0.2) fx.emitBurst(camera.x + Math.random() * camera.w, camera.y + camera.h + 10, '#f40', 1, 1.5); // Embers
+        }
+        else if (zoneLevel <= 125) {
+            // Act 5: Blizzard
+            ambient = 'rgba(15, 20, 35, 0.75)';
+            if (Math.random() < 0.5) fx.emitBurst(camera.x + camera.w + 50, camera.y + Math.random() * camera.h, '#fff', 1, 0.4); // Snow wind
+        }
+        else if (zoneLevel >= 128 || window.riftLevel > 0) {
+            // Rift: Void particles
+            ambient = 'rgba(20, 0, 30, 0.90)';
+            if (Math.random() < 0.1) fx.emitBurst(camera.x + Math.random() * camera.w, camera.y + Math.random() * camera.h, '#a0f', 1, 2.0);
+        }
+
         renderer.applyLighting(screen.x, screen.y, (baseRadius + flicker) * camera.zoom, ambient);
     }
 
     camera.reset(renderer.ctx);
-    updateHud();
-    if (timestamp - lastSaveTime > 30000 && activeSlotId) { lastSaveTime = timestamp; saveGame(); addCombatLog('Progress Saved.', 'log-info'); }
 
+    if (dialogue) {
+        renderer.text(dialogue.text, renderer.width / 2, renderer.height - 120, { size: 16, align: 'center', color: '#ffd700' });
+    }
+
+    updateHud();
+
+    // Auto-save every 30 seconds
+    if (timestamp - lastSaveTime > 30000 && activeSlotId) {
+        lastSaveTime = timestamp;
+        saveGame();
+        addCombatLog('Progress Saved.', 'log-info');
+    }
+
+    renderer.text(`FPS: ${Math.round(1000 / dt)}`, renderer.width - 20, renderer.height - 20, { size: 10, align: 'right', color: '#555' });
+
+    // Premium Ambient Lighting Mask (affecting everything)
+    const cx = renderer.width / 2;
+    const cy = renderer.height / 2;
+
+    // Dynamic pulsing and gear-based light radius
+    const baseRadius = 450 + (player.lightRadius || 0) * 50;
+    const pulse = Math.sin(lastTime * 0.002) * 15;
+    const radius = Math.max(100, baseRadius + pulse);
+
+    const grd = renderer.ctx.createRadialGradient(cx, cy, 50, cx, cy, radius);
+
+    // In town or boss room, make it slightly brighter overall
+    const minAlpha = (zoneLevel === 0) ? 0.6 : (isBossZone ? 0.8 : 0.95);
+
+    grd.addColorStop(0, 'rgba(0, 0, 0, 0)');      // Full visibility at center
+    grd.addColorStop(0.3, 'rgba(0, 0, 0, 0)');    // Wider clear area
+    grd.addColorStop(0.7, `rgba(0, 0, 0, ${minAlpha * 0.5})`);  // Atmospheric penumbra
+    grd.addColorStop(1, `rgba(0, 0, 0, ${minAlpha})`);   // Outer darkness
+
+    renderer.ctx.fillStyle = grd;
+    renderer.ctx.fillRect(0, 0, renderer.width, renderer.height);
+
+    // ——— MINIMAP ———
+    // Render minimap (top right)
     renderMinimap();
-    if (showFullMap) renderFullMap();
+
+    // Render Full Map (TAB)
+    if (showFullMap && explored) {
+        const mw = renderer.width, mh = renderer.height;
+        const ts = dungeon.tileSize;
+        const cw = dungeon.width * ts;
+        const ch = dungeon.height * ts;
+        const scale = Math.min(mw / cw, mh / ch) * 0.8;
+        const ox = (mw - cw * scale) / 2;
+        const oy = (mh - ch * scale) / 2;
+
+        renderer.ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        renderer.ctx.fillRect(0, 0, mw, mh);
+
+        for (let r = 0; r < dungeon.height; r++) {
+            for (let c = 0; c < dungeon.width; c++) {
+                if (!explored[r][c] || !dungeon.grid[r]) continue;
+                const t = dungeon.grid[r][c];
+                if (t === 1) continue;
+                renderer.ctx.fillStyle = t === 0 ? '#444' : t === 3 ? '#ffd700' : t === 6 ? '#2d5a27' : t === 8 ? '#1e4b85' : '#555';
+                renderer.ctx.fillRect(ox + c * ts * scale, oy + r * ts * scale, ts * scale + 1, ts * scale + 1);
+            }
+        }
+
+        // Objects (Shrines, Chests, Portals)
+        for (const obj of gameObjects) {
+            const or = Math.floor(obj.y / ts);
+            const oc = Math.floor(obj.x / ts);
+            if (explored[or] && explored[or][oc]) {
+                renderer.ctx.fillStyle = obj.type === 'portal' ? '#30ccff' : (obj.type === 'shrine' ? '#ffd700' : '#8b4513');
+                renderer.ctx.fillRect(ox + obj.x * scale - 1.5, oy + obj.y * scale - 1.5, 3, 3);
+            }
+        }
+
+        renderer.ctx.fillStyle = '#0f0'; // Player
+        renderer.ctx.fillRect(ox + player.x * scale - 2, oy + player.y * scale - 2, 4, 4);
+    }
+
+
 
     requestAnimationFrame(gameLoop);
 }
@@ -1669,8 +2170,6 @@ function checkDeaths() {
     }
 }
 
-// --- Phase 15: Damage Numbers System (Optimized) ---
-const ftPool = [];
 function spawnFloatingText(x, y, text, type = 'physical', isCrit = false) {
     const colors = {
         physical: '#ffffff',
@@ -1681,27 +2180,17 @@ function spawnFloatingText(x, y, text, type = 'physical', isCrit = false) {
         magic: '#ff00ff',
         shadow: '#a040ff',
         holy: '#ffd700',
-        blocked: '#888888',
-        heal: '#40ff40'
+        blocked: '#888888'
     };
 
-    let ft = ftPool.find(f => !f.active);
-    if (!ft) {
-        ft = { x: 0, y: 0, text: '', color: '', isCrit: false, life: 0, active: false };
-        ftPool.push(ft);
-    }
-
-    ft.x = x + (Math.random() - 0.5) * 30;
-    ft.y = y - 20;
-    ft.text = text;
-    ft.color = colors[type] || '#ffffff';
-    ft.isCrit = isCrit;
-    ft.life = isCrit ? 1.5 : 1.0;
-    ft.active = true;
-    ft.velY = isCrit ? -60 : -40;
-
-    // Trigger visual luxury: Shake on impact
-    if (isCrit) renderer.shake(8);
+    floatingTexts.push({
+        x: x + (Math.random() - 0.5) * 20,
+        y: y - 20,
+        text,
+        color: type === 'Blocked!' ? colors.blocked : (colors[type] || '#ffffff'),
+        isCrit,
+        life: isCrit ? 1.6 : 1.2
+    });
 }
 
 function nextZone(targetZone = null) {
@@ -2028,33 +2517,16 @@ function updateHud() {
     if (!player) return;
     updateWorldClockUI();
 
-    // Orbs with Smooth Transitions
+    // Orbs
     const hpFill = $('hp-fill');
-    if (hpFill) {
-        hpFill.style.transition = 'height 0.4s cubic-bezier(0,0.5,0.5,1)';
-        hpFill.style.height = (player.hp / player.maxHp * 100) + '%';
-    }
+    if (hpFill) hpFill.style.height = (player.hp / player.maxHp * 100) + '%';
     const hpText = $('hp-text');
     if (hpText) hpText.textContent = `${Math.ceil(player.hp)}`;
 
     const mpFill = $('mp-fill');
-    if (mpFill) {
-        mpFill.style.transition = 'height 0.6s ease-out';
-        mpFill.style.height = (player.mp / player.maxMp * 100) + '%';
-    }
+    if (mpFill) mpFill.style.height = (player.mp / player.maxMp * 100) + '%';
     const mpText = $('mp-text');
     if (mpText) mpText.textContent = `${Math.ceil(player.mp)}`;
-
-    // Damage Vignette logic in UI
-    const vignette = $('damage-vignette');
-    if (vignette) {
-        const hpRatio = player.hp / player.maxHp;
-        if (hpRatio < 0.3) {
-            vignette.style.opacity = (0.3 - hpRatio) * 2 + (Math.sin(Date.now() * 0.005) * 0.1);
-        } else {
-            vignette.style.opacity = 0;
-        }
-    }
 
     // XP Bar
     const xpPct = player.xpToNext ? (player.xp / player.xpToNext * 100) : 100;
@@ -3074,22 +3546,6 @@ for (let i = 0; i < 5; i++) {
         }
     });
 }
-bus.on('skill:use:dash', () => {
-    if (player && player.hp > 0 && state === 'GAME') {
-        player.dash();
-        if (input.isMobile) input.vibrate(25);
-    }
-});
-
-// ——— COMBAT FEEDBACK ———
-bus.on('combat:log', (data) => {
-    addCombatLog(data.text, data.cls);
-    if (input.isMobile) {
-        if (data.cls === 'log-dmg') input.vibrate([40, 30, 40]);
-        if (data.cls === 'log-crit') input.vibrate(60);
-        if (data.cls === 'log-heal') input.vibrate(15);
-    }
-});
 
 // ——— INPUT EVENTS ———
 bus.on('input:click', p => { input.click = { x: p.screenX, y: p.screenY }; });
@@ -4456,682 +4912,783 @@ function renderInventory() {
             const showRed = isEquippableType && (!check.ok || isBroken);
 
             div.innerHTML = getItemHtml(item, showRed);
-            const innerDiv = div.firstElementChild; // The .inv-item div
-            if (innerDiv) {
-                setupTooltip(innerDiv, item);
-                // Drag vs Click support (Threshold-based)
-                innerDiv.onmousedown = (e) => {
-                    if (e.button !== 0) return;
-                    const startX = e.clientX;
-                    const startY = e.clientY;
-                    let draggingStarted = false;
+            const innerDiv = div.firstChild; // The .inv-item div
+            setupTooltip(innerDiv, item);
 
-                    const onMove = (mv) => {
-                        if (draggingStarted) return;
-                        const dist = Math.hypot(mv.clientX - startX, mv.clientY - startY);
-                        if (dist > 5) {
-                            draggingStarted = true;
-                            startDrag(mv, item, 'inventory', i);
-                            // Clean up listeners once drag starts
-                            window.removeEventListener('mousemove', onMove);
-                            window.removeEventListener('mouseup', onUp);
-                        }
-                    };
+            // Drag vs Click support (Threshold-based)
+            innerDiv.onmousedown = (e) => {
+                if (e.button !== 0) return;
+                const startX = e.clientX;
+                const startY = e.clientY;
+                let draggingStarted = false;
 
-                    const onUp = () => {
+                const onMove = (mv) => {
+                    if (draggingStarted) return;
+                    const dist = Math.hypot(mv.clientX - startX, mv.clientY - startY);
+                    if (dist > 5) {
+                        draggingStarted = true;
+                        startDrag(mv, item, 'inventory', i);
+                        // Clean up listeners once drag starts
                         window.removeEventListener('mousemove', onMove);
                         window.removeEventListener('mouseup', onUp);
-                    };
-
-                    window.addEventListener('mousemove', onMove, { passive: true });
-                    window.addEventListener('mouseup', onUp);
+                    }
                 };
 
-                // Handle Item Clicks (Left-click)
-                div.addEventListener('click', (e) => {
-                    // 1. Move to Stash (if open)
-                    if (!$('panel-stash').classList.contains('hidden')) {
-                        const targetStash = stashMode === 'personal' ? stash : sharedStashTabs[currentStashTab].items;
-                        const emptySlot = targetStash.indexOf(null);
-                        if (emptySlot !== -1) {
-                            targetStash[emptySlot] = item;
-                            player.inventory[i] = null;
-                            if (stashMode === 'shared') {
-                                SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
-                            }
-                            addCombatLog(`Moved ${item.name} to Stash.`, 'log-info');
-                            hideTooltip();
-                            renderInventory();
-                            renderStash();
-                            return;
-                        } else {
-                            addCombatLog('Stash is full!', 'log-dmg');
-                            return;
-                        }
-                    }
+                const onUp = () => {
+                    window.removeEventListener('mousemove', onMove);
+                    window.removeEventListener('mouseup', onUp);
+                };
 
-                    // 2. Move to Cube (if open)
-                    if (!$('panel-cube').classList.contains('hidden')) {
-                        const emptySlot = cube.indexOf(null);
-                        if (emptySlot !== -1) {
-                            cube[emptySlot] = item;
-                            player.inventory[i] = null;
-                            addCombatLog(`Moved ${item.name} to Cube.`, 'log-info');
-                            hideTooltip();
-                            renderInventory();
-                            renderCube();
-                            return;
-                        } else {
-                            addCombatLog('Cube is full!', 'log-dmg');
-                            return;
-                        }
-                    }
+                window.addEventListener('mousemove', onMove, { passive: true });
+                window.addEventListener('mouseup', onUp);
+            };
 
-                    // 3. Special Action Modes
-                    if (window.isIdentifying && item.identified === false) {
-                        item.identified = true;
-                        window.isIdentifying = false;
-                        document.body.style.cursor = 'default';
-                        addCombatLog(`Identified: ${item.name}!`, 'log-level');
-                        playLoot();
-                        player.invalidateStats();
-                        renderInventory();
-                        renderCharacterPanel();
-                        return;
-                    }
-
-                    if (isImbuing) {
-                        if (item.rarity !== 'normal' || item.type === 'potion' || item.type === 'gem' || item.type === 'scroll') {
-                            addCombatLog('Charsi: "I can only imbue normal equipment!"', 'log-dmg');
-                            return;
+            // Handle Item Clicks (Left-click)
+            div.addEventListener('click', (e) => {
+                // 1. Move to Stash (if open)
+                if (!$('panel-stash').classList.contains('hidden')) {
+                    const targetStash = stashMode === 'personal' ? stash : sharedStashTabs[currentStashTab].items;
+                    const emptySlot = targetStash.indexOf(null);
+                    if (emptySlot !== -1) {
+                        targetStash[emptySlot] = item;
+                        player.inventory[i] = null;
+                        if (stashMode === 'shared') {
+                            SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
                         }
-                        loot.imbueItem(item, player.level);
-                        player.hasImbue = false;
-                        isImbuing = false;
-                        document.body.style.cursor = 'default';
-                        addCombatLog(`Charsi: "There! A weapon fit for a hero!"`, 'log-level');
-                        playLoot();
+                        addCombatLog(`Moved ${item.name} to Stash.`, 'log-info');
                         hideTooltip();
                         renderInventory();
+                        renderStash();
+                        return;
+                    } else {
+                        addCombatLog('Stash is full!', 'log-dmg');
                         return;
                     }
+                }
 
-                    if (isReforging) {
-                        if (item.rarity !== 'rare') {
-                            addCombatLog('Charsi: "I can only reforge Rare equipment!"', 'log-dmg');
-                            return;
-                        }
-                        player.gold -= 5000;
-                        loot.reforgeItem(item, player.level);
-                        isReforging = false;
+                // 2. Move to Cube (if open)
+                if (!$('panel-cube').classList.contains('hidden')) {
+                    const emptySlot = cube.indexOf(null);
+                    if (emptySlot !== -1) {
+                        cube[emptySlot] = item;
+                        player.inventory[i] = null;
+                        addCombatLog(`Moved ${item.name} to Cube.`, 'log-info');
+                        hideTooltip();
+                        renderInventory();
+                        renderCube();
+                        return;
+                    } else {
+                        addCombatLog('Cube is full!', 'log-dmg');
+                        return;
+                    }
+                }
+
+                // 3. Special Action Modes
+                if (window.isIdentifying && item.identified === false) {
+                    item.identified = true;
+                    window.isIdentifying = false;
+                    document.body.style.cursor = 'default';
+                    addCombatLog(`Identified: ${item.name}!`, 'log-level');
+                    playLoot();
+                    player.invalidateStats();
+                    renderInventory();
+                    renderCharacterPanel();
+                    return;
+                }
+
+                if (isImbuing) {
+                    if (item.rarity !== 'normal' || item.type === 'potion' || item.type === 'gem' || item.type === 'scroll') {
+                        addCombatLog('Charsi: "I can only imbue normal equipment!"', 'log-dmg');
+                        return;
+                    }
+                    loot.imbueItem(item, player.level);
+                    player.hasImbue = false;
+                    isImbuing = false;
+                    document.body.style.cursor = 'default';
+                    addCombatLog(`Charsi: "There! A weapon fit for a hero!"`, 'log-level');
+                    playLoot();
+                    hideTooltip();
+                    renderInventory();
+                    return;
+                }
+
+                if (isReforging) {
+                    if (item.rarity !== 'rare') {
+                        addCombatLog('Charsi: "I can only reforge Rare equipment!"', 'log-dmg');
+                        return;
+                    }
+                    player.gold -= 5000;
+                    loot.reforgeItem(item, player.level);
+                    isReforging = false;
+                    document.body.style.cursor = 'default';
+                    addCombatLog(`Charsi: "The spirits have blessed your ${item.baseId} with new power!"`, 'log-level');
+                    playLoot();
+                    hideTooltip();
+                    renderInventory();
+                    renderCharacterPanel();
+                    return;
+                }
+
+                if (isLarzukSocketing) {
+                    const maxSockets = { 'head': 2, 'chest': 4, 'mainhand': 4, 'offhand': 4, 'shield': 4, 'weapon': 4 };
+                    const itemTypeMax = maxSockets[item.slot] || maxSockets[item.type] || 0;
+                    if (itemTypeMax > 0 && (!item.sockets || item.sockets < itemTypeMax)) {
+                        player.gold -= 2000;
+                        item.sockets = (item.sockets || 0) + 1;
+                        if (!item.socketed) item.socketed = [];
+                        addCombatLog(`Larzuk punched a socket into ${item.name}!`, 'log-crit');
+                    } else {
+                        addCombatLog(`${item.name} cannot have any more sockets.`, 'log-dmg');
+                    }
+                    isLarzukSocketing = false;
+                    document.body.style.cursor = 'default';
+                    renderInventory();
+                    updateHud();
+                    return;
+                }
+
+                if (socketingGemIndex !== -1) {
+                    if (socketingGemIndex === i) {
+                        socketingGemIndex = -1;
                         document.body.style.cursor = 'default';
-                        addCombatLog(`Charsi: "The spirits have blessed your ${item.baseId} with new power!"`, 'log-level');
-                        playLoot();
-                        hideTooltip();
                         renderInventory();
-                        renderCharacterPanel();
                         return;
                     }
-
-                    if (isLarzukSocketing) {
-                        const maxSockets = { 'head': 2, 'chest': 4, 'mainhand': 4, 'offhand': 4, 'shield': 4, 'weapon': 4 };
-                        const itemTypeMax = maxSockets[item.slot] || maxSockets[item.type] || 0;
-                        if (itemTypeMax > 0 && (!item.sockets || item.sockets < itemTypeMax)) {
-                            player.gold -= 2000;
-                            item.sockets = (item.sockets || 0) + 1;
-                            if (!item.socketed) item.socketed = [];
-                            addCombatLog(`Larzuk punched a socket into ${item.name}!`, 'log-crit');
-                        } else {
-                            addCombatLog(`${item.name} cannot have any more sockets.`, 'log-dmg');
-                        }
-                        isLarzukSocketing = false;
+                    const gem = player.inventory[socketingGemIndex];
+                    if (item.sockets && item.socketed && item.socketed.length < item.sockets && item.type !== 'gem' && item.type !== 'ring' && item.type !== 'amulet' && item.type !== 'charm') {
+                        item.socketed.push(gem);
+                        player.inventory[socketingGemIndex] = null;
+                        socketingGemIndex = -1;
                         document.body.style.cursor = 'default';
+                        addCombatLog(`Socketed ${gem.name} into ${item.name}!`, 'log-level');
+                        checkRuneword(item);
+                    } else {
+                        addCombatLog('Cannot socket that item!', 'log-dmg');
+                        socketingGemIndex = -1;
+                        document.body.style.cursor = 'default';
+                    }
+                    renderInventory();
+                    return;
+                }
+
+                // 4. Default: Equip to Player or Mercenary (Contextual)
+                if (!$('panel-mercenary').classList.contains('hidden') && mercenary) {
+                    const validSlots = ['head', 'chest', 'mainhand', 'offhand', 'amulet', 'ring1', 'ring2', 'belt', 'gloves', 'boots'];
+                    if (validSlots.includes(item.slot)) {
+                        const old = mercenary.equipment[item.slot];
+                        mercenary.equipment[item.slot] = item;
+                        player.inventory[i] = old;
+                        checkRuneword(item);
+                        mercenary._recalcStats();
+                        addCombatLog(`Equipped ${item.name} to ${mercenary.name}`, 'log-info');
                         renderInventory();
-                        updateHud();
+                        renderMercenaryPanel();
                         return;
                     }
+                }
 
-                    if (socketingGemIndex !== -1) {
-                        if (socketingGemIndex === i) {
-                            socketingGemIndex = -1;
-                            document.body.style.cursor = 'default';
-                            renderInventory();
-                            return;
-                        }
-                        const gem = player.inventory[socketingGemIndex];
-                        if (item.sockets && item.socketed && item.socketed.length < item.sockets && item.type !== 'gem' && item.type !== 'ring' && item.type !== 'amulet' && item.type !== 'charm') {
-                            item.socketed.push(gem);
-                            player.inventory[socketingGemIndex] = null;
-                            socketingGemIndex = -1;
-                            document.body.style.cursor = 'default';
-                            addCombatLog(`Socketed ${gem.name} into ${item.name}!`, 'log-level');
-                            checkRuneword(item);
-                        } else {
-                            addCombatLog('Cannot socket that item!', 'log-dmg');
-                            socketingGemIndex = -1;
-                            document.body.style.cursor = 'default';
-                        }
-                        renderInventory();
-                        return;
-                    }
-
-                    // 4. Default: Equip to Player or Mercenary (Contextual)
-                    if (!$('panel-mercenary').classList.contains('hidden') && mercenary) {
-                        const validSlots = ['head', 'chest', 'mainhand', 'offhand', 'amulet', 'ring1', 'ring2', 'belt', 'gloves', 'boots'];
-                        if (validSlots.includes(item.slot)) {
-                            const old = mercenary.equipment[item.slot];
-                            mercenary.equipment[item.slot] = item;
-                            player.inventory[i] = old;
-                            checkRuneword(item);
-                            mercenary._recalcStats();
-                            addCombatLog(`Equipped ${item.name} to ${mercenary.name}`, 'log-info');
-                            renderInventory();
-                            renderMercenaryPanel();
-                            return;
-                        }
-                    }
-
-                    const res = player.equip(item);
-                    if (res.success) {
-                        player.inventory[i] = res.swapped;
-                        addCombatLog(`Equipped ${item.name}.`, 'log-level');
-                        bus.emit('item:move');
-                        hideTooltip();
-                        renderInventory();
-                        renderCharacterPanel();
-                        updateHud();
-                    } else if (res.error) {
-                        addCombatLog(res.error, 'log-dmg');
-                        bus.emit('ui:error');
-                    }
-                });
-
-                // Handle Right-click Actions (contextmenu)
-                div.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
-                    if (socketingGemIndex !== -1) return;
-
-                    const shopOpen = !$('panel-shop').classList.contains('hidden');
-                    const merchantDialogue = dialogue && dialogue.timer > 0 && dialogue.npc && dialogue.npc.type === 'merchant';
-
-                    // 1. Sell if matching shop or merchant dialog
-                    if (shopOpen || merchantDialogue) {
-                        const price = Math.max(1, typeof calculateSellPrice === 'function' ? calculateSellPrice(item) : 5);
-                        player.gold += price;
-                        player.inventory[i] = null;
-                        addCombatLog(`Sold ${item.name} for ${price} gold.`, 'log-info');
-                        hideTooltip();
-                        renderInventory();
-                        renderCharacterPanel();
-                        if (shopOpen && typeof renderShop === 'function') renderShop();
-                        playLoot();
-                        return;
-                    }
-
-                    // 2. Use Consumables
-                    if (item.type === 'potion') {
-                        const beltIdx = player.belt.indexOf(null);
-                        if (beltIdx !== -1) {
-                            player.belt[beltIdx] = item;
-                            player.inventory[i] = null;
-                            addCombatLog(`Added ${item.name} to belt`, 'log-info');
-                        } else {
-                            addCombatLog('Belt full!', 'log-dmg');
-                        }
-                        renderInventory();
-                        return;
-                    }
-
-                    if (item.type === 'scroll' && item.baseId === 'scroll_identify') {
-                        window.isIdentifying = true;
-                        syncInteractionStates();
-                        document.body.style.cursor = `crosshair`;
-                        addCombatLog('Select an item to identify', 'log-info');
-                        player.inventory[i] = null;
-                        renderInventory();
-                        return;
-                    }
-
-                    if (item.type === 'scroll' && item.baseId === 'scroll_town_portal') {
-                        if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
-                            addCombatLog('Cannot cast Town Portal in Town!', 'log-dmg');
-                            return;
-                        }
-                        const tp = new GameObject('portal', player.x, player.y - 40, 'obj_portal');
-                        tp.targetZone = [0, 38, 68, 96, 102][campaign.getActForZone(zoneLevel) - 1] || 0;
-                        portalReturnZone = zoneLevel;
-                        gameObjects.push(tp);
-                        if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 50, 4);
-                        addCombatLog('A Town Portal has opened.', 'log-level');
-                        player.inventory[i] = null;
-                        renderInventory();
-                        return;
-                    }
-
-                    if (item.type === 'tome') {
-                        const scrollType = item.baseId === 'tome_tp' ? 'scroll_town_portal' : 'scroll_identify';
-                        const scrollIdx = player.inventory.findIndex(it => it && it.baseId === scrollType);
-                        if (scrollIdx !== -1) {
-                            item.charges = Math.min(item.maxCharges || 20, (item.charges || 0) + 1);
-                            player.inventory[scrollIdx] = null;
-                            addCombatLog(`Added scroll to ${item.name}.`, 'log-info');
-                            playLoot();
-                        } else if ((item.charges || 0) > 0) {
-                            if (item.baseId === 'tome_tp') {
-                                if ([0, 38, 68, 96, 102].includes(zoneLevel)) { addCombatLog('Cannot cast in Town!', 'log-dmg'); return; }
-                                const tp = new GameObject('portal', player.x, player.y - 40, 'obj_portal');
-                                tp.targetZone = [0, 38, 68, 96, 102][campaign.getActForZone(zoneLevel) - 1] || 0;
-                                portalReturnZone = zoneLevel;
-                                gameObjects.push(tp);
-                                if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 50, 4);
-                                addCombatLog('Town Portal Opened!', 'log-level');
-                            } else {
-                                window.isIdentifying = true;
-                                document.body.style.cursor = 'crosshair';
-                                addCombatLog('Select an item to identify', 'log-info');
-                            }
-                            item.charges--;
-                        } else {
-                            addCombatLog(`${item.name} is empty!`, 'log-dmg');
-                        }
-                        renderInventory();
-                        return;
-                    }
-
-                    if (item.id === 'book_of_skill') {
-                        player.talents.unspent++;
-                        player.inventory[i] = null;
-                        addCombatLog('Used Book of Skill: +1 Skill Point gained!', 'log-level');
-                        if (window.fx) window.fx.emitLevelUp(player.x, player.y);
-                        renderInventory();
-                        updateHud();
-                        return;
-                    }
-
-                    if (item.type === 'gem') {
-                        socketingGemIndex = i;
-                        syncInteractionStates();
-                        document.body.style.cursor = `url('assets/item_amulet.png'), crosshair`;
-                        addCombatLog(`Select an item to socket ${item.name} into`, 'log-info');
-                        renderInventory();
-                        return;
-                    }
-
-                    // 3. Default: Drop
-                    const drop = { ...item };
-                    drop.x = player.x + (Math.random() - 0.5) * 32;
-                    drop.y = player.y + (Math.random() - 0.5) * 32;
-                    droppedItems.push(drop);
-                    addCombatLog(`Dropped ${item.name}`);
-                    player.inventory[i] = null;
+                const res = player.equip(item);
+                if (res.success) {
+                    player.inventory[i] = res.swapped;
+                    addCombatLog(`Equipped ${item.name}.`, 'log-level');
+                    bus.emit('item:move');
                     hideTooltip();
                     renderInventory();
                     renderCharacterPanel();
                     updateHud();
-                });
+                } else if (res.error) {
+                    addCombatLog(res.error, 'log-dmg');
+                    bus.emit('ui:error');
+                }
+            });
 
-                cell.appendChild(div);
-            } else {
-                // Empty cell can cancel socketing
-                cell.addEventListener('click', () => {
-                    if (socketingGemIndex !== -1) {
-                        socketingGemIndex = -1;
-                        document.body.style.cursor = 'default';
-                        renderInventory();
+            // Handle Right-click Actions (contextmenu)
+            div.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                if (socketingGemIndex !== -1) return;
+
+                const shopOpen = !$('panel-shop').classList.contains('hidden');
+                const merchantDialogue = dialogue && dialogue.timer > 0 && dialogue.npc && dialogue.npc.type === 'merchant';
+
+                // 1. Sell if matching shop or merchant dialog
+                if (shopOpen || merchantDialogue) {
+                    const price = Math.max(1, typeof calculateSellPrice === 'function' ? calculateSellPrice(item) : 5);
+                    player.gold += price;
+                    player.inventory[i] = null;
+                    addCombatLog(`Sold ${item.name} for ${price} gold.`, 'log-info');
+                    hideTooltip();
+                    renderInventory();
+                    renderCharacterPanel();
+                    if (shopOpen && typeof renderShop === 'function') renderShop();
+                    playLoot();
+                    return;
+                }
+
+                // 2. Use Consumables
+                if (item.type === 'potion') {
+                    const beltIdx = player.belt.indexOf(null);
+                    if (beltIdx !== -1) {
+                        player.belt[beltIdx] = item;
+                        player.inventory[i] = null;
+                        addCombatLog(`Added ${item.name} to belt`, 'log-info');
+                    } else {
+                        addCombatLog('Belt full!', 'log-dmg');
                     }
-                });
-            }
-            cell.onmouseup = () => handleDrop('inventory', i);
-            ig.appendChild(cell);
+                    renderInventory();
+                    return;
+                }
+
+                if (item.type === 'scroll' && item.baseId === 'scroll_identify') {
+                    window.isIdentifying = true;
+                    syncInteractionStates();
+                    document.body.style.cursor = `crosshair`;
+                    addCombatLog('Select an item to identify', 'log-info');
+                    player.inventory[i] = null;
+                    renderInventory();
+                    return;
+                }
+
+                if (item.type === 'scroll' && item.baseId === 'scroll_town_portal') {
+                    if ([0, 38, 68, 96, 102].includes(zoneLevel)) {
+                        addCombatLog('Cannot cast Town Portal in Town!', 'log-dmg');
+                        return;
+                    }
+                    const tp = new GameObject('portal', player.x, player.y - 40, 'obj_portal');
+                    tp.targetZone = [0, 38, 68, 96, 102][campaign.getActForZone(zoneLevel) - 1] || 0;
+                    portalReturnZone = zoneLevel;
+                    gameObjects.push(tp);
+                    if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 50, 4);
+                    addCombatLog('A Town Portal has opened.', 'log-level');
+                    player.inventory[i] = null;
+                    renderInventory();
+                    return;
+                }
+
+                if (item.type === 'tome') {
+                    const scrollType = item.baseId === 'tome_tp' ? 'scroll_town_portal' : 'scroll_identify';
+                    const scrollIdx = player.inventory.findIndex(it => it && it.baseId === scrollType);
+                    if (scrollIdx !== -1) {
+                        item.charges = Math.min(item.maxCharges || 20, (item.charges || 0) + 1);
+                        player.inventory[scrollIdx] = null;
+                        addCombatLog(`Added scroll to ${item.name}.`, 'log-info');
+                        playLoot();
+                    } else if ((item.charges || 0) > 0) {
+                        if (item.baseId === 'tome_tp') {
+                            if ([0, 38, 68, 96, 102].includes(zoneLevel)) { addCombatLog('Cannot cast in Town!', 'log-dmg'); return; }
+                            const tp = new GameObject('portal', player.x, player.y - 40, 'obj_portal');
+                            tp.targetZone = [0, 38, 68, 96, 102][campaign.getActForZone(zoneLevel) - 1] || 0;
+                            portalReturnZone = zoneLevel;
+                            gameObjects.push(tp);
+                            if (window.fx) window.fx.emitBurst(tp.x, tp.y, '#30ccff', 50, 4);
+                            addCombatLog('Town Portal Opened!', 'log-level');
+                        } else {
+                            window.isIdentifying = true;
+                            document.body.style.cursor = 'crosshair';
+                            addCombatLog('Select an item to identify', 'log-info');
+                        }
+                        item.charges--;
+                    } else {
+                        addCombatLog(`${item.name} is empty!`, 'log-dmg');
+                    }
+                    renderInventory();
+                    return;
+                }
+
+                if (item.id === 'book_of_skill') {
+                    player.talents.unspent++;
+                    player.inventory[i] = null;
+                    addCombatLog('Used Book of Skill: +1 Skill Point gained!', 'log-level');
+                    if (window.fx) window.fx.emitLevelUp(player.x, player.y);
+                    renderInventory();
+                    updateHud();
+                    return;
+                }
+
+                if (item.type === 'gem') {
+                    socketingGemIndex = i;
+                    syncInteractionStates();
+                    document.body.style.cursor = `url('assets/item_amulet.png'), crosshair`;
+                    addCombatLog(`Select an item to socket ${item.name} into`, 'log-info');
+                    renderInventory();
+                    return;
+                }
+
+                // 3. Default: Drop
+                const drop = { ...item };
+                drop.x = player.x + (Math.random() - 0.5) * 32;
+                drop.y = player.y + (Math.random() - 0.5) * 32;
+                droppedItems.push(drop);
+                addCombatLog(`Dropped ${item.name}`);
+                player.inventory[i] = null;
+                hideTooltip();
+                renderInventory();
+                renderCharacterPanel();
+                updateHud();
+            });
+
+            cell.appendChild(div);
+        } else {
+            // Empty cell can cancel socketing
+            cell.addEventListener('click', () => {
+                if (socketingGemIndex !== -1) {
+                    socketingGemIndex = -1;
+                    document.body.style.cursor = 'default';
+                    renderInventory();
+                }
+            });
         }
+        cell.onmouseup = () => handleDrop('inventory', i);
+        ig.appendChild(cell);
+    }
+
+    // Gold Display
+    const goldRow = document.createElement('div');
+    goldRow.className = 'inventory-gold';
+    goldRow.innerHTML = `<span style="color:#ffd700;">GOLD:</span> <span style="color:#fff;">${player.gold}</span>`;
+    ig.appendChild(goldRow);
+}
+
+function setupTooltip(el, item) {
+    el.addEventListener('mouseenter', (e) => showTooltip(item, e.clientX, e.clientY));
+    el.addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
+    el.addEventListener('mouseleave', hideTooltip);
+}
+
+function showBuffTooltip(id, titleText, data, x, y) {
+    const tt = $('custom-tooltip');
+    if (!tt) return;
+
+    let html = `<div class="tooltip-header" style="color:#00ff00; font-weight:bold;">${data?.name || titleText}</div>`;
+    html += `<div class="tooltip-rarity" style="color:#666;">— Active Effect —</div>`;
+
+    let stats = "";
+    if (data?.type === 'aura') {
+        const slvl = player._auraSlvl || 1;
+        if (id === 'might_aura') stats = `<div style="color:#fff;">+${40 + slvl * 15}% Physical Damage</div>`;
+        else if (id === 'holy_fire_aura') stats = `<div style="color:#fff;">${3 + slvl * 2} Fire Dmg per second</div>`;
+        else if (id === 'fanaticism') stats = `<div style="color:#fff;">+${20 + slvl * 5}% Atk Speed & Damage</div>`;
+        else if (id === 'conviction') stats = `<div style="color:#fff;">-${30 + slvl * 2}% Enemy Resist & Armor</div>`;
+        else if (id === 'prayer_aura') stats = `<div style="color:#fff;">+${2 + slvl} HP Regen per second</div>`;
+        else if (id === 'vigor') stats = `<div style="color:#fff;">+${10 + slvl * 2}% Move Speed</div>`;
+
+        html += `<div class="tooltip-stats" style="color:#ffd700; margin-top:8px;">★ Aura Active</div>`;
+        if (stats) html += `<div class="tooltip-stats" style="margin-bottom:5px;">${stats}</div>`;
+        html += `<div class="tooltip-desc" style="color:#ccc; font-size:11px;">Benefiting yourself and all allies in range.</div>`;
+    } else {
+        const bid = id || "";
+        if (bid.includes('speed')) stats = `<div style="color:#fff;">+50% Movement Speed</div>`;
+        else if (bid.includes('damage')) stats = `<div style="color:#fff;">+100% Damage</div>`;
+        else if (bid.includes('resist')) stats = `<div style="color:#fff;">+75% All Resistances</div>`;
+        else if (bid.includes('mana')) stats = `<div style="color:#fff;">+200% Mana Regeneration</div>`;
+        else if (bid.includes('exp')) stats = `<div style="color:#fff;">+50% Experience Gain</div>`;
+        else if (bid === 'berserk') stats = `<div style="color:#fff;">+70% Atk Speed, -30% Armor</div>`;
+        else if (bid === 'bloodlust') stats = `<div style="color:#fff;">+40% Atk Speed & Cast Speed</div>`;
+        else if (bid === 'divine_shield_proc') stats = `<div style="color:#fff;">Absorbing damage (Shield active)</div>`;
+        else if (bid === 'blizzard_veil_proc') stats = `<div style="color:#fff;">Shielded by cold magic</div>`;
+
+        if (data?.duration) {
+            html += `<div class="tooltip-stats" style="color:#fff; margin-top:8px;">Remaining: <span style="color:#0cf;">${Math.ceil(data.duration)}s</span></div>`;
+        }
+        if (stats) html += `<div class="tooltip-stats" style="margin-top:5px; border-top:1px solid #444; padding-top:5px;">${stats}</div>`;
+        html += `<div class="tooltip-desc" style="color:#ccc; font-size:11px; margin-top:5px;">Currently augmenting your battle capabilities.</div>`;
+    }
+
+    tt.innerHTML = html;
+    tt.style.display = 'block';
+    moveTooltip(x, y);
+}
+
+function showTooltip(item, x, y) {
+    const tt = $('custom-tooltip');
+    let html = itemTooltipText(item);
+
+    // Item comparison logic
+    if (player && item.slot && item.slot !== 'none' && item.identified !== false) {
+        const mercPanelOpen = !$('panel-mercenary').classList.contains('hidden');
+        const targetEntity = (mercPanelOpen && mercenary) ? mercenary : player;
+
+        // Find if we have an item equipped in this slot
+        let equippedItem = null;
+        if (item.slot === 'ring') {
+            equippedItem = targetEntity.equipment['ring1'] || targetEntity.equipment['ring2'];
+        } else {
+            equippedItem = targetEntity.equipment[item.slot];
         }
 
-        // Gold Display
-        const goldRow = document.createElement('div');
-        goldRow.className = 'inventory-gold';
-        goldRow.innerHTML = `<span style="color:#ffd700;">GOLD:</span> <span style="color:#fff;">${player.gold}</span>`;
-        ig.appendChild(goldRow);
+        // Make sure we aren't hovering the equipped item itself
+        if (equippedItem && equippedItem !== item) {
+            const equippedHtml = itemTooltipText(equippedItem, true);
+            html = `<div class="tooltip-compare-container">${html}${equippedHtml}</div>`;
+        }
+    }
+
+    tt.innerHTML = html;
+    tt.style.display = 'block';
+    moveTooltip(x, y);
+}
+
+function moveTooltip(x, y) {
+    const tt = $('custom-tooltip');
+    const offset = 15;
+    let tx = x + offset;
+    let ty = y + offset;
+
+    // Bounds check
+    if (tx + tt.offsetWidth > window.innerWidth) tx = x - tt.offsetWidth - offset;
+    if (ty + tt.offsetHeight > window.innerHeight) ty = y - tt.offsetHeight - offset;
+
+    tt.style.left = `${tx}px`;
+    tt.style.top = `${ty}px`;
+}
+
+function hideTooltip() {
+    $('custom-tooltip').style.display = 'none';
 }
 
 function itemTooltipText(item, isComparison = false) {
+    const colors = {
+        normal: '#fff',
+        magic: '#4850b8',
+        rare: '#ffff00',
+        set: '#00ff00',
+        unique: '#bf642f'
+    };
+    const c = (item.identified === false) ? '#888' :
+        ((item.rarity === 'normal' && item.sockets > 0) ? '#999' : (colors[item.rarity] || '#fff'));
 
+    let t = `<div class="tooltip-inner" style="color:${c}; ${isComparison ? 'border-color: #444; opacity: 0.9;' : ''}">`;
+    if (isComparison) t += `<div style="font-size:10px; color:#aaa; text-align:center; margin-bottom:4px;">— EQUIPPED —</div>`;
 
+    t += `<div class="tooltip-name">${item.identified === false ? 'Unidentified ' + (items[item.baseId]?.name || 'Item') : (item.name || items[item.baseId]?.name || 'Unknown Item')}</div>`;
 
-        const colors = {
-            normal: '#fff',
-            magic: '#4850b8',
-            rare: '#ffff00',
-            set: '#00ff00',
-            unique: '#bf642f'
-        };
-        const c = (item.identified === false) ? '#888' :
-            ((item.rarity === 'normal' && item.sockets > 0) ? '#999' : (colors[item.rarity] || '#fff'));
+    // Force gems/runes to be identified in tooltip always
+    const skipID = (item.type === 'gem' || item.type === 'rune' || item.type === 'charm' || item.type === 'potion');
 
-        let t = `<div class="tooltip-inner" style="color:${c}; ${isComparison ? 'border-color: #444; opacity: 0.9;' : ''}">`;
-        if (isComparison) t += `<div style="font-size:10px; color:#aaa; text-align:center; margin-bottom:4px;">— EQUIPPED —</div>`;
+    if (item.identified === false && !skipID) {
+        t += `<div class="tooltip-rarity" style="color:#666;">— Unknown Potential —</div>`;
+        t += `<div class="tooltip-stats" style="color:#666; font-style:italic;">Use a Scroll of Identification to reveal this item's powers.</div>`;
+        t += `<div class="tooltip-footer">[Left-Click: Equip / Move to Stash] | [Right-Click: Drop / Sell]</div>`;
+        t += `</div>`;
+        return t;
+    }
 
-        t += `<div class="tooltip-name">${item.identified === false ? 'Unidentified ' + (items[item.baseId]?.name || 'Item') : (item.name || items[item.baseId]?.name || 'Unknown Item')}</div>`;
+    if (item.rarity && item.rarity !== 'normal' && typeof item.rarity === 'string') {
+        const rarityLabel = item.rarity === 'set' ? (item.setName || "SET ITEM") : item.rarity.toUpperCase();
+        t += `<div class="tooltip-rarity">— ${rarityLabel} —</div>`;
+    }
 
-        // Force gems/runes to be identified in tooltip always
-        const skipID = (item.type === 'gem' || item.type === 'rune' || item.type === 'charm' || item.type === 'potion');
+    // Item Tier
+    const tier = item.ilvl >= 50 ? 'Elite' : (item.ilvl >= 25 ? 'Exceptional' : 'Normal');
+    t += `<div style="font-size:10px; color:#888; text-align:center; margin-bottom:4px;">${tier} Tier</div>`;
 
-        if (item.identified === false && !skipID) {
-            t += `<div class="tooltip-rarity" style="color:#666;">— Unknown Potential —</div>`;
-            t += `<div class="tooltip-stats" style="color:#666; font-style:italic;">Use a Scroll of Identification to reveal this item's powers.</div>`;
-            t += `<div class="tooltip-footer">[Left-Click: Equip / Move to Stash] | [Right-Click: Drop / Sell]</div>`;
-            t += `</div>`;
-            return t;
+    const friendlyNames = {
+        flatSTR: 'Strength', flatDEX: 'Dexterity', flatVIT: 'Vitality', flatINT: 'Intellect',
+        flatHP: 'Life', flatMP: 'Mana', pctHP: 'Enhanced Life', pctMP: 'Enhanced Mana',
+        flatArmor: 'Defense', pctArmor: 'Enhanced Defense',
+        pctDmg: 'Enhanced Damage', flatMinDmg: 'Minimum Damage', flatMaxDmg: 'Maximum Damage',
+        fireRes: 'Fire Resist', coldRes: 'Cold Resist', lightRes: 'Lightning Resist', poisRes: 'Poison Resist',
+        allRes: 'All Resistances', critChance: 'Critical Strike Chance', critMulti: 'Critical Damage',
+        lifeStealPct: 'Life Stolen per Hit', manaStealPct: 'Mana Stolen per Hit', pctMoveSpeed: 'Faster Run/Walk',
+        lifeRegenPerSec: 'Life Replenish', manaRegenPerSec: 'Mana Regen', magicFind: 'Magic Find', goldFind: 'Gold Find',
+        pctFireDmg: 'Fire Skill Damage', pctColdDmg: 'Cold Skill Damage', pctLightDmg: 'Lightning Skill Damage',
+        pctPoisonDmg: 'Poison Skill Damage', pctShadowDmg: 'Shadow Skill Damage', pctHolyDmg: 'Holy Skill Damage',
+        blockChance: 'Chance to Block', pctIAS: 'Increased Attack Speed',
+        pctDmgReduce: 'Damage Reduced', flatDmgReduce: 'Damage Reduced',
+        magicDmgReduce: 'Magic Damage Reduced', thorns: 'Attacker Takes Damage',
+        poisonDmgPerSec: 'Poison Damage Over 3 Seconds', pctAtkRating: 'Attack Rating',
+        sockets: 'Sockets',
+    };
+
+    // Comparison Helper
+    let compareItem = null;
+    if (!isComparison) {
+        const mercPanelOpen = !$('panel-mercenary').classList.contains('hidden');
+        const targetEntity = (mercPanelOpen && mercenary) ? mercenary : player;
+        if (item.slot === 'ring') compareItem = targetEntity.equipment['ring1'] || targetEntity.equipment['ring2'];
+        else compareItem = targetEntity.equipment[item.slot];
+        if (compareItem === item) compareItem = null;
+    }
+
+    const getCompareColor = (val, equippedVal, inverse = false) => {
+        if (isComparison || !compareItem || equippedVal === undefined) return '#fff';
+        if (val === equippedVal) return '#fff';
+        const isBetter = inverse ? (val < equippedVal) : (val > equippedVal);
+        return isBetter ? '#4caf50' : '#f44336';
+    };
+
+    const getDiffText = (val, equippedVal, inverse = false) => {
+        if (isComparison || !compareItem || equippedVal === undefined) return '';
+        const diff = val - equippedVal;
+        if (diff === 0) return '';
+        const color = (inverse ? diff < 0 : diff > 0) ? '#4caf50' : '#f44336';
+        return ` <span style="color:${color}; font-size:9px;">(${diff > 0 ? '+' : ''}${diff})</span>`;
+    };
+
+    t += `<div class="tooltip-stats" style="color:#fff;">`;
+    if (item.minDmg) {
+        let min = item.minDmg, max = item.maxDmg;
+        const localED = item.mods?.reduce((acc, m) => m.stat === 'pctDmg' ? acc + m.value : acc, 0) || 0;
+        const localFlat = item.mods?.reduce((acc, m) => m.stat === 'flatMinDmg' ? acc + m.value : acc, 0) || 0;
+
+        if (localED > 0 || localFlat > 0) {
+            min = Math.floor(min * (1 + localED / 100)) + localFlat;
+            max = Math.floor(max * (1 + localED / 100)) + localFlat;
         }
 
-        if (item.rarity && item.rarity !== 'normal' && typeof item.rarity === 'string') {
-            const rarityLabel = item.rarity === 'set' ? (item.setName || "SET ITEM") : item.rarity.toUpperCase();
-            t += `<div class="tooltip-rarity">— ${rarityLabel} —</div>`;
-        }
+        const avg = (min + max) / 2;
+        const compAvg = compareItem ? (compareItem.minDmg + compareItem.maxDmg) / 2 : avg;
+        const dmgColor = (localED > 0 || localFlat > 0) ? '#4850b8' : getCompareColor(avg, compAvg);
 
-        // Item Tier
-        const tier = item.ilvl >= 50 ? 'Elite' : (item.ilvl >= 25 ? 'Exceptional' : 'Normal');
-        t += `<div style="font-size:10px; color:#888; text-align:center; margin-bottom:4px;">${tier} Tier</div>`;
+        t += `<div style="color:${dmgColor}; font-weight:${(localED > 0) ? 'bold' : 'normal'}">Damage: ${min}–${max}${getDiffText(avg, compAvg)}</div>`;
+    }
+    if (item.armor) t += `<div style="color:${getCompareColor(item.armor, compareItem?.armor)}">Armor: ${item.armor}${getDiffText(item.armor, compareItem?.armor)}</div>`;
+    if (item.block) t += `<div style="color:${getCompareColor(item.block, compareItem?.block)}">Block: ${item.block}%${getDiffText(item.block, compareItem?.block)}</div>`;
+    if (item.atkSpd && item.atkSpd !== 1) t += `<div>Attack Speed: ${item.atkSpd.toFixed(2)}</div>`;
 
-        const friendlyNames = {
-            flatSTR: 'Strength', flatDEX: 'Dexterity', flatVIT: 'Vitality', flatINT: 'Intellect',
-            flatHP: 'Life', flatMP: 'Mana', pctHP: 'Enhanced Life', pctMP: 'Enhanced Mana',
-            flatArmor: 'Defense', pctArmor: 'Enhanced Defense',
-            pctDmg: 'Enhanced Damage', flatMinDmg: 'Minimum Damage', flatMaxDmg: 'Maximum Damage',
-            fireRes: 'Fire Resist', coldRes: 'Cold Resist', lightRes: 'Lightning Resist', poisRes: 'Poison Resist',
-            allRes: 'All Resistances', critChance: 'Critical Strike Chance', critMulti: 'Critical Damage',
-            lifeStealPct: 'Life Stolen per Hit', manaStealPct: 'Mana Stolen per Hit', pctMoveSpeed: 'Faster Run/Walk',
-            lifeRegenPerSec: 'Life Replenish', manaRegenPerSec: 'Mana Regen', magicFind: 'Magic Find', goldFind: 'Gold Find',
-            pctFireDmg: 'Fire Skill Damage', pctColdDmg: 'Cold Skill Damage', pctLightDmg: 'Lightning Skill Damage',
-            pctPoisonDmg: 'Poison Skill Damage', pctShadowDmg: 'Shadow Skill Damage', pctHolyDmg: 'Holy Skill Damage',
-            blockChance: 'Chance to Block', pctIAS: 'Increased Attack Speed',
-            pctDmgReduce: 'Damage Reduced', flatDmgReduce: 'Damage Reduced',
-            magicDmgReduce: 'Magic Damage Reduced', thorns: 'Attacker Takes Damage',
-            poisonDmgPerSec: 'Poison Damage Over 3 Seconds', pctAtkRating: 'Attack Rating',
-            sockets: 'Sockets',
-        };
+    if (item.type === 'tome') {
+        t += `<div style="color:var(--gold);">Charges: ${item.charges || 0} / ${item.maxCharges || 20}</div>`;
+    }
 
-        // Comparison Helper
-        let compareItem = null;
-        if (!isComparison) {
-            const mercPanelOpen = !$('panel-mercenary').classList.contains('hidden');
-            const targetEntity = (mercPanelOpen && mercenary) ? mercenary : player;
-            if (item.slot === 'ring') compareItem = targetEntity.equipment['ring1'] || targetEntity.equipment['ring2'];
-            else compareItem = targetEntity.equipment[item.slot];
-            if (compareItem === item) compareItem = null;
-        }
-
-        const getCompareColor = (val, equippedVal, inverse = false) => {
-            if (isComparison || !compareItem || equippedVal === undefined) return '#fff';
-            if (val === equippedVal) return '#fff';
-            const isBetter = inverse ? (val < equippedVal) : (val > equippedVal);
-            return isBetter ? '#4caf50' : '#f44336';
-        };
-
-        const getDiffText = (val, equippedVal, inverse = false) => {
-            if (isComparison || !compareItem || equippedVal === undefined) return '';
-            const diff = val - equippedVal;
-            if (diff === 0) return '';
-            const color = (inverse ? diff < 0 : diff > 0) ? '#4caf50' : '#f44336';
-            return ` <span style="color:${color}; font-size:9px;">(${diff > 0 ? '+' : ''}${diff})</span>`;
-        };
-
-        t += `<div class="tooltip-stats" style="color:#fff;">`;
-        if (item.minDmg) {
-            let min = item.minDmg, max = item.maxDmg;
-            const localED = item.mods?.reduce((acc, m) => m.stat === 'pctDmg' ? acc + m.value : acc, 0) || 0;
-            const localFlat = item.mods?.reduce((acc, m) => m.stat === 'flatMinDmg' ? acc + m.value : acc, 0) || 0;
-
-            if (localED > 0 || localFlat > 0) {
-                min = Math.floor(min * (1 + localED / 100)) + localFlat;
-                max = Math.floor(max * (1 + localED / 100)) + localFlat;
-            }
-
-            const avg = (min + max) / 2;
-            const compAvg = compareItem ? (compareItem.minDmg + compareItem.maxDmg) / 2 : avg;
-            const dmgColor = (localED > 0 || localFlat > 0) ? '#4850b8' : getCompareColor(avg, compAvg);
-
-            t += `<div style="color:${dmgColor}; font-weight:${(localED > 0) ? 'bold' : 'normal'}">Damage: ${min}–${max}${getDiffText(avg, compAvg)}</div>`;
-        }
-        if (item.armor) t += `<div style="color:${getCompareColor(item.armor, compareItem?.armor)}">Armor: ${item.armor}${getDiffText(item.armor, compareItem?.armor)}</div>`;
-        if (item.block) t += `<div style="color:${getCompareColor(item.block, compareItem?.block)}">Block: ${item.block}%${getDiffText(item.block, compareItem?.block)}</div>`;
-        if (item.atkSpd && item.atkSpd !== 1) t += `<div>Attack Speed: ${item.atkSpd.toFixed(2)}</div>`;
-
-        if (item.type === 'tome') {
-            t += `<div style="color:var(--gold);">Charges: ${item.charges || 0} / ${item.maxCharges || 20}</div>`;
-        }
-
-        // Support for Gem/Rune Socket Effects (Compact & Categorized)
-        if (item.type === 'gem' && item.socketEffect) {
-            t += `<div style="background:rgba(191,100,47,0.1); border:1px solid rgba(191,100,47,0.3); padding:8px; margin-top:10px; border-radius:4px;">`;
-            t += `<div style="color:#bf642f; margin-bottom:6px; font-weight:bold; font-size:12px; border-bottom:1px solid #332a1e; padding-bottom:3px;">— SOCKETABLE DATA —</div>`;
-            for (const [loc, effect] of Object.entries(item.socketEffect)) {
-                const locName = loc.charAt(0).toUpperCase() + loc.slice(1);
-                let statLabel = friendlyNames[effect.stat] || effect.stat.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
-                const val = effect.value > 0 ? `+${effect.value}` : `${effect.value}`;
-                t += `<div style="font-size:11px; margin:2px 0;"><span style="color:#aaa; width:60px; display:inline-block;">${locName}:</span> <span style="color:#4850b8;">${val}${effect.stat.includes('pct') ? '%' : ''} ${statLabel}</span></div>`;
-            }
-            t += `</div>`;
-        }
-        if (item.sockets) {
-            t += `<div>Sockets: ${item.socketed ? item.socketed.length : 0} / ${item.sockets}</div>`;
-            if (item.socketed && item.socketed.length > 0) {
-                t += `<div style="color:#bf642f; font-size:12px; margin-top:4px;">`;
-                for (const gem of item.socketed) {
-                    t += `  [ ${gem.name} ]<br>`;
-                }
-                t += `</div>`;
-            }
+    // Support for Gem/Rune Socket Effects (Compact & Categorized)
+    if (item.type === 'gem' && item.socketEffect) {
+        t += `<div style="background:rgba(191,100,47,0.1); border:1px solid rgba(191,100,47,0.3); padding:8px; margin-top:10px; border-radius:4px;">`;
+        t += `<div style="color:#bf642f; margin-bottom:6px; font-weight:bold; font-size:12px; border-bottom:1px solid #332a1e; padding-bottom:3px;">— SOCKETABLE DATA —</div>`;
+        for (const [loc, effect] of Object.entries(item.socketEffect)) {
+            const locName = loc.charAt(0).toUpperCase() + loc.slice(1);
+            let statLabel = friendlyNames[effect.stat] || effect.stat.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+            const val = effect.value > 0 ? `+${effect.value}` : `${effect.value}`;
+            t += `<div style="font-size:11px; margin:2px 0;"><span style="color:#aaa; width:60px; display:inline-block;">${locName}:</span> <span style="color:#4850b8;">${val}${effect.stat.includes('pct') ? '%' : ''} ${statLabel}</span></div>`;
         }
         t += `</div>`;
-
-        if (item.mods && item.mods.length > 0) {
-            t += `<div class="tooltip-mods" style="color:#4850b8;">`;
-            for (const mod of item.mods) {
-                let val = mod.value > 0 ? `+${mod.value}` : `${mod.value}`;
-                let statName = mod.stat;
-                // Human readable skill bonuses
-                // Mapping for human readable stat names
-                const fLabels = friendlyNames;
-                if (statName.startsWith('+skill:')) {
-                    const skId = statName.split(':')[1];
-                    statName = `to ${skId.replace(/_/g, ' ').toUpperCase()}`;
-                } else if (statName.startsWith('+classSkills:')) {
-                    statName = `to ${statName.split(':')[1].toUpperCase()} Skills`;
-                } else if (statName.startsWith('+skillGroup:')) {
-                    statName = `to ${statName.split(':')[1].toUpperCase()} Spells`;
-                } else if (statName === '+allSkills') {
-                    statName = "to All Skills";
-                } else if (statName.startsWith('+')) {
-                    // For cases like "+10 Strength" where stat is "+flatSTR"
-                    statName = statName.substring(1);
-                    statName = fLabels[statName] || statName.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
-                } else {
-                    statName = fLabels[statName] || statName.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
-                }
-                t += `<div>${val}${mod.stat.includes('pct') || mod.stat.includes('Chance') || mod.stat.includes('Res') ? '%' : ''} ${statName}</div>`;
+    }
+    if (item.sockets) {
+        t += `<div>Sockets: ${item.socketed ? item.socketed.length : 0} / ${item.sockets}</div>`;
+        if (item.socketed && item.socketed.length > 0) {
+            t += `<div style="color:#bf642f; font-size:12px; margin-top:4px;">`;
+            for (const gem of item.socketed) {
+                t += `  [ ${gem.name} ]<br>`;
             }
             t += `</div>`;
         }
+    }
+    t += `</div>`;
 
-        // Requirements
-        const req = item.req || {};
-        const reqs = [];
-        if (req.str) reqs.push(`Str: ${req.str}`);
-        if (req.dex) reqs.push(`Dex: ${req.dex}`);
-        if (req.int) reqs.push(`Int: ${req.int}`);
-        if (item.reqLvl) reqs.push(`Level: ${item.reqLvl}`);
-        if (reqs.length) {
-            t += `<div class="tooltip-requirements">Requires: ${reqs.join(', ')}</div>`;
-        }
-
-        let flavorText = item.flavor;
-        if (!flavorText) {
-            if (item.type === 'gem') {
-                if (item.name.includes('Rune')) flavorText = 'An ancient stone etched with a syllable of creation.';
-                else flavorText = 'A rare, precious jewel humming with magical potential.';
-            } else if (item.type === 'charm') {
-                flavorText = 'A minor trinket that carries a lingering aura.';
-            } else if (item.type === 'potion') {
-                flavorText = 'A mystical elixir sealed in thick glass.';
-            } else if (item.type === 'scroll') {
-                flavorText = 'A fragile parchment covered in glowing arcane ink.';
+    if (item.mods && item.mods.length > 0) {
+        t += `<div class="tooltip-mods" style="color:#4850b8;">`;
+        for (const mod of item.mods) {
+            let val = mod.value > 0 ? `+${mod.value}` : `${mod.value}`;
+            let statName = mod.stat;
+            // Human readable skill bonuses
+            // Mapping for human readable stat names
+            const fLabels = friendlyNames;
+            if (statName.startsWith('+skill:')) {
+                const skId = statName.split(':')[1];
+                statName = `to ${skId.replace(/_/g, ' ').toUpperCase()}`;
+            } else if (statName.startsWith('+classSkills:')) {
+                statName = `to ${statName.split(':')[1].toUpperCase()} Skills`;
+            } else if (statName.startsWith('+skillGroup:')) {
+                statName = `to ${statName.split(':')[1].toUpperCase()} Spells`;
+            } else if (statName === '+allSkills') {
+                statName = "to All Skills";
+            } else if (statName.startsWith('+')) {
+                // For cases like "+10 Strength" where stat is "+flatSTR"
+                statName = statName.substring(1);
+                statName = fLabels[statName] || statName.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+            } else {
+                statName = fLabels[statName] || statName.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
             }
+            t += `<div>${val}${mod.stat.includes('pct') || mod.stat.includes('Chance') || mod.stat.includes('Res') ? '%' : ''} ${statName}</div>`;
         }
+        t += `</div>`;
+    }
 
-        if (flavorText) {
-            t += `<div class="tooltip-flavor" style="color:#bf642f; font-style:italic; margin-top:8px;">"${flavorText}"</div>`;
+    // Requirements
+    const req = item.req || {};
+    const reqs = [];
+    if (req.str) reqs.push(`Str: ${req.str}`);
+    if (req.dex) reqs.push(`Dex: ${req.dex}`);
+    if (req.int) reqs.push(`Int: ${req.int}`);
+    if (item.reqLvl) reqs.push(`Level: ${item.reqLvl}`);
+    if (reqs.length) {
+        t += `<div class="tooltip-requirements">Requires: ${reqs.join(', ')}</div>`;
+    }
+
+    let flavorText = item.flavor;
+    if (!flavorText) {
+        if (item.type === 'gem') {
+            if (item.name.includes('Rune')) flavorText = 'An ancient stone etched with a syllable of creation.';
+            else flavorText = 'A rare, precious jewel humming with magical potential.';
+        } else if (item.type === 'charm') {
+            flavorText = 'A minor trinket that carries a lingering aura.';
+        } else if (item.type === 'potion') {
+            flavorText = 'A mystical elixir sealed in thick glass.';
+        } else if (item.type === 'scroll') {
+            flavorText = 'A fragile parchment covered in glowing arcane ink.';
         }
+    }
 
-        // ★ WoW Legendary Proc Display
-        if (item.isLegendary && item.onHit) {
-            const proc = item.onHit;
-            const procColor = item.legendaryColor || '#ffd700';
-            const effectNames = {
-                chain_lightning: '⚡ Chain Lightning — bounces to 3 nearby enemies',
-                soul_stack: `💀 Soul Rend — stores souls on hit, explodes at ${proc.maxStacks || 10} stacks`,
-                meteor_drop: '🔥 Meteor Strike — calls a meteor from the sky',
-                divine_shield: '💛 Divine Shield — absorbs incoming damage',
-                arcane_burst: '✨ Arcane Burst — AoE arcane explosion',
-                soul_rip: '❄️ Soul Rip — freezes and drains soul',
-                blade_dance: `🌀 Blade Dance — ${proc.hits || 3} rapid strikes`,
-                stellar_arrow: '⭐ Stellar Arrow — piercing projectile',
-                consecration: '✝️ Consecration — holy AoE + heal',
-                army_of_the_dead: '💀 Army of the Dead — raise shadow minions',
-            };
-            const procDesc = effectNames[proc.effect] || proc.effect;
-            const procChance = proc.chance < 1 ? `${(proc.chance * 100).toFixed(0)}%` : '100%';
-            t += `
+    if (flavorText) {
+        t += `<div class="tooltip-flavor" style="color:#bf642f; font-style:italic; margin-top:8px;">"${flavorText}"</div>`;
+    }
+
+    // ★ WoW Legendary Proc Display
+    if (item.isLegendary && item.onHit) {
+        const proc = item.onHit;
+        const procColor = item.legendaryColor || '#ffd700';
+        const effectNames = {
+            chain_lightning: '⚡ Chain Lightning — bounces to 3 nearby enemies',
+            soul_stack: `💀 Soul Rend — stores souls on hit, explodes at ${proc.maxStacks || 10} stacks`,
+            meteor_drop: '🔥 Meteor Strike — calls a meteor from the sky',
+            divine_shield: '💛 Divine Shield — absorbs incoming damage',
+            arcane_burst: '✨ Arcane Burst — AoE arcane explosion',
+            soul_rip: '❄️ Soul Rip — freezes and drains soul',
+            blade_dance: `🌀 Blade Dance — ${proc.hits || 3} rapid strikes`,
+            stellar_arrow: '⭐ Stellar Arrow — piercing projectile',
+            consecration: '✝️ Consecration — holy AoE + heal',
+            army_of_the_dead: '💀 Army of the Dead — raise shadow minions',
+        };
+        const procDesc = effectNames[proc.effect] || proc.effect;
+        const procChance = proc.chance < 1 ? `${(proc.chance * 100).toFixed(0)}%` : '100%';
+        t += `
         <div style="border-top:1px solid ${procColor}44; margin-top:8px; padding-top:8px; border:1px solid ${procColor}55; border-radius:4px; padding:8px; background:${procColor}08;">
             <div style="color:${procColor}; font-size:11px; font-weight:bold; margin-bottom:4px; text-shadow:0 0 6px ${procColor};">★ LEGENDARY EFFECT</div>
             <div style="color:#aaa; font-size:10px;">On Hit (${procChance} chance):</div>
             <div style="color:${procColor}; font-size:11px; margin-top:2px;">${procDesc}</div>
         </div>`;
-        }
-        if (item.passive) {
-            t += `<div style="color:#aa44ff; font-size:10px; margin-top:4px;">✦ Passive: ${item.passive.effect}</div>`;
-        }
-        if (item.cursed) {
-            t += `<div style="color:#ff4444; font-size:10px; margin-top:4px;">☠ CURSED — Impossible to remove</div>`;
-        }
-
-        // ★ Synergy display — show which talents/charms boost this legendary
-        if (item.isLegendary && !isComparison && player) {
-            const synHtml = getSynergyTooltipHtml(player, item.id, item.legendaryColor);
-            if (synHtml) t += synHtml;
-        }
-
-
-        if (item.rarity === 'set' && item.setId) {
-            const def = SETS[item.setId];
-            if (def) {
-                // Count equipped set pieces
-                let equipped = 0;
-                if (player && player.equipment) {
-                    for (const eq of Object.values(player.equipment)) {
-                        if (eq && eq.setId === item.setId) equipped++;
-                    }
-                }
-                const maxTier = Object.keys(def.bonuses).length > 0 ? Math.max(...Object.keys(def.bonuses).map(Number)) : '?';
-                t += `<div style="border-top:1px solid #1a3a1a; margin-top:8px; padding-top:6px;">`;
-                t += `<div style="color:#00ff00; font-weight:bold; margin-bottom:4px;">${def.name} (${equipped}/${maxTier})</div>`;
-                for (const [tier, mods] of Object.entries(def.bonuses)) {
-                    const active = equipped >= Number(tier);
-                    const color = active ? '#00ff00' : '#555';
-                    const modText = mods.map(m => {
-                        const fn = friendlyNames[m.stat] || m.stat;
-                        return `+${m.value} ${fn}`;
-                    }).join(', ');
-                    t += `<div style="color:${color}; font-size:11px;">(${tier}) ${modText}</div>`;
-                }
-                t += `</div>`;
-            }
-        }
-
-        // Comparison logic
-        if (!isComparison && (state === 'INVENTORY' || state === 'STASH' || state === 'VENDOR')) {
-            const slot = item.slot;
-            const equippedItem = player.equipment[slot] || (slot === 'ring1' ? player.equipment.ring2 : null);
-
-            if (equippedItem && equippedItem !== item) {
-                const getDiff = (stat) => {
-                    const cur = (item.mods?.find(m => m.stat === stat)?.value || 0) + (item[stat] || 0);
-                    const old = (equippedItem.mods?.find(m => m.stat === stat)?.value || 0) + (equippedItem[stat] || 0);
-                    const diff = cur - old;
-                    if (diff === 0) return '';
-                    const color = diff > 0 ? '#4caf50' : '#f44336';
-                    return `<span style="color:${color}; font-size:10px; margin-left:5px;">(${diff > 0 ? '+' : ''}${diff})</span>`;
-                };
-
-                const dmgDiff = (item.maxDmg || 0) - (equippedItem.maxDmg || 0);
-                const armDiff = (item.armor || 0) - (equippedItem.armor || 0);
-
-                if (dmgDiff !== 0) t = t.replace(`${item.maxDmg} Damage`, `${item.maxDmg} Damage <span style="color:${dmgDiff > 0 ? '#4caf50' : '#f44336'}">(${dmgDiff > 0 ? '+' : ''}${dmgDiff})</span>`);
-                if (armDiff !== 0) t = t.replace(`${item.armor} Defense`, `${item.armor} Defense <span style="color:${armDiff > 0 ? '#4caf50' : '#f44336'}">(${armDiff > 0 ? '+' : ''}${armDiff})</span>`);
-            }
-        }
-
-        t += `<div class="tooltip-footer">[Left-Click: Equip / Move to open panel] | [Right-Click: Sell / Drop / Use]</div>`;
-        t += `</div>`;
-        return t;
+    }
+    if (item.passive) {
+        t += `<div style="color:#aa44ff; font-size:10px; margin-top:4px;">✦ Passive: ${item.passive.effect}</div>`;
+    }
+    if (item.cursed) {
+        t += `<div style="color:#ff4444; font-size:10px; margin-top:4px;">☠ CURSED — Impossible to remove</div>`;
     }
 
-    // ——— DEATH SCREEN ———
-    $('btn-respawn').addEventListener('click', () => {
-        $('death-screen').classList.add('hidden');
-        // Death penalty: lose 10% gold
-        const goldLost = Math.floor(player.gold * 0.1);
-        player.gold -= goldLost;
-        if (goldLost > 0) addCombatLog(`Lost ${goldLost} gold on death!`, 'log-dmg');
-        player.hp = player.maxHp;
-        player.mp = player.maxMp;
-        player.x = dungeon.playerStart.x;
-        player.y = dungeon.playerStart.y;
-        player.path = [];
-        player.attackTarget = null;
-        state = 'GAME';
-        lastTime = performance.now();
-        requestAnimationFrame(gameLoop);
-    });
-
-    $('btn-main-menu-death').addEventListener('click', () => {
-        $('death-screen').classList.add('hidden');
-        $('game-screen').classList.remove('active');
-        $('main-menu').classList.add('active');
-        state = 'MENU';
-    });
-
-    $('btn-reset-talents')?.addEventListener('click', () => {
-        if (!player) return;
-        if (player.gold < 500) { addCombatLog('Not enough gold (500 needed)', 'log-dmg'); return; }
-        player.gold -= 500;
-        player.talents.reset();
-        player.hotbar = [null, null, null, null, null];
-        updateSkillBar();
-        renderTalentTree();
-        addCombatLog('Talents reset!', 'log-level');
-    });
-
-    // ——— SHOP UI ———
-
-
-    function openShop() {
-        $('panel-shop').classList.remove('hidden');
-        $('panel-inventory').classList.remove('hidden');
-        renderShop();
+    // ★ Synergy display — show which talents/charms boost this legendary
+    if (item.isLegendary && !isComparison && player) {
+        const synHtml = getSynergyTooltipHtml(player, item.id, item.legendaryColor);
+        if (synHtml) t += synHtml;
     }
 
-    function renderDialoguePicker(npc) {
-        activeDialogueNpc = npc;
-        const existing = document.getElementById('dialogue-picker');
-        if (existing) existing.remove();
 
-        const menu = document.createElement('div');
-        menu.id = 'dialogue-picker';
-        menu.className = 'dialogue-picker-menu';
+    if (item.rarity === 'set' && item.setId) {
+        const def = SETS[item.setId];
+        if (def) {
+            // Count equipped set pieces
+            let equipped = 0;
+            if (player && player.equipment) {
+                for (const eq of Object.values(player.equipment)) {
+                    if (eq && eq.setId === item.setId) equipped++;
+                }
+            }
+            const maxTier = Object.keys(def.bonuses).length > 0 ? Math.max(...Object.keys(def.bonuses).map(Number)) : '?';
+            t += `<div style="border-top:1px solid #1a3a1a; margin-top:8px; padding-top:6px;">`;
+            t += `<div style="color:#00ff00; font-weight:bold; margin-bottom:4px;">${def.name} (${equipped}/${maxTier})</div>`;
+            for (const [tier, mods] of Object.entries(def.bonuses)) {
+                const active = equipped >= Number(tier);
+                const color = active ? '#00ff00' : '#555';
+                const modText = mods.map(m => {
+                    const fn = friendlyNames[m.stat] || m.stat;
+                    return `+${m.value} ${fn}`;
+                }).join(', ');
+                t += `<div style="color:${color}; font-size:11px;">(${tier}) ${modText}</div>`;
+            }
+            t += `</div>`;
+        }
+    }
 
-        // Initial position above head
-        const screen = camera.toScreen(npc.x, npc.y);
-        menu.style.cssText = `
+    // Comparison logic
+    if (!isComparison && (state === 'INVENTORY' || state === 'STASH' || state === 'VENDOR')) {
+        const slot = item.slot;
+        const equippedItem = player.equipment[slot] || (slot === 'ring1' ? player.equipment.ring2 : null);
+
+        if (equippedItem && equippedItem !== item) {
+            const getDiff = (stat) => {
+                const cur = (item.mods?.find(m => m.stat === stat)?.value || 0) + (item[stat] || 0);
+                const old = (equippedItem.mods?.find(m => m.stat === stat)?.value || 0) + (equippedItem[stat] || 0);
+                const diff = cur - old;
+                if (diff === 0) return '';
+                const color = diff > 0 ? '#4caf50' : '#f44336';
+                return `<span style="color:${color}; font-size:10px; margin-left:5px;">(${diff > 0 ? '+' : ''}${diff})</span>`;
+            };
+
+            const dmgDiff = (item.maxDmg || 0) - (equippedItem.maxDmg || 0);
+            const armDiff = (item.armor || 0) - (equippedItem.armor || 0);
+
+            if (dmgDiff !== 0) t = t.replace(`${item.maxDmg} Damage`, `${item.maxDmg} Damage <span style="color:${dmgDiff > 0 ? '#4caf50' : '#f44336'}">(${dmgDiff > 0 ? '+' : ''}${dmgDiff})</span>`);
+            if (armDiff !== 0) t = t.replace(`${item.armor} Defense`, `${item.armor} Defense <span style="color:${armDiff > 0 ? '#4caf50' : '#f44336'}">(${armDiff > 0 ? '+' : ''}${armDiff})</span>`);
+        }
+    }
+
+    t += `<div class="tooltip-footer">[Left-Click: Equip / Move to open panel] | [Right-Click: Sell / Drop / Use]</div>`;
+    t += `</div>`;
+    return t;
+}
+
+// ——— DEATH SCREEN ———
+$('btn-respawn').addEventListener('click', () => {
+    $('death-screen').classList.add('hidden');
+    // Death penalty: lose 10% gold
+    const goldLost = Math.floor(player.gold * 0.1);
+    player.gold -= goldLost;
+    if (goldLost > 0) addCombatLog(`Lost ${goldLost} gold on death!`, 'log-dmg');
+    player.hp = player.maxHp;
+    player.mp = player.maxMp;
+    player.x = dungeon.playerStart.x;
+    player.y = dungeon.playerStart.y;
+    player.path = [];
+    player.attackTarget = null;
+    state = 'GAME';
+    lastTime = performance.now();
+    requestAnimationFrame(gameLoop);
+});
+
+$('btn-main-menu-death').addEventListener('click', () => {
+    $('death-screen').classList.add('hidden');
+    $('game-screen').classList.remove('active');
+    $('main-menu').classList.add('active');
+    state = 'MENU';
+});
+
+$('btn-reset-talents')?.addEventListener('click', () => {
+    if (!player) return;
+    if (player.gold < 500) { addCombatLog('Not enough gold (500 needed)', 'log-dmg'); return; }
+    player.gold -= 500;
+    player.talents.reset();
+    player.hotbar = [null, null, null, null, null];
+    updateSkillBar();
+    renderTalentTree();
+    addCombatLog('Talents reset!', 'log-level');
+});
+
+// ——— SHOP UI ———
+function calculateSellPrice(item) {
+    if (!item) return 0;
+    let base = item.price || 10;
+    if (item.rarity === 'magic') base *= 3;
+    if (item.rarity === 'rare') base *= 10;
+    if (item.rarity === 'unique') base *= 25;
+    if (item.ilvl) base += (item.ilvl * 5);
+    return Math.floor(base * 0.25); // Sell for 25% of absolute value
+}
+
+function openShop() {
+    $('panel-shop').classList.remove('hidden');
+    $('panel-inventory').classList.remove('hidden');
+    renderShop();
+}
+
+function renderDialoguePicker(npc) {
+    activeDialogueNpc = npc;
+    const existing = document.getElementById('dialogue-picker');
+    if (existing) existing.remove();
+
+    const menu = document.createElement('div');
+    menu.id = 'dialogue-picker';
+    menu.className = 'dialogue-picker-menu';
+
+    // Initial position above head
+    const screen = camera.toScreen(npc.x, npc.y);
+    menu.style.cssText = `
         position: absolute; left: ${screen.x - 110}px; top: ${screen.y - 180}px; width: 220px;
         background: rgba(10, 8, 5, 0.95); border: 1px solid #bf642f;
         padding: 15px; z-index: 1000; font-family: 'Cinzel', serif;
@@ -5139,303 +5696,303 @@ function itemTooltipText(item, isComparison = false) {
         pointer-events: all; border-radius: 8px;
     `;
 
-        const title = document.createElement('div');
-        title.style.cssText = 'color: #ffd700; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #4a3520; padding-bottom: 6px; text-align: center;';
-        title.textContent = npc.name.toUpperCase();
-        menu.appendChild(title);
+    const title = document.createElement('div');
+    title.style.cssText = 'color: #ffd700; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #4a3520; padding-bottom: 6px; text-align: center;';
+    title.textContent = npc.name.toUpperCase();
+    menu.appendChild(title);
 
-        // --- Phase 3.1: NPC Portrait Support ---
-        const portrait = document.createElement('div');
-        portrait.style.cssText = `
+    // --- Phase 3.1: NPC Portrait Support ---
+    const portrait = document.createElement('div');
+    portrait.style.cssText = `
         width: 100%; height: 120px; margin-bottom: 15px; 
         background: url('assets/npc_portrait_${npc.id}.png'), url('assets/npc_portrait_generic.png');
         background-size: cover; background-position: center;
         border: 1px solid #4a3520; box-shadow: inset 0 0 10px #000;
         mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
     `;
-        menu.appendChild(portrait);
+    menu.appendChild(portrait);
 
-        const options = [
-            {
-                label: 'Trade',
-                action: () => {
-                    Vendor.openShopForNpc(npc);
-                    menu.remove();
-                    activeDialogueNpc = null;
-                }
-            }, {
-                label: 'Talk', action: () => {
-                    const questOffered = offerQuest(npc.id);
-                    if (!questOffered) {
-                        dialogue = { text: `${npc.name}: "${npc.dialogue}"`, timer: 6, npc: npc };
-                        addCombatLog(dialogue.text, 'log-info');
-                    }
-                    menu.remove();
-                    activeDialogueNpc = null;
-                }
+    const options = [
+        {
+            label: 'Trade',
+            action: () => {
+                Vendor.openShopForNpc(npc);
+                menu.remove();
+                activeDialogueNpc = null;
             }
-        ];
-
-        // --- Phase 12+: Campaign & Quest Buttons ---
-        if (npc.id === 'warriv' && campaign.completedActs >= 1) {
-            options.push({ label: 'Travel East', action: () => { nextZone(38); menu.remove(); activeDialogueNpc = null; } });
-        } else if (npc.id === 'meshif' && campaign.completedActs >= 2) {
-            options.push({ label: 'Sail East', action: () => { nextZone(68); menu.remove(); activeDialogueNpc = null; } });
-        } else if (npc.id === 'tyrael' && (zoneLevel === 96 || zoneLevel === 21) && campaign.completedActs >= 4) {
-            options.push({ label: 'Travel to Harrogath', action: () => { nextZone(102); menu.remove(); activeDialogueNpc = null; } });
-        }
-
-        if (npc.id === 'atma' && campaign.hasFlag('radament_slain') && !campaign.questRewards.has('radament')) {
-            options.push({ label: 'Radament Reward', action: () => { campaign.claimReward('radament', player); menu.remove(); activeDialogueNpc = null; } });
-        } else if (npc.id === 'malah' && campaign.hasFlag('anya_rescued') && !campaign.questRewards.has('anya')) {
-            options.push({ label: 'Anya Reward', action: () => { campaign.claimReward('anya', player); menu.remove(); activeDialogueNpc = null; } });
-        }
-
-        // Priority: If quest is available or ready to turn in, add the 'Quest' button
-        const hasQuestAction = QUEST_POOL.some(q => q.giver === npc.id && !completedQuests.has(q.id));
-        if (hasQuestAction) {
-            options.unshift({
-                label: 'Quest', action: () => {
-                    offerQuest(npc.id);
-                    menu.remove();
-                    activeDialogueNpc = null;
+        }, {
+            label: 'Talk', action: () => {
+                const questOffered = offerQuest(npc.id);
+                if (!questOffered) {
+                    dialogue = { text: `${npc.name}: "${npc.dialogue}"`, timer: 6, npc: npc };
+                    addCombatLog(dialogue.text, 'log-info');
                 }
-            });
-        }
-
-        // Special: Gamble (Gheed)
-        if (npc.id === 'gheed') {
-            options.push({ label: 'Gamble', action: () => { openGambleShop(); menu.remove(); activeDialogueNpc = null; } });
-        }
-
-        // Special: Infernal Rift (Deckard Cain)
-        if (npc.id === 'deckard_cain') {
-            options.push({
-                label: 'Enter Infernal Rift', action: () => {
-                    addCombatLog('Entering the Infernal Rift...', 'log-crit');
-                    nextZone(128); // Zone 26 is Infinite Rift
-                    menu.remove();
-                    activeDialogueNpc = null;
-                }
-            });
-        }
-
-        // Special: Imbue (Charsi)
-        if (npc.id === 'charsi' && player.hasImbue) {
-            options.push({
-                label: 'Imbue Item', action: () => {
-                    addCombatLog('Select an item in your inventory to Imbue (Transform to Rare).', 'log-info');
-                    isImbuing = true; // Need to handle click in renderInventory
-                    menu.remove();
-                    activeDialogueNpc = null;
-                }
-            });
-        }
-
-        // Special: Reforge (Phase 22: Charsi)
-        if (npc.id === 'charsi') {
-            options.push({
-                label: 'Forge Equipment (5 Fragments)', action: () => {
-                    renderCraftingMenu();
-                    if (menu) menu.remove();
-                    activeDialogueNpc = null;
-                }
-            });
-            options.push({
-                label: 'Reforge Rare (5000g)', action: () => {
-                    if (player.gold < 5000) { addCombatLog('Not enough gold!', 'log-dmg'); return; }
-                    addCombatLog('Select a Rare item in your inventory to Reforge (Reroll Affixes).', 'log-info');
-                    isReforging = true;
-                    menu.remove();
-                    activeDialogueNpc = null;
-                }
-            });
-        }
-
-        // Special: Hire / Revive (Kashya, Greiz, Asheara, Tyrael)
-        const mercCaptains = { 'kashya': 'Rogue', 'greiz': 'Desert Warrior', 'asheara': 'Iron Wolf', 'tyrael': 'Desert Warrior' };
-        if (mercCaptains[npc.id]) {
-            const type = mercCaptains[npc.id];
-            const isDead = mercenary && mercenary.hp <= 0;
-            const mercName = mercenary ? mercenary.name : 'Mercenary';
-            options.push({
-                label: isDead ? `Revive ${mercName} (200g)` : `Hire ${type} (500g)`, action: () => {
-                    hireMercenary(type);
-                    menu.remove();
-                    activeDialogueNpc = null;
-                }
-            });
-        }
-
-        // Special: Anya Quest
-        if (npc.id === 'anya') {
-            const q = activeQuests.find(aq => aq.id === 'prison_of_ice');
-            if (q && !player.hasAnyaReward) {
-                options.push({
-                    label: 'Rescue Anya', action: () => {
-                        q.progress = q.target;
-                        player.hasAnyaReward = true;
-                        player.permanentResists = (player.permanentResists || 0) + 10;
-                        player._recalcStats();
-                        addCombatLog('You have rescued Anya! Permanent +10 Resistances gained.', 'log-unique');
-                        menu.remove();
-                        activeDialogueNpc = null;
-                        updateHud();
-                    }
-                });
+                menu.remove();
+                activeDialogueNpc = null;
             }
         }
+    ];
 
-        // Special: Socket (Larzuk)
-        if (npc.id === 'larzuk') {
-            // Remove Trade for Larzuk
-            const tradeIdx = options.findIndex(o => o.label === 'Trade');
-            if (tradeIdx >= 0) options.splice(tradeIdx, 1);
-
-            options.push({
-                label: 'Add Socket (2000g)', action: () => {
-                    if (player.gold >= 2000) {
-                        isLarzukSocketing = true;
-                        togglePanel('inventory');
-                        document.body.style.cursor = 'crosshair';
-                        addCombatLog('Select an item to add a socket to.', 'log-info');
-                    } else {
-                        addCombatLog('Not enough gold! (2000g needed)', 'log-dmg');
-                    }
-                    menu.remove();
-                    activeDialogueNpc = null;
-                }
-            });
-        }
-
-        // Special: Healer Services (Akara, Jamella, Malah, Fara)
-        if (['akara', 'jamella', 'malah', 'fara'].includes(npc.id)) {
-            options.push({
-                label: 'Heal & Refill', action: () => {
-                    player.hp = player.maxHp;
-                    player.mp = player.maxMp;
-                    if (mercenary) mercenary.hp = mercenary.maxHp;
-                    addCombatLog(`${npc.name} has restored your health and mana.`, 'log-heal');
-                    fx.emitBurst(player.x, player.y, '#4caf50', 20, 2);
-                    updateHud();
-                    menu.remove();
-                    activeDialogueNpc = null;
-                }
-            });
-        }
-
-        // Akara Reset (Stay as Akara only)
-        if (npc.id === 'akara') {
-            options.push({
-                label: 'Reset Stats/Skills (500g)', action: () => {
-                    if (player.gold >= 500) {
-                        player.gold -= 500;
-                        player.talents.reset();
-                        player.hotbar = [null, null, null, null, null];
-                        updateSkillBar();
-                        renderTalentTree();
-                        addCombatLog('Talents reset!', 'log-level');
-                    } else {
-                        addCombatLog('Not enough gold!', 'log-dmg');
-                    }
-                    menu.remove();
-                    activeDialogueNpc = null;
-                }
-            });
-        }
-
-        // Special: Identify All (Deckard Cain Speciality)
-        if (npc.id === 'deckard_cain') {
-            options.push({
-                label: 'Identify All (100g)', action: () => {
-                    const cost = 100;
-                    if (player.gold >= cost) {
-                        let count = 0;
-                        player.inventory.forEach(it => { if (it && it.identified === false) { it.identified = true; count++; } });
-                        if (count > 0) {
-                            player.gold -= cost;
-                            addCombatLog(`Identified ${count} items.`, 'log-info');
-                            playLoot();
-                            renderInventory();
-                        } else {
-                            addCombatLog("No unidentified items found.", "log-info");
-                        }
-                    } else {
-                        addCombatLog("Not enough gold!", "log-dmg");
-                    }
-                    menu.remove();
-                    activeDialogueNpc = null;
-                }
-            });
-        }
-
-        // --- Phase 30: Pantheon Monument ---
-        if (npc.id === 'pantheon_monument') {
-            // Clear default options for the monument
-            options.length = 0;
-            options.push({
-                label: 'View Legacies',
-                action: () => {
-                    renderPantheonList();
-                    if (menu) menu.remove();
-                    activeDialogueNpc = null;
-                }
-            });
-            options.push({
-                label: 'Touch the Stone', action: () => {
-                    fx.emitHeal(player.x, player.y);
-                    addCombatLog('A cold chill runs down your spine as you touch the ancient stone.', 'log-info');
-                    if (menu) menu.remove();
-                    activeDialogueNpc = null;
-                }
-            });
-            options.push({ label: 'Leave', action: () => { if (menu) menu.remove(); activeDialogueNpc = null; } });
-        }
-
-        // Special: Warriv Waypoint Travel
-        if (npc.id === 'warriv') {
-            const wpZones = [...discoveredWaypoints].sort((a, b) => a - b);
-            wpZones.forEach(wz => {
-                if (wz === zoneLevel) return;
-                options.push({
-                    label: `Travel: ${ZONE_NAMES[wz] || 'Unknown Area'}`,
-                    action: () => {
-                        nextZone(wz);
-                        menu.remove();
-                        activeDialogueNpc = null;
-                    }
-                });
-            });
-        }
-
-        options.push({ label: 'Cancel', action: () => { menu.remove(); activeDialogueNpc = null; } });
-
-        options.forEach(opt => {
-            const btn = document.createElement('div');
-            btn.className = 'dialogue-option';
-            btn.style.cssText = 'color: #d8b068; cursor: pointer; padding: 10px; margin: 4px 0; text-align: left; transition: all 0.2s; font-size: 13px; background: rgba(191,100,47,0.05); border: 1px solid transparent;';
-            btn.onmouseover = () => { btn.style.color = '#fff'; btn.style.background = 'rgba(191,100,47,0.2)'; btn.style.borderColor = '#bf642f'; };
-            btn.onmouseout = () => { btn.style.color = '#d8b068'; btn.style.background = 'rgba(191,100,47,0.05)'; btn.style.borderColor = 'transparent'; };
-            btn.textContent = `• ${opt.label}`;
-            btn.onclick = opt.action;
-            menu.appendChild(btn);
-        });
-
-        $('game-screen').appendChild(menu);
+    // --- Phase 12+: Campaign & Quest Buttons ---
+    if (npc.id === 'warriv' && campaign.completedActs >= 1) {
+        options.push({ label: 'Travel East', action: () => { nextZone(38); menu.remove(); activeDialogueNpc = null; } });
+    } else if (npc.id === 'meshif' && campaign.completedActs >= 2) {
+        options.push({ label: 'Sail East', action: () => { nextZone(68); menu.remove(); activeDialogueNpc = null; } });
+    } else if (npc.id === 'tyrael' && (zoneLevel === 96 || zoneLevel === 21) && campaign.completedActs >= 4) {
+        options.push({ label: 'Travel to Harrogath', action: () => { nextZone(102); menu.remove(); activeDialogueNpc = null; } });
     }
 
-    function renderWaypointMenu(obj) {
-        activeWaypointObj = obj;
-        const existing = document.getElementById('dialogue-picker');
-        if (existing) existing.remove();
+    if (npc.id === 'atma' && campaign.hasFlag('radament_slain') && !campaign.questRewards.has('radament')) {
+        options.push({ label: 'Radament Reward', action: () => { campaign.claimReward('radament', player); menu.remove(); activeDialogueNpc = null; } });
+    } else if (npc.id === 'malah' && campaign.hasFlag('anya_rescued') && !campaign.questRewards.has('anya')) {
+        options.push({ label: 'Anya Reward', action: () => { campaign.claimReward('anya', player); menu.remove(); activeDialogueNpc = null; } });
+    }
 
-        const menu = document.createElement('div');
-        menu.id = 'dialogue-picker';
-        menu.className = 'dialogue-picker-menu';
+    // Priority: If quest is available or ready to turn in, add the 'Quest' button
+    const hasQuestAction = QUEST_POOL.some(q => q.giver === npc.id && !completedQuests.has(q.id));
+    if (hasQuestAction) {
+        options.unshift({
+            label: 'Quest', action: () => {
+                offerQuest(npc.id);
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+    }
 
-        // Position near waypoint - wider menu for tabs
-        const screen = camera.toScreen(obj.x, obj.y);
-        menu.style.cssText = `
+    // Special: Gamble (Gheed)
+    if (npc.id === 'gheed') {
+        options.push({ label: 'Gamble', action: () => { openGambleShop(); menu.remove(); activeDialogueNpc = null; } });
+    }
+
+    // Special: Infernal Rift (Deckard Cain)
+    if (npc.id === 'deckard_cain') {
+        options.push({
+            label: 'Enter Infernal Rift', action: () => {
+                addCombatLog('Entering the Infernal Rift...', 'log-crit');
+                nextZone(128); // Zone 26 is Infinite Rift
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+    }
+
+    // Special: Imbue (Charsi)
+    if (npc.id === 'charsi' && player.hasImbue) {
+        options.push({
+            label: 'Imbue Item', action: () => {
+                addCombatLog('Select an item in your inventory to Imbue (Transform to Rare).', 'log-info');
+                isImbuing = true; // Need to handle click in renderInventory
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+    }
+
+    // Special: Reforge (Phase 22: Charsi)
+    if (npc.id === 'charsi') {
+        options.push({
+            label: 'Forge Equipment (5 Fragments)', action: () => {
+                renderCraftingMenu();
+                if (menu) menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+        options.push({
+            label: 'Reforge Rare (5000g)', action: () => {
+                if (player.gold < 5000) { addCombatLog('Not enough gold!', 'log-dmg'); return; }
+                addCombatLog('Select a Rare item in your inventory to Reforge (Reroll Affixes).', 'log-info');
+                isReforging = true;
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+    }
+
+    // Special: Hire / Revive (Kashya, Greiz, Asheara, Tyrael)
+    const mercCaptains = { 'kashya': 'Rogue', 'greiz': 'Desert Warrior', 'asheara': 'Iron Wolf', 'tyrael': 'Desert Warrior' };
+    if (mercCaptains[npc.id]) {
+        const type = mercCaptains[npc.id];
+        const isDead = mercenary && mercenary.hp <= 0;
+        const mercName = mercenary ? mercenary.name : 'Mercenary';
+        options.push({
+            label: isDead ? `Revive ${mercName} (200g)` : `Hire ${type} (500g)`, action: () => {
+                hireMercenary(type);
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+    }
+
+    // Special: Anya Quest
+    if (npc.id === 'anya') {
+        const q = activeQuests.find(aq => aq.id === 'prison_of_ice');
+        if (q && !player.hasAnyaReward) {
+            options.push({
+                label: 'Rescue Anya', action: () => {
+                    q.progress = q.target;
+                    player.hasAnyaReward = true;
+                    player.permanentResists = (player.permanentResists || 0) + 10;
+                    player._recalcStats();
+                    addCombatLog('You have rescued Anya! Permanent +10 Resistances gained.', 'log-unique');
+                    menu.remove();
+                    activeDialogueNpc = null;
+                    updateHud();
+                }
+            });
+        }
+    }
+
+    // Special: Socket (Larzuk)
+    if (npc.id === 'larzuk') {
+        // Remove Trade for Larzuk
+        const tradeIdx = options.findIndex(o => o.label === 'Trade');
+        if (tradeIdx >= 0) options.splice(tradeIdx, 1);
+
+        options.push({
+            label: 'Add Socket (2000g)', action: () => {
+                if (player.gold >= 2000) {
+                    isLarzukSocketing = true;
+                    togglePanel('inventory');
+                    document.body.style.cursor = 'crosshair';
+                    addCombatLog('Select an item to add a socket to.', 'log-info');
+                } else {
+                    addCombatLog('Not enough gold! (2000g needed)', 'log-dmg');
+                }
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+    }
+
+    // Special: Healer Services (Akara, Jamella, Malah, Fara)
+    if (['akara', 'jamella', 'malah', 'fara'].includes(npc.id)) {
+        options.push({
+            label: 'Heal & Refill', action: () => {
+                player.hp = player.maxHp;
+                player.mp = player.maxMp;
+                if (mercenary) mercenary.hp = mercenary.maxHp;
+                addCombatLog(`${npc.name} has restored your health and mana.`, 'log-heal');
+                fx.emitBurst(player.x, player.y, '#4caf50', 20, 2);
+                updateHud();
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+    }
+
+    // Akara Reset (Stay as Akara only)
+    if (npc.id === 'akara') {
+        options.push({
+            label: 'Reset Stats/Skills (500g)', action: () => {
+                if (player.gold >= 500) {
+                    player.gold -= 500;
+                    player.talents.reset();
+                    player.hotbar = [null, null, null, null, null];
+                    updateSkillBar();
+                    renderTalentTree();
+                    addCombatLog('Talents reset!', 'log-level');
+                } else {
+                    addCombatLog('Not enough gold!', 'log-dmg');
+                }
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+    }
+
+    // Special: Identify All (Deckard Cain Speciality)
+    if (npc.id === 'deckard_cain') {
+        options.push({
+            label: 'Identify All (100g)', action: () => {
+                const cost = 100;
+                if (player.gold >= cost) {
+                    let count = 0;
+                    player.inventory.forEach(it => { if (it && it.identified === false) { it.identified = true; count++; } });
+                    if (count > 0) {
+                        player.gold -= cost;
+                        addCombatLog(`Identified ${count} items.`, 'log-info');
+                        playLoot();
+                        renderInventory();
+                    } else {
+                        addCombatLog("No unidentified items found.", "log-info");
+                    }
+                } else {
+                    addCombatLog("Not enough gold!", "log-dmg");
+                }
+                menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+    }
+
+    // --- Phase 30: Pantheon Monument ---
+    if (npc.id === 'pantheon_monument') {
+        // Clear default options for the monument
+        options.length = 0;
+        options.push({
+            label: 'View Legacies',
+            action: () => {
+                renderPantheonList();
+                if (menu) menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+        options.push({
+            label: 'Touch the Stone', action: () => {
+                fx.emitHeal(player.x, player.y);
+                addCombatLog('A cold chill runs down your spine as you touch the ancient stone.', 'log-info');
+                if (menu) menu.remove();
+                activeDialogueNpc = null;
+            }
+        });
+        options.push({ label: 'Leave', action: () => { if (menu) menu.remove(); activeDialogueNpc = null; } });
+    }
+
+    // Special: Warriv Waypoint Travel
+    if (npc.id === 'warriv') {
+        const wpZones = [...discoveredWaypoints].sort((a, b) => a - b);
+        wpZones.forEach(wz => {
+            if (wz === zoneLevel) return;
+            options.push({
+                label: `Travel: ${ZONE_NAMES[wz] || 'Unknown Area'}`,
+                action: () => {
+                    nextZone(wz);
+                    menu.remove();
+                    activeDialogueNpc = null;
+                }
+            });
+        });
+    }
+
+    options.push({ label: 'Cancel', action: () => { menu.remove(); activeDialogueNpc = null; } });
+
+    options.forEach(opt => {
+        const btn = document.createElement('div');
+        btn.className = 'dialogue-option';
+        btn.style.cssText = 'color: #d8b068; cursor: pointer; padding: 10px; margin: 4px 0; text-align: left; transition: all 0.2s; font-size: 13px; background: rgba(191,100,47,0.05); border: 1px solid transparent;';
+        btn.onmouseover = () => { btn.style.color = '#fff'; btn.style.background = 'rgba(191,100,47,0.2)'; btn.style.borderColor = '#bf642f'; };
+        btn.onmouseout = () => { btn.style.color = '#d8b068'; btn.style.background = 'rgba(191,100,47,0.05)'; btn.style.borderColor = 'transparent'; };
+        btn.textContent = `• ${opt.label}`;
+        btn.onclick = opt.action;
+        menu.appendChild(btn);
+    });
+
+    $('game-screen').appendChild(menu);
+}
+
+function renderWaypointMenu(obj) {
+    activeWaypointObj = obj;
+    const existing = document.getElementById('dialogue-picker');
+    if (existing) existing.remove();
+
+    const menu = document.createElement('div');
+    menu.id = 'dialogue-picker';
+    menu.className = 'dialogue-picker-menu';
+
+    // Position near waypoint - wider menu for tabs
+    const screen = camera.toScreen(obj.x, obj.y);
+    menu.style.cssText = `
         position: absolute; left: ${screen.x - 200}px; top: ${screen.y - 220}px; width: 400px;
         background: rgba(10, 8, 5, 0.98); border: 2px solid #4a3520;
         padding: 0; z-index: 1000; font-family: 'Cinzel', serif;
@@ -5443,55 +6000,55 @@ function itemTooltipText(item, isComparison = false) {
         pointer-events: all; border-radius: 4px; overflow: hidden;
     `;
 
-        const title = document.createElement('div');
-        title.style.cssText = 'color: #ffd700; font-size: 18px; padding: 12px; background: rgba(0,0,0,0.5); border-bottom: 1px solid #4a3520; text-align: center; letter-spacing: 2px; text-shadow: 0 2px 4px #000;';
-        title.textContent = 'WAYPOINT TRAVEL';
-        menu.appendChild(title);
+    const title = document.createElement('div');
+    title.style.cssText = 'color: #ffd700; font-size: 18px; padding: 12px; background: rgba(0,0,0,0.5); border-bottom: 1px solid #4a3520; text-align: center; letter-spacing: 2px; text-shadow: 0 2px 4px #000;';
+    title.textContent = 'WAYPOINT TRAVEL';
+    menu.appendChild(title);
 
-        const acts = [
-            { id: 1, name: 'ACT I', range: [0, 37] },
-            { id: 2, name: 'ACT II', range: [38, 67] },
-            { id: 3, name: 'ACT III', range: [68, 95] },
-            { id: 4, name: 'ACT IV', range: [96, 101] },
-            { id: 5, name: 'ACT V', range: [102, 125] },
-            { id: 6, name: 'RIFT', range: [126, 10000] }
-        ];
+    const acts = [
+        { id: 1, name: 'ACT I', range: [0, 37] },
+        { id: 2, name: 'ACT II', range: [38, 67] },
+        { id: 3, name: 'ACT III', range: [68, 95] },
+        { id: 4, name: 'ACT IV', range: [96, 101] },
+        { id: 5, name: 'ACT V', range: [102, 125] },
+        { id: 6, name: 'RIFT', range: [126, 10000] }
+    ];
 
-        const wpZones = [...discoveredWaypoints].sort((a, b) => a - b);
+    const wpZones = [...discoveredWaypoints].sort((a, b) => a - b);
 
-        // Filter available acts
-        const availableActs = acts.filter(act => {
-            const discoveredInAct = wpZones.filter(wz => wz >= act.range[0] && wz <= act.range[1]);
-            if (discoveredInAct.length === 0) return false;
-            if (act.id <= 5 && !campaign.isActUnlocked(act.id)) return false;
-            return true;
-        });
+    // Filter available acts
+    const availableActs = acts.filter(act => {
+        const discoveredInAct = wpZones.filter(wz => wz >= act.range[0] && wz <= act.range[1]);
+        if (discoveredInAct.length === 0) return false;
+        if (act.id <= 5 && !campaign.isActUnlocked(act.id)) return false;
+        return true;
+    });
 
-        // Determine default selected act (current zone act if available, else first available)
-        let selectedActId = availableActs.find(act => zoneLevel >= act.range[0] && zoneLevel <= act.range[1])?.id || availableActs[0]?.id;
+    // Determine default selected act (current zone act if available, else first available)
+    let selectedActId = availableActs.find(act => zoneLevel >= act.range[0] && zoneLevel <= act.range[1])?.id || availableActs[0]?.id;
 
-        const tabsContainer = document.createElement('div');
-        tabsContainer.style.cssText = 'display: flex; background: #1a1510; border-bottom: 1px solid #4a3520;';
+    const tabsContainer = document.createElement('div');
+    tabsContainer.style.cssText = 'display: flex; background: #1a1510; border-bottom: 1px solid #4a3520;';
 
-        const scrollArea = document.createElement('div');
-        scrollArea.style.cssText = 'height: 300px; overflow-y: auto; padding: 15px; background: rgba(0,0,0,0.3);';
+    const scrollArea = document.createElement('div');
+    scrollArea.style.cssText = 'height: 300px; overflow-y: auto; padding: 15px; background: rgba(0,0,0,0.3);';
 
-        function refreshWaypoints() {
-            scrollArea.innerHTML = '';
-            const act = acts.find(a => a.id === selectedActId);
-            if (!act) return;
+    function refreshWaypoints() {
+        scrollArea.innerHTML = '';
+        const act = acts.find(a => a.id === selectedActId);
+        if (!act) return;
 
-            const discoveredInAct = wpZones.filter(wz => wz >= act.range[0] && wz <= act.range[1]);
+        const discoveredInAct = wpZones.filter(wz => wz >= act.range[0] && wz <= act.range[1]);
 
-            // Split into two columns for better space usage if many waypoints
-            const listGrid = document.createElement('div');
-            listGrid.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px;';
+        // Split into two columns for better space usage if many waypoints
+        const listGrid = document.createElement('div');
+        listGrid.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 8px;';
 
-            discoveredInAct.forEach(wz => {
-                const isCurrent = (wz === zoneLevel);
-                const btn = document.createElement('div');
-                btn.className = 'dialogue-option';
-                btn.style.cssText = `
+        discoveredInAct.forEach(wz => {
+            const isCurrent = (wz === zoneLevel);
+            const btn = document.createElement('div');
+            btn.className = 'dialogue-option';
+            btn.style.cssText = `
                 color: ${isCurrent ? '#888' : '#d8b068'}; 
                 cursor: ${isCurrent ? 'default' : 'pointer'}; 
                 padding: 10px; text-align: left; transition: all 0.2s; font-size: 13px; 
@@ -5500,92 +6057,92 @@ function itemTooltipText(item, isComparison = false) {
                 border-radius: 4px;
             `;
 
-                if (!isCurrent) {
-                    btn.onmouseover = () => { btn.style.color = '#fff'; btn.style.background = 'rgba(191,100,47,0.2)'; btn.style.borderColor = '#bf642f'; };
-                    btn.onmouseout = () => { btn.style.color = '#d8b068'; btn.style.background = 'rgba(191,100,47,0.05)'; btn.style.borderColor = 'rgba(186, 145, 88, 0.2)'; };
-                    btn.onclick = () => {
-                        addCombatLog(`Teleporting to ${ZONE_NAMES[wz] || 'Area ' + wz}...`, 'log-level');
-                        nextZone(wz);
-                        menu.remove();
-                        activeWaypointObj = null;
-                    };
-                }
+            if (!isCurrent) {
+                btn.onmouseover = () => { btn.style.color = '#fff'; btn.style.background = 'rgba(191,100,47,0.2)'; btn.style.borderColor = '#bf642f'; };
+                btn.onmouseout = () => { btn.style.color = '#d8b068'; btn.style.background = 'rgba(191,100,47,0.05)'; btn.style.borderColor = 'rgba(186, 145, 88, 0.2)'; };
+                btn.onclick = () => {
+                    addCombatLog(`Teleporting to ${ZONE_NAMES[wz] || 'Area ' + wz}...`, 'log-level');
+                    nextZone(wz);
+                    menu.remove();
+                    activeWaypointObj = null;
+                };
+            }
 
-                btn.textContent = `${isCurrent ? '📍' : '⚡'} ${ZONE_NAMES[wz] || 'Area ' + wz}`;
-                listGrid.appendChild(btn);
-            });
+            btn.textContent = `${isCurrent ? '📍' : '⚡'} ${ZONE_NAMES[wz] || 'Area ' + wz}`;
+            listGrid.appendChild(btn);
+        });
 
-            scrollArea.appendChild(listGrid);
-        }
+        scrollArea.appendChild(listGrid);
+    }
 
-        availableActs.forEach(act => {
-            const tab = document.createElement('div');
-            tab.style.cssText = `
+    availableActs.forEach(act => {
+        const tab = document.createElement('div');
+        tab.style.cssText = `
             flex: 1; padding: 10px 5px; text-align: center; cursor: pointer; font-size: 11px;
             color: ${act.id === selectedActId ? '#ffd700' : '#888'};
             background: ${act.id === selectedActId ? 'transparent' : 'rgba(0,0,0,0.3)'};
             border-top: 2px solid ${act.id === selectedActId ? '#bf642f' : 'transparent'};
             border-right: 1px solid #4a3520; transition: all 0.2s;
         `;
-            tab.textContent = act.name;
-            tab.onclick = () => {
-                selectedActId = act.id;
-                Array.from(tabsContainer.children).forEach(t => {
-                    t.style.color = '#888';
-                    t.style.background = 'rgba(0,0,0,0.3)';
-                    t.style.borderTopColor = 'transparent';
-                });
-                tab.style.color = '#ffd700';
-                tab.style.background = 'transparent';
-                tab.style.borderTopColor = '#bf642f';
-                refreshWaypoints();
-            };
-            tabsContainer.appendChild(tab);
-        });
+        tab.textContent = act.name;
+        tab.onclick = () => {
+            selectedActId = act.id;
+            Array.from(tabsContainer.children).forEach(t => {
+                t.style.color = '#888';
+                t.style.background = 'rgba(0,0,0,0.3)';
+                t.style.borderTopColor = 'transparent';
+            });
+            tab.style.color = '#ffd700';
+            tab.style.background = 'transparent';
+            tab.style.borderTopColor = '#bf642f';
+            refreshWaypoints();
+        };
+        tabsContainer.appendChild(tab);
+    });
 
-        menu.appendChild(tabsContainer);
-        menu.appendChild(scrollArea);
+    menu.appendChild(tabsContainer);
+    menu.appendChild(scrollArea);
 
-        const footer = document.createElement('div');
-        footer.style.cssText = 'padding: 10px; background: rgba(0,0,0,0.5); border-top: 1px solid #4a3520; text-align: center;';
+    const footer = document.createElement('div');
+    footer.style.cssText = 'padding: 10px; background: rgba(0,0,0,0.5); border-top: 1px solid #4a3520; text-align: center;';
 
-        const cancelBtn = document.createElement('div');
-        cancelBtn.className = 'dialogue-option';
-        cancelBtn.style.cssText = 'color: #888; cursor: pointer; padding: 6px; text-align: center; font-size: 12px; border: 1px solid #444; width: 100px; margin: 0 auto; border-radius: 4px;';
-        cancelBtn.textContent = 'CLOSE';
-        cancelBtn.onclick = () => { menu.remove(); activeWaypointObj = null; };
-        footer.appendChild(cancelBtn);
+    const cancelBtn = document.createElement('div');
+    cancelBtn.className = 'dialogue-option';
+    cancelBtn.style.cssText = 'color: #888; cursor: pointer; padding: 6px; text-align: center; font-size: 12px; border: 1px solid #444; width: 100px; margin: 0 auto; border-radius: 4px;';
+    cancelBtn.textContent = 'CLOSE';
+    cancelBtn.onclick = () => { menu.remove(); activeWaypointObj = null; };
+    footer.appendChild(cancelBtn);
 
-        menu.appendChild(footer);
+    menu.appendChild(footer);
 
-        refreshWaypoints();
-        $('game-screen').appendChild(menu);
-    }
+    refreshWaypoints();
+    $('game-screen').appendChild(menu);
+}
 
 
-    function openGambleShop() {
-        $('panel-shop').classList.remove('hidden');
-        $('panel-inventory').classList.remove('hidden');
-        renderGambleShop();
-    }
+function openGambleShop() {
+    $('panel-shop').classList.remove('hidden');
+    $('panel-inventory').classList.remove('hidden');
+    renderGambleShop();
+}
 
-    function renderGambleShop() {
-        const container = $('shop-items');
-        container.innerHTML = '';
-        const goldText = $('shop-gold');
-        goldText.innerHTML = `Your Gold: <span style="color:var(--gold)">${player.gold}</span><div style="font-size:11px;color:#bf642f;margin-top:4px;">(Gheed's Gambling Service)</div>`;
+function renderGambleShop() {
+    const container = $('shop-items');
+    container.innerHTML = '';
+    const goldText = $('shop-gold');
+    goldText.innerHTML = `Your Gold: <span style="color:var(--gold)">${player.gold}</span><div style="font-size:11px;color:#bf642f;margin-top:4px;">(Gheed's Gambling Service)</div>`;
 
-        const bases = ['ring', 'amulet', 'leather_armor', 'short_sword', 'great_helm', 'circlet', 'gauntlets', 'leather_boots', 'buckler'];
+    const bases = ['ring', 'amulet', 'leather_armor', 'short_sword', 'great_helm', 'circlet', 'gauntlets', 'leather_boots', 'buckler'];
 
-        // Gamble prices scale with level
-        const cost = Math.max(100, player.level * 50);
+    // Gamble prices scale with level
+    const cost = Math.max(100, player.level * 50);
 
-        for (const baseId of bases) {
-            const base = items[baseId];
-            const row = document.createElement('div');
-            row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:8px; border:1px solid #333; background:#111; border-radius:4px; transition:0.2s;';
+    for (const baseId of bases) {
+        const base = items[baseId];
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:8px; border:1px solid #333; background:#111; border-radius:4px; transition:0.2s;';
 
-            row.innerHTML = `
+        row.innerHTML = `
             <div style="display:flex; align-items:center; gap:8px;">
                 <div style="width:32px; height:32px; border:1px solid #444; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;">
                     ${getItemHtml({ ...base, identified: false, rarity: 'normal' })}
@@ -5598,163 +6155,163 @@ function itemTooltipText(item, isComparison = false) {
             <button class="btn-secondary small">Gamble (${cost}g)</button>
         `;
 
-            row.querySelector('button').onclick = () => {
-                if (player.gold >= cost) {
-                    player.gold -= cost;
-                    const itm = loot.generateGamble(baseId, player.level);
-                    if (player.addToInventory(itm)) {
-                        playLoot();
-                        renderGambleShop();
-                        renderInventory();
-                    } else {
-                        player.gold += cost;
-                        addCombatLog('Inventory full!', 'log-dmg');
-                    }
-                } else {
-                    addCombatLog('Not enough gold!', 'log-dmg');
-                }
-            };
-
-            container.appendChild(row);
-        }
-    }
-
-    let currentStashTab = 0; // Index 0-3
-    let stashMode = 'personal'; // 'personal' or 'shared'
-    let sharedStashData = SaveSystem.getSharedStash();
-    let sharedStashTabs = (sharedStashData && sharedStashData.tabs) ? sharedStashData.tabs : [
-        { name: 'Shared 1', items: Array(100).fill(null) },
-        { name: 'Shared 2', items: Array(100).fill(null) },
-        { name: 'Shared 3', items: Array(100).fill(null) },
-        { name: 'Private', items: Array(100).fill(null) }
-    ];
-    let sharedGold = (sharedStashData && sharedStashData.gold) ? sharedStashData.gold : 0;
-
-    // Wire Stash Main Toggles
-    $('btn-stash-personal')?.addEventListener('click', () => {
-        stashMode = 'personal';
-        $('btn-stash-personal').classList.add('active');
-        $('btn-stash-shared').classList.remove('active');
-        renderStash();
-    });
-    $('btn-stash-shared')?.addEventListener('click', () => {
-        stashMode = 'shared';
-        $('btn-stash-shared').classList.add('active');
-        $('btn-stash-personal').classList.remove('active');
-        renderStash();
-    });
-
-    function renderShop() {
-        if (document.body.classList.contains('is-mobile') || window.innerWidth < 1024) {
-            renderMobileShop('vendor');
-            return;
-        }
-        const container = $('shop-items');
-        container.innerHTML = '';
-        $('shop-gold').innerHTML = `Your Gold: <span style="color:var(--gold)">${player.gold}</span><div style="font-size:11px;color:#888;margin-top:4px;">(Click items in your Inventory to Sell them!)</div>`;
-
-        // Repair All Service
-        const repairCost = Object.values(player.equipment).reduce((acc, it) => {
-            if (it && it.durability < it.maxDurability) {
-                return acc + Math.ceil((it.maxDurability - it.durability) * 2);
-            }
-            return acc;
-        }, 0);
-
-        const repairRow = document.createElement('div');
-        repairRow.style.cssText = `padding:8px; margin: 4px 0; border:1px solid ${repairCost > 0 ? '#4caf50' : '#333'}; background:${repairCost > 0 ? '#1a2a1a' : '#111'}; border-radius:4px; text-align:center; cursor:${repairCost > 0 ? 'pointer' : 'default'}; font-family:Cinzel,serif; color:${repairCost > 0 ? '#4caf50' : '#666'};`;
-        repairRow.innerHTML = `🛠️ Repair All Gear (${repairCost}g)`;
-        if (repairCost > 0) {
-            repairRow.onclick = () => {
-                if (player.gold >= repairCost) {
-                    player.gold -= repairCost;
-                    Object.values(player.equipment).forEach(it => { if (it) it.durability = it.maxDurability; });
-                    addCombatLog(`Gear repaired for ${repairCost} gold.`, 'log-heal');
-                    renderShop();
-                    renderCharacterPanel();
-                } else {
-                    addCombatLog('Not enough gold to repair!', 'log-dmg');
-                }
-            };
-        }
-        container.appendChild(repairRow);
-
-        // Refill Tomes Service
-        let totalRefillCost = 0;
-        player.inventory.forEach(it => {
-            if (it && it.type === 'tome') {
-                totalRefillCost += ((it.maxCharges || 20) - (it.charges || 0)) * 5; // 5g per charge
-            }
-        });
-
-        const refillRow = document.createElement('div');
-        refillRow.style.cssText = `padding:8px; margin: 4px 0; border:1px solid ${totalRefillCost > 0 ? '#30ccff' : '#333'}; background:${totalRefillCost > 0 ? '#0a1a2a' : '#111'}; border-radius:4px; text-align:center; cursor:${totalRefillCost > 0 ? 'pointer' : 'default'}; font-family:Cinzel,serif; color:${totalRefillCost > 0 ? '#30ccff' : '#666'};`;
-        refillRow.innerHTML = `📖 Refill All Tomes (${totalRefillCost}g)`;
-        if (totalRefillCost > 0) {
-            refillRow.onclick = () => {
-                if (player.gold >= totalRefillCost) {
-                    player.gold -= totalRefillCost;
-                    player.inventory.forEach(it => { if (it && it.type === 'tome') it.charges = it.maxCharges || 20; });
-                    addCombatLog(`Tomes refilled for ${totalRefillCost} gold.`, 'log-info');
-                    renderShop();
-                    renderInventory();
-                } else {
-                    addCombatLog('Not enough gold!', 'log-dmg');
-                }
-            };
-        }
-        container.appendChild(refillRow);
-
-        // Identify All Service
-        const idAllRow = document.createElement('div');
-        idAllRow.style.cssText = 'padding:6px; margin: 4px 0; border:1px solid #bf642f; background:#302010; border-radius:4px; text-align:center; cursor:pointer; font-family:Cinzel,serif; color:#ffd700;';
-        idAllRow.innerHTML = `📜 Identify All Inventory (300g)`;
-        idAllRow.onclick = () => {
-            if (player.gold >= 300) {
-                let count = 0;
-                player.inventory.forEach(it => { if (it && it.identified === false) { it.identified = true; count++; } });
-                if (count > 0) {
-                    player.gold -= 300;
-                    addCombatLog(`Identified ${count} items.`, 'log-info');
+        row.querySelector('button').onclick = () => {
+            if (player.gold >= cost) {
+                player.gold -= cost;
+                const itm = loot.generateGamble(baseId, player.level);
+                if (player.addToInventory(itm)) {
                     playLoot();
-                    renderShop();
+                    renderGambleShop();
                     renderInventory();
                 } else {
-                    addCombatLog('No unidentified items found.', 'log-info');
+                    player.gold += cost;
+                    addCombatLog('Inventory full!', 'log-dmg');
                 }
             } else {
                 addCombatLog('Not enough gold!', 'log-dmg');
             }
         };
-        container.appendChild(idAllRow);
 
-        // Section Header: Buy
-        const buyHeader = document.createElement('div');
-        buyHeader.style.cssText = 'color:var(--gold);font-family:Cinzel,serif;font-size:14px;padding:4px 0;border-bottom:1px solid #333;';
-        buyHeader.textContent = '— Buy Items —';
-        container.appendChild(buyHeader);
+        container.appendChild(row);
+    }
+}
 
-        const shopInventory = [
-            { ...items.health_potion, price: 25 },
-            { ...items.mana_potion, price: 25 },
-            { ...items.rejuv_potion, price: 75 },
-            { ...items.scroll_identify, price: 100 },
-            { ...items.scroll_town_portal, price: 100 },
-            { ...items.tome_tp, price: 500 },
-            { ...items.tome_identify, price: 500 },
-        ];
+let currentStashTab = 0; // Index 0-3
+let stashMode = 'personal'; // 'personal' or 'shared'
+let sharedStashData = SaveSystem.getSharedStash();
+let sharedStashTabs = (sharedStashData && sharedStashData.tabs) ? sharedStashData.tabs : [
+    { name: 'Shared 1', items: Array(100).fill(null) },
+    { name: 'Shared 2', items: Array(100).fill(null) },
+    { name: 'Shared 3', items: Array(100).fill(null) },
+    { name: 'Private', items: Array(100).fill(null) }
+];
+let sharedGold = (sharedStashData && sharedStashData.gold) ? sharedStashData.gold : 0;
 
-        for (const item of shopInventory) {
-            const row = document.createElement('div');
-            row.style.display = 'flex';
-            row.style.justifyContent = 'space-between';
-            row.style.alignItems = 'center';
-            row.style.padding = '6px';
-            row.style.border = '1px solid #333';
-            row.style.background = '#1a1a1a';
-            row.style.borderRadius = '4px';
+// Wire Stash Main Toggles
+$('btn-stash-personal')?.addEventListener('click', () => {
+    stashMode = 'personal';
+    $('btn-stash-personal').classList.add('active');
+    $('btn-stash-shared').classList.remove('active');
+    renderStash();
+});
+$('btn-stash-shared')?.addEventListener('click', () => {
+    stashMode = 'shared';
+    $('btn-stash-shared').classList.add('active');
+    $('btn-stash-personal').classList.remove('active');
+    renderStash();
+});
 
-            row.innerHTML = `
+function renderShop() {
+    if (document.body.classList.contains('is-mobile') || window.innerWidth < 1024) {
+        renderMobileShop('vendor');
+        return;
+    }
+    const container = $('shop-items');
+    container.innerHTML = '';
+    $('shop-gold').innerHTML = `Your Gold: <span style="color:var(--gold)">${player.gold}</span><div style="font-size:11px;color:#888;margin-top:4px;">(Click items in your Inventory to Sell them!)</div>`;
+
+    // Repair All Service
+    const repairCost = Object.values(player.equipment).reduce((acc, it) => {
+        if (it && it.durability < it.maxDurability) {
+            return acc + Math.ceil((it.maxDurability - it.durability) * 2);
+        }
+        return acc;
+    }, 0);
+
+    const repairRow = document.createElement('div');
+    repairRow.style.cssText = `padding:8px; margin: 4px 0; border:1px solid ${repairCost > 0 ? '#4caf50' : '#333'}; background:${repairCost > 0 ? '#1a2a1a' : '#111'}; border-radius:4px; text-align:center; cursor:${repairCost > 0 ? 'pointer' : 'default'}; font-family:Cinzel,serif; color:${repairCost > 0 ? '#4caf50' : '#666'};`;
+    repairRow.innerHTML = `🛠️ Repair All Gear (${repairCost}g)`;
+    if (repairCost > 0) {
+        repairRow.onclick = () => {
+            if (player.gold >= repairCost) {
+                player.gold -= repairCost;
+                Object.values(player.equipment).forEach(it => { if (it) it.durability = it.maxDurability; });
+                addCombatLog(`Gear repaired for ${repairCost} gold.`, 'log-heal');
+                renderShop();
+                renderCharacterPanel();
+            } else {
+                addCombatLog('Not enough gold to repair!', 'log-dmg');
+            }
+        };
+    }
+    container.appendChild(repairRow);
+
+    // Refill Tomes Service
+    let totalRefillCost = 0;
+    player.inventory.forEach(it => {
+        if (it && it.type === 'tome') {
+            totalRefillCost += ((it.maxCharges || 20) - (it.charges || 0)) * 5; // 5g per charge
+        }
+    });
+
+    const refillRow = document.createElement('div');
+    refillRow.style.cssText = `padding:8px; margin: 4px 0; border:1px solid ${totalRefillCost > 0 ? '#30ccff' : '#333'}; background:${totalRefillCost > 0 ? '#0a1a2a' : '#111'}; border-radius:4px; text-align:center; cursor:${totalRefillCost > 0 ? 'pointer' : 'default'}; font-family:Cinzel,serif; color:${totalRefillCost > 0 ? '#30ccff' : '#666'};`;
+    refillRow.innerHTML = `📖 Refill All Tomes (${totalRefillCost}g)`;
+    if (totalRefillCost > 0) {
+        refillRow.onclick = () => {
+            if (player.gold >= totalRefillCost) {
+                player.gold -= totalRefillCost;
+                player.inventory.forEach(it => { if (it && it.type === 'tome') it.charges = it.maxCharges || 20; });
+                addCombatLog(`Tomes refilled for ${totalRefillCost} gold.`, 'log-info');
+                renderShop();
+                renderInventory();
+            } else {
+                addCombatLog('Not enough gold!', 'log-dmg');
+            }
+        };
+    }
+    container.appendChild(refillRow);
+
+    // Identify All Service
+    const idAllRow = document.createElement('div');
+    idAllRow.style.cssText = 'padding:6px; margin: 4px 0; border:1px solid #bf642f; background:#302010; border-radius:4px; text-align:center; cursor:pointer; font-family:Cinzel,serif; color:#ffd700;';
+    idAllRow.innerHTML = `📜 Identify All Inventory (300g)`;
+    idAllRow.onclick = () => {
+        if (player.gold >= 300) {
+            let count = 0;
+            player.inventory.forEach(it => { if (it && it.identified === false) { it.identified = true; count++; } });
+            if (count > 0) {
+                player.gold -= 300;
+                addCombatLog(`Identified ${count} items.`, 'log-info');
+                playLoot();
+                renderShop();
+                renderInventory();
+            } else {
+                addCombatLog('No unidentified items found.', 'log-info');
+            }
+        } else {
+            addCombatLog('Not enough gold!', 'log-dmg');
+        }
+    };
+    container.appendChild(idAllRow);
+
+    // Section Header: Buy
+    const buyHeader = document.createElement('div');
+    buyHeader.style.cssText = 'color:var(--gold);font-family:Cinzel,serif;font-size:14px;padding:4px 0;border-bottom:1px solid #333;';
+    buyHeader.textContent = '— Buy Items —';
+    container.appendChild(buyHeader);
+
+    const shopInventory = [
+        { ...items.health_potion, price: 25 },
+        { ...items.mana_potion, price: 25 },
+        { ...items.rejuv_potion, price: 75 },
+        { ...items.scroll_identify, price: 100 },
+        { ...items.scroll_town_portal, price: 100 },
+        { ...items.tome_tp, price: 500 },
+        { ...items.tome_identify, price: 500 },
+    ];
+
+    for (const item of shopInventory) {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.justifyContent = 'space-between';
+        row.style.alignItems = 'center';
+        row.style.padding = '6px';
+        row.style.border = '1px solid #333';
+        row.style.background = '#1a1a1a';
+        row.style.borderRadius = '4px';
+
+        row.innerHTML = `
             <div style="display:flex; align-items:center; gap:8px;">
                 <div style="width:32px; height:32px; border:1px solid #444; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;">
                     ${getItemHtml(item)}
@@ -5764,1079 +6321,1381 @@ function itemTooltipText(item, isComparison = false) {
             <button class="btn-secondary small">Buy (${item.price}g)</button>
         `;
 
-            row.querySelector('.tooltip-trigger').addEventListener('mouseenter', e => showTooltip(item, e.clientX, e.clientY));
-            row.querySelector('.tooltip-trigger').addEventListener('mouseleave', hideTooltip);
+        row.querySelector('.tooltip-trigger').addEventListener('mouseenter', e => showTooltip(item, e.clientX, e.clientY));
+        row.querySelector('.tooltip-trigger').addEventListener('mouseleave', hideTooltip);
 
-            const btn = row.querySelector('button');
-            btn.onclick = () => {
-                if (player.gold >= item.price) {
-                    const purchased = { ...item };
-                    delete purchased.price;
-                    if (player.addToInventory(purchased)) {
-                        player.gold -= item.price;
-                        playLoot();
-                        renderShop();
-                        renderInventory();
-                    } else {
-                        addCombatLog('Inventory full!', 'log-dmg');
-                    }
+        const btn = row.querySelector('button');
+        btn.onclick = () => {
+            if (player.gold >= item.price) {
+                const purchased = { ...item };
+                delete purchased.price;
+                if (player.addToInventory(purchased)) {
+                    player.gold -= item.price;
+                    playLoot();
+                    renderShop();
+                    renderInventory();
                 } else {
-                    addCombatLog('Not enough gold!', 'log-dmg');
+                    addCombatLog('Inventory full!', 'log-dmg');
                 }
-            };
+            } else {
+                addCombatLog('Not enough gold!', 'log-dmg');
+            }
+        };
 
-            container.appendChild(row);
-        }
+        container.appendChild(row);
+    }
 
-        // Section: Gambling
-        const gambleHeader = document.createElement('div');
-        gambleHeader.style.cssText = 'color:#bf642f;font-family:Cinzel,serif;font-size:14px;padding:8px 0 4px;border-bottom:1px solid #333;margin-top:8px;';
-        gambleHeader.textContent = '— Gamble —';
-        container.appendChild(gambleHeader);
+    // Section: Gambling
+    const gambleHeader = document.createElement('div');
+    gambleHeader.style.cssText = 'color:#bf642f;font-family:Cinzel,serif;font-size:14px;padding:8px 0 4px;border-bottom:1px solid #333;margin-top:8px;';
+    gambleHeader.textContent = '— Gamble —';
+    container.appendChild(gambleHeader);
 
-        const gambleCosts = [
-            { label: 'Mystery Weapon', cost: 100, type: 'weapon' },
-            { label: 'Mystery Armor', cost: 80, type: 'armor' },
-            { label: 'Mystery Jewelry', cost: 150, type: 'jewelry' },
-        ];
+    const gambleCosts = [
+        { label: 'Mystery Weapon', cost: 100, type: 'weapon' },
+        { label: 'Mystery Armor', cost: 80, type: 'armor' },
+        { label: 'Mystery Jewelry', cost: 150, type: 'jewelry' },
+    ];
 
-        for (const g of gambleCosts) {
-            const row = document.createElement('div');
-            row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px;border:1px solid #4a3520;background:#1a1208;border-radius:4px;';
-            row.innerHTML = `
+    for (const g of gambleCosts) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px;border:1px solid #4a3520;background:#1a1208;border-radius:4px;';
+        row.innerHTML = `
             <div style="display:flex;align-items:center;gap:8px;">
                 <span style="color:#bf642f; font-size:20px;">🎲</span>
                 <span style="color:#bf642f;">${g.label}</span>
             </div>
             <button class="btn-secondary small" style="border-color:#bf642f;">Gamble (${g.cost}g)</button>
         `;
-            row.querySelector('button').addEventListener('click', () => {
-                if (player.gold < g.cost) { addCombatLog('Not enough gold!', 'log-dmg'); return; }
-                player.gold -= g.cost;
-                const item = loot.generate(player.level, g.type === 'jewelry' ? 'ring' : null);
-                if (item && player.addToInventory(item)) {
-                    const rarityColor = item.rarity === 'unique' ? '#bf642f' : item.rarity === 'rare' ? '#ffff00' : item.rarity === 'magic' ? '#4850b8' : '#fff';
-                    addCombatLog(`Gambled: ${item.name}!`, item.rarity === 'rare' || item.rarity === 'unique' ? 'log-crit' : 'log-item');
-                    playLoot();
-                } else {
-                    addCombatLog('Inventory full! Gold lost.', 'log-dmg');
-                }
-                renderShop();
-                renderInventory();
-            });
-            container.appendChild(row);
+        row.querySelector('button').addEventListener('click', () => {
+            if (player.gold < g.cost) { addCombatLog('Not enough gold!', 'log-dmg'); return; }
+            player.gold -= g.cost;
+            const item = loot.generate(player.level, g.type === 'jewelry' ? 'ring' : null);
+            if (item && player.addToInventory(item)) {
+                const rarityColor = item.rarity === 'unique' ? '#bf642f' : item.rarity === 'rare' ? '#ffff00' : item.rarity === 'magic' ? '#4850b8' : '#fff';
+                addCombatLog(`Gambled: ${item.name}!`, item.rarity === 'rare' || item.rarity === 'unique' ? 'log-crit' : 'log-item');
+                playLoot();
+            } else {
+                addCombatLog('Inventory full! Gold lost.', 'log-dmg');
+            }
+            renderShop();
+            renderInventory();
+        });
+        container.appendChild(row);
+    }
+}
+
+window.rescueSharedItems = async function () {
+    try {
+        const response = await fetch('save.json');
+        const data = await response.json();
+        if (!data || !data.sharedStash) {
+            addCombatLog("Error: Could not find shared stash in save.json", "log-dmg");
+            return;
         }
+
+        const backupStash = data.sharedStash;
+        let itemsAdded = 0;
+
+        if (backupStash.tabs) {
+            backupStash.tabs.forEach((backupTab, tIdx) => {
+                if (tIdx < sharedStashTabs.length) {
+                    backupTab.items.forEach((item, iIdx) => {
+                        if (item && iIdx < sharedStashTabs[tIdx].items.length) {
+                            if (!sharedStashTabs[tIdx].items[iIdx]) {
+                                sharedStashTabs[tIdx].items[iIdx] = item;
+                                itemsAdded++;
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        if (itemsAdded > 0) {
+            SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+            renderStash();
+            addCombatLog(`SUCCESS: Restored ${itemsAdded} items from backup!`, "log-heal");
+            alert(`Restored ${itemsAdded} items into your Shared Stash!`);
+        } else {
+            addCombatLog("No new items were added (slots might be occupied).", "log-info");
+        }
+    } catch (e) {
+        console.error("Rescue failed:", e);
+        addCombatLog("Rescue failed. Check console.", "log-dmg");
+    }
+};
+
+// ——— STASH & CUBE ———
+function renderStash() {
+    const grid = $('stash-grid');
+    const tabContainer = $('panel-stash')?.querySelector('.stash-tabs');
+    const goldControls = $('panel-stash')?.querySelector('div[style*="border-top"]'); // The gold deposit/withdraw UI
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    // Inject Tab container if missing
+    if (!tabContainer) {
+        const p = $('panel-stash');
+        const tc = document.createElement('div');
+        tc.className = 'stash-tabs';
+        tc.style.cssText = 'display:flex; gap:5px; margin-bottom:10px; background:#1a1a1a; padding:5px; border-radius:4px; border:1px solid #444;';
+        // Insert before the grid
+        p.insertBefore(tc, grid);
     }
 
-    window.rescueSharedItems = async function () {
-        try {
-            const response = await fetch('save.json');
-            const data = await response.json();
-            if (!data || !data.sharedStash) {
-                addCombatLog("Error: Could not find shared stash in save.json", "log-dmg");
-                return;
-            }
+    const tc = $('panel-stash').querySelector('.stash-tabs');
+    if (stashMode === 'personal') {
+        tc.style.display = 'none';
+        if (goldControls) goldControls.style.display = 'none';
+    } else {
+        tc.style.display = 'flex';
+        if (goldControls) goldControls.style.display = 'flex';
 
-            const backupStash = data.sharedStash;
-            let itemsAdded = 0;
+        tc.innerHTML = '';
+        sharedStashTabs.forEach((tab, idx) => {
+            const btn = document.createElement('button');
+            btn.className = `stash-tab-btn ${currentStashTab === idx ? 'active' : ''}`;
+            btn.style.cssText = `padding:10px 15px; background:${currentStashTab === idx ? '#bf642f' : '#333'}; color:${currentStashTab === idx ? '#fff' : '#aaa'}; border:1px solid #555; cursor:pointer; font-family:Cinzel,serif; font-size:13px; font-weight:bold; flex:1; transition:all 0.2s;`;
+            btn.textContent = tab.name.toUpperCase();
+            btn.onclick = () => { currentStashTab = idx; renderStash(); };
+            tc.appendChild(btn);
+        });
+    }
 
-            if (backupStash.tabs) {
-                backupStash.tabs.forEach((backupTab, tIdx) => {
-                    if (tIdx < sharedStashTabs.length) {
-                        backupTab.items.forEach((item, iIdx) => {
-                            if (item && iIdx < sharedStashTabs[tIdx].items.length) {
-                                if (!sharedStashTabs[tIdx].items[iIdx]) {
-                                    sharedStashTabs[tIdx].items[iIdx] = item;
-                                    itemsAdded++;
-                                }
-                            }
-                        });
+    const items = (stashMode === 'personal') ? stash : sharedStashTabs[currentStashTab].items;
+
+    // Unified 10-column grid for 'New Stash' look
+    grid.style.gridTemplateColumns = 'repeat(10, 40px)';
+    grid.style.width = '440px'; // Ensure panel can accommodate 10 columns
+    grid.style.margin = '0 auto';
+
+    for (let i = 0; i < items.length; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'inv-slot';
+        const item = items[i];
+
+        if (item) {
+            const div = document.createElement('div');
+            div.innerHTML = getItemHtml(item);
+            setupTooltip(div.firstChild, item);
+
+            div.firstChild.onmousedown = (e) => {
+                if (e.button !== 0) return;
+                const sx = e.clientX, sy = e.clientY;
+                let d = false;
+                const mv = (m) => {
+                    if (!d && Math.hypot(m.clientX - sx, m.clientY - sy) > 5) {
+                        d = true;
+                        startDrag(m, item, 'stash', i);
+                        window.removeEventListener('mousemove', mv);
                     }
-                });
-            }
+                };
+                const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+                window.addEventListener('mousemove', mv);
+                window.addEventListener('mouseup', up);
+            };
 
-            if (itemsAdded > 0) {
-                SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
-                renderStash();
-                addCombatLog(`SUCCESS: Restored ${itemsAdded} items from backup!`, "log-heal");
-                alert(`Restored ${itemsAdded} items into your Shared Stash!`);
-            } else {
-                addCombatLog("No new items were added (slots might be occupied).", "log-info");
-            }
-        } catch (e) {
-            console.error("Rescue failed:", e);
-            addCombatLog("Rescue failed. Check console.", "log-dmg");
+            const moveToInv = (e) => {
+                e.preventDefault();
+                const empty = player.inventory.indexOf(null);
+                if (empty !== -1) {
+                    player.inventory[empty] = item;
+                    if (stashMode === 'personal') {
+                        stash[i] = null;
+                    } else {
+                        sharedStashTabs[currentStashTab].items[i] = null;
+                        SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+                    }
+                    addCombatLog(`Took ${item.name} from Stash`, 'log-info');
+                    hideTooltip(); renderStash(); renderInventory();
+                } else { addCombatLog('Inventory full!', 'log-dmg'); }
+            };
+            div.firstChild.onclick = moveToInv;
+            div.firstChild.addEventListener('contextmenu', moveToInv);
+            cell.appendChild(div.firstChild);
         }
+        cell.onmouseup = () => handleDrop('stash', i);
+        grid.appendChild(cell);
+    }
+    const gVal = $('stash-gold-val');
+    if (gVal) gVal.textContent = sharedGold;
+}
+
+// Wire Gold Buttons
+$('btn-stash-deposit')?.addEventListener('click', () => {
+    const amt = player.gold;
+    if (amt > 0) {
+        sharedGold += amt; player.gold = 0;
+        SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+        renderStash(); updateHud(); addCombatLog(`Deposited ${amt} gold.`, 'log-heal');
+    }
+});
+$('btn-stash-withdraw')?.addEventListener('click', () => {
+    if (sharedGold > 0) {
+        const toTake = sharedGold; player.gold += toTake; sharedGold = 0;
+        SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+        renderStash(); updateHud(); addCombatLog(`Withdrew ${toTake} gold.`, 'log-info');
+    }
+});
+
+function sortStash() {
+    const items = (stashMode === 'personal') ? stash : sharedStashTabs[currentStashTab].items;
+    const itemsRef = items.filter(it => it !== null);
+
+    const rarityWeights = { unique: 10, set: 9, rare: 8, magic: 7, normal: 6 };
+    const typeWeights = { weapon: 10, armor: 9, helm: 8, shield: 7, gloves: 6, boots: 5, belt: 4, amulet: 3, ring: 2, charm: 1, gem: 0, rune: 0, scroll: 0, potion: 0 };
+
+    itemsRef.sort((a, b) => {
+        const ta = typeWeights[a.type] || -1;
+        const tb = typeWeights[b.type] || -1;
+        if (ta !== tb) return tb - ta;
+
+        const ra = rarityWeights[a.rarity] || 0;
+        const rb = rarityWeights[b.rarity] || 0;
+        if (ra !== rb) return rb - ra;
+
+        return a.name.localeCompare(b.name);
+    });
+
+    // Fill with nulls
+    items.fill(null);
+    itemsRef.forEach((it, i) => items[i] = it);
+
+    if (stashMode === 'shared') {
+        SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+    }
+    renderStash();
+    addCombatLog('Stash Sorted', 'log-info');
+}
+
+// Wire Sort Button (re-wire to the new function)
+$('btn-sort-stash')?.addEventListener('click', () => {
+    sortStash();
+});
+
+function saveGame() {
+    if (!player || !activeSlotId) return;
+    SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
+        difficulty: window._difficulty || 0,
+        waypoints: Array.from(discoveredWaypoints),
+        mercenary: mercenary ? mercenary.serialize() : null,
+        cube,
+        campaign: campaign.serialize(),
+        achievements: Array.from(unlockedAchievements || []),
+        highestZone: player.highestZone || 0
+    });
+}
+
+function handleDrop(target, idx) {
+    if (!draggedItem) return;
+    bus.emit('ui:click');
+    let success = false;
+
+    // Helper to get array reference by name
+    const getContainer = (name) => {
+        if (name === 'inventory') return player.inventory;
+        if (name === 'belt') return player.belt;
+        if (name === 'stash') return stashMode === 'personal' ? stash : sharedStashTabs[currentStashTab].items;
+        if (name === 'cube') return cube;
+        return null;
     };
 
-    // ——— STASH & CUBE ———
-    function renderStash() {
-        const grid = $('stash-grid');
-        const tabContainer = $('panel-stash')?.querySelector('.stash-tabs');
-        const goldControls = $('panel-stash')?.querySelector('div[style*="border-top"]'); // The gold deposit/withdraw UI
-        if (!grid) return;
-        grid.innerHTML = '';
+    const srcArr = getContainer(dragSource);
+    const tarArr = getContainer(target);
 
-        // Inject Tab container if missing
-        if (!tabContainer) {
-            const p = $('panel-stash');
-            const tc = document.createElement('div');
-            tc.className = 'stash-tabs';
-            tc.style.cssText = 'display:flex; gap:5px; margin-bottom:10px; background:#1a1a1a; padding:5px; border-radius:4px; border:1px solid #444;';
-            // Insert before the grid
-            p.insertBefore(tc, grid);
+    // 1. Array to Array (Inventory, Stash, Cube, Belt)
+    if (target === 'hotbar' && draggedSkill) {
+        const skillAtSource = player.hotbar[dragSourceIdx];
+        const skillAtTarget = player.hotbar[idx];
+
+        player.hotbar[idx] = skillAtSource;
+        player.hotbar[dragSourceIdx] = skillAtTarget;
+        success = true;
+    } else if (srcArr && tarArr) {
+        const itemAtSource = srcArr[dragSourceIdx];
+        const itemAtTarget = tarArr[idx];
+
+        // Swap
+        tarArr[idx] = itemAtSource;
+        srcArr[dragSourceIdx] = itemAtTarget;
+        success = true;
+    }
+    // 2. Dragging FROM Equip TO Array (Inventory, Stash, Cube, Belt)
+    else if (dragSource === 'equip' && tarArr) {
+        const itemAtTarget = tarArr[idx];
+        const unequipped = player.unequip(dragSourceIdx);
+
+        tarArr[idx] = unequipped;
+        if (itemAtTarget) {
+            const res = player.equip(itemAtTarget, dragSourceIdx);
+            if (!res.success) {
+                const empty = player.inventory.indexOf(null);
+                if (empty !== -1) player.inventory[empty] = itemAtTarget;
+                else droppedItems.push({ ...itemAtTarget, x: player.x, y: player.y, active: true });
+            }
         }
-
-        const tc = $('panel-stash').querySelector('.stash-tabs');
-        if (stashMode === 'personal') {
-            tc.style.display = 'none';
-            if (goldControls) goldControls.style.display = 'none';
+        success = true;
+    }
+    // 3. Dragging FROM Array TO Equip
+    else if (srcArr && target === 'equip') {
+        const itm = srcArr[dragSourceIdx];
+        const res = player.equip(itm, idx);
+        if (res.success) {
+            srcArr[dragSourceIdx] = res.swapped;
+            success = true;
+            bus.emit('item:move');
         } else {
-            tc.style.display = 'flex';
-            if (goldControls) goldControls.style.display = 'flex';
-
-            tc.innerHTML = '';
-            sharedStashTabs.forEach((tab, idx) => {
-                const btn = document.createElement('button');
-                btn.className = `stash-tab-btn ${currentStashTab === idx ? 'active' : ''}`;
-                btn.style.cssText = `padding:10px 15px; background:${currentStashTab === idx ? '#bf642f' : '#333'}; color:${currentStashTab === idx ? '#fff' : '#aaa'}; border:1px solid #555; cursor:pointer; font-family:Cinzel,serif; font-size:13px; font-weight:bold; flex:1; transition:all 0.2s;`;
-                btn.textContent = tab.name.toUpperCase();
-                btn.onclick = () => { currentStashTab = idx; renderStash(); };
-                tc.appendChild(btn);
-            });
+            addCombatLog(res.error, 'log-dmg');
+            bus.emit('ui:error');
         }
+    }
+    // 4. Dragging TO Mercenary
+    else if (target === 'merc' && mercenary) {
+        const validSlots = ['head', 'chest', 'mainhand', 'offhand', 'amulet', 'ring1', 'ring2', 'belt', 'gloves', 'boots'];
+        if (validSlots.includes(draggedItem.slot) && (draggedItem.slot === idx || (draggedItem.slot.startsWith('ring') && idx.startsWith('ring')))) {
+            const itm = draggedItem;
+            const old = mercenary.equipment[idx];
 
-        const items = (stashMode === 'personal') ? stash : sharedStashTabs[currentStashTab].items;
-
-        // Unified 10-column grid for 'New Stash' look
-        grid.style.gridTemplateColumns = 'repeat(10, 40px)';
-        grid.style.width = '440px'; // Ensure panel can accommodate 10 columns
-        grid.style.margin = '0 auto';
-
-        for (let i = 0; i < items.length; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'inv-slot';
-            const item = items[i];
-
-            if (item) {
-                const div = document.createElement('div');
-                div.innerHTML = getItemHtml(item);
-                const innerDiv = div.firstElementChild;
-                if (innerDiv) {
-                    setupTooltip(innerDiv, item);
-                    innerDiv.onmousedown = (e) => {
-                        if (e.button !== 0) return;
-                        const sx = e.clientX, sy = e.clientY;
-                        let d = false;
-                        const mv = (m) => {
-                            if (!d && Math.hypot(m.clientX - sx, m.clientY - sy) > 5) {
-                                d = true;
-                                startDrag(m, item, 'stash', i);
-                                window.removeEventListener('mousemove', mv);
-                            }
-                        };
-                        const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
-                        window.addEventListener('mousemove', mv);
-                        window.addEventListener('mouseup', up);
-                    };
-
-                    const moveToInv = (e) => {
-                        e.preventDefault();
-                        const empty = player.inventory.indexOf(null);
-                        if (empty !== -1) {
-                            player.inventory[empty] = item;
-                            if (stashMode === 'personal') {
-                                stash[i] = null;
-                            } else {
-                                sharedStashTabs[currentStashTab].items[i] = null;
-                                SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
-                            }
-                            addCombatLog(`Took ${item.name} from Stash`, 'log-info');
-                            hideTooltip(); renderStash(); renderInventory();
-                        } else { addCombatLog('Inventory full!', 'log-dmg'); }
-                    };
-                    innerDiv.onclick = moveToInv;
-                    innerDiv.addEventListener('contextmenu', moveToInv);
-                    cell.appendChild(innerDiv);
-                }
+            if (srcArr) srcArr[dragSourceIdx] = old;
+            else if (dragSource === 'equip') {
+                player.equipment[dragSourceIdx] = old;
+                player._recalcStats();
             }
-            cell.onmouseup = () => handleDrop('stash', i);
-            grid.appendChild(cell);
-        }
-        const gVal = $('stash-gold-val');
-        if (gVal) gVal.textContent = sharedGold;
-    }
+            else if (dragSource === 'merc') mercenary.equipment[dragSourceIdx] = old;
 
-    // Wire Gold Buttons
-    $('btn-stash-deposit')?.addEventListener('click', () => {
-        const amt = player.gold;
-        if (amt > 0) {
-            sharedGold += amt; player.gold = 0;
-            SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
-            renderStash(); updateHud(); addCombatLog(`Deposited ${amt} gold.`, 'log-heal');
-        }
-    });
-    $('btn-stash-withdraw')?.addEventListener('click', () => {
-        if (sharedGold > 0) {
-            const toTake = sharedGold; player.gold += toTake; sharedGold = 0;
-            SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
-            renderStash(); updateHud(); addCombatLog(`Withdrew ${toTake} gold.`, 'log-info');
-        }
-    });
-
-    function sortStash() {
-        const items = (stashMode === 'personal') ? stash : sharedStashTabs[currentStashTab].items;
-        const itemsRef = items.filter(it => it !== null);
-
-        const rarityWeights = { unique: 10, set: 9, rare: 8, magic: 7, normal: 6 };
-        const typeWeights = { weapon: 10, armor: 9, helm: 8, shield: 7, gloves: 6, boots: 5, belt: 4, amulet: 3, ring: 2, charm: 1, gem: 0, rune: 0, scroll: 0, potion: 0 };
-
-        itemsRef.sort((a, b) => {
-            const ta = typeWeights[a.type] || -1;
-            const tb = typeWeights[b.type] || -1;
-            if (ta !== tb) return tb - ta;
-
-            const ra = rarityWeights[a.rarity] || 0;
-            const rb = rarityWeights[b.rarity] || 0;
-            if (ra !== rb) return rb - ra;
-
-            return a.name.localeCompare(b.name);
-        });
-
-        // Fill with nulls
-        items.fill(null);
-        itemsRef.forEach((it, i) => items[i] = it);
-
-        if (stashMode === 'shared') {
-            SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
-        }
-        renderStash();
-        addCombatLog('Stash Sorted', 'log-info');
-    }
-
-    // Wire Sort Button (re-wire to the new function)
-    $('btn-sort-stash')?.addEventListener('click', () => {
-        sortStash();
-    });
-
-    function saveGame() {
-        if (!player || !activeSlotId) return;
-        SaveSystem.saveSlot(activeSlotId, player, zoneLevel, stash, {
-            difficulty: window._difficulty || 0,
-            waypoints: Array.from(discoveredWaypoints),
-            mercenary: mercenary ? mercenary.serialize() : null,
-            cube,
-            campaign: campaign.serialize(),
-            achievements: Array.from(unlockedAchievements || []),
-            highestZone: player.highestZone || 0
-        });
-    }
-
-    function handleDrop(target, idx) {
-        if (!draggedItem) return;
-        bus.emit('ui:click');
-        let success = false;
-
-        // Helper to get array reference by name
-        const getContainer = (name) => {
-            if (name === 'inventory') return player.inventory;
-            if (name === 'belt') return player.belt;
-            if (name === 'stash') return stashMode === 'personal' ? stash : sharedStashTabs[currentStashTab].items;
-            if (name === 'cube') return cube;
-            return null;
-        };
-
-        const srcArr = getContainer(dragSource);
-        const tarArr = getContainer(target);
-
-        // 1. Array to Array (Inventory, Stash, Cube, Belt)
-        if (target === 'hotbar' && draggedSkill) {
-            const skillAtSource = player.hotbar[dragSourceIdx];
-            const skillAtTarget = player.hotbar[idx];
-
-            player.hotbar[idx] = skillAtSource;
-            player.hotbar[dragSourceIdx] = skillAtTarget;
+            mercenary.equipment[idx] = itm;
+            mercenary._recalcStats();
             success = true;
-        } else if (srcArr && tarArr) {
-            const itemAtSource = srcArr[dragSourceIdx];
-            const itemAtTarget = tarArr[idx];
-
-            // Swap
-            tarArr[idx] = itemAtSource;
-            srcArr[dragSourceIdx] = itemAtTarget;
-            success = true;
+            addCombatLog(`Equipped ${itm.name} to ${mercenary.name}`, 'log-info');
+            renderMercenaryPanel();
+        } else {
+            addCombatLog(`${mercenary.name} cannot equip this!`, 'log-dmg');
+            bus.emit('ui:error');
         }
-        // 2. Dragging FROM Equip TO Array (Inventory, Stash, Cube, Belt)
-        else if (dragSource === 'equip' && tarArr) {
-            const itemAtTarget = tarArr[idx];
-            const unequipped = player.unequip(dragSourceIdx);
+    }
+    // 5. Dragging FROM Mercenary
+    else if (dragSource === 'merc' && mercenary) {
+        const itm = draggedItem;
+        if (tarArr) {
+            const old = tarArr[idx];
+            tarArr[idx] = itm;
 
-            tarArr[idx] = unequipped;
-            if (itemAtTarget) {
-                const res = player.equip(itemAtTarget, dragSourceIdx);
-                if (!res.success) {
+            const validSlots = ['head', 'chest', 'mainhand', 'offhand', 'amulet', 'ring1', 'ring2', 'belt', 'gloves', 'boots'];
+            if (old && validSlots.includes(old.slot) && (old.slot === dragSourceIdx || (old.slot.startsWith('ring') && dragSourceIdx.startsWith('ring')))) {
+                mercenary.equipment[dragSourceIdx] = old;
+            } else {
+                mercenary.equipment[dragSourceIdx] = null;
+                if (old) {
                     const empty = player.inventory.indexOf(null);
-                    if (empty !== -1) player.inventory[empty] = itemAtTarget;
-                    else droppedItems.push({ ...itemAtTarget, x: player.x, y: player.y, active: true });
+                    if (empty !== -1) player.inventory[empty] = old;
+                    else droppedItems.push({ ...old, x: player.x, y: player.y, active: true });
                 }
             }
+            mercenary._recalcStats();
             success = true;
-        }
-        // 3. Dragging FROM Array TO Equip
-        else if (srcArr && target === 'equip') {
-            const itm = srcArr[dragSourceIdx];
+            renderMercenaryPanel();
+        } else if (target === 'equip') {
             const res = player.equip(itm, idx);
             if (res.success) {
-                srcArr[dragSourceIdx] = res.swapped;
+                mercenary.equipment[dragSourceIdx] = res.swapped;
+                mercenary._recalcStats();
                 success = true;
-                bus.emit('item:move');
+                renderMercenaryPanel();
             } else {
                 addCombatLog(res.error, 'log-dmg');
                 bus.emit('ui:error');
             }
         }
-        // 4. Dragging TO Mercenary
-        else if (target === 'merc' && mercenary) {
-            const validSlots = ['head', 'chest', 'mainhand', 'offhand', 'amulet', 'ring1', 'ring2', 'belt', 'gloves', 'boots'];
-            if (validSlots.includes(draggedItem.slot) && (draggedItem.slot === idx || (draggedItem.slot.startsWith('ring') && idx.startsWith('ring')))) {
-                const itm = draggedItem;
-                const old = mercenary.equipment[idx];
-
-                if (srcArr) srcArr[dragSourceIdx] = old;
-                else if (dragSource === 'equip') {
-                    player.equipment[dragSourceIdx] = old;
-                    player._recalcStats();
-                }
-                else if (dragSource === 'merc') mercenary.equipment[dragSourceIdx] = old;
-
-                mercenary.equipment[idx] = itm;
-                mercenary._recalcStats();
-                success = true;
-                addCombatLog(`Equipped ${itm.name} to ${mercenary.name}`, 'log-info');
-                renderMercenaryPanel();
-            } else {
-                addCombatLog(`${mercenary.name} cannot equip this!`, 'log-dmg');
-                bus.emit('ui:error');
-            }
-        }
-        // 5. Dragging FROM Mercenary
-        else if (dragSource === 'merc' && mercenary) {
-            const itm = draggedItem;
-            if (tarArr) {
-                const old = tarArr[idx];
-                tarArr[idx] = itm;
-
-                const validSlots = ['head', 'chest', 'mainhand', 'offhand', 'amulet', 'ring1', 'ring2', 'belt', 'gloves', 'boots'];
-                if (old && validSlots.includes(old.slot) && (old.slot === dragSourceIdx || (old.slot.startsWith('ring') && dragSourceIdx.startsWith('ring')))) {
-                    mercenary.equipment[dragSourceIdx] = old;
-                } else {
-                    mercenary.equipment[dragSourceIdx] = null;
-                    if (old) {
-                        const empty = player.inventory.indexOf(null);
-                        if (empty !== -1) player.inventory[empty] = old;
-                        else droppedItems.push({ ...old, x: player.x, y: player.y, active: true });
-                    }
-                }
-                mercenary._recalcStats();
-                success = true;
-                renderMercenaryPanel();
-            } else if (target === 'equip') {
-                const res = player.equip(itm, idx);
-                if (res.success) {
-                    mercenary.equipment[dragSourceIdx] = res.swapped;
-                    mercenary._recalcStats();
-                    success = true;
-                    renderMercenaryPanel();
-                } else {
-                    addCombatLog(res.error, 'log-dmg');
-                    bus.emit('ui:error');
-                }
-            }
-        }
-
-        if (success) {
-            saveGame();
-            SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
-            updateHud();
-            renderInventory();
-            renderStash();
-            renderCube();
-            player.invalidateStats();
-        }
-
-        clearDrag();
     }
 
-    function sellAllJunk() {
-        if (!player) return;
-        bus.emit('ui:click');
-        let totalSold = 0;
-        let goldEarned = 0;
-
-        for (let i = 0; i < player.inventory.length; i++) {
-            const item = player.inventory[i];
-            // Junk: normal rarity equipment (not runes/gems/potions)
-            if (item && item.rarity === 'normal' && !['potion', 'scroll', 'gem', 'rune'].includes(item.type)) {
-                const price = Math.max(1, Math.floor(item.ilvl * 0.5));
-                player.gold += price;
-                player.totalGoldCollected += price;
-                goldEarned += price;
-                player.inventory[i] = null;
-                totalSold++;
-            }
-        }
-
-        if (totalSold > 0) {
-            bus.emit('gold:pickup');
-            addCombatLog(`Sold ${totalSold} items for ${goldEarned} gold.`, 'log-info');
-            renderInventory();
-            updateHud();
-        } else {
-            addCombatLog("No junk items found to sell.", "log-dmg");
-        }
-    }
-
-    $('btn-sort-stash')?.addEventListener('click', () => {
-        const target = sharedStashTabs[currentStashTab].items;
-        sortArray(target);
+    if (success) {
+        saveGame();
+        SaveSystem.saveSharedStash({ tabs: sharedStashTabs, gold: sharedGold });
+        updateHud();
+        renderInventory();
         renderStash();
-        addCombatLog('Stash Sorted', 'log-info');
+        renderCube();
+        player.invalidateStats();
+    }
+
+    clearDrag();
+}
+
+function sellAllJunk() {
+    if (!player) return;
+    bus.emit('ui:click');
+    let totalSold = 0;
+    let goldEarned = 0;
+
+    for (let i = 0; i < player.inventory.length; i++) {
+        const item = player.inventory[i];
+        // Junk: normal rarity equipment (not runes/gems/potions)
+        if (item && item.rarity === 'normal' && !['potion', 'scroll', 'gem', 'rune'].includes(item.type)) {
+            const price = Math.max(1, Math.floor(item.ilvl * 0.5));
+            player.gold += price;
+            player.totalGoldCollected += price;
+            goldEarned += price;
+            player.inventory[i] = null;
+            totalSold++;
+        }
+    }
+
+    if (totalSold > 0) {
+        bus.emit('gold:pickup');
+        addCombatLog(`Sold ${totalSold} items for ${goldEarned} gold.`, 'log-info');
+        renderInventory();
+        updateHud();
+    } else {
+        addCombatLog("No junk items found to sell.", "log-dmg");
+    }
+}
+
+$('btn-sort-stash')?.addEventListener('click', () => {
+    const target = sharedStashTabs[currentStashTab].items;
+    sortArray(target);
+    renderStash();
+    addCombatLog('Stash Sorted', 'log-info');
+});
+
+function sortArray(arr) {
+    const items = arr.filter(i => i !== null);
+    const typeWeights = { weapon: 10, armor: 9, helm: 8, shield: 7, gloves: 6, boots: 5, belt: 4, amulet: 3, ring: 2, charm: 1, gem: 0, rune: 0, scroll: 0, potion: 0 };
+    const rarityWeights = { unique: 4, set: 3, rare: 2, magic: 1, common: 0 };
+
+    items.sort((a, b) => {
+        if (typeWeights[a.type] !== typeWeights[b.type]) return typeWeights[b.type] - typeWeights[a.type];
+        const ra = rarityWeights[a.rarity] || 0;
+        const rb = rarityWeights[b.rarity] || 0;
+        if (ra !== rb) return rb - ra;
+        return (a.baseId || "").localeCompare(b.baseId || "");
     });
 
-    function sortArray(arr) {
-        const items = arr.filter(i => i !== null);
-        const typeWeights = { weapon: 10, armor: 9, helm: 8, shield: 7, gloves: 6, boots: 5, belt: 4, amulet: 3, ring: 2, charm: 1, gem: 0, rune: 0, scroll: 0, potion: 0 };
-        const rarityWeights = { unique: 4, set: 3, rare: 2, magic: 1, common: 0 };
-
-        items.sort((a, b) => {
-            if (typeWeights[a.type] !== typeWeights[b.type]) return typeWeights[b.type] - typeWeights[a.type];
-            const ra = rarityWeights[a.rarity] || 0;
-            const rb = rarityWeights[b.rarity] || 0;
-            if (ra !== rb) return rb - ra;
-            return (a.baseId || "").localeCompare(b.baseId || "");
-        });
-
-        for (let i = 0; i < arr.length; i++) {
-            arr[i] = items[i] || null;
-        }
+    for (let i = 0; i < arr.length; i++) {
+        arr[i] = items[i] || null;
     }
+}
 
 
 
-    function renderCube() {
-        const grid = $('cube-grid');
-        if (!grid) return;
-        grid.innerHTML = '';
+function renderCube() {
+    const grid = $('cube-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
 
-        let itemsInCube = [];
-        for (let i = 0; i < cube.length; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'inv-slot';
-            const item = cube[i];
+    let itemsInCube = [];
+    for (let i = 0; i < cube.length; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'inv-slot';
+        const item = cube[i];
 
-            if (item) {
-                itemsInCube.push(item);
-                const div = document.createElement('div');
-                div.innerHTML = getItemHtml(item);
-                const innerDiv = div.firstElementChild;
-                if (innerDiv) setupTooltip(innerDiv, item);
+        if (item) {
+            itemsInCube.push(item);
+            const div = document.createElement('div');
+            div.innerHTML = getItemHtml(item);
+            const innerDiv = div.firstChild;
+            setupTooltip(innerDiv, item);
 
-                // Drag support (Threshold-based)
-                innerDiv.onmousedown = (e) => {
-                    if (e.button !== 0) return;
-                    const sx = e.clientX, sy = e.clientY;
-                    let d = false;
-                    const mv = (m) => {
-                        if (!d && Math.hypot(m.clientX - sx, m.clientY - sy) > 5) {
-                            d = true;
-                            startDrag(m, item, 'cube', i);
-                            window.removeEventListener('mousemove', mv);
-                        }
-                    };
-                    const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
-                    window.addEventListener('mousemove', mv);
-                    window.addEventListener('mouseup', up);
-                };
-
-                const moveToInv = (e) => {
-                    e.preventDefault();
-                    const empty = player.inventory.indexOf(null);
-                    if (empty !== -1) {
-                        player.inventory[empty] = item;
-                        cube[i] = null;
-                        addCombatLog(`Took ${item.name} from Cube`, 'log-info');
-                        hideTooltip();
-                        renderCube();
-                        renderInventory();
-                    } else {
-                        addCombatLog('Inventory full!', 'log-dmg');
+            // Drag support (Threshold-based)
+            innerDiv.onmousedown = (e) => {
+                if (e.button !== 0) return;
+                const sx = e.clientX, sy = e.clientY;
+                let d = false;
+                const mv = (m) => {
+                    if (!d && Math.hypot(m.clientX - sx, m.clientY - sy) > 5) {
+                        d = true;
+                        startDrag(m, item, 'cube', i);
+                        window.removeEventListener('mousemove', mv);
                     }
                 };
-                div.addEventListener('click', moveToInv);
-                div.addEventListener('contextmenu', moveToInv);
-                cell.appendChild(div);
-            }
-            cell.onmouseup = () => handleDrop('cube', i);
-            grid.appendChild(cell);
-        }
+                const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+                window.addEventListener('mousemove', mv);
+                window.addEventListener('mouseup', up);
+            };
 
-        // Auto-detect recipes
-        checkCubeRecipe(itemsInCube);
+            const moveToInv = (e) => {
+                e.preventDefault();
+                const empty = player.inventory.indexOf(null);
+                if (empty !== -1) {
+                    player.inventory[empty] = item;
+                    cube[i] = null;
+                    addCombatLog(`Took ${item.name} from Cube`, 'log-info');
+                    hideTooltip();
+                    renderCube();
+                    renderInventory();
+                } else {
+                    addCombatLog('Inventory full!', 'log-dmg');
+                }
+            };
+            div.addEventListener('click', moveToInv);
+            div.addEventListener('contextmenu', moveToInv);
+            cell.appendChild(div);
+        }
+        cell.onmouseup = () => handleDrop('cube', i);
+        grid.appendChild(cell);
     }
 
-    function checkCubeRecipe(items) {
-        const btn = $('btn-transmute');
-        if (!btn) return;
+    // Auto-detect recipes
+    checkCubeRecipe(itemsInCube);
+}
 
-        btn.classList.remove('btn-ready');
-        btn.textContent = 'Transmute';
+function checkCubeRecipe(items) {
+    const btn = $('btn-transmute');
+    if (!btn) return;
 
-        if (items.length === 3) {
-            const id1 = items[0].baseId;
-            const allSame = items.every(it => it.baseId === id1 && (it.type === 'gem' || it.type === 'rune'));
+    btn.classList.remove('btn-ready');
+    btn.textContent = 'Transmute';
 
-            if (allSame) {
-                btn.classList.add('btn-ready');
-                btn.textContent = 'UPGRADE ARTIFACTS';
-            }
-        } else if (items.length === 1 && items[0].id === 'hellfire_key_set') {
+    if (items.length === 3) {
+        const id1 = items[0].baseId;
+        const allSame = items.every(it => it.baseId === id1 && (it.type === 'gem' || it.type === 'rune'));
+
+        if (allSame) {
             btn.classList.add('btn-ready');
-            btn.textContent = 'OPEN PANDEMONIUM PORTAL';
-        } else if (items.length === 1 && items[0].id === 'item_cow_portal') {
-            btn.classList.add('btn-ready');
-            btn.textContent = 'OPEN SECRET COW LEVEL';
+            btn.textContent = 'UPGRADE ARTIFACTS';
         }
+    } else if (items.length === 1 && items[0].id === 'hellfire_key_set') {
+        btn.classList.add('btn-ready');
+        btn.textContent = 'OPEN PANDEMONIUM PORTAL';
+    } else if (items.length === 1 && items[0].id === 'item_cow_portal') {
+        btn.classList.add('btn-ready');
+        btn.textContent = 'OPEN SECRET COW LEVEL';
     }
+}
 
-    $('btn-transmute')?.addEventListener('click', () => {
-        const resultItem = loot.transmuteCube(cube);
+$('btn-transmute')?.addEventListener('click', () => {
+    const resultItem = loot.transmuteCube(cube);
 
-        if (resultItem) {
-            bus.emit('cube:transmute');
-            // Phase 27: Uber Portal Logic
-            if (resultItem.id === 'hellfire_key_set') {
-                addCombatLog('The sky darkens... A portal to Uber Tristram has opened!', 'log-crit');
-                const portal = new GameObject('uber_portal', player.x, player.y - 40, 'env_water');
-                portal.targetZone = 127; // Uber Tristram
+    if (resultItem) {
+        bus.emit('cube:transmute');
+        // Phase 27: Uber Portal Logic
+        if (resultItem.id === 'hellfire_key_set') {
+            addCombatLog('The sky darkens... A portal to Uber Tristram has opened!', 'log-crit');
+            const portal = new GameObject('uber_portal', player.x, player.y - 40, 'env_water');
+            portal.targetZone = 127; // Uber Tristram
+            gameObjects.push(portal);
+
+            // Clear keys
+            cube.forEach((it, idx) => { if (it && it.id === 'hellfire_key') cube[idx] = null; });
+            renderCube();
+            return;
+        }
+
+        if (resultItem.id === 'item_cow_portal') {
+            if (zoneLevel > 0) {
+                addCombatLog("Moo Moo Moo... A portal to the Secret Cow Level has opened!", 'log-unique');
+                const portal = new GameObject('cow_portal', player.x, player.y - 40, 'env_water');
+                portal.targetZone = 126; // Moo Moo Farm
                 gameObjects.push(portal);
 
-                // Clear keys
-                cube.forEach((it, idx) => { if (it && it.id === 'hellfire_key') cube[idx] = null; });
+                // Consume specific ingredients
+                cube.forEach((it, idx) => {
+                    if (it && (it.baseId === 'wirts_leg' || it.baseId === 'tome_tp')) {
+                        cube[idx] = null;
+                    }
+                });
                 renderCube();
-                return;
+            } else {
+                addCombatLog("Cannot open the portal in town!", 'log-dmg');
             }
+            return;
+        }
 
-            if (resultItem.id === 'item_cow_portal') {
-                if (zoneLevel > 0) {
-                    addCombatLog("Moo Moo Moo... A portal to the Secret Cow Level has opened!", 'log-unique');
-                    const portal = new GameObject('cow_portal', player.x, player.y - 40, 'env_water');
-                    portal.targetZone = 126; // Moo Moo Farm
-                    gameObjects.push(portal);
+        addCombatLog(`Transmutation Successful! Crafted: ${resultItem.name}`, 'log-crit');
+        // Clear all non-null items that were used in the recipe
+        cube.forEach((item, index) => {
+            if (item) cube[index] = null;
+        });
+        cube[0] = resultItem;
+        renderCube();
+    } else {
+        addCombatLog('Transmutation Failed. Invalid Horadric Recipe.', 'log-dmg');
+    }
+});
 
-                    // Consume specific ingredients
-                    cube.forEach((it, idx) => {
-                        if (it && (it.baseId === 'wirts_leg' || it.baseId === 'tome_tp')) {
-                            cube[idx] = null;
-                        }
-                    });
-                    renderCube();
-                } else {
-                    addCombatLog("Cannot open the portal in town!", 'log-dmg');
+// ——— QUEST SYSTEM ———
+const ACT_1_QUESTS = {
+    'den_of_evil': {
+        id: 'den_of_evil',
+        name: 'Den of Evil',
+        desc: 'Clear the Den of Evil (Blood Moor). Slay 20 enemies.',
+        target: 20,
+        giver: 'akara',
+        goldReward: 500,
+        xpReward: 500,
+        skillReward: 1,
+        intro: "Akara: 'There is a place of great evil in the Blood Moor. My scouts tell me it is filled with foul creatures. Purge the coven, and I shall grant you a boon of power.'"
+    },
+    'blood_raven': {
+        id: 'blood_raven',
+        name: 'Sisters\' Burial Grounds',
+        desc: 'Defeat Blood Raven in the Burial Grounds (Zone 6).',
+        target: 1,
+        giver: 'kashya',
+        goldReward: 1000,
+        xpReward: 1500,
+        mercenaryReward: true,
+        bossOnly: true,
+        intro: "Kashya: 'My best scout, Blood Raven, has fallen to the shadow. She now desecrates our sacred burial grounds. Put her soul to rest, and my sisters shall follow you into battle.'"
+    },
+    'forgotten_tower': {
+        id: 'forgotten_tower',
+        name: 'The Forgotten Tower',
+        desc: 'Find the countess and her hoard in the Tower (Zone 17).',
+        target: 1,
+        giver: 'deckard_cain',
+        goldReward: 5000,
+        xpReward: 3000,
+        bossOnly: true,
+        intro: "Deckard Cain: 'Ancient legends speak of a Countess who was buried alive. Her castle has fallen into ruin, but her treasures... they remain. Find her, and the riches of the old world are yours.'"
+    },
+    'tools_of_the_trade': {
+        id: 'tools_of_the_trade',
+        name: 'Tools of the Trade',
+        desc: 'Retrieve the Horadric Malus from the Smith in the Monastery (Zone 37).',
+        target: 1,
+        giver: 'charsi',
+        goldReward: 2000,
+        xpReward: 5000,
+        imbueReward: true,
+        intro: "Charsi: 'When I fled the Monastery, I left my enchanted hammer, the Horadric Malus, behind. The Smith now guards it. Bring it back to me, and I can empower your gear like never before!'"
+    },
+    'andariel': {
+        id: 'andariel',
+        name: 'Sisters to the Slaughter',
+        desc: 'Defeat Andariel, the Maiden of Anguish, in the Depths (Zone 37 Boss).',
+        target: 1,
+        giver: 'akara',
+        goldReward: 10000,
+        xpReward: 10000,
+        skillReward: 1,
+        statReward: 5,
+    }
+};
+
+const ACT_2_QUESTS = {
+    'radament': {
+        id: 'radament',
+        name: 'Radament\'s Lair',
+        desc: 'Slay Radament in the Sewers (Zone 84).',
+        target: 1,
+        giver: 'atma',
+        goldReward: 5000,
+        xpReward: 8000,
+        skillReward: 1,
+        bossOnly: true,
+        intro: "Drognan: 'A creature of the ancient sands has awakened in the sewers beneath our feet. Radament, they call him. He steals the bodies of the dead to nourish his own. Destroy him, and I will grant you ancient knowledge.'"
+    },
+    'horadric_staff': {
+        id: 'horadric_staff',
+        name: 'The Horadric Staff',
+        desc: 'Retrieve the Horadric Staff components (Zone 48).',
+        target: 2,
+        giver: 'deckard_cain',
+        goldReward: 8000,
+        xpReward: 12000,
+        bossOnly: true,
+        intro: "Deckard Cain: 'The Horadric Staff is the only key to Tal Rasha's Tomb. It was divided into two pieces: the shaft and the headpiece. Find the guardians in the desert to recover them.'"
+    },
+    'duriel': {
+        id: 'duriel',
+        name: 'The Seven Tombs',
+        desc: 'Defeat Duriel, the Lord of Pain, in Tal Rasha\'s Chamber (Zone 67).',
+        target: 1,
+        giver: 'deckard_cain',
+        goldReward: 15000,
+        xpReward: 20000,
+        statReward: 5,
+        isActBoss: true,
+        intro: "Deckard Cain: 'The true tomb of Tal Rasha has been found. But be warned, Duriel, the Lord of Pain, guards the entrance. You must defeat him to continue your pursuit of the Dark Wanderer!'"
+    }
+};
+
+const ACT_3_QUESTS = {
+    'khalims_will': {
+        id: 'khalims_will',
+        name: 'Khalim\'s Will',
+        desc: 'Recover the relics of Khalim from the Jungle (Zone 73).',
+        target: 2,
+        giver: 'ormus',
+        goldReward: 10000,
+        xpReward: 25000,
+        bossOnly: true,
+        intro: "Ormus: 'Khalim was the only one who could resist the corruption of Mephisto. To break the Orb in Travincal, you must gather his relics: his heart, his brain, and his eye. Go into the jungle, mortal.'"
+    },
+    'travincal': {
+        id: 'travincal',
+        name: 'The Blackened Temple',
+        desc: 'Defeat the High Council in Travincal (Zone 92).',
+        target: 1,
+        giver: 'deckard_cain',
+        goldReward: 12000,
+        xpReward: 30000,
+        skillReward: 1,
+        bossOnly: true,
+        intro: "Deckard Cain: 'The Council of Zakarum has fallen under the sway of Mephisto. They reside in the ancient temple of Travincal. You must purge them before you can enter the Durance of Hate.'"
+    },
+    'mephisto': {
+        id: 'mephisto',
+        name: 'The Guardian',
+        desc: 'Defeat Mephisto, the Lord of Hatred, in the Durance of Hate (Zone 95 Boss).',
+        target: 1,
+        giver: 'deckard_cain',
+        goldReward: 25000,
+        xpReward: 50000,
+        statReward: 5,
+        isActBoss: true,
+        intro: "Deckard Cain: 'Mephisto, the oldest of the Prime Evils, is near. He guards the gate to Hell itself. Defeat him, and take his Soulstone!'"
+    }
+};
+
+const ACT_4_QUESTS = {
+    'hellgate': {
+        id: 'hellgate',
+        name: 'The Fallen Angel',
+        desc: 'Find and defeat Izual in the Plains of Despair (Zone 98).',
+        target: 1,
+        giver: 'tyrael',
+        goldReward: 20000,
+        xpReward: 40000,
+        skillReward: 2,
+        bossOnly: true,
+        intro: "Tyrael: 'Izual was once my most trusted lieutenant. Now he is a tortured soul guarding the plains of Hell. Release him from his agony.'"
+    },
+    'hellforge': {
+        id: 'hellforge',
+        name: 'The Hellforge',
+        desc: 'Slay Hephaisto the Armorer (Zone 100) and use the Hellforge to destroy Mephisto\'s Soulstone.',
+        target: 1,
+        giver: 'tyrael',
+        goldReward: 25000,
+        xpReward: 60000,
+        runeReward: true, // Special logic in checkDeaths/interact
+        bossOnly: true,
+        intro: "Tyrael: 'The Soulstone of Mephisto must be destroyed at the Hellforge. Hephaisto guards the hammer. Defeat him and fulfill your destiny!'"
+    },
+    'terrors_end': {
+        id: 'terrors_end',
+        name: 'Terror\'s End',
+        desc: 'Reach the Chaos Sanctuary (Zone 101) and defeat Diablo, the Lord of Terror.',
+        target: 1,
+        giver: 'tyrael',
+        goldReward: 50000,
+        xpReward: 100000,
+        skillReward: 2,
+        statReward: 10,
+        isActBoss: true,
+        intro: "Tyrael: 'The time has come to end this darkness. Diablo has retreated to his Chaos Sanctuary. You must follow him and strike him down!'"
+    }
+};
+
+const ACT_5_QUESTS = {
+    'siege_on_harrogath': {
+        id: 'siege_on_harrogath',
+        name: 'Siege on Harrogath',
+        desc: 'Slay Shenk the Overseer at the Bloody Foothills (Zone 103).',
+        target: 1,
+        giver: 'larzuk',
+        goldReward: 20000,
+        xpReward: 60000,
+        imbueReward: true,
+        bossOnly: true,
+        intro: "Larzuk: 'Shenk the Overseer is driving the demon hordes into our walls. Stop him, and I will socket your equipment!'"
+    },
+    'prison_of_ice': {
+        id: 'prison_of_ice',
+        name: 'Prison of Ice',
+        desc: 'Rescue Anya by defeating Frozenstein in the Ice Caves (Zone 111).',
+        target: 1,
+        giver: 'malah',
+        goldReward: 30000,
+        xpReward: 80000,
+        resReward: 10,
+        bossOnly: true,
+        intro: "Malah: 'Anya, the daughter of our elder, is missing in the ice caves. Find her and bring her back safely!'"
+    },
+    'rite_of_passage': {
+        id: 'rite_of_passage',
+        name: 'Rite of Passage',
+        desc: 'Defeat the three Ancients upon Arreat Summit (Zone 116) without leaving the area.',
+        target: 3, // Must kill all 3
+        giver: 'nihlathak',
+        goldReward: 40000,
+        xpReward: 150000,
+        statReward: 5,
+        skillReward: 1,
+        intro: "Nihlathak: 'You seek the Worldstone? Only those who pass the test of the Ancients may enter. Be warned: they do not hold back!'"
+    },
+    'lod_finale': {
+        id: 'lod_finale',
+        name: 'The Lord of Destruction',
+        desc: 'Reach the Worldstone Chamber (Zone 125) and defeat Baal, the Lord of Destruction.',
+        target: 1,
+        giver: 'tyrael',
+        goldReward: 100000,
+        xpReward: 250000,
+        skillReward: 5,
+        statReward: 20,
+        isActBoss: true,
+        intro: "Tyrael: 'Baal has reached the Heart of the Worldstone. If he corrupts it, Sanctuary will be lost forever. Hurry!'"
+    }
+};
+
+const QUEST_POOL = [...Object.values(ACT_1_QUESTS), ...Object.values(ACT_2_QUESTS), ...Object.values(ACT_3_QUESTS), ...Object.values(ACT_4_QUESTS), ...Object.values(ACT_5_QUESTS)];
+
+function offerQuest(giverId = null) {
+    if (!player) return;
+
+    // Check for completions first
+    for (let i = activeQuests.length - 1; i >= 0; i--) {
+        const q = activeQuests[i];
+        if (q.progress >= q.target) {
+            // Must talk to the giver to turn in? 
+            // For now, let's allow auto-turn-in if giverId matches OR if no giverId provided (kill loop)
+            if (giverId === q.giver || !giverId) {
+                player.gold += q.goldReward;
+                player.addXp(q.xpReward);
+                if (q.skillReward) player.talents.unspent += q.skillReward;
+                if (q.statReward) player.statPoints += q.statReward;
+                if (q.mercenaryReward) addCombatLog('You can now hire mercenaries from Kashya!', 'log-level');
+                if (q.imbueReward) {
+                    player.hasImbue = true;
+                    addCombatLog('Larzuk/Charsi can now Imbue/Socket one item! (Interaction Menu)', 'log-level');
                 }
-                return;
-            }
-
-            addCombatLog(`Transmutation Successful! Crafted: ${resultItem.name}`, 'log-crit');
-            // Clear all non-null items that were used in the recipe
-            cube.forEach((item, index) => {
-                if (item) cube[index] = null;
-            });
-            cube[0] = resultItem;
-            renderCube();
-        } else {
-            addCombatLog('Transmutation Failed. Invalid Horadric Recipe.', 'log-dmg');
-        }
-    });
-
-    // ——— QUEST SYSTEM ———
-    const ACT_1_QUESTS = {
-        'den_of_evil': {
-            id: 'den_of_evil',
-            name: 'Den of Evil',
-            desc: 'Clear the Den of Evil (Blood Moor). Slay 20 enemies.',
-            target: 20,
-            giver: 'akara',
-            goldReward: 500,
-            xpReward: 500,
-            skillReward: 1,
-            intro: "Akara: 'There is a place of great evil in the Blood Moor. My scouts tell me it is filled with foul creatures. Purge the coven, and I shall grant you a boon of power.'"
-        },
-        'blood_raven': {
-            id: 'blood_raven',
-            name: 'Sisters\' Burial Grounds',
-            desc: 'Defeat Blood Raven in the Burial Grounds (Zone 6).',
-            target: 1,
-            giver: 'kashya',
-            goldReward: 1000,
-            xpReward: 1500,
-            mercenaryReward: true,
-            bossOnly: true,
-            intro: "Kashya: 'My best scout, Blood Raven, has fallen to the shadow. She now desecrates our sacred burial grounds. Put her soul to rest, and my sisters shall follow you into battle.'"
-        },
-        'forgotten_tower': {
-            id: 'forgotten_tower',
-            name: 'The Forgotten Tower',
-            desc: 'Find the countess and her hoard in the Tower (Zone 17).',
-            target: 1,
-            giver: 'deckard_cain',
-            goldReward: 5000,
-            xpReward: 3000,
-            bossOnly: true,
-            intro: "Deckard Cain: 'Ancient legends speak of a Countess who was buried alive. Her castle has fallen into ruin, but her treasures... they remain. Find her, and the riches of the old world are yours.'"
-        },
-        'tools_of_the_trade': {
-            id: 'tools_of_the_trade',
-            name: 'Tools of the Trade',
-            desc: 'Retrieve the Horadric Malus from the Smith in the Monastery (Zone 37).',
-            target: 1,
-            giver: 'charsi',
-            goldReward: 2000,
-            xpReward: 5000,
-            imbueReward: true,
-            intro: "Charsi: 'When I fled the Monastery, I left my enchanted hammer, the Horadric Malus, behind. The Smith now guards it. Bring it back to me, and I can empower your gear like never before!'"
-        },
-        'andariel': {
-            id: 'andariel',
-            name: 'Sisters to the Slaughter',
-            desc: 'Defeat Andariel, the Maiden of Anguish, in the Depths (Zone 37 Boss).',
-            target: 1,
-            giver: 'akara',
-            goldReward: 10000,
-            xpReward: 10000,
-            skillReward: 1,
-            statReward: 5,
-        }
-    };
-
-    const ACT_2_QUESTS = {
-        'radament': {
-            id: 'radament',
-            name: 'Radament\'s Lair',
-            desc: 'Slay Radament in the Sewers (Zone 84).',
-            target: 1,
-            giver: 'atma',
-            goldReward: 5000,
-            xpReward: 8000,
-            skillReward: 1,
-            bossOnly: true,
-            intro: "Drognan: 'A creature of the ancient sands has awakened in the sewers beneath our feet. Radament, they call him. He steals the bodies of the dead to nourish his own. Destroy him, and I will grant you ancient knowledge.'"
-        },
-        'horadric_staff': {
-            id: 'horadric_staff',
-            name: 'The Horadric Staff',
-            desc: 'Retrieve the Horadric Staff components (Zone 48).',
-            target: 2,
-            giver: 'deckard_cain',
-            goldReward: 8000,
-            xpReward: 12000,
-            bossOnly: true,
-            intro: "Deckard Cain: 'The Horadric Staff is the only key to Tal Rasha's Tomb. It was divided into two pieces: the shaft and the headpiece. Find the guardians in the desert to recover them.'"
-        },
-        'duriel': {
-            id: 'duriel',
-            name: 'The Seven Tombs',
-            desc: 'Defeat Duriel, the Lord of Pain, in Tal Rasha\'s Chamber (Zone 67).',
-            target: 1,
-            giver: 'deckard_cain',
-            goldReward: 15000,
-            xpReward: 20000,
-            statReward: 5,
-            isActBoss: true,
-            intro: "Deckard Cain: 'The true tomb of Tal Rasha has been found. But be warned, Duriel, the Lord of Pain, guards the entrance. You must defeat him to continue your pursuit of the Dark Wanderer!'"
-        }
-    };
-
-    const ACT_3_QUESTS = {
-        'khalims_will': {
-            id: 'khalims_will',
-            name: 'Khalim\'s Will',
-            desc: 'Recover the relics of Khalim from the Jungle (Zone 73).',
-            target: 2,
-            giver: 'ormus',
-            goldReward: 10000,
-            xpReward: 25000,
-            bossOnly: true,
-            intro: "Ormus: 'Khalim was the only one who could resist the corruption of Mephisto. To break the Orb in Travincal, you must gather his relics: his heart, his brain, and his eye. Go into the jungle, mortal.'"
-        },
-        'travincal': {
-            id: 'travincal',
-            name: 'The Blackened Temple',
-            desc: 'Defeat the High Council in Travincal (Zone 92).',
-            target: 1,
-            giver: 'deckard_cain',
-            goldReward: 12000,
-            xpReward: 30000,
-            skillReward: 1,
-            bossOnly: true,
-            intro: "Deckard Cain: 'The Council of Zakarum has fallen under the sway of Mephisto. They reside in the ancient temple of Travincal. You must purge them before you can enter the Durance of Hate.'"
-        },
-        'mephisto': {
-            id: 'mephisto',
-            name: 'The Guardian',
-            desc: 'Defeat Mephisto, the Lord of Hatred, in the Durance of Hate (Zone 95 Boss).',
-            target: 1,
-            giver: 'deckard_cain',
-            goldReward: 25000,
-            xpReward: 50000,
-            statReward: 5,
-            isActBoss: true,
-            intro: "Deckard Cain: 'Mephisto, the oldest of the Prime Evils, is near. He guards the gate to Hell itself. Defeat him, and take his Soulstone!'"
-        }
-    };
-
-    const ACT_4_QUESTS = {
-        'hellgate': {
-            id: 'hellgate',
-            name: 'The Fallen Angel',
-            desc: 'Find and defeat Izual in the Plains of Despair (Zone 98).',
-            target: 1,
-            giver: 'tyrael',
-            goldReward: 20000,
-            xpReward: 40000,
-            skillReward: 2,
-            bossOnly: true,
-            intro: "Tyrael: 'Izual was once my most trusted lieutenant. Now he is a tortured soul guarding the plains of Hell. Release him from his agony.'"
-        },
-        'hellforge': {
-            id: 'hellforge',
-            name: 'The Hellforge',
-            desc: 'Slay Hephaisto the Armorer (Zone 100) and use the Hellforge to destroy Mephisto\'s Soulstone.',
-            target: 1,
-            giver: 'tyrael',
-            goldReward: 25000,
-            xpReward: 60000,
-            runeReward: true, // Special logic in checkDeaths/interact
-            bossOnly: true,
-            intro: "Tyrael: 'The Soulstone of Mephisto must be destroyed at the Hellforge. Hephaisto guards the hammer. Defeat him and fulfill your destiny!'"
-        },
-        'terrors_end': {
-            id: 'terrors_end',
-            name: 'Terror\'s End',
-            desc: 'Reach the Chaos Sanctuary (Zone 101) and defeat Diablo, the Lord of Terror.',
-            target: 1,
-            giver: 'tyrael',
-            goldReward: 50000,
-            xpReward: 100000,
-            skillReward: 2,
-            statReward: 10,
-            isActBoss: true,
-            intro: "Tyrael: 'The time has come to end this darkness. Diablo has retreated to his Chaos Sanctuary. You must follow him and strike him down!'"
-        }
-    };
-
-    const ACT_5_QUESTS = {
-        'siege_on_harrogath': {
-            id: 'siege_on_harrogath',
-            name: 'Siege on Harrogath',
-            desc: 'Slay Shenk the Overseer at the Bloody Foothills (Zone 103).',
-            target: 1,
-            giver: 'larzuk',
-            goldReward: 20000,
-            xpReward: 60000,
-            imbueReward: true,
-            bossOnly: true,
-            intro: "Larzuk: 'Shenk the Overseer is driving the demon hordes into our walls. Stop him, and I will socket your equipment!'"
-        },
-        'prison_of_ice': {
-            id: 'prison_of_ice',
-            name: 'Prison of Ice',
-            desc: 'Rescue Anya by defeating Frozenstein in the Ice Caves (Zone 111).',
-            target: 1,
-            giver: 'malah',
-            goldReward: 30000,
-            xpReward: 80000,
-            resReward: 10,
-            bossOnly: true,
-            intro: "Malah: 'Anya, the daughter of our elder, is missing in the ice caves. Find her and bring her back safely!'"
-        },
-        'rite_of_passage': {
-            id: 'rite_of_passage',
-            name: 'Rite of Passage',
-            desc: 'Defeat the three Ancients upon Arreat Summit (Zone 116) without leaving the area.',
-            target: 3, // Must kill all 3
-            giver: 'nihlathak',
-            goldReward: 40000,
-            xpReward: 150000,
-            statReward: 5,
-            skillReward: 1,
-            intro: "Nihlathak: 'You seek the Worldstone? Only those who pass the test of the Ancients may enter. Be warned: they do not hold back!'"
-        },
-        'lod_finale': {
-            id: 'lod_finale',
-            name: 'The Lord of Destruction',
-            desc: 'Reach the Worldstone Chamber (Zone 125) and defeat Baal, the Lord of Destruction.',
-            target: 1,
-            giver: 'tyrael',
-            goldReward: 100000,
-            xpReward: 250000,
-            skillReward: 5,
-            statReward: 20,
-            isActBoss: true,
-            intro: "Tyrael: 'Baal has reached the Heart of the Worldstone. If he corrupts it, Sanctuary will be lost forever. Hurry!'"
-        }
-    };
-
-    const QUEST_POOL = [...Object.values(ACT_1_QUESTS), ...Object.values(ACT_2_QUESTS), ...Object.values(ACT_3_QUESTS), ...Object.values(ACT_4_QUESTS), ...Object.values(ACT_5_QUESTS)];
-
-    function offerQuest(giverId = null) {
-        if (!player) return;
-
-        // Check for completions first
-        for (let i = activeQuests.length - 1; i >= 0; i--) {
-            const q = activeQuests[i];
-            if (q.progress >= q.target) {
-                // Must talk to the giver to turn in? 
-                // For now, let's allow auto-turn-in if giverId matches OR if no giverId provided (kill loop)
-                if (giverId === q.giver || !giverId) {
-                    player.gold += q.goldReward;
-                    player.addXp(q.xpReward);
-                    if (q.skillReward) player.talents.unspent += q.skillReward;
-                    if (q.statReward) player.statPoints += q.statReward;
-                    if (q.mercenaryReward) addCombatLog('You can now hire mercenaries from Kashya!', 'log-level');
-                    if (q.imbueReward) {
-                        player.hasImbue = true;
-                        addCombatLog('Larzuk/Charsi can now Imbue/Socket one item! (Interaction Menu)', 'log-level');
-                    }
-                    if (q.resReward) {
-                        player.permanentResists = (player.permanentResists || 0) + q.resReward;
-                        player.recalcStats();
-                        addCombatLog(`Malah grants you permanent +${q.resReward} to All Resistances!`, 'log-level');
-                    }
-                    if (q.isActBoss) {
-                        if (q.id === 'lod_finale') {
-                            addCombatLog('THE LORD OF DESTRUCTION IS DEFEATED! SANCTUARY IS SAVED!', 'log-crit');
-                            bus.emit('ui:showScreen', { screen: 'victory' });
-                        } else if (q.id === 'terrors_end') {
-                            addCombatLog('THE LORD OF TERROR IS DEFEATED! SANCTUARY IS SAVED!', 'log-crit');
-                            bus.emit('ui:showScreen', { screen: 'victory' });
-                        } else {
-                            addCombatLog('ACT BOSS DEFEATED! You have proven your strength.', 'log-crit');
-                        }
-                        if (fx) fx.emitLevelUp(player.x, player.y);
-                    }
-
-                    addCombatLog(`Quest Complete: "${q.name}" — Reward received!`, 'log-level');
-                    completedQuests.add(q.id);
-                    activeQuests.splice(i, 1);
-                    if (fx) fx.emitBurst(player.x, player.y, '#4caf50', 50, 2.5);
-                    updateHud();
-                    return true;
+                if (q.resReward) {
+                    player.permanentResists = (player.permanentResists || 0) + q.resReward;
+                    player.recalcStats();
+                    addCombatLog(`Malah grants you permanent +${q.resReward} to All Resistances!`, 'log-level');
                 }
-            }
-        }
+                if (q.isActBoss) {
+                    if (q.id === 'lod_finale') {
+                        addCombatLog('THE LORD OF DESTRUCTION IS DEFEATED! SANCTUARY IS SAVED!', 'log-crit');
+                        bus.emit('ui:showScreen', { screen: 'victory' });
+                    } else if (q.id === 'terrors_end') {
+                        addCombatLog('THE LORD OF TERROR IS DEFEATED! SANCTUARY IS SAVED!', 'log-crit');
+                        bus.emit('ui:showScreen', { screen: 'victory' });
+                    } else {
+                        addCombatLog('ACT BOSS DEFEATED! You have proven your strength.', 'log-crit');
+                    }
+                    if (fx) fx.emitLevelUp(player.x, player.y);
+                }
 
-        // Give a new quest if the giver matches and we don't have it
-        if (giverId) {
-            const quest = QUEST_POOL.find(q => q.giver === giverId && !completedQuests.has(q.id) && !activeQuests.some(aq => aq.id === q.id));
-            if (quest) {
-                activeQuests.push({ ...quest, progress: 0 });
-                addCombatLog(`New Quest: "${quest.name}"`, 'log-level');
-                dialogue = { text: quest.intro, timer: 8, npc: { name: giverId } };
+                addCombatLog(`Quest Complete: "${q.name}" — Reward received!`, 'log-level');
+                completedQuests.add(q.id);
+                activeQuests.splice(i, 1);
+                if (fx) fx.emitBurst(player.x, player.y, '#4caf50', 50, 2.5);
                 updateHud();
                 return true;
             }
         }
-        return false;
     }
 
-
-    // ——— MERCENARY HIRE ———
-    function hireMercenary(type = 'Rogue') {
-        if (!player) return;
-
-        // Revive Logic (if we have one and it's dead)
-        if (mercenary && mercenary.hp <= 0) {
-            const reviveCost = Math.min(5000, mercenary.level * 100);
-            if (player.gold < reviveCost) { addCombatLog(`Not enough gold to revive! (${reviveCost}g)`, 'log-dmg'); return; }
-            player.gold -= reviveCost;
-            mercenary.hp = mercenary.maxHp;
-            addCombatLog(`${mercenary.name} has been revived!`, 'log-level');
+    // Give a new quest if the giver matches and we don't have it
+    if (giverId) {
+        const quest = QUEST_POOL.find(q => q.giver === giverId && !completedQuests.has(q.id) && !activeQuests.some(aq => aq.id === q.id));
+        if (quest) {
+            activeQuests.push({ ...quest, progress: 0 });
+            addCombatLog(`New Quest: "${quest.name}"`, 'log-level');
+            dialogue = { text: quest.intro, timer: 8, npc: { name: giverId } };
             updateHud();
-            saveGame();
-            return;
+            return true;
         }
+    }
+    return false;
+}
 
-        // Safety: If hiring a NEW type while having one, we must unequip the old one's items
-        if (mercenary && mercenary.className !== type) {
-            // Move items to stash or inventory
-            let recovered = 0;
-            for (const [slot, item] of Object.entries(mercenary.equipment)) {
-                if (item) {
-                    const empty = player.inventory.indexOf(null);
-                    if (empty !== -1) {
-                        player.inventory[empty] = item;
+
+// ——— MERCENARY HIRE ———
+function hireMercenary(type = 'Rogue') {
+    if (!player) return;
+
+    // Revive Logic (if we have one and it's dead)
+    if (mercenary && mercenary.hp <= 0) {
+        const reviveCost = Math.min(5000, mercenary.level * 100);
+        if (player.gold < reviveCost) { addCombatLog(`Not enough gold to revive! (${reviveCost}g)`, 'log-dmg'); return; }
+        player.gold -= reviveCost;
+        mercenary.hp = mercenary.maxHp;
+        addCombatLog(`${mercenary.name} has been revived!`, 'log-level');
+        updateHud();
+        saveGame();
+        return;
+    }
+
+    // Safety: If hiring a NEW type while having one, we must unequip the old one's items
+    if (mercenary && mercenary.className !== type) {
+        // Move items to stash or inventory
+        let recovered = 0;
+        for (const [slot, item] of Object.entries(mercenary.equipment)) {
+            if (item) {
+                const empty = player.inventory.indexOf(null);
+                if (empty !== -1) {
+                    player.inventory[empty] = item;
+                    recovered++;
+                } else {
+                    // Try shared stash
+                    const sTab = sharedStashTabs[0].items;
+                    const sEmpty = sTab.indexOf(null);
+                    if (sEmpty !== -1) {
+                        sTab[sEmpty] = item;
                         recovered++;
-                    } else {
-                        // Try shared stash
-                        const sTab = sharedStashTabs[0].items;
-                        const sEmpty = sTab.indexOf(null);
-                        if (sEmpty !== -1) {
-                            sTab[sEmpty] = item;
-                            recovered++;
-                        }
                     }
                 }
             }
-            if (recovered > 0) addCombatLog(`Recovered ${recovered} items from previous mercenary to inventory/stash.`, 'log-info');
         }
+        if (recovered > 0) addCombatLog(`Recovered ${recovered} items from previous mercenary to inventory/stash.`, 'log-info');
+    }
 
-        const hireCost = 500;
-        if (player.gold < hireCost) { addCombatLog(`Not enough gold! (${hireCost}g to hire)`, 'log-dmg'); return; }
-        player.gold -= hireCost;
+    const hireCost = 500;
+    if (player.gold < hireCost) { addCombatLog(`Not enough gold! (${hireCost}g to hire)`, 'log-dmg'); return; }
+    player.gold -= hireCost;
 
-        const names = {
-            'Rogue': ['Aliza', 'Kyra', 'Paige', 'Blaise'],
-            'Desert Warrior': ['Heseir', 'Raheer', 'EMez', 'Fazel'],
-            'Iron Wolf': ['Jarulf', 'Isenhart', 'Telash', 'Flux'],
-            'Barbarian': ['Aengus', 'Bork', 'Hrothgar', 'Ulf']
-        };
-        const icons = {
-            'Rogue': 'class_ranger',
-            'Desert Warrior': 'class_paladin',
-            'Iron Wolf': 'class_sorceress',
-            'Barbarian': 'class_warrior'
-        };
+    const names = {
+        'Rogue': ['Aliza', 'Kyra', 'Paige', 'Blaise'],
+        'Desert Warrior': ['Heseir', 'Raheer', 'EMez', 'Fazel'],
+        'Iron Wolf': ['Jarulf', 'Isenhart', 'Telash', 'Flux'],
+        'Barbarian': ['Aengus', 'Bork', 'Hrothgar', 'Ulf']
+    };
+    const icons = {
+        'Rogue': 'class_ranger',
+        'Desert Warrior': 'class_paladin',
+        'Iron Wolf': 'class_sorceress',
+        'Barbarian': 'class_warrior'
+    };
 
-        const nameList = names[type] || names['Rogue'];
-        mercenary = new Mercenary({
-            name: nameList[Math.floor(Math.random() * nameList.length)],
-            className: type,
-            level: player.level || 1,
-            icon: icons[type] || 'class_rogue',
-            x: player.x + 20, y: player.y
+    const nameList = names[type] || names['Rogue'];
+    mercenary = new Mercenary({
+        name: nameList[Math.floor(Math.random() * nameList.length)],
+        className: type,
+        level: player.level || 1,
+        icon: icons[type] || 'class_rogue',
+        x: player.x + 20, y: player.y
+    });
+
+    addCombatLog(`Hired ${type} ${mercenary.name}! They will fight by your side.`, 'log-level');
+    updateHud();
+    renderMercenaryPanel();
+    saveGame();
+}
+
+// --- Phase 28: Bounty Board System ---
+function generateDailyBounties() {
+    activeBounties = [];
+    const themes = ['Skeletons', 'Zombies', 'Spiders', 'Demons', 'Wraiths'];
+    for (let i = 0; i < 3; i++) {
+        const theme = themes[Math.floor(Math.random() * themes.length)];
+        const count = 20 + Math.floor(Math.random() * 30);
+        activeBounties.push({
+            id: `bounty_${Date.now()}_${i}`,
+            title: `Bounty: ${theme} Purge`,
+            desc: `Exterminate ${count} ${theme} across the realm.`,
+            target: theme.toLowerCase(),
+            progress: 0,
+            targetCount: count,
+            reward: { gold: count * 10, xp: count * 100 }
         });
+    }
+}
 
-        addCombatLog(`Hired ${type} ${mercenary.name}! They will fight by your side.`, 'log-level');
-        updateHud();
-        renderMercenaryPanel();
+function checkBountyProgress(enemy) {
+    if (!activeBounties.length) return;
+    for (const b of activeBounties) {
+        if (b.progress >= b.targetCount) continue;
+        if (enemy.name.toLowerCase().includes(b.target) || (enemy.group && enemy.group.toLowerCase().includes(b.target))) {
+            b.progress++;
+            if (b.progress === b.targetCount) {
+                addCombatLog(`Bounty Complete: ${b.title}! +${b.reward.gold}g`, 'log-crit');
+                player.gold += b.reward.gold;
+                player.gainXp(b.reward.xp);
+                fx.emitBurst(player.x, player.y, '#ffd700', 30, 4);
+                updateHud();
+            }
+        }
+    }
+}
+
+// ——— ACHIEVEMENTS ———
+function checkAchievements() {
+    for (const ach of ACHIEVEMENTS) {
+        if (!unlockedAchievements.has(ach.id) && ach.check()) {
+            unlockedAchievements.add(ach.id);
+            addCombatLog(`🏆 Achievement Unlocked: ${ach.name}!`, 'log-crit');
+
+            // CELEBRATORY BANNER
+            const banner = $('achievement-announcement');
+            if (banner) {
+                $('ach-name').textContent = ach.name;
+                banner.classList.remove('hidden');
+                setTimeout(() => banner.classList.add('hidden'), 4000);
+            }
+            fx.emitBurst(renderer.width / 2, 100, '#00ccff', 20, 3);
+
+            if (ach.reward > 0 && player) {
+                player.gold += ach.reward;
+                addCombatLog(`    Reward: ${ach.reward} gold`, 'log-item');
+                updateHud();
+            }
+        }
+    }
+}
+
+// ——— INIT ———
+window.addEventListener('DOMContentLoaded', () => {
+    // Phase 31: Init Supabase
+    DB.init();
+    VendorUI.init();
+
+    // Auth UI Listeners (Consolidated)
+    if ($('btn-open-auth')) $('btn-open-auth').onclick = () => $('auth-modal').classList.remove('hidden');
+    if ($('auth-close')) $('auth-modal').onclick = () => $('auth-modal').classList.add('hidden');
+
+    $('btn-auth-login')?.addEventListener('click', async () => {
+        const e = $('auth-email').value, p = $('auth-password').value;
+        if (!e || !p) { $('auth-error').textContent = 'Enter email and password'; return; }
+        $('auth-error').textContent = 'Authenticating...';
+        const res = await DB.signIn(e, p);
+        if (res.success) {
+            $('auth-modal').classList.add('hidden');
+            // UI will auto-refresh via auth:stateChanged
+        } else {
+            $('auth-error').textContent = res.error;
+        }
+    });
+
+    $('btn-auth-register')?.addEventListener('click', async () => {
+        const e = $('auth-email').value, p = $('auth-password').value;
+        if (!e || !p) { $('auth-error').textContent = 'Enter email and password'; return; }
+        $('auth-error').textContent = 'Registering...';
+        const res = await DB.signUp(e, p);
+        if (res.success) {
+            $('auth-modal').classList.add('hidden');
+            // UI will auto-refresh via auth:stateChanged
+        } else {
+            $('auth-error').textContent = res.error;
+        }
+    });
+
+    $('btn-logout')?.addEventListener('click', async () => {
+        await DB.signOut();
+        // UI will auto-refresh via auth:stateChanged
+    });
+
+    bus.on('auth:stateChanged', (session) => {
+        const text = $('auth-status-text');
+        const btnLogin = $('btn-open-auth');
+        const btnLogout = $('btn-logout');
+
+        if (session) {
+            text.textContent = `Cloud Connected: ${session.user.email}`;
+            text.style.color = 'var(--cyan)';
+            btnLogin.classList.add('hidden');
+            btnLogout.classList.remove('hidden');
+        } else {
+            text.textContent = `Playing as Guest (Local Saves)`;
+            text.style.color = '#aaa';
+            btnLogin.classList.remove('hidden');
+            btnLogout.classList.add('hidden');
+        }
+
+        // Auto-refresh UI when login state changes
+        renderSaveSlots();
+        if (player) renderStash(); // Refresh stash if game is active
+    });
+
+    // --- CONSOLIDATED CHARACTER LISTENERS ---
+
+    // 1. Show Creation Screen
+    $('btn-show-create')?.addEventListener('click', () => {
+        $('screen-char-select').classList.add('hidden');
+        $('screen-char-create').classList.remove('hidden');
+    });
+
+    $('btn-back-to-select')?.addEventListener('click', () => {
+        $('screen-char-create').classList.add('hidden');
+        $('screen-char-select').classList.remove('hidden');
+    });
+
+    // 2. Create New Character
+    $('btn-new-game')?.addEventListener('click', async () => {
+        if (!selectedClass) return;
+        const nameInput = $('character-name');
+        const name = nameInput ? nameInput.value.trim() : null;
+        if (!name) { alert("Enter a hero name!"); return; }
+
+        initAudio();
+        const slotId = SaveSystem.newSlotId();
+
+        // Start game logic
+        const activeDiffBtn = document.querySelector('.diff-btn.active');
+        window._difficulty = activeDiffBtn ? parseInt(activeDiffBtn.dataset.diff) : 0;
+
+        startGame(slotId, null, name);
+
+        // Immediate Dual Save
         saveGame();
-    }
 
-    // --- Phase 28: Bounty Board System ---
-    function generateDailyBounties() {
-        activeBounties = [];
-        const themes = ['Skeletons', 'Zombies', 'Spiders', 'Demons', 'Wraiths'];
-        for (let i = 0; i < 3; i++) {
-            const theme = themes[Math.floor(Math.random() * themes.length)];
-            const count = 20 + Math.floor(Math.random() * 30);
-            activeBounties.push({
-                id: `bounty_${Date.now()}_${i}`,
-                title: `Bounty: ${theme} Purge`,
-                desc: `Exterminate ${count} ${theme} across the realm.`,
-                target: theme.toLowerCase(),
-                progress: 0,
-                targetCount: count,
-                reward: { gold: count * 10, xp: count * 100 }
-            });
+        addCombatLog(`A new legend is born: ${name}`, 'log-heal');
+    });
+
+    // 3. Enter World with Selected Character
+    $('btn-enter-world')?.addEventListener('click', async () => {
+        if (!selectedCharSlot) return;
+
+        initAudio();
+        let saveData = null;
+
+        // Always try to load the most up-to-date version
+        if (selectedCharSlot._isCloud) {
+            const cloud = await DB.getSaves();
+            saveData = cloud.find(s => s.id === selectedCharSlot.id);
+        } else {
+            saveData = SaveSystem.loadSlot(selectedCharSlot.id);
         }
-    }
 
-    function checkBountyProgress(enemy) {
-        if (!activeBounties.length) return;
-        for (const b of activeBounties) {
-            if (b.progress >= b.targetCount) continue;
-            if (enemy.name.toLowerCase().includes(b.target) || (enemy.group && enemy.group.toLowerCase().includes(b.target))) {
-                b.progress++;
-                if (b.progress === b.targetCount) {
-                    addCombatLog(`Bounty Complete: ${b.title}! +${b.reward.gold}g`, 'log-crit');
-                    player.gold += b.reward.gold;
-                    player.gainXp(b.reward.xp);
-                    fx.emitBurst(player.x, player.y, '#ffd700', 30, 4);
-                    updateHud();
-                }
+        if (saveData) {
+            startGame(selectedCharSlot.id, saveData);
+            addCombatLog(`Welcome back, ${selectedCharSlot.name}.`, 'log-info');
+        }
+    });
+
+    // 4. Save Export/Import
+    $('btn-export-save')?.addEventListener('click', () => {
+        const data = SaveSystem.exportData();
+        if (data) {
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'save.json';
+            a.click();
+        }
+    });
+
+    $('btn-import-save')?.addEventListener('click', () => $('import-file').click());
+
+    $('import-file')?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            if (SaveSystem.importData(ev.target.result)) {
+                alert('Save data imported successfully!');
+                const rescued = SaveSystem.getSharedStash();
+                sharedStashTabs = rescued.tabs;
+                sharedGold = rescued.gold;
+                renderSaveSlots();
+                renderStash();
+                addCombatLog(`Imported and merged shared items.`, 'log-heal');
+            } else {
+                alert('Failed to import save data. Invalid file format.');
             }
+        };
+        reader.readAsText(file);
+    });
+
+    // MMO HUD Listeners
+    $('btn-inventory')?.addEventListener('click', () => togglePanel('inventory'));
+    $('btn-talents')?.addEventListener('click', () => togglePanel('talents'));
+    $('btn-character')?.addEventListener('click', () => togglePanel('character'));
+    $('btn-mercenary')?.addEventListener('click', () => togglePanel('mercenary'));
+    $('btn-social')?.addEventListener('click', () => togglePanel('social'));
+    $('btn-portal')?.addEventListener('click', () => bus.emit('action:town_portal'));
+    $('btn-stash')?.addEventListener('click', toggleTownPanels);
+    $('btn-cube')?.addEventListener('click', toggleTownPanels);
+    $('btn-quests')?.addEventListener('click', () => togglePanel('quests'));
+
+
+    initParticles();
+    initClassGrid();
+
+    // Preload all pixel art assets
+    for (const name of ASSET_NAMES) {
+        let path = `assets/${name}.png`;
+
+        // Use high-definition map objects if available
+        if (name === 'obj_portal') path = 'assets/map_objects/town_portal.png';
+        if (name === 'obj_waypoint') path = 'assets/map_objects/waypoint_hd.png';
+        if (name === 'obj_chest') path = 'assets/map_objects/treasure_chest.png';
+        if (name === 'obj_chest_open') path = 'assets/map_objects/treasure_chest_open.png';
+        if (name === 'obj_shrine') path = 'assets/map_objects/arcane_shrine.png';
+        if (name === 'obj_shrine_used') path = 'assets/map_objects/arcane_shrine_inactive.png';
+
+        // Tree Overrides (Transparent HD)
+        if (name === 'obj_tree_oak') path = 'assets/obj_tree_oak.png';
+        if (name === 'obj_tree_palm') path = 'assets/obj_tree_palm.png';
+        if (name === 'obj_tree_snowpine') path = 'assets/obj_tree_snowpine.png';
+        if (name === 'obj_tree_dead') path = 'assets/obj_tree_dead.png';
+        if (name === 'obj_tree_banyan') path = 'assets/obj_tree_banyan.png';
+
+        Assets.load(name, path);
+    }
+
+    renderSaveSlots();
+
+    $('btn-new-game').addEventListener('click', () => {
+        if (!selectedClass) return;
+        const nameInput = $('character-name');
+        const charName = nameInput ? nameInput.value.trim() : null;
+        initAudio();
+        // Set difficulty before starting
+        const activeDiffBtn = document.querySelector('.diff-btn.active');
+        window._difficulty = activeDiffBtn ? parseInt(activeDiffBtn.dataset.diff) : 0;
+        startGame(null, null, charName);
+    });
+
+    window.renderDifficultySelection = function (slot = null) {
+        const container = document.getElementById('difficulty-selector');
+        if (!container) return;
+
+        const maxUnlocked = slot?.player?.maxDifficulty || 0;
+        let selectedDiff = slot?.difficulty || 0;
+        if (selectedDiff > maxUnlocked) selectedDiff = maxUnlocked;
+
+        window._difficulty = selectedDiff;
+
+        container.innerHTML = '';
+
+        window.DIFFICULTY_NAMES.forEach((name, idx) => {
+            const isLocked = idx > maxUnlocked;
+            const btn = document.createElement('button');
+            btn.className = `diff-btn ${selectedDiff === idx ? 'active' : ''} ${isLocked ? 'locked' : ''}`;
+            btn.dataset.diff = idx;
+            btn.disabled = isLocked;
+
+            btn.innerHTML = `
+            <div class="diff-name">${name}</div>
+            ${isLocked ? '<div class="diff-lock">🔒 LOCKED</div>' : `<div class="diff-mult">${window.DIFFICULTY_MULT[idx]}x</div>`}
+        `;
+
+            if (!isLocked) {
+                btn.onclick = () => {
+                    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    window._difficulty = idx;
+                };
+            }
+            container.appendChild(btn);
+        });
+    }
+
+    // Death Screen
+    $('btn-respawn').addEventListener('click', () => {
+        $('death-screen').classList.add('hidden');
+        if (player) {
+            player.hp = player.maxHp;
+            player.mp = player.maxMp;
+            player.gold = Math.floor(player.gold * 0.9); // 10% gold penalty
+        }
+        state = 'GAME';
+        nextZone(0); // Respawn in town
+    });
+
+    $('btn-main-menu-death').addEventListener('click', () => {
+        $('death-screen').classList.add('hidden');
+        returnToMainMenu();
+    });
+
+    // Victory Screen
+    $('btn-continue-rift').addEventListener('click', () => {
+        $('victory-screen').classList.add('hidden');
+        nextZone(38);
+    });
+
+    $('btn-victory-menu').addEventListener('click', () => {
+        $('victory-screen').classList.add('hidden');
+        returnToMainMenu();
+    });
+
+    // Export / Import
+    $('btn-export-save').addEventListener('click', () => {
+        const data = SaveSystem.exportData();
+        if (!data) return;
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dark_realm_save_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    $('btn-import-save').addEventListener('click', () => {
+        $('import-file').click();
+    });
+
+    $('import-file').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            if (SaveSystem.importData(ev.target.result)) {
+                alert('Save data imported successfully!');
+                // Reload using the hyper-robust rescue logic
+                const rescued = SaveSystem.getSharedStash();
+                sharedStashTabs = rescued.tabs;
+                sharedGold = rescued.gold;
+                renderSaveSlots();
+                renderStash();
+                addCombatLog(`Imported and merged shared items.`, 'log-heal');
+            } else {
+                alert('Failed to import save data. Invalid file format.');
+            }
+        };
+        reader.readAsText(file);
+    });
+});
+
+// --- SAVE SLOT UI ---
+async function renderSaveSlots(onlineUsers = {}) {
+    const listContainer = document.getElementById('char-selection-list'),
+        screenSelect = document.getElementById('screen-char-select'),
+        screenCreate = document.getElementById('screen-char-create'),
+        btnEnter = document.getElementById('btn-enter-world');
+
+    if (!listContainer) return;
+    listContainer.innerHTML = '<div style="color:#aaa; padding:20px; font-family:Cinzel;">Connecting to the Abyss...</div>';
+
+    const isLoggedIn = DB.isLoggedIn();
+    let cloudSlots = [];
+    if (isLoggedIn) {
+        try {
+            cloudSlots = await DB.getSaves();
+            cloudSlots.forEach(s => s._isCloud = true);
+        } catch (e) {
+            console.error("Cloud fetch failed:", e);
         }
     }
 
-    // ——— ACHIEVEMENTS ———
-    function checkAchievements() {
-        for (const ach of ACHIEVEMENTS) {
-            if (!unlockedAchievements.has(ach.id) && ach.check()) {
-                unlockedAchievements.add(ach.id);
-                addCombatLog(`🏆 Achievement Unlocked: ${ach.name}!`, 'log-crit');
+    const localSlots = SaveSystem.listSlots();
+    localSlots.forEach(s => s._isCloud = false);
 
-                // CELEBRATORY BANNER
-                const banner = $('achievement-announcement');
-                if (banner) {
-                    $('ach-name').textContent = ach.name;
-                    banner.classList.remove('hidden');
-                    setTimeout(() => banner.classList.add('hidden'), 4000);
-                }
-                fx.emitBurst(renderer.width / 2, 100, '#00ccff', 20, 3);
+    // Hybrid Logic: 
+    // - Logged In: Only show Cloud slots (to prevent confusion).
+    // - Logged Out: Show Local slots.
+    // - Note: We ALWAYS save to both when logged in (local backup).
+    const allSlots = isLoggedIn ? cloudSlots : localSlots;
 
-                if (ach.reward > 0 && player) {
-                    player.gold += ach.reward;
-                    addCombatLog(`    Reward: ${ach.reward} gold`, 'log-item');
-                    updateHud();
-                }
-            }
-        }
+    if (allSlots.length === 0) {
+        listContainer.innerHTML = `<div style="color:#666; padding:20px; font-style:italic; font-size:12px;">No ${isLoggedIn ? 'Cloud' : 'Local'} characters found.<br>Create a new hero to begin!</div>`;
+        if (screenSelect) screenSelect.classList.add('hidden');
+        if (screenCreate) screenCreate.classList.remove('hidden');
+        return;
     }
 
-    // ——— INITIALIZATION ———
-    // Consolidating all init logic into the single block at the end of the file to prevent duplicate listeners.
+    if (screenSelect) screenSelect.classList.remove('hidden');
+    if (screenCreate) screenCreate.classList.add('hidden');
 
+    listContainer.innerHTML = '';
+    allSlots.forEach(slot => {
+        const card = document.createElement('div');
+        card.className = 'char-entry';
+        if (selectedCharSlot && selectedCharSlot.id === slot.id) card.classList.add('selected');
 
-    // --- SAVE SLOT UI ---
-    async function renderSaveSlots(onlineUsers = {}) {
-        const listContainer = document.getElementById('char-selection-list'),
-            screenSelect = document.getElementById('screen-char-select'),
-            screenCreate = document.getElementById('screen-char-create'),
-            btnEnter = document.getElementById('btn-enter-world');
+        const isOnline = onlineUsers[slot.id];
+        const typeTag = slot._isCloud ? `<span style="color:var(--cyan); font-size:9px;">[CLOUD${isOnline ? ' - ONLINE' : ''}]</span>` : '<span style="color:#888; font-size:9px;">[LOCAL]</span>';
 
-        if (!listContainer) return;
-        listContainer.innerHTML = '<div style="color:#aaa; padding:20px; font-family:Cinzel;">Connecting to the Abyss...</div>';
-
-        const isLoggedIn = DB.isLoggedIn();
-        let cloudSlots = [];
-        if (isLoggedIn) {
-            try {
-                cloudSlots = await DB.getSaves();
-                cloudSlots.forEach(s => s._isCloud = true);
-            } catch (e) {
-                console.error("Cloud fetch failed:", e);
-            }
-        }
-
-        const localSlots = SaveSystem.listSlots();
-        localSlots.forEach(s => s._isCloud = false);
-
-        // Hybrid Logic: 
-        // - Logged In: Only show Cloud slots (to prevent confusion).
-        // - Logged Out: Show Local slots.
-        // - Note: We ALWAYS save to both when logged in (local backup).
-        const allSlots = isLoggedIn ? cloudSlots : localSlots;
-
-        if (allSlots.length === 0) {
-            listContainer.innerHTML = `<div style="color:#666; padding:20px; font-style:italic; font-size:12px;">No ${isLoggedIn ? 'Cloud' : 'Local'} characters found.<br>Create a new hero to begin!</div>`;
-            if (screenSelect) screenSelect.classList.add('hidden');
-            if (screenCreate) screenCreate.classList.remove('hidden');
-            return;
-        }
-
-        if (screenSelect) screenSelect.classList.remove('hidden');
-        if (screenCreate) screenCreate.classList.add('hidden');
-
-        listContainer.innerHTML = '';
-        allSlots.forEach(slot => {
-            const card = document.createElement('div');
-            card.className = 'char-entry';
-            if (selectedCharSlot && selectedCharSlot.id === slot.id) card.classList.add('selected');
-
-            const isOnline = onlineUsers[slot.id];
-            const typeTag = slot._isCloud ? `<span style="color:var(--cyan); font-size:9px;">[CLOUD${isOnline ? ' - ONLINE' : ''}]</span>` : '<span style="color:#888; font-size:9px;">[LOCAL]</span>';
-
-            card.innerHTML = `
+        card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                 <div>
                     <div class="char-entry-name">${slot.name} ${typeTag}</div>
@@ -6847,299 +7706,299 @@ function itemTooltipText(item, isComparison = false) {
             </div>
         `;
 
-            // Migration Logic (Local -> Cloud)
-            const migrateBtn = card.querySelector('.btn-migrate');
-            if (migrateBtn) {
-                migrateBtn.onclick = async (e) => {
-                    e.stopPropagation();
-                    if (confirm(`Migrate ${slot.name} to Cloud? Progress will be synced.`)) {
-                        const localData = SaveSystem.loadSlot(slot.id);
-                        if (localData && await DB.upsertSave(slot.id, localData)) {
-                            addCombatLog(`${slot.name} migrated to Cloud!`, 'log-heal');
-                            renderSaveSlots();
-                        }
-                    }
-                };
-            }
-
-            // Delete Logic
-            card.querySelector('.btn-delete-char').onclick = async (e) => {
+        // Migration Logic (Local -> Cloud)
+        const migrateBtn = card.querySelector('.btn-migrate');
+        if (migrateBtn) {
+            migrateBtn.onclick = async (e) => {
                 e.stopPropagation();
-                if (confirm(`Delete ${slot.name}? This is PERMANENT.`)) {
-                    if (slot._isCloud) await DB.deleteSave(slot.id);
-                    SaveSystem.deleteSlot(slot.id); // Also remove from local
-                    selectedCharSlot = null;
-                    renderSaveSlots();
+                if (confirm(`Migrate ${slot.name} to Cloud? Progress will be synced.`)) {
+                    const localData = SaveSystem.loadSlot(slot.id);
+                    if (localData && await DB.upsertSave(slot.id, localData)) {
+                        addCombatLog(`${slot.name} migrated to Cloud!`, 'log-heal');
+                        renderSaveSlots();
+                    }
                 }
             };
-
-            card.onclick = () => {
-                document.querySelectorAll('.char-entry').forEach(e => e.classList.remove('selected'));
-                card.classList.add('selected');
-                selectedCharSlot = slot;
-                if (btnEnter) btnEnter.disabled = false;
-                updateCharPreview(slot);
-            };
-
-            listContainer.appendChild(card);
-        });
-
-        if (!selectedCharSlot && allSlots.length > 0) {
-            listContainer.firstChild.click();
         }
+
+        // Delete Logic
+        card.querySelector('.btn-delete-char').onclick = async (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete ${slot.name}? This is PERMANENT.`)) {
+                if (slot._isCloud) await DB.deleteSave(slot.id);
+                SaveSystem.deleteSlot(slot.id); // Also remove from local
+                selectedCharSlot = null;
+                renderSaveSlots();
+            }
+        };
+
+        card.onclick = () => {
+            document.querySelectorAll('.char-entry').forEach(e => e.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedCharSlot = slot;
+            if (btnEnter) btnEnter.disabled = false;
+            updateCharPreview(slot);
+        };
+
+        listContainer.appendChild(card);
+    });
+
+    if (!selectedCharSlot && allSlots.length > 0) {
+        listContainer.firstChild.click();
+    }
+}
+
+// ... rest of character preview logic ...
+
+
+function updateCharPreview(slot) {
+    const nameEl = document.getElementById('preview-name'), detailsEl = document.getElementById('preview-details'), renderDiv = document.getElementById('char-preview-render');
+    if (nameEl) nameEl.innerText = slot.name; if (detailsEl) detailsEl.innerText = `Level ${slot.level} ${slot.className}`;
+
+    if (typeof window.renderDifficultySelection === 'function') {
+        window.renderDifficultySelection(slot);
     }
 
-    // ... rest of character preview logic ...
-
-
-    function updateCharPreview(slot) {
-        const nameEl = document.getElementById('preview-name'), detailsEl = document.getElementById('preview-details'), renderDiv = document.getElementById('char-preview-render');
-        if (nameEl) nameEl.innerText = slot.name; if (detailsEl) detailsEl.innerText = `Level ${slot.level} ${slot.className}`;
-
-        if (typeof window.renderDifficultySelection === 'function') {
-            window.renderDifficultySelection(slot);
-        }
-
-        if (renderDiv) {
-            renderDiv.innerHTML = '';
-            const spriteUrl = `assets/class_${slot.classId}.png`;
-            const tempImg = new Image();
-            tempImg.onload = () => {
-                const sw = tempImg.width / 7;
-                const sh = tempImg.height / 16;
-                renderDiv.innerHTML = `
+    if (renderDiv) {
+        renderDiv.innerHTML = '';
+        const spriteUrl = `assets/class_${slot.classId}.png`;
+        const tempImg = new Image();
+        tempImg.onload = () => {
+            const sw = tempImg.width / 7;
+            const sh = tempImg.height / 16;
+            renderDiv.innerHTML = `
                 <div style="width:${sw}px; height:${sh}px; overflow:hidden; position:relative; margin:0 auto; transform:scale(3); transform-origin:top; image-rendering:pixelated; filter: drop-shadow(0 0 20px rgba(216,176,104,0.4)); pointer-events:none;">
                     <img src="${spriteUrl}" style="position:absolute; left:0; top:-${2 * sh}px; width:${tempImg.width}px; height:${tempImg.height}px; display:block; pointer-events:none;">
                 </div>
             `;
-            };
-            tempImg.onerror = () => { renderDiv.innerHTML = `<div style="color:#666; font-size:10px; margin-top:20px;">Image not found</div>`; };
-            tempImg.src = spriteUrl;
-        }
+        };
+        tempImg.onerror = () => { renderDiv.innerHTML = `<div style="color:#666; font-size:10px; margin-top:20px;">Image not found</div>`; };
+        tempImg.src = spriteUrl;
+    }
+}
+
+// --- Phase 29: World Overlay & Time Logic ---
+function renderWorldOverlay(ctx, w, h) {
+    const hour = worldTime / 60;
+    let alpha = 0;
+    let color = '0, 0, 0';
+
+    if (hour >= 20 || hour < 4) { // Night
+        alpha = 0.45;
+        color = '20, 10, 60';
+    } else if (hour >= 18 && hour < 20) { // Dusk
+        alpha = (hour - 18) / 2 * 0.45;
+        color = '80, 20, 40';
+    } else if (hour >= 4 && hour < 6) { // Dawn
+        alpha = (1 - (hour - 4) / 2) * 0.45;
+        color = '80, 50, 20';
     }
 
-    // --- Phase 29: World Overlay & Time Logic ---
-    function renderWorldOverlay(ctx, w, h) {
-        const hour = worldTime / 60;
-        let alpha = 0;
-        let color = '0, 0, 0';
+    // --- Phase 3.1: Act-Based Tinting ---
+    ctx.save();
+    const theme = window.currentTheme;
+    if (theme === 'desert') {
+        ctx.fillStyle = 'rgba(180, 120, 40, 0.08)'; // Sepia heat
+        ctx.fillRect(0, 0, w, h);
+    } else if (theme === 'hell') {
+        ctx.fillStyle = 'rgba(255, 40, 0, 0.05)'; // Hellfire glow
+        ctx.fillRect(0, 0, w, h);
+    } else if (theme === 'snow') {
+        ctx.fillStyle = 'rgba(100, 200, 255, 0.06)'; // Frozen chill
+        ctx.fillRect(0, 0, w, h);
+    }
+    ctx.restore();
 
-        if (hour >= 20 || hour < 4) { // Night
-            alpha = 0.45;
-            color = '20, 10, 60';
-        } else if (hour >= 18 && hour < 20) { // Dusk
-            alpha = (hour - 18) / 2 * 0.45;
-            color = '80, 20, 40';
-        } else if (hour >= 4 && hour < 6) { // Dawn
-            alpha = (1 - (hour - 4) / 2) * 0.45;
-            color = '80, 50, 20';
-        }
-
-        // --- Phase 3.1: Act-Based Tinting ---
+    if (alpha > 0) {
         ctx.save();
-        const theme = window.currentTheme;
-        if (theme === 'desert') {
-            ctx.fillStyle = 'rgba(180, 120, 40, 0.08)'; // Sepia heat
-            ctx.fillRect(0, 0, w, h);
-        } else if (theme === 'hell') {
-            ctx.fillStyle = 'rgba(255, 40, 0, 0.05)'; // Hellfire glow
-            ctx.fillRect(0, 0, w, h);
-        } else if (theme === 'snow') {
-            ctx.fillStyle = 'rgba(100, 200, 255, 0.06)'; // Frozen chill
-            ctx.fillRect(0, 0, w, h);
-        }
+        ctx.fillStyle = `rgba(${color}, ${alpha})`;
+        ctx.fillRect(0, 0, w, h);
         ctx.restore();
-
-        if (alpha > 0) {
-            ctx.save();
-            ctx.fillStyle = `rgba(${color}, ${alpha})`;
-            ctx.fillRect(0, 0, w, h);
-            ctx.restore();
-        }
     }
+}
 
-    function updateWorldClockUI() {
-        const clock = $('world-clock');
-        if (!clock) return;
-        const hour = Math.floor(worldTime / 60);
-        const min = Math.floor(worldTime % 60);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        const h12 = hour % 12 || 12;
-        clock.textContent = `${h12}:${min < 10 ? '0' : ''}${min} ${ampm} ${window.isNight ? 'ðŸŒ™' : 'â˜€ï¸'}`;
-    }
+function updateWorldClockUI() {
+    const clock = $('world-clock');
+    if (!clock) return;
+    const hour = Math.floor(worldTime / 60);
+    const min = Math.floor(worldTime % 60);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const h12 = hour % 12 || 12;
+    clock.textContent = `${h12}:${min < 10 ? '0' : ''}${min} ${ampm} ${window.isNight ? 'ðŸŒ™' : 'â˜€ï¸'}`;
+}
 
-    // --- Phase 29: Blacksmith Crafting UI ---
-    function renderCraftingMenu() {
-        const existing = document.getElementById('crafting-panel');
-        if (existing) existing.remove();
+// --- Phase 29: Blacksmith Crafting UI ---
+function renderCraftingMenu() {
+    const existing = document.getElementById('crafting-panel');
+    if (existing) existing.remove();
 
-        const panel = document.createElement('div');
-        panel.id = 'crafting-panel';
-        panel.className = 'dialogue-panel'; // Use existing panel styles
-        panel.style.width = '300px';
-        panel.innerHTML = `
+    const panel = document.createElement('div');
+    panel.id = 'crafting-panel';
+    panel.className = 'dialogue-panel'; // Use existing panel styles
+    panel.style.width = '300px';
+    panel.innerHTML = `
         <h3 style="color:var(--gold); border-bottom:1px solid #444; margin-bottom:10px;">Charsi's Forge</h3>
         <div style="font-size:11px; margin-bottom:10px;">Spend 5 Horadric Fragments for a high-tier Rare.</div>
         <div id="craft-options" style="display:flex; flex-direction:column; gap:5px;"></div>
         <button class="btn-close" style="width:100%; margin-top:10px;">Close</button>
     `;
 
-        const bases = ['long_sword', 'war_hammer', 'plate_mail', 'bone_shield', 'great_helm'];
-        const fragments = player.inventory.filter(it => it && it.baseId === 'horadric_fragment').length;
+    const bases = ['long_sword', 'war_hammer', 'plate_mail', 'bone_shield', 'great_helm'];
+    const fragments = player.inventory.filter(it => it && it.baseId === 'horadric_fragment').length;
 
-        bases.forEach(baseId => {
-            const itemBase = items[baseId];
-            if (!itemBase) return; // Skip if ID is missing from data
+    bases.forEach(baseId => {
+        const itemBase = items[baseId];
+        if (!itemBase) return; // Skip if ID is missing from data
 
-            const btn = document.createElement('button');
-            btn.className = 'btn-menu';
-            btn.textContent = `Craft ${itemBase.name}`;
-            btn.disabled = fragments < 5;
-            btn.onclick = () => {
-                const empty = player.inventory.indexOf(null);
-                if (empty === -1) { addCombatLog('Inventory Full!', 'log-dmg'); return; }
+        const btn = document.createElement('button');
+        btn.className = 'btn-menu';
+        btn.textContent = `Craft ${itemBase.name}`;
+        btn.disabled = fragments < 5;
+        btn.onclick = () => {
+            const empty = player.inventory.indexOf(null);
+            if (empty === -1) { addCombatLog('Inventory Full!', 'log-dmg'); return; }
 
-                // Consume 5 fragments
-                let removed = 0;
-                for (let i = 0; i < player.inventory.length; i++) {
-                    if (player.inventory[i] && player.inventory[i].baseId === 'horadric_fragment') {
-                        player.inventory[i] = null;
-                        removed++;
-                        if (removed === 5) break;
-                    }
+            // Consume 5 fragments
+            let removed = 0;
+            for (let i = 0; i < player.inventory.length; i++) {
+                if (player.inventory[i] && player.inventory[i].baseId === 'horadric_fragment') {
+                    player.inventory[i] = null;
+                    removed++;
+                    if (removed === 5) break;
                 }
+            }
 
-                const crafted = loot.rollCraftedItem(baseId, player.level);
-                player.inventory[empty] = crafted;
-                addCombatLog(`Crafted ${crafted.name}!`, 'log-crit');
-                renderInventory();
-                renderCraftingMenu();
-            };
-            panel.querySelector('#craft-options').appendChild(btn);
+            const crafted = loot.rollCraftedItem(baseId, player.level);
+            player.inventory[empty] = crafted;
+            addCombatLog(`Crafted ${crafted.name}!`, 'log-crit');
+            renderInventory();
+            renderCraftingMenu();
+        };
+        panel.querySelector('#craft-options').appendChild(btn);
+    });
+
+    panel.querySelector('.btn-close').onclick = () => panel.remove();
+    document.body.appendChild(panel);
+
+    // Position near Charsi
+    const pos = camera.toScreen(activeDialogueNpc.x, activeDialogueNpc.y);
+    panel.style.left = `${pos.x - 150}px`;
+    panel.style.top = `${pos.y - 250}px`;
+}
+
+// --- Phase 30: Drag & Drop Implementation ---
+function startDrag(e, item, source, idx) {
+    if (!item) return;
+    draggedItem = item;
+    dragSource = source;
+    dragSourceIdx = idx;
+
+    dragGhost = document.createElement('div');
+    dragGhost.id = 'drag-ghost';
+    dragGhost.innerHTML = getItemHtml(item);
+    dragGhost.style.position = 'fixed';
+    dragGhost.style.pointerEvents = 'none';
+    dragGhost.style.zIndex = '10000';
+    dragGhost.style.opacity = '0.8';
+    document.body.appendChild(dragGhost);
+
+    e.target.closest('.inv-item')?.classList.add('dragging');
+}
+
+function clearDrag() {
+    draggedItem = null;
+    dragSource = null;
+    dragSourceIdx = null;
+    if (dragGhost) { dragGhost.remove(); dragGhost = null; }
+    document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+}
+
+window.addEventListener('mousemove', (e) => {
+    if (dragGhost) {
+        dragGhost.style.left = `${e.clientX - 16}px`;
+        dragGhost.style.top = `${e.clientY - 16}px`;
+    }
+});
+
+window.addEventListener('mouseup', (e) => {
+    if (draggedSkill) {
+        // Drop skill outside to clear it
+        const barRect = $('skill-bar').getBoundingClientRect();
+        const overBar = (e.clientX >= barRect.left && e.clientX <= barRect.right && e.clientY >= barRect.top && e.clientY <= barRect.bottom);
+
+        if (!overBar) {
+            player.hotbar[dragSourceIdx] = null;
+            addCombatLog("Skill unassigned.", "log-info");
+            updateSkillBar();
+        }
+        clearSkillDrag();
+    }
+
+    if (draggedItem) {
+        // If we are here, no slot handled the mouseup (slots stopPropagation or are handled first)
+        // Check if we are over a UI panel
+        const panels = ['panel-inventory', 'panel-character', 'panel-stash', 'panel-cube', 'panel-mercenary', 'panel-shop'];
+        const overPanel = panels.some(id => {
+            const el = document.getElementById(id);
+            if (!el || el.classList.contains('hidden')) return false;
+            const rect = el.getBoundingClientRect();
+            return (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom);
         });
 
-        panel.querySelector('.btn-close').onclick = () => panel.remove();
-        document.body.appendChild(panel);
+        if (!overPanel) {
+            // Drop on ground
+            const item = { ...draggedItem };
+            item.x = player.x + (Math.random() - 0.5) * 32;
+            item.y = player.y + (Math.random() - 0.5) * 32;
+            item.active = true;
+            droppedItems.push(item);
+            addCombatLog(`Dropped ${item.name} for real.`);
 
-        // Position near Charsi
-        const pos = camera.toScreen(activeDialogueNpc.x, activeDialogueNpc.y);
-        panel.style.left = `${pos.x - 150}px`;
-        panel.style.top = `${pos.y - 250}px`;
-    }
+            // Remove from source
+            const getContainer = (name) => {
+                if (name === 'inventory') return player.inventory;
+                if (name === 'belt') return player.belt;
+                if (name === 'stash') return stashMode === 'personal' ? stash : sharedStashTabs[currentStashTab].items;
+                if (name === 'cube') return cube;
+                return null;
+            };
 
-    // --- Phase 30: Drag & Drop Implementation ---
-    function startDrag(e, item, source, idx) {
-        if (!item) return;
-        draggedItem = item;
-        dragSource = source;
-        dragSourceIdx = idx;
-
-        dragGhost = document.createElement('div');
-        dragGhost.id = 'drag-ghost';
-        dragGhost.innerHTML = getItemHtml(item);
-        dragGhost.style.position = 'fixed';
-        dragGhost.style.pointerEvents = 'none';
-        dragGhost.style.zIndex = '10000';
-        dragGhost.style.opacity = '0.8';
-        document.body.appendChild(dragGhost);
-
-        e.target.closest('.inv-item')?.classList.add('dragging');
-    }
-
-    function clearDrag() {
-        draggedItem = null;
-        dragSource = null;
-        dragSourceIdx = null;
-        if (dragGhost) { dragGhost.remove(); dragGhost = null; }
-        document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
-    }
-
-    window.addEventListener('mousemove', (e) => {
-        if (dragGhost) {
-            dragGhost.style.left = `${e.clientX - 16}px`;
-            dragGhost.style.top = `${e.clientY - 16}px`;
-        }
-    });
-
-    window.addEventListener('mouseup', (e) => {
-        if (draggedSkill) {
-            // Drop skill outside to clear it
-            const barRect = $('skill-bar').getBoundingClientRect();
-            const overBar = (e.clientX >= barRect.left && e.clientX <= barRect.right && e.clientY >= barRect.top && e.clientY <= barRect.bottom);
-
-            if (!overBar) {
-                player.hotbar[dragSourceIdx] = null;
-                addCombatLog("Skill unassigned.", "log-info");
-                updateSkillBar();
+            const srcArr = getContainer(dragSource);
+            if (srcArr) {
+                srcArr[dragSourceIdx] = null;
+            } else if (dragSource === 'equip') {
+                player.unequip(dragSourceIdx);
+            } else if (dragSource === 'merc') {
+                mercenary.equipment[dragSourceIdx] = null;
+                mercenary._recalcStats();
+                renderMercenaryPanel();
             }
-            clearSkillDrag();
+
+            clearDrag();
+            renderInventory();
+            renderCharacterPanel();
+            renderStash();
+            renderCube();
+            updateHud();
         }
+    }
+    setTimeout(() => { if (draggedItem) clearDrag(); }, 20);
+});
 
-        if (draggedItem) {
-            // If we are here, no slot handled the mouseup (slots stopPropagation or are handled first)
-            // Check if we are over a UI panel
-            const panels = ['panel-inventory', 'panel-character', 'panel-stash', 'panel-cube', 'panel-mercenary', 'panel-shop'];
-            const overPanel = panels.some(id => {
-                const el = document.getElementById(id);
-                if (!el || el.classList.contains('hidden')) return false;
-                const rect = el.getBoundingClientRect();
-                return (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom);
-            });
+// --- Phase 30: Pantheon / Leaderboard UI ---
+async function renderLeaderboard(filter = 'global') {
+    let overlay = $('pantheon-overlay');
+    if (overlay) overlay.remove();
 
-            if (!overPanel) {
-                // Drop on ground
-                const item = { ...draggedItem };
-                item.x = player.x + (Math.random() - 0.5) * 32;
-                item.y = player.y + (Math.random() - 0.5) * 32;
-                item.active = true;
-                droppedItems.push(item);
-                addCombatLog(`Dropped ${item.name} for real.`);
-
-                // Remove from source
-                const getContainer = (name) => {
-                    if (name === 'inventory') return player.inventory;
-                    if (name === 'belt') return player.belt;
-                    if (name === 'stash') return stashMode === 'personal' ? stash : sharedStashTabs[currentStashTab].items;
-                    if (name === 'cube') return cube;
-                    return null;
-                };
-
-                const srcArr = getContainer(dragSource);
-                if (srcArr) {
-                    srcArr[dragSourceIdx] = null;
-                } else if (dragSource === 'equip') {
-                    player.unequip(dragSourceIdx);
-                } else if (dragSource === 'merc') {
-                    mercenary.equipment[dragSourceIdx] = null;
-                    mercenary._recalcStats();
-                    renderMercenaryPanel();
-                }
-
-                clearDrag();
-                renderInventory();
-                renderCharacterPanel();
-                renderStash();
-                renderCube();
-                updateHud();
-            }
-        }
-        setTimeout(() => { if (draggedItem) clearDrag(); }, 20);
-    });
-
-    // --- Phase 30: Pantheon / Leaderboard UI ---
-    async function renderLeaderboard(filter = 'global') {
-        let overlay = $('pantheon-overlay');
-        if (overlay) overlay.remove();
-
-        overlay = document.createElement('div');
-        overlay.id = 'pantheon-overlay';
-        overlay.style.cssText = `
+    overlay = document.createElement('div');
+    overlay.id = 'pantheon-overlay';
+    overlay.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center;
         z-index: 2000; font-family: 'Cinzel', serif; backdrop-filter: blur(8px);
     `;
 
-        overlay.innerHTML = `
+    overlay.innerHTML = `
         <div style="width: 600px; background: #0a0805; border: 2px solid #bf642f; padding: 30px; box-shadow: 0 0 60px rgba(191, 100, 47, 0.5); border-radius: 8px; color: #ba9158;">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #bf642f; padding-bottom:10px; margin-bottom:15px;">
                 <h2 style="margin:0; color:#ffd700; text-shadow:0 0 10px rgba(255,215,0,0.3);">🏆 THE PANTHEON 🏆</h2>
@@ -7171,52 +8030,52 @@ function itemTooltipText(item, isComparison = false) {
         </div>
     `;
 
-        document.body.appendChild(overlay);
+    document.body.appendChild(overlay);
 
-        try {
-            let query = DB.client.from('saves')
-                .select(`
+    try {
+        let query = DB.client.from('saves')
+            .select(`
                 charName:player->>charName,
                 classId:player->>classId,
                 isHardcore:player->>isHardcore,
                 player
             `)
-                .limit(20);
+            .limit(20);
 
-            if (filter === 'class' && player) query = query.eq('player->>classId', player.classId);
-            if (filter === 'hardcore') query = query.eq('player->>isHardcore', 'true');
+        if (filter === 'class' && player) query = query.eq('player->>classId', player.classId);
+        if (filter === 'hardcore') query = query.eq('player->>isHardcore', 'true');
 
-            const { data, error } = await query;
-            if (error) throw error;
+        const { data, error } = await query;
+        if (error) throw error;
 
-            // Sort by riftLevel in JS as fallback if DB column is missing
-            data.sort((a, b) => {
-                const levelA = a.player?.extra_data?.riftLevel || 0;
-                const levelB = b.player?.extra_data?.riftLevel || 0;
-                return levelB - levelA;
-            });
+        // Sort by riftLevel in JS as fallback if DB column is missing
+        data.sort((a, b) => {
+            const levelA = a.player?.extra_data?.riftLevel || 0;
+            const levelB = b.player?.extra_data?.riftLevel || 0;
+            return levelB - levelA;
+        });
 
-            const body = $('leaderboard-body');
-            body.innerHTML = '';
+        const body = $('leaderboard-body');
+        body.innerHTML = '';
 
-            if (data.length === 0) {
-                body.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:40px; color:#666;">No heroes have been etched here yet.</td></tr>`;
-            }
+        if (data.length === 0) {
+            body.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:40px; color:#666;">No heroes have been etched here yet.</td></tr>`;
+        }
 
-            data.forEach((row, i) => {
-                const depth = row.player?.extra_data?.riftLevel || 0;
-                const isMe = player && row.charName === player.charName;
+        data.forEach((row, i) => {
+            const depth = row.player?.extra_data?.riftLevel || 0;
+            const isMe = player && row.charName === player.charName;
 
-                const tr = document.createElement('tr');
-                tr.style.borderBottom = '1px solid #222';
-                if (isMe) tr.style.background = 'rgba(191, 100, 47, 0.2)';
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #222';
+            if (isMe) tr.style.background = 'rgba(191, 100, 47, 0.2)';
 
-                let rankDisp = (i + 1);
-                if (i === 0) rankDisp = '🥇';
-                if (i === 1) rankDisp = '🥈';
-                if (i === 2) rankDisp = '🥉';
+            let rankDisp = (i + 1);
+            if (i === 0) rankDisp = '🥇';
+            if (i === 1) rankDisp = '🥈';
+            if (i === 2) rankDisp = '🥉';
 
-                tr.innerHTML = `
+            tr.innerHTML = `
                 <td style="padding:12px 10px; color:${isMe ? '#ffd700' : '#888'}; font-weight:bold;">${rankDisp}</td>
                 <td style="padding:12px 10px; color:${isMe ? '#ffd700' : '#fff'};">
                     ${row.charName || 'Unknown'} ${row.isHardcore === 'true' || row.isHardcore === true ? '<span style="color:#f44; font-size:9px; margin-left:5px;">[HC]</span>' : ''}
@@ -7224,292 +8083,292 @@ function itemTooltipText(item, isComparison = false) {
                 <td style="padding:12px 10px; color:#aaa; font-size:11px; text-transform:uppercase;">${row.classId}</td>
                 <td style="padding:12px 10px; text-align:right; color:#c080ff; font-weight:bold;">DEPTH ${depth}</td>
             `;
-                body.appendChild(tr);
-            });
-        } catch (e) {
-            console.error("Leaderboard Error:", e);
-            $('leaderboard-body').innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#f66;">Failed to connect to the Pantehon.</td></tr>`;
-        }
-    }
-
-    function renderPantheonList() { renderLeaderboard(); }
-
-    async function checkChampionStatus() {
-        if (!player || !network) return;
-
-        // Check Global #1
-        const globalData = await network.getLeaderboardData('global');
-        if (globalData && globalData.length > 0) {
-            player._isTopRanker = (globalData[0].charName === player.charName);
-        }
-
-        // Check Hardcore #1
-        if (player.isHardcore) {
-            const hcData = await network.getLeaderboardData('hardcore');
-            if (hcData && hcData.length > 0) {
-                player._isTopHardcore = (hcData[0].charName === player.charName);
-            }
-        }
-    }
-
-    function returnToMainMenu() {
-        // Save current character before leaving
-        if (player && window._activeSlotId) {
-            saveGame();
-        }
-
-        // Switch to menu state
-        state = 'MENU';
-        $('game-screen').classList.remove('active');
-        $('main-menu').classList.add('active');
-        $('mmo-chat-container')?.classList.add('hidden');
-
-        // Refresh the character slots in the menu
-        renderSaveSlots();
-    }
-
-    // --- Phase 31: Skill Reordering & Picker Logic ---
-    let draggedSkill = null;
-    let dragSkillGhost = null;
-
-    function startSkillDrag(e, skillId, idx) {
-        draggedSkill = skillId;
-        dragSourceIdx = idx;
-        dragSource = 'hotbar';
-
-        dragSkillGhost = document.createElement('div');
-        dragSkillGhost.id = 'drag-ghost-skill';
-        dragSkillGhost.innerHTML = `<i class="ra ${getIconForSkill(skillId)}" style="font-size: 28px; color: var(--gold);"></i>`;
-        document.body.appendChild(dragSkillGhost);
-
-        $(`skill-${idx + 1}`).classList.add('dragging');
-    }
-
-    function openSkillPicker(slotIdx, x, y) {
-        const existing = document.getElementById('skill-picker');
-        if (existing) existing.remove();
-
-        const menu = document.createElement('div');
-        menu.id = 'skill-picker';
-        menu.className = 'skill-picker-modal';
-
-        // Position the menu above the hotbar
-        menu.style.left = `${Math.min(window.innerWidth - 300, Math.max(20, x - 140))}px`;
-        menu.style.top = `${y - 320}px`;
-
-        const header = document.createElement('div');
-        header.className = 'skill-picker-header';
-        header.textContent = `ASSIGN SKILL TO SLOT ${slotIdx + 1}`;
-        menu.appendChild(header);
-
-        const grid = document.createElement('div');
-        grid.className = 'skill-picker-grid';
-
-        // Get all learned active/toggle skills
-        const skills = Object.values(player.skillMap).filter(s => (s.type === 'active' || s.type === 'toggle') && player.talents.baseLevel(s.id) > 0);
-
-        if (skills.length === 0) {
-            grid.innerHTML = `<div style="grid-column: span 4; text-align: center; color: #666; font-size: 11px; padding: 20px;">No active skills learned yet.<br>Spend Talent Points first!</div>`;
-        }
-
-        skills.forEach(skill => {
-            const node = document.createElement('div');
-            node.className = 'skill-picker-node';
-            if (player.hotbar.includes(skill.id)) node.classList.add('active-on-bar');
-
-            node.innerHTML = `<i class="ra ${getIconForSkill(skill.id)}" style="font-size: 24px; color: var(--gold);"></i>`;
-
-            node.addEventListener('mouseenter', (e) => showSkillTooltip(skill.id, e.clientX, e.clientY));
-            node.addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
-            node.addEventListener('mouseleave', hideTooltip);
-
-            node.onclick = () => {
-                // Remove from other slot if already assigned? (Diablo 2 style: allow multiples or swap)
-                // Let's allow unique assignments for simplicity
-                const oldIdx = player.hotbar.indexOf(skill.id);
-                if (oldIdx !== -1) player.hotbar[oldIdx] = null;
-
-                player.hotbar[slotIdx] = skill.id;
-                updateSkillBar();
-                menu.remove();
-                hideTooltip();
-                addCombatLog(`Assigned ${skill.name} to hotbar.`, 'log-info');
-            };
-
-            grid.appendChild(node);
+            body.appendChild(tr);
         });
+    } catch (e) {
+        console.error("Leaderboard Error:", e);
+        $('leaderboard-body').innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#f66;">Failed to connect to the Pantehon.</td></tr>`;
+    }
+}
 
-        menu.appendChild(grid);
-        menu.appendChild(grid);
+function renderPantheonList() { renderLeaderboard(); }
 
-        const footer = document.createElement('div');
-        footer.className = 'skill-picker-footer';
-        footer.textContent = "Right-click slot to clear";
-        menu.appendChild(footer);
+async function checkChampionStatus() {
+    if (!player || !network) return;
 
-        // Close when clicking outside
-        const closeHandler = (e) => {
-            if (!menu.contains(e.target)) {
-                menu.remove();
-                window.removeEventListener('mousedown', closeHandler);
-            }
-        };
-        setTimeout(() => window.addEventListener('mousedown', closeHandler), 10);
-
-        document.body.appendChild(menu);
+    // Check Global #1
+    const globalData = await network.getLeaderboardData('global');
+    if (globalData && globalData.length > 0) {
+        player._isTopRanker = (globalData[0].charName === player.charName);
     }
 
-    window.addEventListener('mousemove', (e) => {
-        if (dragGhost) {
-            dragGhost.style.left = `${e.clientX - 16}px`;
-            dragGhost.style.top = `${e.clientY - 16}px`;
+    // Check Hardcore #1
+    if (player.isHardcore) {
+        const hcData = await network.getLeaderboardData('hardcore');
+        if (hcData && hcData.length > 0) {
+            player._isTopHardcore = (hcData[0].charName === player.charName);
         }
-        if (dragSkillGhost) {
-            dragSkillGhost.style.left = `${e.clientX - 24}px`;
-            dragSkillGhost.style.top = `${e.clientY - 24}px`;
-        }
+    }
+}
+
+function returnToMainMenu() {
+    // Save current character before leaving
+    if (player && window._activeSlotId) {
+        saveGame();
+    }
+
+    // Switch to menu state
+    state = 'MENU';
+    $('game-screen').classList.remove('active');
+    $('main-menu').classList.add('active');
+    $('mmo-chat-container')?.classList.add('hidden');
+
+    // Refresh the character slots in the menu
+    renderSaveSlots();
+}
+
+// --- Phase 31: Skill Reordering & Picker Logic ---
+let draggedSkill = null;
+let dragSkillGhost = null;
+
+function startSkillDrag(e, skillId, idx) {
+    draggedSkill = skillId;
+    dragSourceIdx = idx;
+    dragSource = 'hotbar';
+
+    dragSkillGhost = document.createElement('div');
+    dragSkillGhost.id = 'drag-ghost-skill';
+    dragSkillGhost.innerHTML = `<i class="ra ${getIconForSkill(skillId)}" style="font-size: 28px; color: var(--gold);"></i>`;
+    document.body.appendChild(dragSkillGhost);
+
+    $(`skill-${idx + 1}`).classList.add('dragging');
+}
+
+function openSkillPicker(slotIdx, x, y) {
+    const existing = document.getElementById('skill-picker');
+    if (existing) existing.remove();
+
+    const menu = document.createElement('div');
+    menu.id = 'skill-picker';
+    menu.className = 'skill-picker-modal';
+
+    // Position the menu above the hotbar
+    menu.style.left = `${Math.min(window.innerWidth - 300, Math.max(20, x - 140))}px`;
+    menu.style.top = `${y - 320}px`;
+
+    const header = document.createElement('div');
+    header.className = 'skill-picker-header';
+    header.textContent = `ASSIGN SKILL TO SLOT ${slotIdx + 1}`;
+    menu.appendChild(header);
+
+    const grid = document.createElement('div');
+    grid.className = 'skill-picker-grid';
+
+    // Get all learned active/toggle skills
+    const skills = Object.values(player.skillMap).filter(s => (s.type === 'active' || s.type === 'toggle') && player.talents.baseLevel(s.id) > 0);
+
+    if (skills.length === 0) {
+        grid.innerHTML = `<div style="grid-column: span 4; text-align: center; color: #666; font-size: 11px; padding: 20px;">No active skills learned yet.<br>Spend Talent Points first!</div>`;
+    }
+
+    skills.forEach(skill => {
+        const node = document.createElement('div');
+        node.className = 'skill-picker-node';
+        if (player.hotbar.includes(skill.id)) node.classList.add('active-on-bar');
+
+        node.innerHTML = `<i class="ra ${getIconForSkill(skill.id)}" style="font-size: 24px; color: var(--gold);"></i>`;
+
+        node.addEventListener('mouseenter', (e) => showSkillTooltip(skill.id, e.clientX, e.clientY));
+        node.addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
+        node.addEventListener('mouseleave', hideTooltip);
+
+        node.onclick = () => {
+            // Remove from other slot if already assigned? (Diablo 2 style: allow multiples or swap)
+            // Let's allow unique assignments for simplicity
+            const oldIdx = player.hotbar.indexOf(skill.id);
+            if (oldIdx !== -1) player.hotbar[oldIdx] = null;
+
+            player.hotbar[slotIdx] = skill.id;
+            updateSkillBar();
+            menu.remove();
+            hideTooltip();
+            addCombatLog(`Assigned ${skill.name} to hotbar.`, 'log-info');
+        };
+
+        grid.appendChild(node);
     });
 
-    function clearSkillDrag() {
-        draggedSkill = null;
-        if (dragSkillGhost) { dragSkillGhost.remove(); dragSkillGhost = null; }
-        document.querySelectorAll('.skill-slot').forEach(el => el.classList.remove('dragging'));
+    menu.appendChild(grid);
+    menu.appendChild(grid);
+
+    const footer = document.createElement('div');
+    footer.className = 'skill-picker-footer';
+    footer.textContent = "Right-click slot to clear";
+    menu.appendChild(footer);
+
+    // Close when clicking outside
+    const closeHandler = (e) => {
+        if (!menu.contains(e.target)) {
+            menu.remove();
+            window.removeEventListener('mousedown', closeHandler);
+        }
+    };
+    setTimeout(() => window.addEventListener('mousedown', closeHandler), 10);
+
+    document.body.appendChild(menu);
+}
+
+window.addEventListener('mousemove', (e) => {
+    if (dragGhost) {
+        dragGhost.style.left = `${e.clientX - 16}px`;
+        dragGhost.style.top = `${e.clientY - 16}px`;
+    }
+    if (dragSkillGhost) {
+        dragSkillGhost.style.left = `${e.clientX - 24}px`;
+        dragSkillGhost.style.top = `${e.clientY - 24}px`;
+    }
+});
+
+function clearSkillDrag() {
+    draggedSkill = null;
+    if (dragSkillGhost) { dragSkillGhost.remove(); dragSkillGhost = null; }
+    document.querySelectorAll('.skill-slot').forEach(el => el.classList.remove('dragging'));
+}
+
+function handleBossDeath(boss) {
+    // Prevent double execution
+    if (boss._handledDeath) return;
+    boss._handledDeath = true;
+
+    let actNum = 0;
+    let actName = 'I';
+    let actSubtitle = 'The Sightless Eye';
+
+    // Quest Flags
+    if (boss.isRadament) campaign.setFlag('radament_slain', true);
+    if (boss.id === 'anya') campaign.setFlag('anya_rescued', true);
+
+    if (boss.isAndariel || zoneLevel === 137) { actNum = 1; actName = 'I'; actSubtitle = 'The Sightless Eye Cleared'; }
+    else if (boss.isDuriel || zoneLevel === 67) { actNum = 2; actName = 'II'; actSubtitle = 'The Secret of the Vizjerei Cleared'; }
+    else if (boss.isMephisto || zoneLevel === 95) { actNum = 3; actName = 'III'; actSubtitle = 'The Infernal Gate Cleared'; }
+    else if (boss.isDiablo || zoneLevel === 671) { actNum = 4; actName = 'IV'; actSubtitle = 'The Chaos Sanctuary Cleared'; }
+    else if (boss.isBaal || zoneLevel === 125) { actNum = 5; actName = 'V'; actSubtitle = 'The Lord of Destruction Slain'; }
+
+    // --- Phase 22: Rift Guardian Victory ---
+    if (boss.isRiftGuardian) {
+        addCombatLog("⚡ THE RIFT GUARDIAN IS VANQUISHED! ⚡", "log-crit");
+        fx.emitHolyBurst(boss.x, boss.y);
+        fx.shake(1000, 20);
+
+        // Spawn Descent Portal
+        const portal = new GameObject('rift_exit', boss.x + 40, boss.y, 'obj_portal');
+        portal.targetZone = null; // null triggers zoneLevel++
+        portal.name = `Descent to Depth ${window.riftLevel + 1}`;
+        portal.isRiftPortal = true;
+        gameObjects.push(portal);
+
+        // Reset progress for next depth, but KEEP riftGuardianSpawned=true for nextZone to detect
+        window.riftProgress = 0;
+        updateRiftHud();
+
+        // Immediate Save
+        saveGame();
     }
 
-    function handleBossDeath(boss) {
-        // Prevent double execution
-        if (boss._handledDeath) return;
-        boss._handledDeath = true;
+    if (actNum > 0) {
+        campaign.completeAct(actNum);
+        showActCleared(actName, actSubtitle);
 
-        let actNum = 0;
-        let actName = 'I';
-        let actSubtitle = 'The Sightless Eye';
+        // --- Victory Effects ---
+        fx.emitLightning?.(boss.x, boss.y - 600, boss.x, boss.y, 10);
+        fx.emitHolyBurst(boss.x, boss.y);
+        fx.shake(1500, 30);
 
-        // Quest Flags
-        if (boss.isRadament) campaign.setFlag('radament_slain', true);
-        if (boss.id === 'anya') campaign.setFlag('anya_rescued', true);
-
-        if (boss.isAndariel || zoneLevel === 137) { actNum = 1; actName = 'I'; actSubtitle = 'The Sightless Eye Cleared'; }
-        else if (boss.isDuriel || zoneLevel === 67) { actNum = 2; actName = 'II'; actSubtitle = 'The Secret of the Vizjerei Cleared'; }
-        else if (boss.isMephisto || zoneLevel === 95) { actNum = 3; actName = 'III'; actSubtitle = 'The Infernal Gate Cleared'; }
-        else if (boss.isDiablo || zoneLevel === 671) { actNum = 4; actName = 'IV'; actSubtitle = 'The Chaos Sanctuary Cleared'; }
-        else if (boss.isBaal || zoneLevel === 125) { actNum = 5; actName = 'V'; actSubtitle = 'The Lord of Destruction Slain'; }
-
-        // --- Phase 22: Rift Guardian Victory ---
-        if (boss.isRiftGuardian) {
-            addCombatLog("⚡ THE RIFT GUARDIAN IS VANQUISHED! ⚡", "log-crit");
-            fx.emitHolyBurst(boss.x, boss.y);
-            fx.shake(1000, 20);
-
-            // Spawn Descent Portal
-            const portal = new GameObject('rift_exit', boss.x + 40, boss.y, 'obj_portal');
-            portal.targetZone = null; // null triggers zoneLevel++
-            portal.name = `Descent to Depth ${window.riftLevel + 1}`;
-            portal.isRiftPortal = true;
-            gameObjects.push(portal);
-
-            // Reset progress for next depth, but KEEP riftGuardianSpawned=true for nextZone to detect
-            window.riftProgress = 0;
-            updateRiftHud();
-
-            // Immediate Save
-            saveGame();
-        }
-
-        if (actNum > 0) {
-            campaign.completeAct(actNum);
-            showActCleared(actName, actSubtitle);
-
-            // --- Victory Effects ---
-            fx.emitLightning?.(boss.x, boss.y - 600, boss.x, boss.y, 10);
-            fx.emitHolyBurst(boss.x, boss.y);
-            fx.shake(1500, 30);
-
-            // Unlock next difficulty on Baal death
-            if (boss.isBaal) {
-                const currentMax = player.maxDifficulty || 0;
-                if (difficulty === currentMax) {
-                    player.maxDifficulty = currentMax + 1;
-                    const diffNames = ['Nightmare', 'Hell', 'Rift Mode'];
-                    const unlocked = diffNames[currentMax];
-                    if (unlocked) addCombatLog(`⭐ VICTORY! ${unlocked.toUpperCase()} DIFFICULTY UNLOCKED! ⭐`, 'log-unique');
-                }
+        // Unlock next difficulty on Baal death
+        if (boss.isBaal) {
+            const currentMax = player.maxDifficulty || 0;
+            if (difficulty === currentMax) {
+                player.maxDifficulty = currentMax + 1;
+                const diffNames = ['Nightmare', 'Hell', 'Rift Mode'];
+                const unlocked = diffNames[currentMax];
+                if (unlocked) addCombatLog(`⭐ VICTORY! ${unlocked.toUpperCase()} DIFFICULTY UNLOCKED! ⭐`, 'log-unique');
             }
-
-            const portal = new GameObject('portal', boss.x + 40, boss.y, 'obj_portal');
-            const actNextTown = { 1: 38, 2: 68, 3: 96, 4: 102, 5: 0 };
-            portal.targetZone = actNextTown[actNum] || 0;
-            portal.isActPortal = true;
-            gameObjects.push(portal);
-
-            addCombatLog(`⚡ HEAVEN'S WRATH HAS FALLEN UPON ${boss.name.toUpperCase()}! ⚡`, 'log-level');
-
-            // Immediate Cloud Save
-            saveGame();
         }
-        // Rift Guardian Global Announcement
-        if (boss.isRiftGuardian && window.riftLevel >= 50) {
-            let msg = "";
-            if (window.partyId && window.partyMembers && window.partyMembers.length > 1) {
-                msg = `⚡ GLOBAL: A Party has defeated the Depth ${window.riftLevel} Guardian! ⚡`;
-            } else {
-                msg = `⚡ GLOBAL: ${player.charName} has defeated the Depth ${window.riftLevel} Guardian! (SOLO) ⚡`;
-            }
 
-            if (window.networkManager?.socket) networkManager.socket.emit('system_message', msg);
-            addCombatLog(msg, 'log-unique');
-        }
+        const portal = new GameObject('portal', boss.x + 40, boss.y, 'obj_portal');
+        const actNextTown = { 1: 38, 2: 68, 3: 96, 4: 102, 5: 0 };
+        portal.targetZone = actNextTown[actNum] || 0;
+        portal.isActPortal = true;
+        gameObjects.push(portal);
+
+        addCombatLog(`⚡ HEAVEN'S WRATH HAS FALLEN UPON ${boss.name.toUpperCase()}! ⚡`, 'log-level');
+
+        // Immediate Cloud Save
+        saveGame();
     }
+    // Rift Guardian Global Announcement
+    if (boss.isRiftGuardian && window.riftLevel >= 50) {
+        let msg = "";
+        if (window.partyId && window.partyMembers && window.partyMembers.length > 1) {
+            msg = `⚡ GLOBAL: A Party has defeated the Depth ${window.riftLevel} Guardian! ⚡`;
+        } else {
+            msg = `⚡ GLOBAL: ${player.charName} has defeated the Depth ${window.riftLevel} Guardian! (SOLO) ⚡`;
+        }
 
-    function showActCleared(name, subtitle) {
-        const splash = document.getElementById('act-splash-container');
-        if (!splash) return;
+        if (window.networkManager?.socket) networkManager.socket.emit('system_message', msg);
+        addCombatLog(msg, 'log-unique');
+    }
+}
 
-        splash.innerHTML = `
+function showActCleared(name, subtitle) {
+    const splash = document.getElementById('act-splash-container');
+    if (!splash) return;
+
+    splash.innerHTML = `
         <div class="act-cleared-subtitle">Act Cleared</div>
         <h1 class="act-cleared-title">Act ${name}</h1>
         <div class="act-cleared-ornament"></div>
         <div class="act-cleared-subtitle">${subtitle}</div>
     `;
-        splash.classList.add('show');
-        if (typeof playZoneTransition === 'function') playZoneTransition();
+    splash.classList.add('show');
+    if (typeof playZoneTransition === 'function') playZoneTransition();
 
-        setTimeout(() => { splash.classList.remove('show'); }, 5000);
+    setTimeout(() => { splash.classList.remove('show'); }, 5000);
+}
+// --- MMO Chat & Commands ---
+function updatePartyHUD(members) {
+    const hud = document.getElementById('party-hud');
+    if (!hud) return;
+    if (!members || members.length <= 1) {
+        hud.classList.add('hidden');
+        return;
     }
-    // --- MMO Chat & Commands ---
-    function updatePartyHUD(members) {
-        const hud = document.getElementById('party-hud');
-        if (!hud) return;
-        if (!members || members.length <= 1) {
-            hud.classList.add('hidden');
-            return;
-        }
-        hud.classList.remove('hidden');
-        hud.innerHTML = '';
-        members.forEach(m => {
-            // Use charName to filter local player since ID could be socket.id
-            if (player && m.name === player.charName) return;
-            const el = document.createElement('div');
-            el.className = 'party-member-card';
-            const hpPct = m.maxHp ? (m.hp / m.maxHp) * 100 : 100;
-            const mpPct = m.maxMp ? (m.mp / m.maxMp) * 100 : 100;
-            el.innerHTML = '<div class="party-member-stats">' +
-                '<div class="party-member-name">' + m.name + '</div>' +
-                '<div class="party-bar"><div class="party-hp-fill" style="width:' + hpPct + '%"></div></div>' +
-                '<div class="party-bar"><div class="party-mp-fill" style="width:' + mpPct + '%"></div></div>' +
-                '</div>';
-            hud.appendChild(el);
-        });
-    }
+    hud.classList.remove('hidden');
+    hud.innerHTML = '';
+    members.forEach(m => {
+        // Use charName to filter local player since ID could be socket.id
+        if (player && m.name === player.charName) return;
+        const el = document.createElement('div');
+        el.className = 'party-member-card';
+        const hpPct = m.maxHp ? (m.hp / m.maxHp) * 100 : 100;
+        const mpPct = m.maxMp ? (m.mp / m.maxMp) * 100 : 100;
+        el.innerHTML = '<div class="party-member-stats">' +
+            '<div class="party-member-name">' + m.name + '</div>' +
+            '<div class="party-bar"><div class="party-hp-fill" style="width:' + hpPct + '%"></div></div>' +
+            '<div class="party-bar"><div class="party-mp-fill" style="width:' + mpPct + '%"></div></div>' +
+            '</div>';
+        hud.appendChild(el);
+    });
+}
 
-    async function refreshAuctions() {
-        const list = document.getElementById('ah-browse-list'); if (!list) return;
-        list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Fetching auctions...</div>';
-        const auctions = await DB.getAuctions();
-        list.innerHTML = auctions.length === 0 ? '<div style="text-align:center; padding:20px; color:#666;">No items listed.</div>' : '';
-        auctions.forEach(a => {
-            const item = a.item_data; const row = document.createElement('div'); row.className = 'auction-row';
-            row.innerHTML = `
+async function refreshAuctions() {
+    const list = document.getElementById('ah-browse-list'); if (!list) return;
+    list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Fetching auctions...</div>';
+    const auctions = await DB.getAuctions();
+    list.innerHTML = auctions.length === 0 ? '<div style="text-align:center; padding:20px; color:#666;">No items listed.</div>' : '';
+    auctions.forEach(a => {
+        const item = a.item_data; const row = document.createElement('div'); row.className = 'auction-row';
+        row.innerHTML = `
             <div class="trade-slot">${window.getItemHtml(item)}</div>
             <div class="auction-info">
                 <div class="auction-name" style="color:${getItemColor(item.rarity)}">${item.name}</div>
@@ -7518,393 +8377,320 @@ function itemTooltipText(item, isComparison = false) {
             <div class="auction-price">${a.price} G</div>
             <button class="btn-buy-ah">BUY</button>
         `;
-            row.querySelector('.btn-buy-ah').onclick = async () => {
-                if (player.gold >= a.price) {
-                    const res = await DB.buyAuction(a.id, a.price);
-                    if (res) { player.gold -= a.price; player.addToInventory(item); addCombatLog("Bought item!", "log-crit"); refreshAuctions(); saveGame(); }
-                } else addCombatLog("Not enough gold!", "log-dmg");
-            };
-            list.appendChild(row);
+        row.querySelector('.btn-buy-ah').onclick = async () => {
+            if (player.gold >= a.price) {
+                const res = await DB.buyAuction(a.id, a.price);
+                if (res) { player.gold -= a.price; player.addToInventory(item); addCombatLog("Bought item!", "log-crit"); refreshAuctions(); saveGame(); }
+            } else addCombatLog("Not enough gold!", "log-dmg");
+        };
+        list.appendChild(row);
+    });
+}
+
+window.getItemColor = function (rarity) { return { normal: '#fff', magic: '#4850b8', rare: '#ffff00', set: '#00ff00', unique: '#bf642f' }[rarity] || '#fff'; };
+
+window.addEventListener('DOMContentLoaded', () => {
+    DB.init(); initParticles(); initClassGrid();
+    for (const name of ASSET_NAMES) {
+        let path = `assets/${name}.png`;
+        if (name === 'obj_portal') path = 'assets/map_objects/town_portal.png';
+        if (name === 'obj_waypoint') path = 'assets/map_objects/waypoint_hd.png';
+        if (name === 'obj_tree_oak') path = 'assets/obj_tree_oak.png';
+        if (name === 'obj_tree_banyan') path = 'assets/obj_tree_banyan.png';
+        if (name === 'obj_tree_palm') path = 'assets/obj_tree_palm.png';
+        if (name === 'obj_tree_snowpine') path = 'assets/obj_tree_snowpine.png';
+        if (name === 'obj_tree_dead') path = 'assets/obj_tree_dead.png';
+        Assets.load(name, path);
+    }
+    renderSaveSlots();
+
+    // Auth UI
+    if (document.getElementById('btn-open-auth')) document.getElementById('btn-open-auth').onclick = () => document.getElementById('auth-modal').classList.remove('hidden');
+    if (document.getElementById('btn-auth-login')) document.getElementById('btn-auth-login').onclick = async () => { const e = document.getElementById('auth-email').value, p = document.getElementById('auth-password').value; const res = await DB.signIn(e, p); if (res.success) { document.getElementById('auth-modal').classList.add('hidden'); renderSaveSlots(); } };
+    if (document.getElementById('btn-auth-register')) document.getElementById('btn-auth-register').onclick = async () => { const e = document.getElementById('auth-email').value, p = document.getElementById('auth-password').value; const res = await DB.signUp(e, p); if (res.success) { document.getElementById('auth-modal').classList.add('hidden'); renderSaveSlots(); } };
+    if (document.getElementById('btn-logout')) document.getElementById('btn-logout').onclick = async () => { await DB.signOut(); renderSaveSlots(); };
+
+    // Commands
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const text = chatInput.value.trim();
+                if (text) {
+                    if (text.startsWith('/w ')) { const p = text.split(' '); network.sendWhisper(p[1], p.slice(2).join(' ')); }
+                    else if (text.startsWith('/f add ')) network.addFriend(text.replace('/f add ', '').trim());
+                    else if (text.startsWith('/p invite ')) network.inviteToParty(text.replace('/p invite ', '').trim());
+                    else if (text === '/p leave') network.leaveParty();
+                    else if (text.startsWith('/inspect ')) network.inspectPlayer(text.replace('/inspect ', '').trim());
+                    else if (text.startsWith('/trade invite ')) network.sendTradeInvite(text.replace('/trade invite ', '').trim());
+                    else if (text === '/trade accept') network.acceptTrade();
+                    else if (text.startsWith('/duel ')) network.sendDuelInvite(text.replace('/duel ', '').trim());
+                    else if (text === '/duel accept') network.acceptDuel();
+                    else if (text === '/ah') { togglePanel('auction'); refreshAuctions(); }
+                    if (text.startsWith('/')) {
+                        const parts = text.split(' ');
+                        const cmd = parts[0].toLowerCase();
+                        const arg = parts.slice(1).join(' ');
+
+                        if (cmd === '/p' || cmd === '/party') {
+                            if (!arg) addCombatLog('Usage: /party [name]', 'log-info');
+                            else network.sendPartyInvite(arg);
+                        } else if (cmd === '/trade') {
+                            if (!arg) addCombatLog('Usage: /trade [name]', 'log-info');
+                            else network.sendTradeInvite(arg);
+                        } else if (cmd === '/duel') {
+                            if (!arg) addCombatLog('Usage: /duel [name]', 'log-info');
+                            else network.sendDuelInvite(arg);
+                        } else if (cmd === '/rift') {
+                            nextZone(128);
+                        } else {
+                            addCombatLog('Unknown command.', 'log-dmg');
+                        }
+                    } else {
+                        network.sendChat(text);
+                        addChatMessage(player.charName || 'Me', text, 'general');
+                    }
+                }
+                chatInput.value = ''; chatInput.blur(); e.stopPropagation();
+            }
+        });
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && document.activeElement !== chatInput && state === 'GAME') { chatInput.focus(); e.preventDefault(); }
+            if (e.key.toLowerCase() === 'y' && document.activeElement !== chatInput && state === 'GAME') {
+                if (handleSocialInput('y')) e.preventDefault();
+            }
+            if (e.key.toLowerCase() === 'n' && document.activeElement !== chatInput && state === 'GAME') {
+                if (handleSocialInput('n')) e.preventDefault();
+            }
+            if (e.key.toLowerCase() === 'o' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('social');
+            if (e.key.toLowerCase() === 'p' && state === 'GAME' && document.activeElement !== chatInput) bus.emit('action:town_portal');
+            if (e.key.toLowerCase() === 'm' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('mercenary');
         });
     }
 
-    window.getItemColor = function (rarity) { return { normal: '#fff', magic: '#4850b8', rare: '#ffff00', set: '#00ff00', unique: '#bf642f' }[rarity] || '#fff'; };
-
-    window.addEventListener('DOMContentLoaded', () => {
-        // 1. Core Systems Init
-        DB.init();
-        VendorUI.init();
-        initParticles();
-        initClassGrid();
-
-        // 2. Asset Preloading (Optimized)
-        const bossAssets = ASSET_NAMES.filter(n => n.startsWith('boss_'));
-        const coreAssets = ASSET_NAMES.filter(n => !n.startsWith('boss_'));
-
-        // Priority Load: Core assets
-        for (const name of coreAssets) {
-            let path = `assets/${name}.png`;
-            if (name === 'obj_portal') path = 'assets/map_objects/town_portal.png';
-            if (name === 'obj_waypoint') path = 'assets/map_objects/waypoint_hd.png';
-            if (name === 'obj_chest') path = 'assets/map_objects/treasure_chest.png';
-            if (name === 'obj_chest_open') path = 'assets/map_objects/treasure_chest_open.png';
-            if (name === 'obj_shrine') path = 'assets/map_objects/arcane_shrine.png';
-            if (name === 'obj_shrine_used') path = 'assets/map_objects/arcane_shrine_inactive.png';
-            if (name === 'obj_tree_oak') path = 'assets/obj_tree_oak.png';
-            if (name === 'obj_tree_banyan') path = 'assets/obj_tree_banyan.png';
-            if (name === 'obj_tree_palm') path = 'assets/obj_tree_palm.png';
-            if (name === 'obj_tree_snowpine') path = 'assets/obj_tree_snowpine.png';
-            if (name === 'obj_tree_dead') path = 'assets/obj_tree_dead.png';
-            Assets.load(name, path);
-        }
-
-        // Wait for core assets to be ready
-        Assets.ready().then(() => {
-            console.log('Core assets ready. Starting background load for bosses...');
-            renderSaveSlots();
-            // Background Load: Bosses
-            for (const name of bossAssets) {
-                Assets.load(name, `assets/${name}.png`);
-            }
-        });
-
-        // 3. Auth UI & State
-        if ($('btn-open-auth')) $('btn-open-auth').onclick = () => $('auth-modal').classList.remove('hidden');
-        if ($('auth-close')) $('auth-close').onclick = () => $('auth-modal').classList.add('hidden');
-
-        $('btn-auth-login')?.addEventListener('click', async () => {
-            const e = $('auth-email').value, p = $('auth-password').value;
-            if (!e || !p) { $('auth-error').textContent = 'Enter email and password'; return; }
-            $('auth-error').textContent = 'Authenticating...';
-            const res = await DB.signIn(e, p);
-            if (res.success) { $('auth-modal').classList.add('hidden'); }
-            else { $('auth-error').textContent = res.error; }
-        });
-
-        $('btn-auth-register')?.addEventListener('click', async () => {
-            const e = $('auth-email').value, p = $('auth-password').value;
-            if (!e || !p) { $('auth-error').textContent = 'Enter email and password'; return; }
-            $('auth-error').textContent = 'Registering...';
-            const res = await DB.signUp(e, p);
-            if (res.success) { $('auth-modal').classList.add('hidden'); }
-            else { $('auth-error').textContent = res.error; }
-        });
-
-        $('btn-logout')?.addEventListener('click', async () => { await DB.signOut(); });
-
-        bus.on('auth:stateChanged', (session) => {
-            const text = $('auth-status-text'), btnLogin = $('btn-open-auth'), btnLogout = $('btn-logout');
-            if (session) {
-                text.textContent = `Cloud Connected: ${session.user.email}`;
-                text.style.color = 'var(--cyan)';
-                btnLogin.classList.add('hidden');
-                btnLogout.classList.remove('hidden');
-            } else {
-                text.textContent = `Playing as Guest (Local Saves)`;
-                text.style.color = '#aaa';
-                btnLogin.classList.remove('hidden');
-                btnLogout.classList.add('hidden');
-            }
-            renderSaveSlots();
-            if (player) renderStash();
-        });
-
-        // 4. HUD & Menu Listeners
-        $('btn-inventory')?.addEventListener('click', () => togglePanel('inventory'));
-        $('btn-talents')?.addEventListener('click', () => togglePanel('talents'));
-        $('btn-character')?.addEventListener('click', () => togglePanel('character'));
-        $('btn-mercenary')?.addEventListener('click', () => togglePanel('mercenary'));
-        $('btn-social')?.addEventListener('click', () => togglePanel('social'));
-        $('btn-portal')?.addEventListener('click', () => bus.emit('action:town_portal'));
-        $('btn-stash')?.addEventListener('click', toggleTownPanels);
-        $('btn-cube')?.addEventListener('click', toggleTownPanels);
-        $('btn-quests')?.addEventListener('click', () => togglePanel('quests'));
-
-        // 5. Character Selection / Creation
-        $('btn-show-create')?.addEventListener('click', () => {
-            $('screen-char-select').classList.add('hidden');
-            $('screen-char-create').classList.remove('hidden');
-        });
-
-        $('btn-back-to-select')?.addEventListener('click', () => {
-            $('screen-char-create').classList.add('hidden');
-            $('screen-char-select').classList.remove('hidden');
-        });
-
-        $('btn-new-game')?.addEventListener('click', async () => {
-            if (!selectedClass) return;
-            const name = $('character-name')?.value.trim();
-            if (!name) { alert("Enter a hero name!"); return; }
-            initAudio();
-            const slotId = SaveSystem.newSlotId();
-            const activeDiffBtn = document.querySelector('.diff-btn.active');
-            window._difficulty = activeDiffBtn ? parseInt(activeDiffBtn.dataset.diff) : 0;
-            startGame(slotId, null, name);
-            saveGame();
-            addCombatLog(`A new legend is born: ${name}`, 'log-heal');
-        });
-
-        $('btn-enter-world')?.addEventListener('click', async () => {
-            if (!selectedCharSlot) return;
-            initAudio();
-            let saveData = selectedCharSlot._isCloud ? (await DB.getSaves()).find(s => s.id === selectedCharSlot.id) : SaveSystem.loadSlot(selectedCharSlot.id);
-            if (saveData) {
-                startGame(selectedCharSlot.id, saveData);
-                addCombatLog(`Welcome back, ${selectedCharSlot.name}.`, 'log-info');
-            }
-        });
-
-        // 6. Screens & Utilities
-        $('btn-respawn')?.addEventListener('click', () => {
-            $('death-screen').classList.add('hidden');
-            if (player) { player.hp = player.maxHp; player.mp = player.maxMp; player.gold = Math.floor(player.gold * 0.9); }
-            state = 'GAME';
-            nextZone(0);
-        });
-
-        $('btn-main-menu-death')?.addEventListener('click', () => { $('death-screen').classList.add('hidden'); returnToMainMenu(); });
-        $('btn-continue-rift')?.addEventListener('click', () => { $('victory-screen').classList.add('hidden'); nextZone(38); });
-        $('btn-victory-menu')?.addEventListener('click', () => { $('victory-screen').classList.add('hidden'); returnToMainMenu(); });
-
-        $('btn-export-save')?.addEventListener('click', () => {
-            const data = SaveSystem.exportData();
-            if (!data) return;
-            const blob = new Blob([data], { type: 'application/json' }), url = URL.createObjectURL(blob), a = document.createElement('a');
-            a.href = url; a.download = `dark_realm_save_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-        });
-
-        $('btn-import-save')?.addEventListener('click', () => $('import-file').click());
-        $('import-file')?.addEventListener('change', (e) => {
-            const file = e.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                if (SaveSystem.importData(ev.target.result)) {
-                    alert('Save data imported successfully!');
-                    const rescued = SaveSystem.getSharedStash();
-                    sharedStashTabs = rescued.tabs; sharedGold = rescued.gold;
-                    renderSaveSlots(); renderStash();
-                    addCombatLog(`Imported and merged shared items.`, 'log-heal');
-                } else alert('Failed to import save data.');
-            };
-            reader.readAsText(file);
-        });
-
-        window.renderDifficultySelection = function (slot = null) {
-            const container = $('difficulty-selector'); if (!container) return;
-            const maxUnlocked = slot?.player?.maxDifficulty || 0;
-            let selectedDiff = slot?.difficulty || 0;
-            if (selectedDiff > maxUnlocked) selectedDiff = maxUnlocked;
-            window._difficulty = selectedDiff;
-            container.innerHTML = '';
-            window.DIFFICULTY_NAMES.forEach((name, idx) => {
-                const isLocked = idx > maxUnlocked, btn = document.createElement('button');
-                btn.className = `diff-btn ${selectedDiff === idx ? 'active' : ''} ${isLocked ? 'locked' : ''}`;
-                btn.dataset.diff = idx; btn.disabled = isLocked;
-                btn.innerHTML = `<div class="diff-name">${name}</div>${isLocked ? '<div class="diff-lock">🔒 LOCKED</div>' : `<div class="diff-mult">${window.DIFFICULTY_MULT[idx]}x</div>`}`;
-                if (!isLocked) btn.onclick = () => { document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); window._difficulty = idx; };
-                container.appendChild(btn);
-            });
-        };
-
-        // 7. Chat & Tabs
-        const chatInput = $('chat-input');
-        if (chatInput) {
-            chatInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    const text = chatInput.value.trim();
-                    if (text) {
-                        if (text.startsWith('/')) {
-                            const parts = text.split(' '), cmd = parts[0].toLowerCase(), arg = parts.slice(1).join(' ');
-                            if (cmd === '/w') network.sendWhisper(parts[1], parts.slice(2).join(' '));
-                            else if (cmd === '/p' || cmd === '/party') network.sendPartyInvite(arg);
-                            else if (cmd === '/trade') network.sendTradeInvite(arg);
-                            else if (cmd === '/duel') network.sendDuelInvite(arg);
-                            else if (cmd === '/rift') nextZone(128);
-                            else if (cmd === '/ah') { togglePanel('auction'); refreshAuctions(); }
-                            else addCombatLog('Unknown command.', 'log-dmg');
-                        } else {
-                            network.sendChat(text);
-                            addChatMessage(player.charName || 'Me', text, 'general');
-                        }
-                    }
-                    chatInput.value = ''; chatInput.blur(); e.stopPropagation();
-                }
-            });
-            window.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && document.activeElement !== chatInput && state === 'GAME') { chatInput.focus(); e.preventDefault(); }
-                if (state === 'GAME' && document.activeElement !== chatInput) {
-                    const key = e.key.toLowerCase();
-                    if (key === ' ') { player.dash(); e.preventDefault(); }
-                    if (key === 'y' || key === 'n') { if (handleSocialInput(key)) e.preventDefault(); }
-                    if (key === 'o') togglePanel('social');
-                    if (key === 'p') bus.emit('action:town_portal');
-                    if (key === 'm') togglePanel('mercenary');
-                }
-            });
-        }
-
-        document.querySelectorAll('.ah-tab').forEach(t => t.onclick = () => {
-            document.querySelectorAll('.ah-tab').forEach(b => b.classList.remove('active'));
-            t.classList.add('active');
-            document.querySelectorAll('.ah-tab-content').forEach(c => c.classList.add('hidden'));
-            const target = $(`ah-${t.dataset.tab}-list`) || $(`ah-${t.dataset.tab}-form`);
-            if (target) target.classList.remove('hidden');
-        });
-
-        document.querySelectorAll('.social-tab').forEach(t => t.onclick = () => {
-            document.querySelectorAll('.social-tab').forEach(b => b.classList.remove('active'));
-            t.classList.add('active');
-            document.querySelectorAll('.social-tab-content').forEach(c => c.classList.add('hidden'));
-            const target = $(`social-${t.dataset.tab}-list`);
-            if (target) target.classList.remove('hidden');
-        });
-
-        document.querySelectorAll('.chat-tab').forEach(tab => { tab.onclick = (e) => { e.stopPropagation(); setChatChannel(tab.dataset.channel); }; });
-
-        initDraggableChat();
+    // AH & Social Tabs
+    document.querySelectorAll('.ah-tab').forEach(t => t.onclick = () => {
+        document.querySelectorAll('.ah-tab').forEach(b => b.classList.remove('active'));
+        t.classList.add('active');
+        document.querySelectorAll('.ah-tab-content').forEach(c => c.classList.add('hidden'));
+        const target = document.getElementById(`ah-${t.dataset.tab}-list`) || document.getElementById(`ah-${t.dataset.tab}-form`);
+        if (target) target.classList.remove('hidden');
+    });
+    document.querySelectorAll('.social-tab').forEach(t => t.onclick = () => {
+        document.querySelectorAll('.social-tab').forEach(b => b.classList.remove('active'));
+        t.classList.add('active');
+        document.querySelectorAll('.social-tab-content').forEach(c => c.classList.add('hidden'));
+        const target = document.getElementById(`social-${t.dataset.tab}-list`);
+        if (target) target.classList.remove('hidden');
     });
 
-    function updateRespawns() {
-        if (!worldZones[zoneLevel]) return;
-        const now = Date.now();
-        const queue = worldZones[zoneLevel].respawnQueue;
-        if (!queue) return;
+    // --- CONSOLIDATED CHARACTER LISTENERS ---
 
-        for (let i = queue.length - 1; i >= 0; i--) {
-            if (now >= queue[i].respawnAt) {
-                const spawnData = queue[i].spawn;
-                const newEnemy = new Enemy(spawnData);
-                enemies.push(newEnemy);
-                queue.splice(i, 1);
-            }
+    // 1. Show Creation Screen
+    $('btn-show-create')?.addEventListener('click', () => {
+        $('screen-char-select').classList.add('hidden');
+        $('screen-char-create').classList.remove('hidden');
+    });
+
+    $('btn-back-to-select')?.addEventListener('click', () => {
+        $('screen-char-create').classList.add('hidden');
+        $('screen-char-select').classList.remove('hidden');
+    });
+
+    // 2. Create New Character
+    $('btn-new-game')?.addEventListener('click', async () => {
+        if (!selectedClass) return;
+        const nameInput = $('character-name');
+        const name = nameInput ? nameInput.value.trim() : null;
+        if (!name) { alert("Enter a hero name!"); return; }
+
+        initAudio();
+        const slotId = SaveSystem.newSlotId();
+
+        // Start game logic
+        const activeDiffBtn = document.querySelector('.diff-btn.active');
+        window._difficulty = activeDiffBtn ? parseInt(activeDiffBtn.dataset.diff) : 0;
+
+        startGame(slotId, null, name);
+
+        // Immediate Dual Save
+        saveGame();
+
+        addCombatLog(`A new legend is born: ${name}`, 'log-heal');
+    });
+
+    // 3. Enter World with Selected Character
+    $('btn-enter-world')?.addEventListener('click', async () => {
+        if (!selectedCharSlot) return;
+
+        initAudio();
+        let saveData = null;
+
+        // Always try to load the most up-to-date version
+        if (selectedCharSlot._isCloud) {
+            const cloud = await DB.getSaves();
+            saveData = cloud.find(s => s.id === selectedCharSlot.id);
+        } else {
+            saveData = SaveSystem.loadSlot(selectedCharSlot.id);
         }
-    }
 
-    let currentChatChannel = 'all';
-    let chatLocked = true;
-
-    function initDraggableChat() {
-        const container = document.getElementById('mmo-chat-container');
-        const lockBtn = document.getElementById('btn-chat-lock');
-        if (!container || !lockBtn) return;
-
-        // Load saved position
-        const savedPos = JSON.parse(localStorage.getItem('chat_position'));
-        if (savedPos) {
-            container.style.left = savedPos.x + 'px';
-            container.style.bottom = savedPos.y + 'px';
-            container.style.top = 'auto'; // Ensure bottom remains anchor
+        if (saveData) {
+            startGame(selectedCharSlot.id, saveData);
+            addCombatLog(`Welcome back, ${selectedCharSlot.name}.`, 'log-info');
         }
+    });
 
-        lockBtn.onclick = (e) => {
+    // WoW Chat Tab Switching
+    document.querySelectorAll('.chat-tab').forEach(tab => {
+        tab.onclick = (e) => {
             e.stopPropagation();
-            chatLocked = !chatLocked;
-            lockBtn.innerText = chatLocked ? '🔒' : '🔓';
-            container.classList.toggle('unlocked', !chatLocked);
-            if (chatLocked) {
-                // Save position when locking
-                const rect = container.getBoundingClientRect();
-                localStorage.setItem('chat_position', JSON.stringify({
-                    x: rect.left,
-                    y: window.innerHeight - rect.bottom
-                }));
-            }
+            setChatChannel(tab.dataset.channel);
         };
+    });
 
-        // Drag logic
-        let isDragging = false;
-        let startX, startY, initialX, initialY;
+    initDraggableChat();
+});
 
-        container.onmousedown = (e) => {
-            if (chatLocked) return;
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+function updateRespawns() {
+    if (!worldZones[zoneLevel]) return;
+    const now = Date.now();
+    const queue = worldZones[zoneLevel].respawnQueue;
+    if (!queue) return;
 
-            isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
+    for (let i = queue.length - 1; i >= 0; i--) {
+        if (now >= queue[i].respawnAt) {
+            const spawnData = queue[i].spawn;
+            const newEnemy = new Enemy(spawnData);
+            enemies.push(newEnemy);
+            queue.splice(i, 1);
+        }
+    }
+}
+
+let currentChatChannel = 'all';
+let chatLocked = true;
+
+function initDraggableChat() {
+    const container = document.getElementById('mmo-chat-container');
+    const lockBtn = document.getElementById('btn-chat-lock');
+    if (!container || !lockBtn) return;
+
+    // Load saved position
+    const savedPos = JSON.parse(localStorage.getItem('chat_position'));
+    if (savedPos) {
+        container.style.left = savedPos.x + 'px';
+        container.style.bottom = savedPos.y + 'px';
+        container.style.top = 'auto'; // Ensure bottom remains anchor
+    }
+
+    lockBtn.onclick = (e) => {
+        e.stopPropagation();
+        chatLocked = !chatLocked;
+        lockBtn.innerText = chatLocked ? '🔒' : '🔓';
+        container.classList.toggle('unlocked', !chatLocked);
+        if (chatLocked) {
+            // Save position when locking
             const rect = container.getBoundingClientRect();
-            initialX = rect.left;
-            initialY = rect.top;
+            localStorage.setItem('chat_position', JSON.stringify({
+                x: rect.left,
+                y: window.innerHeight - rect.bottom
+            }));
+        }
+    };
 
-            document.onmousemove = (ev) => {
-                if (!isDragging) return;
-                const dx = ev.clientX - startX;
-                const dy = ev.clientY - startY;
-                container.style.left = (initialX + dx) + 'px';
-                container.style.top = (initialY + dy) + 'px';
-                container.style.bottom = 'auto';
-            };
+    // Drag logic
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
 
-            document.onmouseup = () => {
-                isDragging = false;
-                document.onmousemove = null;
-                document.onmouseup = null;
-            };
+    container.onmousedown = (e) => {
+        if (chatLocked) return;
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = container.getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+
+        document.onmousemove = (ev) => {
+            if (!isDragging) return;
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            container.style.left = (initialX + dx) + 'px';
+            container.style.top = (initialY + dy) + 'px';
+            container.style.bottom = 'auto';
         };
+
+        document.onmouseup = () => {
+            isDragging = false;
+            document.onmousemove = null;
+            document.onmouseup = null;
+        };
+    };
+}
+
+function addChatMessage(sender, text, type = 'general') {
+    console.log(`[Chat] Incoming: from=${sender}, text=${text}, type=${type}`);
+    const container = document.getElementById('chat-messages');
+    if (!container) {
+        console.error('Chat container not found!');
+        return;
     }
 
-    function addChatMessage(sender, text, type = 'general') {
-        console.log(`[Chat] Incoming: from=${sender}, text=${text}, type=${type}`);
-        const container = document.getElementById('chat-messages');
-        if (!container) {
-            console.error('Chat container not found!');
-            return;
-        }
+    if (!text) return;
 
-        if (!text) return;
+    const div = document.createElement('div');
+    div.className = `chat-msg chat-msg-${type}`;
+    div.dataset.channel = type; // Store channel for filtering
 
-        const div = document.createElement('div');
-        div.className = `chat-msg chat-msg-${type}`;
-        div.dataset.channel = type; // Store channel for filtering
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    let html = `<span class="chat-msg-time">[${time}]</span>`;
 
-        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        let html = `<span class="chat-msg-time">[${time}]</span>`;
+    const displaySender = sender || 'Stranger';
 
-        const displaySender = sender || 'Stranger';
+    if (type === 'whisper') html += `<span class="chat-msg-sender">[From ${displaySender}]:</span>`;
+    else if (type === 'system') html += `<span class="chat-msg-sender">[System]:</span>`;
+    else html += `<span class="chat-msg-sender">${displaySender}:</span>`;
 
-        if (type === 'whisper') html += `<span class="chat-msg-sender">[From ${displaySender}]:</span>`;
-        else if (type === 'system') html += `<span class="chat-msg-sender">[System]:</span>`;
-        else html += `<span class="chat-msg-sender">${displaySender}:</span>`;
+    html += `<span class="chat-msg-text">${text}</span>`;
+    div.innerHTML = html;
 
-        html += `<span class="chat-msg-text">${text}</span>`;
-        div.innerHTML = html;
-
-        // Filter logic: only show if channel matches current tab or if 'all'
-        if (currentChatChannel !== 'all' && currentChatChannel !== type) {
-            div.style.display = 'none';
-        }
-
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
-
-        // Trigger Speech Bubble over character head
-        if (type === 'general' || type === 'whisper') {
-            showSpeechBubble(sender, text);
-        }
-
-        // Auto-limit messages to prevent lag (WoW style)
-        while (container.children.length > 100) {
-            container.removeChild(container.firstChild);
-        }
+    // Filter logic: only show if channel matches current tab or if 'all'
+    if (currentChatChannel !== 'all' && currentChatChannel !== type) {
+        div.style.display = 'none';
     }
-    function setChatChannel(channel) {
-        currentChatChannel = channel;
-        const container = document.getElementById('chat-messages');
-        if (!container) return;
 
-        // Update Tab UI
-        document.querySelectorAll('.chat-tab').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.channel === channel);
-        });
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
 
-        // Filter messages
-        Array.from(container.children).forEach(msg => {
-            if (channel === 'all') {
-                msg.style.display = 'block';
-            } else {
-                msg.style.display = msg.dataset.channel === channel ? 'block' : 'none';
-            }
-        });
-        container.scrollTop = container.scrollHeight;
+    // Trigger Speech Bubble over character head
+    if (type === 'general' || type === 'whisper') {
+        showSpeechBubble(sender, text);
     }
+
+    // Auto-limit messages to prevent lag (WoW style)
+    while (container.children.length > 100) {
+        container.removeChild(container.firstChild);
+    }
+}
+function setChatChannel(channel) {
+    currentChatChannel = channel;
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    // Update Tab UI
+    document.querySelectorAll('.chat-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.channel === channel);
+    });
+
+    // Filter messages
+    Array.from(container.children).forEach(msg => {
+        if (channel === 'all') {
+            msg.style.display = 'block';
+        } else {
+            msg.style.display = msg.dataset.channel === channel ? 'block' : 'none';
+        }
+    });
+    container.scrollTop = container.scrollHeight;
+}

@@ -1,0 +1,77 @@
+{
+  "character": {
+    "id": "f2fa318b-1d1f-4c3b-80a6-461d113fa7f8",
+    "name": "Hephaisto",
+    "prompt": "Hephaisto the Armorer: giant demonic blacksmith, muscular and charred skin, holding a massive glowing hammer, standing near an anvil, pixel art for ARPG",
+    "size": {
+      "width": 68,
+      "height": 68
+    },
+    "template_id": "mannequin",
+    "directions": 8,
+    "view": "low top-down",
+    "created_at": "2026-04-17T03:41:40.674525+00:00"
+  },
+  "frames": {
+    "rotations": {
+      "south": "rotations/south.png",
+      "south-east": "rotations/south-east.png",
+      "east": "rotations/east.png",
+      "north-east": "rotations/north-east.png",
+      "north": "rotations/north.png",
+      "north-west": "rotations/north-west.png",
+      "west": "rotations/west.png",
+      "south-west": "rotations/south-west.png"
+    },
+    "animations": {
+      "walking-eb5d02f0": {
+        "south-west": [
+          "animations/walking-eb5d02f0/south-west/frame_000.png",
+          "animations/walking-eb5d02f0/south-west/frame_001.png",
+          "animations/walking-eb5d02f0/south-west/frame_002.png",
+          "animations/walking-eb5d02f0/south-west/frame_003.png",
+          "animations/walking-eb5d02f0/south-west/frame_004.png",
+          "animations/walking-eb5d02f0/south-west/frame_005.png"
+        ],
+        "south": [
+          "animations/walking-eb5d02f0/south/frame_000.png",
+          "animations/walking-eb5d02f0/south/frame_001.png",
+          "animations/walking-eb5d02f0/south/frame_002.png",
+          "animations/walking-eb5d02f0/south/frame_003.png",
+          "animations/walking-eb5d02f0/south/frame_004.png",
+          "animations/walking-eb5d02f0/south/frame_005.png"
+        ]
+      },
+      "cross_punch_attack-e950037a": {
+        "south": [
+          "animations/cross_punch_attack-e950037a/south/frame_000.png",
+          "animations/cross_punch_attack-e950037a/south/frame_001.png",
+          "animations/cross_punch_attack-e950037a/south/frame_002.png",
+          "animations/cross_punch_attack-e950037a/south/frame_003.png",
+          "animations/cross_punch_attack-e950037a/south/frame_004.png",
+          "animations/cross_punch_attack-e950037a/south/frame_005.png"
+        ]
+      },
+      "walking-844b08e7": {
+        "north-west": [
+          "animations/walking-844b08e7/north-west/frame_000.png",
+          "animations/walking-844b08e7/north-west/frame_001.png",
+          "animations/walking-844b08e7/north-west/frame_002.png",
+          "animations/walking-844b08e7/north-west/frame_003.png",
+          "animations/walking-844b08e7/north-west/frame_004.png",
+          "animations/walking-844b08e7/north-west/frame_005.png"
+        ],
+        "west": [
+          "animations/walking-844b08e7/west/frame_000.png",
+          "animations/walking-844b08e7/west/frame_001.png",
+          "animations/walking-844b08e7/west/frame_002.png",
+          "animations/walking-844b08e7/west/frame_003.png",
+          "animations/walking-844b08e7/west/frame_004.png",
+          "animations/walking-844b08e7/west/frame_005.png"
+        ]
+      }
+    }
+  },
+  "export_version": "2.0",
+  "export_date": "2026-04-18T02:20:36.227993"
+}
