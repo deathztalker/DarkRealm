@@ -157,6 +157,12 @@ export class NetworkManager {
             window.updatePartyHUD?.(party.members);
         });
 
+        this.socket.on('party_left', () => {
+            console.log('[Network] Left party');
+            this.currentParty = null;
+            window.updatePartyHUD?.([]);
+        });
+
         this.socket.on('trade_invite', (data) => {
             window.addSocialRequest?.(data.fromId, data.from, 'trade');
             this.game.onChatMessage?.({ sender: 'System', text: `${data.from} wants to trade.`, isSystem: true });
@@ -441,17 +447,6 @@ export class NetworkManager {
     async sendPartyInvite(name) {
         if (this.isConnected) this.socket.emit('party_invite', name);
 
-        // Backup to DB
-        const target = await DB.findUserByName(name);
-        if (target) {
-            if (!this.currentParty) {
-                const newParty = await DB.createParty();
-                if (newParty) await DB.joinParty(target.user_id);
-            } else {
-                await DB.joinParty(target.user_id);
-            }
-        }
-
         this.game.onChatMessage?.({
             sender: 'System', text: `Invited ${name} to party.`,
             time: new Date().toLocaleTimeString(), isSystem: true
@@ -461,7 +456,7 @@ export class NetworkManager {
     acceptPartyInvite(fromId) {
         if (this.isConnected) {
             this.socket.emit('party_accept', fromId);
-            // No longer calling refreshPartyState here so we don't clobber socket IDs with Supabase UUIDs
+            window.addCombatLog?.('Accepted party invite', 'log-info');
         }
     }
     // --- Inspect Logic ---
@@ -511,13 +506,14 @@ export class NetworkManager {
 
     setupDuelHandlers() {
         this.socket.on('duel_invite', (data) => {
+            this.pendingDuelFrom = data.fromId;
+            window.addSocialRequest?.(data.fromId, data.from, 'duel');
             this.game.onChatMessage?.({
                 sender: 'System',
-                text: `${data.from} challenges you to a duel! Type "/duel accept" to fight.`,
+                text: `${data.from} challenges you to a duel!`,
                 time: new Date().toLocaleTimeString(),
                 isSystem: true
             });
-            this.pendingDuelFrom = data.fromId;
         });
 
         this.socket.on('duel_start', (data) => {
@@ -659,7 +655,12 @@ export class NetworkManager {
         if (zoneId !== 0) {
             if (this.currentParty) {
                 // Shared seed for all party members
-                const hash = this.currentParty.id.split('-').reduce((acc, part) => acc + parseInt(part, 16), 0);
+                let hash = 0;
+                const pid = String(this.currentParty.id);
+                for (let i = 0; i < pid.length; i++) {
+                    hash = ((hash << 5) - hash) + pid.charCodeAt(i);
+                    hash |= 0; // Convert to 32bit int
+                }
                 seed = Math.abs(hash + zoneId) % 1000000;
             } else {
                 // Solo: Deterministic seed for this character

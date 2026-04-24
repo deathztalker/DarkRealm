@@ -41,7 +41,6 @@ window.hideTooltip = hideTooltip;
 window.renderInventory = renderInventory;
 window.updateHud = updateHud;
 window.addCombatLog = addCombatLog;
-window.addSocialRequest = addSocialRequest;
 window.showSpeechBubble = showSpeechBubble;
 window.GameObjectClass = GameObject;
 
@@ -111,7 +110,7 @@ let minimapZoom = 1.0; // 1.0, 1.5, 2.0
 window._corpses = []; // For skills like Corpse Explosion
 
 // --- Phase 34: Social Requests System ---
-let pendingRequests = []; // { fromId, fromName, type, expires }
+// Social requests are now handled by SocialHUD
 let speechBubbles = new Map(); // name -> { text, expires }
 
 function showSpeechBubble(name, text) {
@@ -119,33 +118,6 @@ function showSpeechBubble(name, text) {
         text: text.length > 50 ? text.substring(0, 47) + '...' : text,
         expires: Date.now() + 5000 // 5 seconds
     });
-}
-
-function addSocialRequest(fromId, fromName, type) {
-    // Only one request of each type from the same person
-    pendingRequests = pendingRequests.filter(r => !(r.fromId === fromId && r.type === type));
-    pendingRequests.push({
-        fromId, fromName, type,
-        expires: Date.now() + 30000 // 30s expiry
-    });
-}
-
-function handleSocialInput(key) {
-    if (pendingRequests.length === 0) return false;
-    const req = pendingRequests[pendingRequests.length - 1]; // Get most recent
-
-    if (key === 'y') {
-        addCombatLog(`Accepted ${req.type} from ${req.fromName}`, 'log-info');
-        if (req.type === 'trade') network.acceptTrade();
-        else if (req.type === 'duel') network.acceptDuel();
-        else if (req.type === 'party') network.acceptPartyInvite?.(req.fromId);
-    } else {
-        addCombatLog(`Declined ${req.type} from ${req.fromName}`, 'log-dmg');
-    }
-
-    // Remove request
-    pendingRequests = pendingRequests.filter(r => r !== req);
-    return true;
 }
 
 function syncInteractionStates() {
@@ -391,6 +363,10 @@ window.DIFFICULTY_MULT = [1.0, 2.5, 5.0, 5.0]; // Rift mode uses Hell base stats
 // ——— DOM REFS ———
 const $ = id => document.getElementById(id);
 const hudManager = new HUDManager($);
+let socialHUD = null;
+
+window.addSocialRequest = (fromId, fromName, type) => { if(socialHUD) socialHUD.addRequest(fromId, fromName, type); };
+window.socialHUD = null;
 
 // ——— MENU PARTICLES ———
 function initParticles() {
@@ -722,6 +698,15 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         onWhisper: (data) => addChatMessage(data.sender, data.text, 'whisper')
     });
     window.networkManager = network; // Expose for Mercenary/Combat systems
+    
+    // Init Social HUD
+    if (!socialHUD) {
+        socialHUD = new SocialHUD(network);
+        window.socialHUD = socialHUD;
+    } else {
+        socialHUD.network = network;
+    }
+
     window.enemies = enemies; // Expose for proc engine AoE
 
     // Inspect Player → fill panel
@@ -3854,6 +3839,11 @@ bus.on('skill:used', d => {
 
 // ——— PANEL TOGGLES ———
 function togglePanel(name) {
+    if (name === 'social') {
+        if (window.socialHUD) window.socialHUD.togglePanel();
+        return;
+    }
+
     const panel = $(`panel-${name}`);
     if (!panel) return;
     panel.classList.toggle('hidden');
@@ -8462,15 +8452,17 @@ window.addEventListener('DOMContentLoaded', () => {
         });
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && document.activeElement !== chatInput && state === 'GAME') { chatInput.focus(); e.preventDefault(); }
-            if (e.key.toLowerCase() === 'y' && document.activeElement !== chatInput && state === 'GAME') {
-                if (handleSocialInput('y')) e.preventDefault();
+            
+            const k = e.key.toLowerCase();
+            if (document.activeElement !== chatInput && state === 'GAME') {
+                if (window.socialHUD && window.socialHUD.handleInput(k)) {
+                    e.preventDefault();
+                    return;
+                }
+                
+                if (k === 'p') bus.emit('action:town_portal');
+                if (k === 'm') togglePanel('mercenary');
             }
-            if (e.key.toLowerCase() === 'n' && document.activeElement !== chatInput && state === 'GAME') {
-                if (handleSocialInput('n')) e.preventDefault();
-            }
-            if (e.key.toLowerCase() === 'o' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('social');
-            if (e.key.toLowerCase() === 'p' && state === 'GAME' && document.activeElement !== chatInput) bus.emit('action:town_portal');
-            if (e.key.toLowerCase() === 'm' && state === 'GAME' && document.activeElement !== chatInput) togglePanel('mercenary');
         });
     }
 

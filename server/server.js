@@ -237,8 +237,66 @@ io.on('connection', (socket) => {
         io.to(socket.id).emit('duel_start', { opponentId: fromId, opponentName: players[fromId].name });
     });
 
+    // --- PARTY SYSTEM ---
+    socket.on('party_invite', (targetName) => {
+        const tid = Object.keys(players).find(id => players[id].name === targetName);
+        if (tid && tid !== socket.id) {
+            io.to(tid).emit('party_invite', { from: players[socket.id].name, fromId: socket.id });
+        }
+    });
+
+    socket.on('party_accept', (leaderId) => {
+        if (!players[leaderId] || !players[socket.id]) return;
+        
+        let partyId = Object.keys(parties).find(pid => parties[pid].leader === leaderId || parties[pid].members.includes(leaderId));
+        
+        if (!partyId) {
+            partyId = `party_${nextPartyId++}`;
+            parties[partyId] = { leader: leaderId, members: [leaderId] };
+        }
+        
+        if (!parties[partyId].members.includes(socket.id)) {
+            parties[partyId].members.push(socket.id);
+        }
+        
+        broadcastPartyUpdate(partyId);
+    });
+
+    socket.on('party_leave', () => {
+        for (const pid in parties) {
+            const party = parties[pid];
+            if (party.members.includes(socket.id)) {
+                party.members = party.members.filter(id => id !== socket.id);
+                io.to(socket.id).emit('party_left');
+                if (party.members.length === 0) {
+                    delete parties[pid];
+                } else {
+                    if (party.leader === socket.id) party.leader = party.members[0];
+                    broadcastPartyUpdate(pid);
+                }
+                break;
+            }
+        }
+    });
+
     socket.on('disconnect', () => {
         console.log(`- Player Disconnected: ${socket.id}`);
+        
+        // Remove from party
+        for (const pid in parties) {
+            const party = parties[pid];
+            if (party.members.includes(socket.id)) {
+                party.members = party.members.filter(id => id !== socket.id);
+                if (party.members.length === 0) {
+                    delete parties[pid];
+                } else {
+                    if (party.leader === socket.id) party.leader = party.members[0];
+                    broadcastPartyUpdate(pid);
+                }
+                break;
+            }
+        }
+
         const p = players[socket.id];
         if (p) {
             const oldRoom = p.roomName;
