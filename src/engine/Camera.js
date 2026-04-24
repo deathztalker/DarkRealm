@@ -28,12 +28,22 @@ export class Camera {
         };
     }
 
+    toScreenRef(wx, wy, ref) {
+        ref.x = (wx - this.x) * this.zoom;
+        ref.y = (wy - this.y) * this.zoom;
+    }
+
     // Canvas pixel → World coord
     toWorld(sx, sy) {
         return {
             x: sx / this.zoom + this.x,
             y: sy / this.zoom + this.y,
         };
+    }
+
+    toWorldRef(sx, sy, ref) {
+        ref.x = sx / this.zoom + this.x;
+        ref.y = sy / this.zoom + this.y;
     }
 
     apply(ctx) {

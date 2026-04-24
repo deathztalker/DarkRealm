@@ -34,37 +34,37 @@ export const DRUID_CLASS = {
                 },
                 {
                     id: 'maul', row: 2, col: 0, type: 'active', icon: '🐻', name: 'Maul',
-                    desc: 'Active · A bear swipe dealing 35 + 15 per point physical damage and stunning for 1s.',
-                    tip: 'Max lvl (20): 335 damage + stun.',
-                    maxPts: 20, mana: 8, cd: 3, group: 'melee', dmgBase: 35, dmgPerLvl: 15, req: 'bear_form:1',
+                    desc: 'Active · A bear swipe dealing base + 150% weapon damage and stunning for 1s.',
+                    tip: 'Max lvl (20): Heavy melee scaling + stun.',
+                    maxPts: 20, mana: 8, cd: 3, group: 'melee', dmgBase: 35, dmgPerLvl: 15, wepPct: 150, req: 'bear_form:1',
                     synergies: [{ from: 'bear_slam', pctPerPt: 4 }]
                 },
                 {
                     id: 'shred', row: 2, col: 2, type: 'active', icon: '🐾', name: 'Shred',
-                    desc: 'Active · Shred the target for 30 + 12 per point damage. Deals 30% more damage if the target is bleeding.',
-                    tip: 'Max lvl (20): 270 damage. Wolf Form core DPS.',
-                    maxPts: 20, mana: 6, cd: 0, group: 'melee', dmgBase: 30, dmgPerLvl: 12, req: 'dire_wolf:1',
+                    desc: 'Active · Shred for base + 120% weapon damage. Deals 30% more if target is bleeding.',
+                    tip: 'Max lvl (20): Fast wolf DPS scaling.',
+                    maxPts: 20, mana: 6, cd: 0, group: 'melee', dmgBase: 30, dmgPerLvl: 12, wepPct: 120, req: 'dire_wolf:1',
                     synergies: [{ from: 'lacerate', pctPerPt: 4 }]
                 },
                 {
                     id: 'bear_slam', row: 3, col: 0, type: 'active', icon: '💥', name: 'Bear Slam',
-                    desc: 'Active · Shockwave AoE dealing 25 + 10 per point physical damage and stunning for 1.5s.',
-                    tip: 'Max lvl (20): 225 AoE stun.',
-                    maxPts: 20, mana: 12, cd: 8, group: 'melee', dmgBase: 25, dmgPerLvl: 10, req: 'maul:5',
+                    desc: 'Active · Shockwave dealing base + 100% weapon damage and stunning for 1.5s.',
+                    tip: 'Max lvl (20): Area stun with weapon scaling.',
+                    maxPts: 20, mana: 12, cd: 8, group: 'melee', dmgBase: 25, dmgPerLvl: 10, wepPct: 100, req: 'maul:5',
                     synergies: [{ from: 'maul', pctPerPt: 10 }]
                 },
                 {
                     id: 'lacerate', row: 3, col: 2, type: 'active', icon: '🩸', name: 'Lacerate',
-                    desc: 'Active · Lacerate the target for 10 + 5 per point damage and causing them to bleed for 5 seconds.',
-                    tip: 'Max lvl (20): 110 damage + heavy bleed.',
-                    maxPts: 20, mana: 8, cd: 3, group: 'melee', dmgBase: 10, dmgPerLvl: 5, req: 'shred:5',
+                    desc: 'Active · Lacerate for base + 80% weapon damage and causing heavy bleeding.',
+                    tip: 'Max lvl (20): High bleed utility scaling.',
+                    maxPts: 20, mana: 8, cd: 3, group: 'melee', dmgBase: 10, dmgPerLvl: 5, wepPct: 80, req: 'shred:5',
                     synergies: [{ from: 'shred', pctPerPt: 10 }]
                 },
                 {
                     id: 'feral_charge', row: 4, col: 1, type: 'active', icon: '🏃', name: 'Feral Charge',
-                    desc: 'Active · Charge a target, dealing 20 + 10 per point damage and immobilizing them for 2 seconds.',
-                    tip: 'Max lvl (20): 220 damage gap closer.',
-                    maxPts: 20, mana: 10, cd: 12, group: 'melee', dmgBase: 20, dmgPerLvl: 10, req: 'feral_mastery:5'
+                    desc: 'Active · Charge for base + 110% weapon damage and immobilize for 2s.',
+                    tip: 'Max lvl (20): Gap closer with solid scaling.',
+                    maxPts: 20, mana: 10, cd: 12, group: 'melee', dmgBase: 20, dmgPerLvl: 10, wepPct: 110, req: 'feral_mastery:5'
                 },
                 {
                     id: 'king_of_the_jungle', row: 5, col: 1, type: 'active', icon: '👑', name: 'King of Jungle',
@@ -81,9 +81,9 @@ export const DRUID_CLASS = {
             nodes: [
                 {
                     id: 'twister', row: 0, col: 1, type: 'active', icon: '🌪️', name: 'Twister',
-                    desc: 'Active · Launch a spinning tornado dealing 15 + 8 per point lightning damage.',
-                    tip: 'Max lvl (20): 175 lightning.',
-                    maxPts: 20, mana: 10, cd: 1, group: 'lightning', dmgBase: 15, dmgPerLvl: 8,
+                    desc: 'Active · Launch a tornado dealing base + 60% weapon damage as lightning.',
+                    tip: 'Max lvl (20): Spammable elemental scaling.',
+                    maxPts: 20, mana: 10, cd: 1, group: 'lightning', dmgBase: 15, dmgPerLvl: 8, wepPct: 60,
                     synergies: [{ from: 'hurricane', pctPerPt: 5 }]
                 },
                 {
@@ -100,30 +100,30 @@ export const DRUID_CLASS = {
                 },
                 {
                     id: 'hurricane', row: 2, col: 1, type: 'active', icon: '🌀', name: 'Hurricane',
-                    desc: 'Active · Deals 12 + 6 per point cold damage per second and slows enemies.',
-                    tip: 'Max lvl (20): 132/s cold AoE.',
-                    maxPts: 20, mana: 20, cd: 12, group: 'cold', dmgBase: 12, dmgPerLvl: 6, req: 'nature_mastery:5',
+                    desc: 'Active · Deals base + 40% weapon damage per second as cold.',
+                    tip: 'Max lvl (20): Persistent cold AoE scaling.',
+                    maxPts: 20, mana: 20, cd: 12, group: 'cold', dmgBase: 12, dmgPerLvl: 6, wepPct: 40, req: 'nature_mastery:5',
                     synergies: [{ from: 'twister', pctPerPt: 10 }]
                 },
                 {
                     id: 'solar_beam', row: 3, col: 0, type: 'active', icon: '☀️', name: 'Solar Beam',
-                    desc: 'Active · A beam of pure light dealing 40 + 15 per point fire damage and silencing for 3s.',
-                    tip: 'Max lvl (20): 340 fire + silence.',
-                    maxPts: 20, mana: 15, cd: 15, group: 'fire', dmgBase: 40, dmgPerLvl: 15, req: 'hurricane:5',
+                    desc: 'Active · A beam dealing base + 180% weapon damage as fire and silencing.',
+                    tip: 'Max lvl (20): High burst fire scaling.',
+                    maxPts: 20, mana: 15, cd: 15, group: 'fire', dmgBase: 40, dmgPerLvl: 15, wepPct: 180, req: 'hurricane:5',
                     synergies: [{ from: 'nature_mastery', pctPerPt: 5 }]
                 },
                 {
                     id: 'armageddon', row: 3, col: 2, type: 'active', icon: '☄️', name: 'Armageddon',
-                    desc: 'Active · Rain flaming meteors dealing 30 + 12 per point fire damage.',
-                    tip: 'Max lvl (20): 270 fire meteor storm.',
-                    maxPts: 20, mana: 40, cd: 60, group: 'fire', dmgBase: 30, dmgPerLvl: 12, req: 'hurricane:5',
+                    desc: 'Active · Rain meteors dealing base + 130% weapon damage as fire.',
+                    tip: 'Max lvl (20): Ultimate fire storm scaling.',
+                    maxPts: 20, mana: 40, cd: 60, group: 'fire', dmgBase: 30, dmgPerLvl: 12, wepPct: 130, req: 'hurricane:5',
                     synergies: [{ from: 'nature_mastery', pctPerPt: 5 }]
                 },
                 {
                     id: 'force_of_nature', row: 4, col: 1, type: 'active', icon: '🌳', name: 'Force of Nature',
-                    desc: 'Active · Summon 3 Treants to fight by your side for 30 seconds.',
-                    tip: 'Max lvl (20): Treants tank and deal damage.',
-                    maxPts: 20, mana: 25, cd: 45, req: 'armageddon:5',
+                    desc: 'Active · Summon 3 Treants dealing base + 35% weapon damage.',
+                    tip: 'Max lvl (20): Scaling nature army.',
+                    maxPts: 20, mana: 25, cd: 45, dmgBase: 12, dmgPerLvl: 6, wepPct: 35, req: 'armageddon:5',
                     synergies: [
                         { from: 'nature_mastery', pctPerPt: 10 },
                         { from: 'dire_wolf', pctPerPt: 5 }
@@ -131,16 +131,16 @@ export const DRUID_CLASS = {
                 },
                 {
                     id: 'starfall', row: 5, col: 1, type: 'active', icon: '🌠', name: 'Starfall',
-                    desc: 'Active · Call down a shower of falling stars over a huge area, dealing 50 + 20 per point arcane damage to all enemies.',
-                    tip: 'Max lvl (20): Massive screen-wide damage.',
-                    maxPts: 20, mana: 40, cd: 60, group: 'magic', dmgBase: 50, dmgPerLvl: 20, req: 'force_of_nature:5',
+                    desc: 'Active · Shower area with stars dealing base + 200% weapon damage as arcane.',
+                    tip: 'Max lvl (20): Screen-wide arcane scaling.',
+                    maxPts: 20, mana: 40, cd: 60, group: 'magic', dmgBase: 50, dmgPerLvl: 20, wepPct: 200, req: 'force_of_nature:5',
                     synergies: [{ from: 'nature_mastery', pctPerPt: 5 }]
                 },
                 {
                     id: 'entangling_roots', row: 5, col: 0, type: 'active', icon: '🌿', name: 'Entangling Roots',
-                    desc: 'Active · Root a target in place for 4s + 0.2s per point, dealing 15 + 5 per point physical damage per second.',
-                    tip: 'Max lvl (20): 8s root + 115/s DoT.',
-                    maxPts: 20, mana: 15, cd: 5, group: 'earth', dmgBase: 15, dmgPerLvl: 5, req: 'force_of_nature:1'
+                    desc: 'Active · Root target and deal base + 50% weapon damage per second.',
+                    tip: 'Max lvl (20): Scaling DoT + crowd control.',
+                    maxPts: 20, mana: 15, cd: 5, group: 'earth', dmgBase: 15, dmgPerLvl: 5, wepPct: 50, req: 'force_of_nature:1'
                 }
             ]
         },

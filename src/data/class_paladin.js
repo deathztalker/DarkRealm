@@ -9,7 +9,7 @@
 export const PALADIN_CLASS = {
     id: 'paladin', name: 'Paladin', icon: '⚜️',
     description: 'A righteous crusader empowered by divine light. Fill any role: overwhelm enemies as a Retribution warrior, shield allies as Protection, or command the battlefield with ancient Auras.',
-    stats: { str: 25, dex: 12, vit: 22, int: 11 },
+    stats: { str: 25, dex: 10, vit: 25, int: 10 },
     primaryStat: 'str',
     hitDie: 10,
     trees: [
@@ -77,35 +77,35 @@ export const PALADIN_CLASS = {
                     id: 'crusader_strike', row: 1, col: 2, type: 'active', icon: '⚡', name: 'Crusader Strike',
                     desc: 'Active · An instant melee strike that deals 120% weapon damage as holy damage.',
                     tip: 'Max lvl (20): 120% weapon as holy. 6s cooldown.',
-                    maxPts: 20, mana: 5, cd: 6, group: 'melee', dmgBase: 20, dmgPerLvl: 10, req: 'seal_of_righteousness:3',
+                    maxPts: 20, mana: 5, cd: 6, group: 'melee', dmgBase: 20, dmgPerLvl: 10, wepPct: 120, req: 'seal_of_righteousness:3',
                     synergies: [{ from: 'seal_of_righteousness', pctPerPt: 5 }]
                 },
                 {
                     id: 'judgement', row: 2, col: 1, type: 'active', icon: '⚖️', name: 'Judgement',
-                    desc: 'Active · Judge your current Seal, dealing 50 + 20 per point holy damage.',
-                    tip: 'Max lvl (20): 450 holy damage.',
-                    maxPts: 20, mana: 8, cd: 8, group: 'holy', dmgBase: 50, dmgPerLvl: 20, req: 'crusader_strike:3',
+                    desc: 'Active · Judge current Seal for base + 140% weapon damage as holy.',
+                    tip: 'Max lvl (20): Scaling holy judgement.',
+                    maxPts: 20, mana: 8, cd: 8, group: 'holy', dmgBase: 50, dmgPerLvl: 20, wepPct: 140, req: 'crusader_strike:3',
                     synergies: [{ from: 'crusader_strike', pctPerPt: 5 }]
                 },
                 {
                     id: 'hammer_of_wrath', row: 3, col: 0, type: 'active', icon: '🔨', name: 'Hammer of Wrath',
-                    desc: 'Active · Hurl a holy hammer that deals 80 + 35 per point damage. Can only be used on enemies below 20% health.',
-                    tip: 'Max lvl (20): 780 holy damage finisher.',
-                    maxPts: 20, mana: 10, cd: 6, group: 'holy', dmgBase: 80, dmgPerLvl: 35, req: 'judgement:5',
+                    desc: 'Active · Hurl hammer for base + 220% weapon damage. Finisher (below 20% HP).',
+                    tip: 'Max lvl (20): Massive holy finisher scaling.',
+                    maxPts: 20, mana: 10, cd: 6, group: 'holy', dmgBase: 80, dmgPerLvl: 35, wepPct: 220, req: 'judgement:5',
                     synergies: [{ from: 'judgement', pctPerPt: 5 }]
                 },
                 {
                     id: 'divine_storm', row: 3, col: 2, type: 'active', icon: '🌩️', name: 'Divine Storm',
                     desc: 'Active · Unleash a spin attack hitting ALL enemies for 110% weapon damage as holy and healing allies.',
                     tip: 'Max lvl (20): 110% AoE holy + party heal.',
-                    maxPts: 20, mana: 8, cd: 10, group: 'melee', dmgBase: 30, dmgPerLvl: 15, req: 'judgement:5',
+                    maxPts: 20, mana: 8, cd: 10, group: 'melee', dmgBase: 30, dmgPerLvl: 15, wepPct: 110, req: 'judgement:5',
                     synergies: [{ from: 'crusader_strike', pctPerPt: 5 }, { from: 'crusader_mastery', pctPerPt: 2 }]
                 },
                 {
                     id: 'exorcism', row: 4, col: 1, type: 'active', icon: '🔥', name: 'Exorcism',
-                    desc: 'Active · Hurl holy fire dealing 80 + 30 per point holy damage. 100% crit vs Undead.',
-                    tip: 'Max lvl (20): 680 holy damage.',
-                    maxPts: 20, mana: 14, cd: 15, group: 'holy', dmgBase: 80, dmgPerLvl: 30, req: 'divine_storm:5',
+                    desc: 'Active · Holy fire dealing base + 180% weapon damage as holy.',
+                    tip: 'Max lvl (20): High holy scaling nuke.',
+                    maxPts: 20, mana: 14, cd: 15, group: 'holy', dmgBase: 80, dmgPerLvl: 30, wepPct: 180, req: 'divine_storm:5',
                     synergies: [{ from: 'judgement', pctPerPt: 5 }]
                 },
                 {
@@ -116,15 +116,15 @@ export const PALADIN_CLASS = {
                 },
                 {
                     id: 'holy_shock', row: 6, col: 0, type: 'active', icon: '🌩️', name: 'Holy Shock',
-                    desc: 'Active · Instantly blast an enemy for 40 + 20 per point holy damage, or heal an ally for 60 + 30 HP. 6s cooldown.',
-                    tip: 'Max lvl (20): 440 damage or 660 heal. Versatile burst.',
-                    maxPts: 20, mana: 12, cd: 6, group: 'holy', dmgBase: 40, dmgPerLvl: 20, req: 'avenging_wrath:1'
+                    desc: 'Active · Blast for base + 120% weapon damage as holy, or heal ally.',
+                    tip: 'Max lvl (20): Versatile burst scaling.',
+                    maxPts: 20, mana: 12, cd: 6, group: 'holy', dmgBase: 40, dmgPerLvl: 20, wepPct: 120, req: 'avenging_wrath:1'
                 },
                 {
                     id: 'zeal', row: 6, col: 2, type: 'active', icon: '⚔️', name: 'Zeal',
                     desc: 'Active · An rapid attack that strikes 3 + 0.2 per point times in quick succession. Each hit deals 100% weapon damage.',
                     tip: 'Max lvl (20): 7 hits in a single attack. Procs weapon effects 7 times!',
-                    maxPts: 20, mana: 8, cd: 4, group: 'melee', req: 'avenging_wrath:1'
+                    maxPts: 20, mana: 8, cd: 4, group: 'melee', wepPct: 100, req: 'avenging_wrath:1'
                 },
                 {
                     id: 'lay_on_hands', row: 7, col: 1, type: 'active', icon: '🤲', name: 'Lay on Hands',
@@ -141,9 +141,9 @@ export const PALADIN_CLASS = {
             nodes: [
                 {
                     id: 'avengers_shield', row: 0, col: 1, type: 'active', icon: '🛡️', name: 'Avenger\'s Shield',
-                    desc: 'Active · Hurl your shield dealing 30 + 12 per point damage and bouncing to 2 targets.',
-                    tip: 'Max lvl (20): 270 damage + bounce silence.',
-                    maxPts: 20, mana: 10, cd: 15, group: 'holy', dmgBase: 30, dmgPerLvl: 12
+                    desc: 'Active · Hurl shield for base + 100% weapon damage. Bounces to 2 targets.',
+                    tip: 'Max lvl (20): Scaling holy shield bounce.',
+                    maxPts: 20, mana: 10, cd: 15, group: 'holy', dmgBase: 30, dmgPerLvl: 12, wepPct: 100
                 },
                 {
                     id: 'holy_shield', row: 1, col: 0, type: 'active', icon: '✨', name: 'Holy Shield',
@@ -159,9 +159,9 @@ export const PALADIN_CLASS = {
                 },
                 {
                     id: 'consecration', row: 2, col: 1, type: 'active', icon: '☀️', name: 'Consecration',
-                    desc: 'Active · Consecrates the ground beneath you, dealing 10 + 5 per point holy damage per second for 8 seconds to all enemies in the area.',
-                    tip: 'Max lvl (20): 110/s AoE holy ground.',
-                    maxPts: 20, mana: 15, cd: 8, group: 'holy', dmgBase: 10, dmgPerLvl: 5, req: 'holy_shield:3',
+                    desc: 'Active · Holy ground dealing base + 30% weapon damage per second.',
+                    tip: 'Max lvl (20): Scaling holy AoE area.',
+                    maxPts: 20, mana: 15, cd: 8, group: 'holy', dmgBase: 10, dmgPerLvl: 5, wepPct: 30, req: 'holy_shield:3',
                     synergies: [{ from: 'holy_shield', pctPerPt: 5 }]
                 },
                 {
@@ -174,21 +174,21 @@ export const PALADIN_CLASS = {
                     id: 'hammer_righteous', row: 3, col: 0, type: 'active', icon: '🔨', name: 'Hammer of Righteous',
                     desc: 'Active · Strike for 40% weapon damage as holy and hitting nearby targets.',
                     tip: 'Max lvl (20): Holy cleave generator.',
-                    maxPts: 20, mana: 5, cd: 8, group: 'melee', dmgBase: 15, dmgPerLvl: 8, req: 'consecration:3',
+                    maxPts: 20, mana: 5, cd: 8, group: 'melee', dmgBase: 15, dmgPerLvl: 8, wepPct: 40, req: 'consecration:3',
                     synergies: [{ from: 'consecration', pctPerPt: 10 }]
                 },
                 {
                     id: 'shield_of_righteousness', row: 3, col: 2, type: 'active', icon: '💥', name: 'Shield of Righteousness',
                     desc: 'Active · Slam with your shield dealing damage based on block value.',
                     tip: 'Max lvl (20): Heavy holy shield slam.',
-                    maxPts: 20, mana: 6, cd: 6, group: 'melee', dmgBase: 30, dmgPerLvl: 10, req: 'consecration:3',
+                    maxPts: 20, mana: 6, cd: 6, group: 'melee', dmgBase: 30, dmgPerLvl: 10, wepPct: 80, req: 'consecration:3',
                     synergies: [{ from: 'consecration', pctPerPt: 5 }, { from: 'prot_mastery', pctPerPt: 5 }]
                 },
                 {
                     id: 'holy_wrath', row: 4, col: 0, type: 'active', icon: '☀️', name: 'Holy Wrath',
-                    desc: 'Active · Emit a blast of holy light dealing 30 + 15 per point damage to all nearby enemies. Undead and Demons are stunned for 3s.',
-                    tip: 'Max lvl (20): 330 AoE damage + 3s CC.',
-                    maxPts: 20, mana: 15, cd: 12, group: 'holy', dmgBase: 30, dmgPerLvl: 15, req: 'hammer_righteous:5'
+                    desc: 'Active · Blast nearby for base + 150% weapon damage. Stuns Undead/Demons.',
+                    tip: 'Max lvl (20): High holy scaling AoE.',
+                    maxPts: 20, mana: 15, cd: 12, group: 'holy', dmgBase: 30, dmgPerLvl: 15, wepPct: 150, req: 'hammer_righteous:5'
                 },
                 {
                     id: 'guardian_of_ancient_kings', row: 5, col: 1, type: 'active', icon: '👑', name: 'Guardian of Kings',

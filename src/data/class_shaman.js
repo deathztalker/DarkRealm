@@ -14,15 +14,15 @@ export const SHAMAN_CLASS = {
             nodes: [
                 {
                     id: 'lightning_bolt', row: 0, col: 1, type: 'active', icon: '⚡', name: 'Lightning Bolt',
-                    desc: 'Active · Hurl a lightning bolt dealing 12 + 8 per point lightning damage.',
-                    tip: 'Max lvl (20): 172 lightning damage with no downtime.',
-                    maxPts: 20, mana: 8, cd: 0.5, group: 'lightning', dmgBase: 12, dmgPerLvl: 8
+                    desc: 'Active · Hurl bolt for base + 120% weapon damage as lightning.',
+                    tip: 'Max lvl (20): Spammable lightning scaling.',
+                    maxPts: 20, mana: 8, cd: 0.5, group: 'lightning', dmgBase: 12, dmgPerLvl: 8, wepPct: 120
                 },
                 {
                     id: 'flame_shock', row: 1, col: 0, type: 'active', icon: '🔥', name: 'Flame Shock',
-                    desc: 'Active · Instantly scorch a target for 10 + 5 per point fire damage, and 5 + 3 damage per second for 10s.',
-                    tip: 'Max lvl (20): 110 impact + 65/s DoT.',
-                    maxPts: 20, mana: 10, cd: 4, group: 'fire', dmgBase: 10, dmgPerLvl: 5
+                    desc: 'Active · Scorch for base + 80% weapon damage and DoT.',
+                    tip: 'Max lvl (20): Scaling fire impact + DoT.',
+                    maxPts: 20, mana: 10, cd: 4, group: 'fire', dmgBase: 10, dmgPerLvl: 5, wepPct: 80
                 },
                 {
                     id: 'elem_mastery', row: 1, col: 1, type: 'passive', icon: '🔮', name: 'Elemental Mastery',
@@ -32,22 +32,22 @@ export const SHAMAN_CLASS = {
                 },
                 {
                     id: 'frost_shock', row: 1, col: 2, type: 'active', icon: '❄️', name: 'Frost Shock',
-                    desc: 'Active · Instantly hit a target for 15 + 8 per point cold damage, slowing movement by 50% for 6s.',
-                    tip: 'Max lvl (20): 175 cold damage + 50% slow.',
-                    maxPts: 20, mana: 10, cd: 4, group: 'cold', dmgBase: 15, dmgPerLvl: 8
+                    desc: 'Active · Blast for base + 90% weapon damage as cold and slow.',
+                    tip: 'Max lvl (20): Scaling cold impact + CC.',
+                    maxPts: 20, mana: 10, cd: 4, group: 'cold', dmgBase: 15, dmgPerLvl: 8, wepPct: 90
                 },
                 {
                     id: 'chain_lightning', row: 2, col: 1, type: 'active', icon: '⛈️', name: 'Chain Lightning',
-                    desc: 'Active · Strike a target for 30 + 14 per point lightning damage that chains to 3 nearby enemies.',
-                    tip: 'Max lvl (20): 310 primary + chains.',
-                    maxPts: 20, mana: 15, cd: 2, group: 'lightning', dmgBase: 30, dmgPerLvl: 14, req: 'elem_mastery:3',
+                    desc: 'Active · Strike for base + 150% weapon damage and chain to 3 targets.',
+                    tip: 'Max lvl (20): High scaling multi-hit lightning.',
+                    maxPts: 20, mana: 15, cd: 2, group: 'lightning', dmgBase: 30, dmgPerLvl: 14, wepPct: 150, req: 'elem_mastery:3',
                     synergies: [{ from: 'lightning_bolt', pctPerPt: 5 }]
                 },
                 {
                     id: 'thunder_strike', row: 3, col: 0, type: 'active', icon: '💥', name: 'Thunder Strike',
-                    desc: 'Active · Release a massive thunderclap AoE dealing 50 + 20 per point lightning damage and stunning for 0.6s.',
-                    tip: 'Max lvl (20): 450 lightning AoE + stun.',
-                    maxPts: 20, mana: 18, cd: 6, group: 'lightning', dmgBase: 50, dmgPerLvl: 20, req: 'chain_lightning:5'
+                    desc: 'Active · Thunderclap AoE for base + 130% weapon damage and stun.',
+                    tip: 'Max lvl (20): Scaling lightning AoE nuke.',
+                    maxPts: 20, mana: 18, cd: 6, group: 'lightning', dmgBase: 50, dmgPerLvl: 20, wepPct: 130, req: 'chain_lightning:5'
                 },
                 {
                     id: 'elemental_focus', row: 3, col: 2, type: 'passive', icon: '🎯', name: 'Elemental Focus',
@@ -57,16 +57,16 @@ export const SHAMAN_CLASS = {
                 },
                 {
                     id: 'lava_burst', row: 4, col: 1, type: 'active', icon: '🌋', name: 'Lava Burst',
-                    desc: 'Active · Lava erupts from the ground dealing 60 + 20 per point fire damage. Guaranteed to crit if target is burning.',
-                    tip: 'Max lvl (20): 460 fire damage. Use after Flame Shock.',
-                    maxPts: 20, mana: 20, cd: 8, group: 'fire', dmgBase: 60, dmgPerLvl: 20, req: 'thunder_strike:5',
+                    desc: 'Active · Erupt for base + 180% weapon damage as fire. (Crits vs burn).',
+                    tip: 'Max lvl (20): Massive scaling fire burst.',
+                    maxPts: 20, mana: 20, cd: 8, group: 'fire', dmgBase: 60, dmgPerLvl: 20, wepPct: 180, req: 'thunder_strike:5',
                     synergies: [{ from: 'flame_shock', pctPerPt: 5 }]
                 },
                 {
                     id: 'earthquake', row: 5, col: 1, type: 'active', icon: '🌋', name: 'Earthquake',
-                    desc: 'Active · Shake the earth for 8 seconds, dealing 30 + 10 per point physical AoE damage per second and stunning.',
-                    tip: 'Max lvl (20): 230/s × 8s = 1,840 total.',
-                    maxPts: 20, mana: 35, cd: 30, group: 'earth', dmgBase: 30, dmgPerLvl: 10, req: 'lava_burst:5',
+                    desc: 'Active · Shake earth for base + 60% weapon damage per second AoE.',
+                    tip: 'Max lvl (20): High scaling area denial.',
+                    maxPts: 20, mana: 35, cd: 30, group: 'earth', dmgBase: 30, dmgPerLvl: 10, wepPct: 60, req: 'lava_burst:5',
                     synergies: [{ from: 'elem_mastery', pctPerPt: 4 }]
                 },
                 {
@@ -90,9 +90,9 @@ export const SHAMAN_CLASS = {
             nodes: [
                 {
                     id: 'searing_totem', row: 0, col: 1, type: 'active', icon: '🔥', name: 'Searing Totem',
-                    desc: 'Active · Place a fire totem that shoots a fire bolt every second for 15 + 8 per point fire damage.',
-                    tip: 'Max lvl (20): 175 fire/s.',
-                    maxPts: 20, mana: 10, cd: 0
+                    desc: 'Active · Fire totem shooting for base + 40% weapon damage per second.',
+                    tip: 'Max lvl (20): Scaling fire turret.',
+                    maxPts: 20, mana: 10, cd: 0, dmgBase: 15, dmgPerLvl: 8, wepPct: 40
                 },
                 {
                     id: 'stoneskin_totem', row: 1, col: 0, type: 'active', icon: '🪨', name: 'Stoneskin Totem',
@@ -114,9 +114,9 @@ export const SHAMAN_CLASS = {
                 },
                 {
                     id: 'magma_totem', row: 2, col: 0, type: 'active', icon: '🌋', name: 'Magma Totem',
-                    desc: 'Active · Place a totem that pulses 20 + 10 per point fire damage to all nearby enemies every 2s.',
-                    tip: 'Max lvl (20): 220 fire AoE every 2s.',
-                    maxPts: 20, mana: 15, cd: 0, req: 'stoneskin_totem:3',
+                    desc: 'Active · Fire totem pulsing base + 50% weapon damage in AoE every 2s.',
+                    tip: 'Max lvl (20): Scaling area fire damage.',
+                    maxPts: 20, mana: 15, cd: 0, dmgBase: 20, dmgPerLvl: 10, wepPct: 50, req: 'stoneskin_totem:3',
                     synergies: [{ from: 'searing_totem', pctPerPt: 5 }]
                 },
                 {

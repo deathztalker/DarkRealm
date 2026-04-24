@@ -14,9 +14,9 @@ export const ROGUE_CLASS = {
             nodes: [
                 {
                     id: 'claw_strike', row: 0, col: 1, type: 'active', icon: '🗡️', name: 'Claw Strike',
-                    desc: 'Active · A lightning-fast melee strike dealing 12 + 5 per point physical damage that generates 1 Combo Point. Combo Points power your finishers.',
-                    tip: 'Max lvl (20): 112 damage. Spam to build 5 Combo Points quickly.',
-                    maxPts: 20, mana: 2, cd: 0, group: 'melee', dmgBase: 12, dmgPerLvl: 5
+                    desc: 'Active · Fast strike for base + 100% weapon damage. Generates 1 Combo Point.',
+                    tip: 'Max lvl (20): Quick CP builder with scaling.',
+                    maxPts: 20, mana: 2, cd: 0, group: 'melee', dmgBase: 12, dmgPerLvl: 5, wepPct: 100
                 },
                 {
                     id: 'shadow_step', row: 1, col: 0, type: 'active', icon: '👣', name: 'Shadow Step',
@@ -26,9 +26,9 @@ export const ROGUE_CLASS = {
                 },
                 {
                     id: 'ambush', row: 1, col: 2, type: 'active', icon: '🌑', name: 'Ambush',
-                    desc: 'Active · Strike from stealth for 30 + 15 per point physical damage that is ALWAYS a critical hit. Generates 3 Combo Points on hit.',
-                    tip: 'Max lvl (20): 330 damage + guaranteed crit. Top opener from stealth.',
-                    maxPts: 20, mana: 10, cd: 0, group: 'melee', dmgBase: 30, dmgPerLvl: 15, req: 'claw_strike:5',
+                    desc: 'Active · Strike for base + 200% weapon damage (guaranteed crit). Generates 3 Combo Points.',
+                    tip: 'Max lvl (20): Massive opener with weapon scaling.',
+                    maxPts: 20, mana: 10, cd: 0, group: 'melee', dmgBase: 30, dmgPerLvl: 15, wepPct: 200, req: 'claw_strike:5',
                     synergies: [{ from: 'claw_strike', pctPerPt: 5 }]
                 },
                 {
@@ -39,9 +39,9 @@ export const ROGUE_CLASS = {
                 },
                 {
                     id: 'eviscerate', row: 2, col: 1, type: 'active', icon: '💢', name: 'Eviscerate',
-                    desc: 'Active · Spend ALL current Combo Points in a devastating strike. Deals 40 + 15 per point damage plus +50% per Combo Point spent.',
-                    tip: 'Max lvl (20): 340 base × 3.5 at 5 CPs = 1,190 damage.',
-                    maxPts: 20, mana: 8, cd: 0, group: 'melee', dmgBase: 40, dmgPerLvl: 15, req: 'ambush:1',
+                    desc: 'Active · Finisher for base + 150% weapon damage. Bonus +50% per Combo Point.',
+                    tip: 'Max lvl (20): High burst finisher with scaling.',
+                    maxPts: 20, mana: 8, cd: 0, group: 'melee', dmgBase: 40, dmgPerLvl: 15, wepPct: 150, req: 'ambush:1',
                     synergies: [{ from: 'ambush', pctPerPt: 5 }, { from: 'assassin_mastery', pctPerPt: 2 }]
                 },
                 {
@@ -52,9 +52,9 @@ export const ROGUE_CLASS = {
                 },
                 {
                     id: 'fan_of_knives', row: 3, col: 1, type: 'active', icon: '🔪', name: 'Fan of Knives',
-                    desc: 'Active · Throw knives in every direction, dealing 20 + 10 per point damage to all nearby enemies and applying your active poisons.',
-                    tip: 'Max lvl (20): 220 AoE damage. Best for applying poisons to many targets.',
-                    maxPts: 20, mana: 15, cd: 2, group: 'melee', dmgBase: 20, dmgPerLvl: 10, req: 'eviscerate:5'
+                    desc: 'Active · Throw knives for base + 80% weapon damage in an AoE. Applies poisons.',
+                    tip: 'Max lvl (20): AoE poison spreader with scaling.',
+                    maxPts: 20, mana: 15, cd: 2, group: 'melee', dmgBase: 20, dmgPerLvl: 10, wepPct: 80, req: 'eviscerate:5'
                 },
                 {
                     id: 'death_mark', row: 4, col: 0, type: 'active', icon: '💀', name: 'Death Mark',
@@ -70,9 +70,9 @@ export const ROGUE_CLASS = {
                 },
                 {
                     id: 'blade_dance', row: 5, col: 1, type: 'active', icon: '🌀', name: 'Blade Dance',
-                    desc: 'Active · Channel a frenzied series of cuts hitting all enemies around you 6 times over 2 seconds, each hit dealing 20 + 8 per point damage.',
-                    tip: 'Max lvl (20): 6 × 180 = 1,080 AoE damage.',
-                    maxPts: 20, mana: 15, cd: 12, group: 'melee', dmgBase: 20, dmgPerLvl: 8, req: 'death_mark:5',
+                    desc: 'Active · Frenzied cuts for base + 90% weapon damage 6 times over 2s.',
+                    tip: 'Max lvl (20): High scaling multi-hit AoE.',
+                    maxPts: 20, mana: 15, cd: 12, group: 'melee', dmgBase: 20, dmgPerLvl: 8, wepPct: 90, req: 'death_mark:5',
                     synergies: [{ from: 'fan_of_knives', pctPerPt: 5 }, { from: 'assassin_mastery', pctPerPt: 3 }]
                 },
                 {
@@ -102,9 +102,9 @@ export const ROGUE_CLASS = {
             nodes: [
                 {
                     id: 'poison_blade', row: 0, col: 1, type: 'active', icon: '☣️', name: 'Poison Blade',
-                    desc: 'Active · Coat your weapon in venom for 30 seconds. Every attack applies 5 + 3% per point poison damage per second for 4 seconds.',
-                    tip: 'Max lvl (20): 65/s poison per stack × 4s per hit.',
-                    maxPts: 20, mana: 5, cd: 0, group: 'buff'
+                    desc: 'Active · Coat weapon in venom: base + 25% weapon damage per second as poison.',
+                    tip: 'Max lvl (20): Weapon-based poison application.',
+                    maxPts: 20, mana: 5, cd: 0, dmgBase: 5, dmgPerLvl: 3, wepPct: 25, group: 'buff'
                 },
                 {
                     id: 'master_poisoner', row: 1, col: 0, type: 'passive', icon: '🧪', name: 'Master Poisoner',
@@ -114,9 +114,9 @@ export const ROGUE_CLASS = {
                 },
                 {
                     id: 'shiv', row: 1, col: 2, type: 'active', icon: '🔪', name: 'Shiv',
-                    desc: 'Active · A quick jab that deals 10 + 5 per point damage and instantly triggers a tick of all poisons currently on the target. Generates 1 Combo Point.',
-                    tip: 'Max lvl (20): 110 damage · instant poison proc.',
-                    maxPts: 20, mana: 4, cd: 3, group: 'melee', dmgBase: 10, dmgPerLvl: 5, req: 'poison_blade:3',
+                    desc: 'Active · Jab for base + 60% weapon damage and trigger all poisons instantly.',
+                    tip: 'Max lvl (20): Scaling jab + poison trigger.',
+                    maxPts: 20, mana: 4, cd: 3, group: 'melee', dmgBase: 10, dmgPerLvl: 5, wepPct: 60, req: 'poison_blade:3',
                     synergies: [{ from: 'poison_blade', pctPerPt: 5 }]
                 },
                 {
@@ -127,9 +127,9 @@ export const ROGUE_CLASS = {
                 },
                 {
                     id: 'envenom', row: 2, col: 1, type: 'active', icon: '💧', name: 'Envenom',
-                    desc: 'Active · Instantly inject lethal venom into a target dealing 25 + 10 per point poison damage per second for 6 + 0.2 per point seconds.',
-                    tip: 'Max lvl (20): 225/s × 10s = 2,250 total poison DoT.',
-                    maxPts: 20, mana: 12, cd: 3, group: 'melee', dmgBase: 25, dmgPerLvl: 10, req: 'shiv:3',
+                    desc: 'Active · Inject venom for base + 45% weapon damage per second for 6s.',
+                    tip: 'Max lvl (20): High scaling lethal toxin.',
+                    maxPts: 20, mana: 12, cd: 3, group: 'melee', dmgBase: 25, dmgPerLvl: 10, wepPct: 45, req: 'shiv:3',
                     synergies: [{ from: 'master_poisoner', pctPerPt: 5 }, { from: 'poison_blade', pctPerPt: 5 }]
                 },
                 {
@@ -140,22 +140,22 @@ export const ROGUE_CLASS = {
                 },
                 {
                     id: 'plague', row: 4, col: 1, type: 'active', icon: '☠️', name: 'Plague',
-                    desc: 'Active · Throw a flask of plague that creates a toxic cloud for 5 seconds dealing 15 + 8 per point poison damage per second in the area.',
-                    tip: 'Max lvl (20): 175/s poison cloud AoE for 5s.',
-                    maxPts: 20, mana: 18, cd: 8, group: 'poison', dmgBase: 15, dmgPerLvl: 8, req: 'lethal_toxins:5',
+                    desc: 'Active · Toxic cloud dealing base + 40% weapon damage per second in AoE.',
+                    tip: 'Max lvl (20): Scaling area poison cloud.',
+                    maxPts: 20, mana: 18, cd: 8, group: 'poison', dmgBase: 15, dmgPerLvl: 8, wepPct: 40, req: 'lethal_toxins:5',
                     synergies: [{ from: 'envenom', pctPerPt: 10 }]
                 },
                 {
                     id: 'poison_sentry', row: 5, col: 0, type: 'active', icon: '☣️', name: 'Poison Sentry',
-                    desc: 'Active · Deploy a sentry that sprays poison in a cone, dealing 10 + 6 per point damage per second and reducing enemy damage by 20%.',
-                    tip: 'Max lvl (20): 130/s AoE poison + debuff.',
-                    maxPts: 20, mana: 25, cd: 5, req: 'plague:3'
+                    desc: 'Active · Sentry dealing base + 35% weapon damage per second as poison.',
+                    tip: 'Max lvl (20): Scaling poison turret.',
+                    maxPts: 20, mana: 25, cd: 5, dmgBase: 10, dmgPerLvl: 6, wepPct: 35, req: 'plague:3'
                 },
                 {
                     id: 'rupture', row: 5, col: 2, type: 'active', icon: '🩸', name: 'Rupture',
-                    desc: 'Active · Consume all Combo Points to tear the target open, dealing 20 + 10 per point physical bleed damage per second for 8s. Damage scales massively with CPs.',
-                    tip: 'Max lvl (20): The ultimate DoT finisher.',
-                    maxPts: 20, mana: 10, cd: 0, group: 'melee', dmgBase: 20, dmgPerLvl: 10, req: 'plague:5'
+                    desc: 'Active · Bleed for base + 50% weapon damage per second per Combo Point.',
+                    tip: 'Max lvl (20): Scaling DoT finisher.',
+                    maxPts: 20, mana: 10, cd: 0, group: 'melee', dmgBase: 20, dmgPerLvl: 10, wepPct: 50, req: 'plague:5'
                 }
             ]
         },
@@ -166,9 +166,9 @@ export const ROGUE_CLASS = {
             nodes: [
                 {
                     id: 'shock_trap', row: 0, col: 1, type: 'active', icon: '⚡', name: 'Shock Trap',
-                    desc: 'Active · Deploy a trap that stuns the first enemy to step on it for 0.5 + 0.05 per point seconds and deals 20 + 8 per point lightning damage.',
-                    tip: 'Max lvl (20): 0.5 + 1.0s stun + 180 damage.',
-                    maxPts: 20, mana: 8, cd: 1
+                    desc: 'Active · Deploy trap dealing base + 80% weapon damage as lightning and stunning.',
+                    tip: 'Max lvl (20): Scaling lightning CC trap.',
+                    maxPts: 20, mana: 8, cd: 1, dmgBase: 20, dmgPerLvl: 8, wepPct: 80
                 },
                 {
                     id: 'trap_mastery', row: 1, col: 0, type: 'passive', icon: '🔧', name: 'Trap Mastery',
@@ -184,23 +184,23 @@ export const ROGUE_CLASS = {
                 },
                 {
                     id: 'fire_sentry', row: 2, col: 0, type: 'active', icon: '🔥', name: 'Fire Sentry',
-                    desc: 'Active · Plant a fire turret that automatically shoots fire bolts at nearby enemies for 40 + 12 per point fire damage.',
-                    tip: 'Max lvl (20): 280 fire damage per shot.',
-                    maxPts: 20, mana: 20, cd: 2, req: 'trap_mastery:5',
+                    desc: 'Active · Fire turret shooting for base + 110% weapon damage as fire.',
+                    tip: 'Max lvl (20): Scaling fire turret.',
+                    maxPts: 20, mana: 20, cd: 2, dmgBase: 40, dmgPerLvl: 12, wepPct: 110, req: 'trap_mastery:5',
                     synergies: [{ from: 'trap_mastery', pctPerPt: 5 }]
                 },
                 {
                     id: 'death_sentry', row: 2, col: 2, type: 'active', icon: '💀', name: 'Death Sentry',
-                    desc: 'Active · Deploy a sentry that fires lightning bolts dealing 30 + 12 per point damage. When an enemy dies within range, it creates a corpse explosion.',
-                    tip: 'Max lvl (20): 270 lightning + corpse explosions.',
-                    maxPts: 20, mana: 20, cd: 2, req: 'chain_reaction:5',
+                    desc: 'Active · Lightning sentry dealing base + 100% weapon damage. Explodes corpses.',
+                    tip: 'Max lvl (20): Scaling lightning + explosion utility.',
+                    maxPts: 20, mana: 20, cd: 2, dmgBase: 30, dmgPerLvl: 12, wepPct: 100, req: 'chain_reaction:5',
                     synergies: [{ from: 'trap_mastery', pctPerPt: 5 }]
                 },
                 {
                     id: 'ice_trap', row: 3, col: 1, type: 'active', icon: '🧊', name: 'Ice Trap',
-                    desc: 'Active · Plant a trap that explodes in frost on trigger, dealing 35 + 15 per point cold damage and freezing all enemies in range for 1.5 seconds.',
-                    tip: 'Max lvl (20): 335 cold AoE + 1.5s freeze.',
-                    maxPts: 20, mana: 15, cd: 1.5, req: 'fire_sentry:3',
+                    desc: 'Active · Frost trap dealing base + 120% weapon damage and freezing AoE.',
+                    tip: 'Max lvl (20): Scaling cold CC trap.',
+                    maxPts: 20, mana: 15, cd: 1.5, dmgBase: 35, dmgPerLvl: 15, wepPct: 120, req: 'fire_sentry:3',
                     synergies: [{ from: 'trap_mastery', pctPerPt: 5 }]
                 },
                 {

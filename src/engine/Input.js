@@ -9,10 +9,14 @@ export class Input {
         this.mouse = { x: 0, y: 0, worldX: 0, worldY: 0 };
         this.keys = {};
         this.gamepadState = {
-            axes: [0, 0, 0, 0], // L_X, L_Y, R_X, R_Y
-            buttons: {},
+            axes: [0, 0, 0, 0],
             connected: false
         };
+        
+        // Mobile Support
+        this.touchStick = { active: false, startX: 0, startY: 0, curX: 0, curY: 0, stickX: 0, stickY: 0 };
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
         this._prevButtons = {};
         this._init();
     }
@@ -24,217 +28,197 @@ export class Input {
         window.addEventListener('keydown', e => this._onKeyDown(e));
         window.addEventListener('keyup', e => { this.keys[e.code] = false; });
 
-        // Touch support
-        this.canvas.addEventListener('touchend', e => {
-            e.preventDefault();
-            const t = e.changedTouches[0];
-            const rect = this.canvas.getBoundingClientRect();
-            const x = (t.clientX - rect.left) * (this.canvas.width / rect.width);
-            const y = (t.clientY - rect.top) * (this.canvas.height / rect.height);
-            bus.emit('input:click', { screenX: x, screenY: y });
-        }, { passive: false });
+        // Enhanced Touch Support (Joystick & Action Buttons)
+        this.canvas.addEventListener('touchstart', e => this._onTouchStart(e), { passive: false });
+        this.canvas.addEventListener('touchmove', e => this._onTouchMove(e), { passive: false });
+        this.canvas.addEventListener('touchend', e => this._onTouchEnd(e), { passive: false });
+
+        if (this.isMobile) this._createMobileUI();
+        
+        // Virtual Cursor Element
+        this.cursorEl = document.createElement('div');
+        this.cursorEl.id = 'virtual-cursor';
+        this.cursorEl.style.cssText = 'position:fixed; width:12px; height:12px; background:white; border:2px solid gold; border-radius:50%; pointer-events:none; z-index:99999; display:none; transform:translate(-50%,-50%); box-shadow: 0 0 10px gold;';
+        document.body.appendChild(this.cursorEl);
 
         window.addEventListener('gamepadconnected', () => { this.gamepadState.connected = true; });
         window.addEventListener('gamepaddisconnected', () => { this.gamepadState.connected = false; });
-
-        // Virtual Cursor Element
-        this.cursorEl = document.createElement('div');
-        this.cursorEl.id = 'gamepad-cursor';
-        this.cursorEl.style.cssText = 'position:fixed; width:20px; height:20px; background:radial-gradient(circle, rgba(216,176,104,0.8) 0%, transparent 60%); border-radius:50%; pointer-events:none; z-index:10000; display:none; transform:translate(-50%, -50%); transition: opacity 0.1s;';
-        document.body.appendChild(this.cursorEl);
-        this.cursorX = window.innerWidth / 2;
-        this.cursorY = window.innerHeight / 2;
-
-        // Clear all keys when window loses focus to prevent stuck movement
-        window.addEventListener('blur', () => {
-            this.keys = {};
-        });
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) this.keys = {};
-        });
     }
 
-    update() {
-        if (!this.gamepadState.connected) return;
-        const gp = navigator.getGamepads()[0];
-        if (!gp) return;
-
-        // Deadzone helper
-        const applyDeadzone = (val, threshold = 0.25) => Math.abs(val) > threshold ? val : 0;
-
-        this.gamepadState.axes = [
-            applyDeadzone(gp.axes[0]), applyDeadzone(gp.axes[1]), // Left Stick (Movement)
-            applyDeadzone(gp.axes[2]), applyDeadzone(gp.axes[3])  // Right Stick (Aiming)
-        ];
-
-        // Check if any UI panel is open
-        const isUiOpen = document.querySelectorAll('.panel:not(.hidden)').length > 0;
-        
-        if (isUiOpen) {
-            this.cursorEl.style.display = 'block';
-            const speed = 12; // Virtual cursor speed
-            this.cursorX += this.gamepadState.axes[0] * speed;
-            this.cursorY += this.gamepadState.axes[1] * speed;
-            
-            // Constrain to window
-            this.cursorX = Math.max(0, Math.min(window.innerWidth, this.cursorX));
-            this.cursorY = Math.max(0, Math.min(window.innerHeight, this.cursorY));
-            
-            this.cursorEl.style.left = `${this.cursorX}px`;
-            this.cursorEl.style.top = `${this.cursorY}px`;
-            
-            // Sync mouse pos to virtual cursor so tooltips work
-            const rect = this.canvas.getBoundingClientRect();
-            this.mouse.x = (this.cursorX - rect.left) * (this.canvas.width / rect.width);
-            this.mouse.y = (this.cursorY - rect.top) * (this.canvas.height / rect.height);
-            
-            // Hover events simulation for tooltips
-            const el = document.elementFromPoint(this.cursorX, this.cursorY);
-            if (el && el !== this._lastHovered) {
-                if (this._lastHovered) this._lastHovered.dispatchEvent(new MouseEvent('mouseleave'));
-                el.dispatchEvent(new MouseEvent('mouseenter'));
-                this._lastHovered = el;
-            }
-            if (el) el.dispatchEvent(new MouseEvent('mousemove', { clientX: this.cursorX, clientY: this.cursorY }));
-        } else {
-            this.cursorEl.style.display = 'none';
-            if (this._lastHovered) {
-                this._lastHovered.dispatchEvent(new MouseEvent('mouseleave'));
-                this._lastHovered = null;
-            }
+    vibrate(pattern) {
+        if (this.isMobile && navigator.vibrate) {
+            navigator.vibrate(pattern);
         }
-
-        // Map buttons
-        const buttonMap = {
-            0: 'skill:use:0', // A / Cross
-            1: 'skill:use:1', // B / Circle
-            2: 'skill:use:2', // X / Square
-            3: 'skill:use:3', // Y / Triangle
-            5: 'skill:use:4', // R1
-            4: 'potion:use:0', // L1
-            12: 'ui:toggle:inventory', // D-pad Up
-            13: 'ui:toggle:character', // D-pad Down
-            14: 'ui:toggle:talents', // D-pad Left
-            9: 'ui:closeAll' // Start / Options
-        };
-
-        for (let i = 0; i < gp.buttons.length; i++) {
-            const isPressed = gp.buttons[i].pressed;
-            if (isPressed && !this._prevButtons[i]) {
-                
-                if (isUiOpen) {
-                    if (i === 0) { // A button
-                        const el = document.elementFromPoint(this.cursorX, this.cursorY);
-                        if (el) el.click();
-                    } else if (i === 1 || i === 9) { // B or Start closes UI
-                        bus.emit('ui:closeAll', {});
-                    }
-                } else {
-                    const action = buttonMap[i];
-                    if (action) bus.emit(action, { mouse: this.mouse });
-                }
-                
-                // Interact button (A) also simulates click if right stick is not aiming and not in UI
-                if (!isUiOpen && i === 0 && this.gamepadState.axes[2] === 0 && this.gamepadState.axes[3] === 0) {
-                    // Send a generic interact click at center of screen (player pos)
-                    bus.emit('input:click', { screenX: this.canvas.width/2, screenY: this.canvas.height/2, button: 0 });
-                }
-            }
-            this._prevButtons[i] = isPressed;
-        }
-    }
-
-    _onCanvasClick(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
-        const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
-        bus.emit('input:click', { screenX: x, screenY: y, button: e.button });
-    }
-
-    _onRightClick(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
-        const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
-        bus.emit('input:rightclick', { screenX: x, screenY: y });
     }
 
     _onMouseMove(e) {
         const rect = this.canvas.getBoundingClientRect();
         this.mouse.x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
         this.mouse.y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+        
+        if (this.gamepadState.connected) {
+            this.cursorEl.style.display = 'block';
+            this.cursorEl.style.left = e.clientX + 'px';
+            this.cursorEl.style.top = e.clientY + 'px';
+        } else {
+            this.cursorEl.style.display = 'none';
+        }
     }
 
-    _isInputBlocked() {
-        const activeEl = document.activeElement;
-        const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
-        
-        return isTyping;
+    _onCanvasClick(e) {
+        bus.emit('input:click', { screenX: this.mouse.x, screenY: this.mouse.y });
+    }
+
+    _onRightClick(e) {
+        bus.emit('input:rightclick', { screenX: this.mouse.x, screenY: this.mouse.y });
     }
 
     _onKeyDown(e) {
-        const isRepeat = e.repeat;
+        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
         this.keys[e.code] = true;
-
-        // Escape always works to close panels/clear focus
-        if (e.code === 'Escape') {
-            if (isRepeat) return;
-            bus.emit('ui:closeAll', {});
-            if (document.activeElement) document.activeElement.blur();
-            return;
-        }
-
-        // --- WASD & Combat Hotkeys: Block if typing or UI is open ---
-        const isBlocked = this._isInputBlocked();
-        const map = {
-            // Potions (Shift+1, etc. or just keep Q,W,E,R for pots if 1-5 are skills. Let's use Z,X,C,V for potions)
-            'KeyZ': 'potion:use:0', 'KeyX': 'potion:use:1', 'KeyC': 'potion:use:2', 'KeyV': 'potion:use:3',
-            // Skills (1, 2, 3, 4, 5 AND Q, E, R, F, G)
-            'Digit1': 'skill:use:0', 'Digit2': 'skill:use:1', 'Digit3': 'skill:use:2',
-            'Digit4': 'skill:use:3', 'Digit5': 'skill:use:4',
-            'KeyQ': 'skill:use:0', 'KeyE': 'skill:use:1', 'KeyR': 'skill:use:2',
-            'KeyF': 'skill:use:3', 'KeyG': 'skill:use:4',
-
-            'KeyP': 'action:town_portal',
-            'Space': 'action:interact',
-        };
-
-        if (map[e.code]) {
-            if (isBlocked) return;
-            e.preventDefault();
-            bus.emit(map[e.code], { mouse: this.mouse });
-            return;
-        }
-
-        // --- UI Toggle Hotkeys: Allow through even if UI is open (for toggling), but block repeat ---
-        const uiMap = {
-            'KeyI': 'ui:toggle:inventory', 
-            'KeyC': 'ui:toggle:character',
-            'KeyO': 'ui:toggle:mercenary', 
-            'KeyT': 'ui:toggle:talents',
-            'KeyJ': 'ui:toggle:journal', 
-            'KeyH': 'ui:toggle:achievements',
-            'KeyM': 'ui:toggle:map',
-            'Tab': 'ui:toggle:fullmap',
-            'KeyL': 'ui:toggle:lootfilter',
-            'KeyN': 'ui:toggle:stash',
-            'KeyU': 'ui:toggle:cube',
-        };
-
+        
+        const uiMap = { 'KeyI': 'ui:toggle:inventory', 'KeyC': 'ui:toggle:character', 'KeyT': 'ui:toggle:talents', 'KeyM': 'ui:toggle:minimap' };
         if (uiMap[e.code]) {
-            if (isRepeat) return;
-            // Only block if typing, NOT if a panel is open (so we can toggle it close)
-            const activeEl = document.activeElement;
-            const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
-            if (isTyping) return;
-
             e.preventDefault();
             bus.emit(uiMap[e.code], { mouse: this.mouse });
         }
     }
 
     isDown(code) { 
-        // Stop movement/input if UI is open
         if (this._isInputBlocked()) return false;
+        if (this.touchStick.active) {
+            if (code === 'KeyW' && this.touchStick.stickY < -0.3) return true;
+            if (code === 'KeyS' && this.touchStick.stickY > 0.3) return true;
+            if (code === 'KeyA' && this.touchStick.stickX < -0.3) return true;
+            if (code === 'KeyD' && this.touchStick.stickX > 0.3) return true;
+        }
         return !!this.keys[code]; 
+    }
+
+    _isInputBlocked() {
+        return document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA';
+    }
+
+    _onTouchStart(e) {
+        const t = e.touches[0];
+        if (t.clientX < window.innerWidth / 2) {
+            this.touchStick.active = true;
+            this.touchStick.startX = t.clientX;
+            this.touchStick.startY = t.clientY;
+            this.touchStick.curX = t.clientX;
+            this.touchStick.curY = t.clientY;
+            this._updateJoystickUI();
+        } else {
+            const rect = this.canvas.getBoundingClientRect();
+            const x = (t.clientX - rect.left) * (this.canvas.width / rect.width);
+            const y = (t.clientY - rect.top) * (this.canvas.height / rect.height);
+            bus.emit('input:click', { screenX: x, screenY: y });
+        }
+    }
+
+    _onTouchMove(e) {
+        if (!this.touchStick.active) return;
+        const t = Array.from(e.touches).find(t => t.clientX < window.innerWidth / 2);
+        if (t) {
+            this.touchStick.curX = t.clientX;
+            this.touchStick.curY = t.clientY;
+            const dx = this.touchStick.curX - this.touchStick.startX;
+            const dy = this.touchStick.curY - this.touchStick.startY;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const maxLen = 50;
+            this.touchStick.stickX = dx / Math.max(dist, maxLen);
+            this.touchStick.stickY = dy / Math.max(dist, maxLen);
+            if (dist > maxLen) {
+                this.touchStick.curX = this.touchStick.startX + (dx/dist) * maxLen;
+                this.touchStick.curY = this.touchStick.startY + (dy/dist) * maxLen;
+            }
+            this._updateJoystickUI();
+        }
+    }
+
+    _onTouchEnd(e) {
+        if (e.touches.length === 0 || !Array.from(e.touches).some(t => t.clientX < window.innerWidth / 2)) {
+            this.touchStick.active = false;
+            this.touchStick.stickX = 0;
+            this.touchStick.stickY = 0;
+            this._updateJoystickUI();
+        }
+    }
+
+    _updateJoystickUI() {
+        const base = document.getElementById('joy-base');
+        const stick = document.getElementById('joy-stick');
+        if (!base || !stick) return;
+        if (this.touchStick.active) {
+            base.style.display = 'block';
+            base.style.left = `${this.touchStick.startX}px`;
+            base.style.top = `${this.touchStick.startY}px`;
+            stick.style.left = `${this.touchStick.curX - this.touchStick.startX + 27}px`;
+            stick.style.top = `${this.touchStick.curY - this.touchStick.startY + 27}px`;
+        } else {
+            base.style.display = 'none';
+        }
+    }
+
+    _createMobileUI() {
+        if (document.getElementById('mobile-ui')) return;
+        const container = document.createElement('div');
+        container.id = 'mobile-ui';
+        container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:20000;';
+        container.innerHTML = `
+            <div id="joy-base" style="position:absolute; bottom:120px; left:60px; width:100px; height:100px; background:rgba(255,255,255,0.05); border:2px solid rgba(255,255,255,0.2); border-radius:50%; pointer-events:auto; touch-action:none;">
+                <div id="joy-stick" style="position:absolute; width:45px; height:45px; background:rgba(255,255,255,0.3); border-radius:50%; left:27px; top:27px; pointer-events:none;"></div>
+            </div>
+            <div id="mobile-actions" style="position:absolute; bottom:40px; right:40px; display:grid; grid-template-areas: '. pot .' 's1 atk s2' '. dash .'; gap:15px; pointer-events:auto; transform: scale(1.1);">
+                <button id="btn-m-pot" style="grid-area:pot; width:50px; height:50px; border-radius:50%; background:rgba(255,0,0,0.2); border:1px solid #ff0000; color:#ffaaaa; font-size:10px;">POT</button>
+                <button id="btn-m-s1" style="grid-area:s1; width:55px; height:55px; border-radius:50%; background:rgba(0,200,255,0.2); border:1px solid #00c8ff; color:#fff;">S1</button>
+                <button id="btn-m-atk" style="grid-area:atk; width:85px; height:85px; border-radius:50%; background:rgba(255,255,255,0.15); border:3px solid #fff; color:#fff; font-weight:bold; font-size:16px; box-shadow: 0 0 15px rgba(255,255,255,0.3);">ATK</button>
+                <button id="btn-m-s2" style="grid-area:s2; width:55px; height:55px; border-radius:50%; background:rgba(255,100,0,0.2); border:1px solid #ff6400; color:#fff;">S2</button>
+                <button id="btn-m-dash" style="grid-area:dash; width:65px; height:65px; border-radius:50%; background:rgba(255,255,255,0.1); border:2px solid rgba(255,255,255,0.6); color:#fff; font-size:12px;">DASH</button>
+            </div>
+            <div id="mobile-menu-btns" style="position:absolute; top:15px; right:15px; display:flex; gap:10px; pointer-events:auto;">
+                <button onclick="bus.emit('ui:toggle', 'inventory')" style="width:40px; height:40px; background:rgba(0,0,0,0.6); border:1px solid #daa520; color:#daa520; border-radius:4px;">INV</button>
+                <button onclick="bus.emit('ui:toggle', 'character')" style="width:40px; height:40px; background:rgba(0,0,0,0.6); border:1px solid #daa520; color:#daa520; border-radius:4px;">CHR</button>
+            </div>
+        `;
+        document.body.appendChild(container);
+        const preventDefault = (e) => { e.preventDefault(); e.stopPropagation(); };
+        const btnAtk = document.getElementById('btn-m-atk');
+        btnAtk.ontouchstart = (e) => { preventDefault(e); bus.emit('input:click', { isMobileAtk: true }); };
+        document.getElementById('btn-m-dash').ontouchstart = (e) => { preventDefault(e); bus.emit('skill:use:dash'); };
+        document.getElementById('btn-m-s1').ontouchstart = (e) => { preventDefault(e); bus.emit('skill:use:0', { mouse: this.mouse }); };
+        document.getElementById('btn-m-s2').ontouchstart = (e) => { preventDefault(e); bus.emit('skill:use:1', { mouse: this.mouse }); };
+        document.getElementById('btn-m-pot').ontouchstart = (e) => { preventDefault(e); bus.emit('potion:use:0'); };
+        window.addEventListener('resize', () => this._adjustLayoutForOrientation());
+        this._adjustLayoutForOrientation();
+    }
+
+    _adjustLayoutForOrientation() {
+        const actions = document.getElementById('mobile-actions');
+        const joy = document.getElementById('joy-base');
+        if (!actions || !joy) return;
+        if (window.innerHeight > window.innerWidth) {
+            actions.style.bottom = '100px'; actions.style.right = '20px'; actions.style.transform = 'scale(0.85)';
+            joy.style.bottom = '100px'; joy.style.left = '60px'; joy.style.transform = 'scale(0.85)';
+        } else {
+            actions.style.bottom = '30px'; actions.style.right = '40px'; actions.style.transform = 'scale(1.1)';
+            joy.style.bottom = '40px'; joy.style.left = '80px'; joy.style.transform = 'scale(1.1)';
+        }
+    }
+
+    update() {
+        if (this.gamepadState.connected) {
+            const pads = navigator.getGamepads();
+            const pad = pads[0];
+            if (pad) {
+                this.gamepadState.axes = [pad.axes[0], pad.axes[1], pad.axes[2], pad.axes[3]];
+                pad.buttons.forEach((btn, idx) => {
+                    const pressed = btn.pressed;
+                    const prev = this._prevButtons[idx];
+                    if (pressed && !prev) bus.emit('gamepad:button', { index: idx });
+                    this._prevButtons[idx] = pressed;
+                });
+            }
+        }
     }
 }

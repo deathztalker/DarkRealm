@@ -2509,68 +2509,86 @@ body.socketing-mode .inv-slot {
 
 #dialog-box {
   position: fixed;
-  bottom: 120px;
+  bottom: 30px;
   left: 50%;
   transform: translateX(-50%);
-  width: 500px;
-  background: linear-gradient(135deg, rgba(20, 20, 20, 0.95) 0%, rgba(40, 40, 40, 0.9) 100%);
-  border: 2px solid #d4af37;
-  border-radius: 8px;
-  padding: 20px;
-  color: #eee;
-  z-index: 1500;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(212, 175, 55, 0.1);
+  width: 600px;
+  max-width: 90vw;
+  background: linear-gradient(180deg, rgba(20, 15, 10, 0.98) 0%, rgba(10, 8, 5, 0.98) 100%);
+  border: 1px solid #bf642f;
+  border-radius: 4px;
+  padding: 25px;
+  z-index: 18000;
+  box-shadow: 0 15px 50px rgba(0,0,0,0.9), inset 0 0 20px rgba(191, 100, 47, 0.1);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  backdrop-filter: blur(8px);
+  gap: 15px;
+  font-family: 'Cinzel', serif;
+  backdrop-filter: blur(10px);
 }
 
 .npc-header {
   display: flex;
   align-items: center;
   gap: 15px;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  border-bottom: 1px solid rgba(191, 100, 47, 0.3);
   padding-bottom: 10px;
 }
 
 .npc-name {
-  font-family: 'Cinzel Decorative', serif;
-  color: #d4af37;
-  font-size: 1.25rem;
-  letter-spacing: 2px;
-  text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+  color: #daa520;
+  font-size: 1.4rem;
+  text-shadow: 0 0 10px rgba(218, 165, 32, 0.4);
+  letter-spacing: 1px;
 }
 
 #dialog-text {
-  font-family: 'Inter', sans-serif;
-  line-height: 1.6;
+  color: #d8b068;
+  font-size: 1.1rem;
+  line-height: 1.5;
   font-style: italic;
-  color: #ccc;
+  min-height: 60px;
 }
 
 #dialog-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   margin-top: 10px;
 }
 
 .dialog-opt {
-  background: rgba(212, 175, 55, 0.1);
-  border: 1px solid #d4af37;
-  color: #d4af37;
-  padding: 6px 15px;
+  background: rgba(191, 100, 47, 0.1);
+  border: 1px solid rgba(191, 100, 47, 0.5);
+  color: #d8b068;
+  padding: 10px 25px;
+  border-radius: 2px;
   cursor: pointer;
-  border-radius: 4px;
   transition: all 0.2s;
-  font-family: 'Cinzel', serif;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  text-transform: uppercase;
 }
 
 .dialog-opt:hover {
-  background: #d4af37;
-  color: #000;
+  background: #bf642f;
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  #dialog-box {
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    padding: 20px !important;
+    padding-bottom: env(safe-area-inset-bottom, 25px) !important;
+    transform: translateX(-50%) !important;
+  }
+  .dialogue-picker-menu { display: none !important; }
+  .dialog-opt { flex: 1 1 45%; text-align: center; padding: 15px 5px; }
 }
 
 .dialogue-option {
@@ -3841,9 +3859,60 @@ body.socketing-mode .inv-item:not(.unidentified) {
   animation: fadeIn 0.4s ease, duel-pulse 1.5s ease infinite;
 }
 
-/* Other players nameplate glow */
-.other-player-tag {
-  color: #88aaff;
-  text-shadow: 0 0 8px #0044ff;
+/* --- ACHIEVEMENT NOTIFICATION --- */
+#achievement-popup {
+  position: fixed;
+  top: -100px; /* Hidden initially */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  background: linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.9) 50%, transparent 100%);
+  padding: 15px;
+  text-align: center;
+  z-index: 25000;
+  pointer-events: none;
+  transition: top 0.6s cubic-bezier(0.23, 1, 0.32, 1);
   font-family: 'Cinzel', serif;
+}
+
+#achievement-popup.active {
+  top: 20px;
+}
+
+.ach-title {
+  color: #000;
+  font-weight: bold;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.ach-name {
+  color: #fff;
+  font-size: 1.2rem;
+  text-shadow: 0 2px 4px #000;
+}
+
+/* --- FULLSCREEN FADE TRANSITION --- */
+#fade-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 30000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+}
+
+#fade-overlay.active {
+  opacity: 1;
+}
+
+/* --- PREMIUM NAMEPLATES --- */
+.entity-nameplate {
+  position: absolute;
+  pointer-events: none;
+  font-family: 'Cinzel', serif;
+  text-align: center;
+  white-space: nowrap;
 }
