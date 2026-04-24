@@ -18,6 +18,7 @@ import { DB } from './systems/db.js';
 import { NetworkManager } from './network/NetworkManager.js';
 import { NPC } from './entities/npc.js';
 import { Mercenary } from './entities/mercenary.js';
+import { HUDManager } from './ui/HUDManager.js';
 import { Pet } from './entities/pet.js';
 import { GameObject } from './entities/object.js';
 import { ASSET_NAMES } from './data/assets_list.js';
