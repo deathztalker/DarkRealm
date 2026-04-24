@@ -277,12 +277,16 @@ export const DB = {
 
     // Suscripción en tiempo real a mensajes
     subscribeToChat(callback) {
-        return this.client
+        if (this.chatChannel) {
+            this.client.removeChannel(this.chatChannel);
+        }
+        this.chatChannel = this.client
             .channel('public:messages')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
                 callback(payload.new);
             })
             .subscribe();
+        return this.chatChannel;
     },
 
     // --- Presence & Online Status ---
@@ -290,9 +294,15 @@ export const DB = {
     trackPresence(charName, zoneLevel) {
         if (!this.isLoggedIn()) return null;
         
+        if (this.presenceChannel) {
+            this.client.removeChannel(this.presenceChannel);
+        }
+
         const channel = this.client.channel('online-users', {
             config: { presence: { key: this.session.user.id } }
         });
+
+        this.presenceChannel = channel;
 
         channel
             .on('presence', { event: 'sync' }, () => {

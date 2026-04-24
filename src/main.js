@@ -1134,7 +1134,7 @@ function gameLoop(timestamp) {
 
     // --- Social Requests Expiry & Cleanup ---
     const nowMs = Date.now();
-    pendingRequests = pendingRequests.filter(r => r.expires > nowMs);
+    // pendingRequests cleanup handled by SocialHUD internally
 
     // Secondary cleanup for items picked by pet
     for (let i = droppedGold.length - 1; i >= 0; i--) {
@@ -1312,36 +1312,6 @@ function gameLoop(timestamp) {
 
             renderer.drawAnim(`class_${e.classId}`, e.x, e.y - 4, 18, e.animState, e.facingDir, lastTime, null, e.equipment, e.hitFlashTimer);
             e.renderMinions(renderer, lastTime);
-
-            // --- DRAW SOCIAL REQUEST UI ABOVE HEAD ---
-            if (e !== player) {
-                const req = pendingRequests.find(r => r.fromName === e.charName);
-                if (req) {
-                    const sx = (e.x - camera.x) * camera.zoom + renderer.width / 2;
-                    const sy = (e.y - 25 - camera.y) * camera.zoom + renderer.height / 2;
-
-                    renderer.ctx.save();
-                    renderer.ctx.fillStyle = 'rgba(0,0,0,0.85)';
-                    renderer.ctx.strokeStyle = '#ffd700';
-                    renderer.ctx.lineWidth = 1;
-                    renderer.ctx.beginPath();
-                    renderer.ctx.roundRect(sx - 45, sy - 30, 90, 28, 4);
-                    renderer.ctx.fill();
-                    renderer.ctx.stroke();
-
-                    renderer.ctx.fillStyle = '#fff';
-                    renderer.ctx.font = 'bold 9px Arial';
-                    renderer.ctx.textAlign = 'center';
-                    renderer.ctx.fillText(`${req.type.toUpperCase()}?`, sx, sy - 18);
-
-                    renderer.ctx.font = '8px Arial';
-                    renderer.ctx.fillStyle = '#4f4';
-                    renderer.ctx.fillText('[Y] Accept', sx - 22, sy - 8);
-                    renderer.ctx.fillStyle = '#f44';
-                    renderer.ctx.fillText('[N] No', sx + 22, sy - 8);
-                    renderer.ctx.restore();
-                }
-            }
 
             // --- DRAW SPEECH BUBBLE ABOVE HEAD ---
             const bubble = speechBubbles.get(e.charName || e.name);
