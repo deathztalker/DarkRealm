@@ -7,7 +7,30 @@ import { SkillLogic } from '../systems/skillLogic.js';
  * Visual rendering varies by element type.
  */
 export class Projectile {
-    constructor(x, y, targetX, targetY, speed, sprite, damage, type, owner, piercing = false, radius = 8, aoeRadius = 0, bounces = 0, skillId = '') {
+    static pool = [];
+
+    static create(x, y, targetX, targetY, speed, sprite, damage, type, owner, piercing = false, radius = 8, aoeRadius = 0, bounces = 0, skillId = '') {
+        if (this.pool.length > 0) {
+            const p = this.pool.pop();
+            p.init(x, y, targetX, targetY, speed, sprite, damage, type, owner, piercing, radius, aoeRadius, bounces, skillId);
+            return p;
+        }
+        const p = new Projectile();
+        p.init(x, y, targetX, targetY, speed, sprite, damage, type, owner, piercing, radius, aoeRadius, bounces, skillId);
+        return p;
+    }
+
+    static release(p) {
+        p.active = false;
+        p.hitTargets.clear();
+        this.pool.push(p);
+    }
+
+    constructor() {
+        this.hitTargets = new Set();
+    }
+
+    init(x, y, targetX, targetY, speed, sprite, damage, type, owner, piercing = false, radius = 8, aoeRadius = 0, bounces = 0, skillId = '') {
         this.x = x;
         this.y = y;
         this.startX = x;
@@ -24,7 +47,7 @@ export class Projectile {
         this.bounces = bounces;
         this.initialBounces = bounces;
         this.active = true;
-        this.hitTargets = new Set();
+        this.hitTargets.clear();
         this.skillId = skillId;
         this.maxRange = this._calcMaxRange(type, skillId);
         this.age = 0;

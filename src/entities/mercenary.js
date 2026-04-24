@@ -342,7 +342,7 @@ export class Mercenary {
                     fx.emitBurst(target.x, target.y, '#f60', 90, 7);
                     window.enemies?.forEach(e => { if (Math.hypot(e.x-target.x, e.y-target.y) < 150) applyDamage(this, e, { dealt: dmg * (5 + slvl('meteor') * 0.8) * dM, type: 'fire' }); });
                 } else {
-                    const proj = new Projectile(this.x, this.y, target.x, target.y, 360, 'ra-circle', dmg * (1.5 + sL * 0.5) * dM, 'fire', this);
+                    const proj = Projectile.create(this.x, this.y, target.x, target.y, 360, 'ra-circle', dmg * (1.5 + sL * 0.5) * dM, 'fire', this);
                     bus.emit('combat:spawnProjectile', { proj });
                 }
             } else if (type === 'cold') {
@@ -350,7 +350,7 @@ export class Mercenary {
                     fx.emitBurst(target.x, target.y, '#0cf', 85, 6);
                     window.enemies?.forEach(e => { if (Math.hypot(e.x-target.x, e.y-target.y) < 160) applyDamage(this, e, { dealt: dmg * (4 + slvl('blizzard') * 0.6) * dM, type: 'cold' }); });
                 } else {
-                    const proj = new Projectile(this.x, this.y, target.x, target.y, 320, 'ra-circle', dmg * (1.4 + sL * 0.4) * dM, 'cold', this);
+                    const proj = Projectile.create(this.x, this.y, target.x, target.y, 320, 'ra-circle', dmg * (1.4 + sL * 0.4) * dM, 'cold', this);
                     bus.emit('combat:spawnProjectile', { proj });
                 }
             } else {
@@ -358,7 +358,7 @@ export class Mercenary {
                     if (fx.emitLightning) fx.emitLightning(this.x, this.y, target.x, target.y, 6);
                     applyDamage(this, target, { dealt: dmg * (4 + slvl('chain_lightning') * 0.7) * dM, type: 'lightning' });
                 } else {
-                    const proj = new Projectile(this.x, this.y, target.x, target.y, 520, 'ra-circle', dmg * (1.6 + sL * 0.6) * dM, 'lightning', this);
+                    const proj = Projectile.create(this.x, this.y, target.x, target.y, 520, 'ra-circle', dmg * (1.6 + sL * 0.6) * dM, 'lightning', this);
                     bus.emit('combat:spawnProjectile', { proj });
                 }
             }
@@ -368,7 +368,7 @@ export class Mercenary {
             const lA = slvl('lightning_arrow');
             const type = (fA >= cA && fA >= lA) ? 'fire' : (cA >= lA ? 'cold' : (lA > 0 ? 'lightning' : 'physical'));
             const sL = Math.max(fA, cA, lA);
-            const proj = new Projectile(this.x, this.y, target.x, target.y, 550, 'ra-arrow', dmg * (1.5 + sL * 0.4), type, this);
+            const proj = Projectile.create(this.x, this.y, target.x, target.y, 550, 'ra-arrow', dmg * (1.5 + sL * 0.4), type, this);
             if (type === 'lightning') proj.bounces = 4;
             else if (type === 'fire' && slvl('exploding_arrow')) proj.aoe = 70 + slvl('exploding_arrow') * 4;
             else if (type === 'cold' && slvl('freezing_arrow')) proj.aoe = 80 + slvl('freezing_arrow') * 4;

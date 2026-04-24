@@ -1175,7 +1175,7 @@ export class Player {
             const aoeR = (skillId === 'fireball' || skillId === 'chaos_bolt') ? 40 : 0;
             const bnc = skillId === 'chain_lightning' ? 3 + Math.floor(slvl/4) : 0;
             const pR = (['fireball', 'frozen_orb', 'chaos_bolt'].includes(skillId)) ? 10 : (skillId === 'bone_spear' ? 6 : 8);
-            bus.emit('combat:spawnProjectile', { proj: new Projectile(this.x, this.y, targetX, targetY, speeds[type]||180, colors[type]||'#cccccc', totalBase, type, this, piercing, pR, aoeR, bnc, skillId) });
+            bus.emit('combat:spawnProjectile', { proj: Projectile.create(this.x, this.y, targetX, targetY, speeds[type]||180, colors[type]||'#cccccc', totalBase, type, this, piercing, pR, aoeR, bnc, skillId) });
         }
         this._setAnimState('cast');
         this.attackCd = 0.5 * (1 - Math.min(0.75, (this.pctFCR || 0) / 100));

@@ -431,7 +431,7 @@ export class Enemy {
                     const angle = (Math.PI / 2) * i + Math.random();
                     const tx = this.x + Math.cos(angle) * 100;
                     const ty = this.y + Math.sin(angle) * 100;
-                    const proj = new Projectile(this.x, this.y, tx, ty, 300, '#ffff40', this.dmg * 0.4, 'lightning', this, false, 6, 0, 0, 'spark');
+                    const proj = Projectile.create(this.x, this.y, tx, ty, 300, '#ffff40', this.dmg * 0.4, 'lightning', this, false, 6, 0, 0, 'spark');
                     bus.emit('combat:spawnProjectile', { proj });
                 }
                 fx.emitBurst(this.x, this.y, '#ffff40', 8);
@@ -875,7 +875,7 @@ export class Enemy {
             const angle = Math.atan2(player.y - this.y, player.x - this.x);
             const tx = this.x + Math.cos(angle) * 100;
             const ty = this.y + Math.sin(angle) * 100;
-            const proj = new Projectile(
+            const proj = Projectile.create(
                 this.x, this.y, tx, ty, 180, '#fff', this.dmg * 2.0, 'cold', this, false, 15, 0, 0, 'mephisto_skull'
             );
             bus.emit('combat:spawnProjectile', { proj });
@@ -886,7 +886,7 @@ export class Enemy {
                 const angle = (i / 8) * Math.PI * 2;
                 const tx = this.x + Math.cos(angle) * 100;
                 const ty = this.y + Math.sin(angle) * 100;
-                const proj = new Projectile(
+                const proj = Projectile.create(
                     this.x, this.y, tx, ty, 220, '#ffff80', this.dmg * 1.5, 'lightning', this, false, 8, 0, 0, 'mephisto_lightning'
                 );
                 bus.emit('combat:spawnProjectile', { proj });
@@ -897,7 +897,7 @@ export class Enemy {
             const angle = Math.atan2(player.y - this.y, player.x - this.x);
             const tx = this.x + Math.cos(angle) * 100;
             const ty = this.y + Math.sin(angle) * 100;
-            const proj = new Projectile(
+            const proj = Projectile.create(
                 this.x, this.y, tx, ty, 180, '#fff', this.dmg * 2.0, 'cold', this, false, 25, 0, 0, 'baal_hoarfrost'
             );
             bus.emit('combat:spawnProjectile', { proj });
@@ -956,7 +956,7 @@ export class Enemy {
                 const angle = (i / 16) * Math.PI * 2;
                 const tx = this.x + Math.cos(angle) * 100;
                 const ty = this.y + Math.sin(angle) * 100;
-                const proj = new Projectile(
+                const proj = Projectile.create(
                     this.x, this.y, tx, ty, 150, '#ff4000', this.dmg * 1.2, 'fire', this, false, 10, 0, 0, 'diablo_fire_nova'
                 );
                 bus.emit('combat:spawnProjectile', { proj });
@@ -971,7 +971,7 @@ export class Enemy {
                     const angle = baseAngle + (Math.random() - 0.5) * 0.2;
                     const tx = this.x + Math.cos(angle) * 100;
                     const ty = this.y + Math.sin(angle) * 100;
-                    const proj = new Projectile(
+                    const proj = Projectile.create(
                         this.x, this.y, tx, ty, 300, '#ff2020', this.dmg * 0.8, 'lightning', this, false, 12, 0, 0, 'diablo_lightning_hose'
                     );
                     bus.emit('combat:spawnProjectile', { proj });
@@ -1151,7 +1151,7 @@ export class Enemy {
                 const targetY = target.y + (Math.random() - 0.5) * 20;
 
                 const finalDmg = this.dmg * (1 - (this.damageDebuff || 0) / 100);
-                const proj = new Projectile(
+                const proj = Projectile.create(
                     this.x, this.y, targetX, targetY, speed, this.projColor,
                     finalDmg, this.element, this, false, this.projRadius, 0, 0, 'enemy_attack'
                 );

@@ -389,6 +389,7 @@ window.DIFFICULTY_MULT = [1.0, 2.5, 5.0, 5.0]; // Rift mode uses Hell base stats
 
 // ——— DOM REFS ———
 const $ = id => document.getElementById(id);
+const hudManager = new HUDManager($);
 
 // ——— MENU PARTICLES ———
 function initParticles() {
@@ -981,7 +982,11 @@ function gameLoop(timestamp) {
     projectiles.forEach(p => {
         if (p && p.update) p.update(dt, enemies, player, dungeon, (aoe) => { if (aoe) aoeZones.push(aoe); });
     });
-    projectiles = projectiles.filter(p => p && p.active);
+    projectiles = projectiles.filter(p => {
+        if (p && p.active) return true;
+        if (p) p.constructor.release ? p.constructor.release(p) : (p.active = false);
+        return false;
+    });
 
     aoeZones.forEach(a => {
         if (a && a.update) a.update(dt, enemies, player);
@@ -8693,4 +8698,6 @@ function setChatChannel(channel) {
         }
     });
     container.scrollTop = container.scrollHeight;
+}
+eight;
 }

@@ -241,10 +241,10 @@ io.on('connection', (socket) => {
         console.log(`- Player Disconnected: ${socket.id}`);
         const p = players[socket.id];
         if (p) {
-            const oldZone = p.zoneLevel;
-            socket.broadcast.to(`zone_${oldZone}`).emit('player_left', socket.id);
+            const oldRoom = p.roomName;
+            socket.broadcast.to(oldRoom).emit('player_left', socket.id);
             delete players[socket.id];
-            if (zoneHosts[oldZone] === socket.id) electNewHost(oldZone);
+            if (zoneHosts[oldRoom] === socket.id) electNewHost(oldRoom);
         }
     });
 });
@@ -253,6 +253,11 @@ io.on('connection', (socket) => {
 process.on('uncaughtException', (err) => console.error('CRITICAL ERROR:', err));
 
 // 5. START SERVER - Explicitly bind to 0.0.0.0
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`>>> MMO SERVER LIVE ON PORT ${PORT} <<<`);
+});
+
+.0
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`>>> MMO SERVER LIVE ON PORT ${PORT} <<<`);
 });
