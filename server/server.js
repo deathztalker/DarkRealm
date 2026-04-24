@@ -30,114 +30,114 @@ app.get('/', (req, res) => {
 });
 
 // --- GLOBAL STATE ---
-const friends = {}; 
-const players = {}; // { socketId: { id, x, y, animState, facingDir, classId, name, zoneLevel } }
-const zoneHosts = {}; // { zoneLevel: socketId }
-const activeTrades = {}; 
+const players = {}; // { socketId: { id, x, y, animState, facingDir, classId, name, zoneLevel, roomName } }
+const zoneHosts = {}; // { roomName: socketId }
 
-function electNewHost(zoneLevel) {
-    const playersInZone = Object.values(players).filter(p => p.zoneLevel === zoneLevel);
-    if (playersInZone.length > 0) {
-        zoneHosts[zoneLevel] = playersInZone[0].id;
-        io.to(zoneHosts[zoneLevel]).emit('host_assignment', true);
+function electNewHost(roomName) {
+    const playersInRoom = Object.values(players).filter(p => p.roomName === roomName);
+    if (playersInRoom.length > 0) {
+        zoneHosts[roomName] = playersInRoom[0].id;
+        io.to(zoneHosts[roomName]).emit('host_assignment', true);
     } else {
-        delete zoneHosts[zoneLevel];
+        delete zoneHosts[roomName];
     }
 }
 
 io.on('connection', (socket) => {
     console.log(`+ Player Connected: ${socket.id}`);
 
-    socket.on('join', (data) => {
+    socket.on('join_zone', (data) => {
         if (!data) return;
+        const zoneLevel = data.zoneId || 0;
+        const roomName = data.roomName || `zone_${zoneLevel}`;
         
-        const zoneLevel = data.zoneLevel || 0;
-        socket.join(`zone_${zoneLevel}`);
+        // Leave previous room if any
+        if (players[socket.id] && players[socket.id].roomName) {
+            const oldRoom = players[socket.id].roomName;
+            socket.leave(oldRoom);
+            socket.broadcast.to(oldRoom).emit('player_left', socket.id);
+            if (zoneHosts[oldRoom] === socket.id) electNewHost(oldRoom);
+        }
 
+        socket.join(roomName);
         players[socket.id] = {
             id: socket.id,
-            x: data.x || 0,
-            y: data.y || 0,
+            x: data.playerData?.x || 0,
+            y: data.playerData?.y || 0,
             animState: 'idle',
             facingDir: 'down',
-            classId: data.classId,
-            name: data.name || 'Stranger',
-            zoneLevel: zoneLevel
+            classId: data.playerData?.classId,
+            name: data.playerData?.charName || 'Stranger',
+            zoneLevel: zoneLevel,
+            roomName: roomName
         };
 
-        if (!zoneHosts[zoneLevel]) electNewHost(zoneLevel);
+        if (!zoneHosts[roomName]) electNewHost(roomName);
+
+        // Send current players in this specific room
+        const playersInRoom = Object.fromEntries(Object.entries(players).filter(([_, p]) => p.roomName === roomName));
+        socket.emit('current_players', playersInRoom);
         
-        // Send only players in the same zone
-        const playersInZone = Object.fromEntries(Object.entries(players).filter(([_, p]) => p.zoneLevel === zoneLevel));
-        socket.emit('current_players', playersInZone);
-        
-        // Notify others in the zone
-        socket.broadcast.to(`zone_${zoneLevel}`).emit('player_joined', players[socket.id]);
+        // Notify others in the room
+        socket.broadcast.to(roomName).emit('player_joined', players[socket.id]);
+        console.log(`[MMO] Player ${players[socket.id].name} joined room: ${roomName}`);
     });
 
-    socket.on('change_zone', (data) => {
-        if (!players[socket.id]) return;
-        const oldZone = players[socket.id].zoneLevel;
-        const newZone = data.zoneLevel;
-
-        socket.leave(`zone_${oldZone}`);
-        socket.broadcast.to(`zone_${oldZone}`).emit('player_left', socket.id);
-        
-        if (zoneHosts[oldZone] === socket.id) electNewHost(oldZone);
-
-        socket.join(`zone_${newZone}`);
-        players[socket.id].zoneLevel = newZone;
-        players[socket.id].x = data.x || 0;
-        players[socket.id].y = data.y || 0;
-
-        if (!zoneHosts[newZone]) electNewHost(newZone);
-
-        const playersInZone = Object.fromEntries(Object.entries(players).filter(([_, p]) => p.zoneLevel === newZone));
-        socket.emit('current_players', playersInZone);
-        socket.broadcast.to(`zone_${newZone}`).emit('player_joined', players[socket.id]);
+    socket.on('join', (data) => {
+        // Fallback for old join logic
+        if (!data) return;
+        const zoneLevel = data.zoneLevel || 0;
+        const roomName = `zone_${zoneLevel}`;
+        socket.emit('join_zone', { zoneId: zoneLevel, roomName, playerData: data });
     });
 
     socket.on('move', (data) => {
-        if (data && players[socket.id]) {
-            const p = players[socket.id];
+        const p = players[socket.id];
+        if (data && p) {
             p.x = data.x;
             p.y = data.y;
             p.animState = data.animState;
             p.facingDir = data.facingDir;
             if (data.activeAura) p.activeAura = data.activeAura;
             
-            socket.broadcast.to(`zone_${p.zoneLevel}`).emit('player_moved', p);
+            socket.broadcast.to(p.roomName).emit('player_moved', p);
         }
     });
 
     // Scoped environment events
     socket.on('enemy_damaged', (data) => {
-        if(players[socket.id]) socket.broadcast.to(`zone_${players[socket.id].zoneLevel}`).emit('enemy_damaged', data);
+        const p = players[socket.id];
+        if(p) socket.broadcast.to(p.roomName).emit('enemy_damaged', data);
     });
     socket.on('enemy_death', (id) => {
-        if(players[socket.id]) socket.broadcast.to(`zone_${players[socket.id].zoneLevel}`).emit('enemy_death', id);
+        const p = players[socket.id];
+        if(p) socket.broadcast.to(p.roomName).emit('enemy_death', id);
     });
     socket.on('enemy_sync', (data) => {
-        if(players[socket.id]) socket.broadcast.to(`zone_${players[socket.id].zoneLevel}`).emit('enemy_sync', data);
+        const p = players[socket.id];
+        if(p) socket.broadcast.to(p.roomName).emit('enemy_sync', data);
     });
     socket.on('npc_sync', (data) => {
-        if(players[socket.id]) socket.broadcast.to(`zone_${players[socket.id].zoneLevel}`).emit('npc_sync', data);
+        const p = players[socket.id];
+        if(p) socket.broadcast.to(p.roomName).emit('npc_sync', data);
     });
     socket.on('minion_sync', (data) => {
-        if(players[socket.id]) socket.broadcast.to(`zone_${players[socket.id].zoneLevel}`).emit('minion_sync', { id: socket.id, minions: data });
+        const p = players[socket.id];
+        if(p) socket.broadcast.to(p.roomName).emit('minion_sync', { id: socket.id, minions: data });
     });
     socket.on('merc_sync', (data) => {
-        if(players[socket.id]) socket.broadcast.to(`zone_${players[socket.id].zoneLevel}`).emit('merc_sync', { id: socket.id, mercenary: data });
+        const p = players[socket.id];
+        if(p) socket.broadcast.to(p.roomName).emit('merc_sync', { id: socket.id, mercenary: data });
     });
     socket.on('portal_spawn', (data) => {
-        if(players[socket.id]) socket.broadcast.to(`zone_${players[socket.id].zoneLevel}`).emit('portal_spawn', data);
+        const p = players[socket.id];
+        if(p) socket.broadcast.to(p.roomName).emit('portal_spawn', data);
     });
 
     socket.on('chat_message', (text) => {
         const p = players[socket.id];
         if (p && text) {
-            // Broadcast only to the zone
-            io.to(`zone_${p.zoneLevel}`).emit('chat_message', {
+            io.to(p.roomName).emit('chat_message', {
                 id: Date.now(),
                 sender: p.name,
                 text: text,

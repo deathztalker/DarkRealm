@@ -13,6 +13,7 @@ export class NetworkManager {
         this.isHost = false; // Is this client the 'Host' responsible for enemy AI sync?
         this.chatSubscription = null;
         this.currentParty = null; // { id, leader_id, members: [] }
+        this.pendingZoneJoin = null; // { zoneId }
     }
 
     initEvents() {
@@ -94,13 +95,11 @@ export class NetworkManager {
             console.log('Connected to game server. ID:', this.socket.id);
             this.isConnected = true;
             this.startPingLoop();
-            if (this.game.player) {
-                this.socket.emit('join', {
-                    x: this.game.player.x,
-                    y: this.game.player.y,
-                    classId: this.game.player.classId,
-                    name: this.game.player.charName
-                });
+            
+            // If we had a pending join request, fulfill it now
+            if (this.pendingZoneJoin) {
+                this.joinZone(this.pendingZoneJoin.zoneId);
+                this.pendingZoneJoin = null;
             }
         });
 
@@ -638,7 +637,12 @@ export class NetworkManager {
     }
 
     joinZone(zoneId) {
-        if (!this.isConnected || !this.game.player) return;
+        if (!this.isConnected) {
+            console.log(`[Network] Delaying join for zone ${zoneId} until connected.`);
+            this.pendingZoneJoin = { zoneId };
+            return;
+        }
+        if (!this.game.player) return;
 
         // --- Layering Logic ---
         const modePrefix = this.game.player.isHardcore ? 'hc_' : 'std_';
@@ -665,6 +669,11 @@ export class NetworkManager {
         }
 
         console.log(`[Network] Joining Layer: ${roomName} | Seed: ${seed}`);
+        
+        // Reset zone state
+        this.otherPlayers.clear();
+        this.isHost = false;
+
         this.socket.emit('join_zone', {
             zoneId,
             roomName,

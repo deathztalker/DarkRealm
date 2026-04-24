@@ -594,7 +594,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
             difficulty = loadPlayerData.difficulty;
             window._difficulty = difficulty;
         }
-        
+
         if (Array.isArray(loadPlayerData.waypoints)) {
             discoveredWaypoints = new Set(loadPlayerData.waypoints);
             discoveredWaypoints.add(0); // Always have town
@@ -2271,7 +2271,7 @@ function nextZone(targetZone = null) {
         } else {
             dungeon = new Dungeon(150, 120, 16);
             dungeon._seed = window._currentZoneSeed;
-            
+
             // --- DETAILED THEME SELECTION ---
             const zoneName = ZONE_NAMES[zoneLevel] || 'Unknown';
             window.currentTheme = 'catacombs'; // Default
@@ -2310,7 +2310,7 @@ function nextZone(targetZone = null) {
         if (useReturnCoords) {
             player.x = portalReturnCoords.x;
             player.y = portalReturnCoords.y;
-            portalReturnZone = null; 
+            portalReturnZone = null;
             portalReturnCoords = null;
         } else {
             player.x = dungeon.playerStart.x;
@@ -2332,7 +2332,7 @@ function nextZone(targetZone = null) {
 
 function finishZoneLoad() {
     const isTown = [0, 38, 68, 96, 102].includes(zoneLevel);
-    
+
     // 1. Clear state for new zone
     npcs = [];
     enemies = [];
@@ -2355,7 +2355,7 @@ function finishZoneLoad() {
 
     if (isTown) {
         npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
-        
+
         // SPAWN RETURN PORTAL if we just came from a dungeon
         if (portalReturnZone !== null) {
             const retPortal = new GameObject('portal', player.x + 40, player.y, 'obj_portal', 'town_return_tp');
@@ -2377,7 +2377,7 @@ function finishZoneLoad() {
         }
     } else {
         enemies = dungeon.enemySpawns.map(s => new Enemy(s));
-        
+
         // --- DIFFICULTY & RIFT SCALING ---
         const diff = window._difficulty || 0;
         const diffMult = window.DIFFICULTY_MULT[diff] || 1;
@@ -2390,7 +2390,7 @@ function finishZoneLoad() {
 
         enemies.forEach(e => {
             e.maxHp *= totalMult; e.hp = e.maxHp; e.dmg *= totalMult; e.xpReward *= totalMult;
-            
+
             // Immunities in Nightmare (10%) and Hell (35%)
             if (diff > 0) {
                 const immChance = diff === 1 ? 0.10 : 0.35;
@@ -4103,7 +4103,7 @@ function tryCastTownPortal() {
 
     const portalId = `tp_${player.charName}_${Date.now()}`;
     const tp = new GameObject('portal', player.x, player.y - 10, 'obj_portal', portalId);
-    
+
     // Determine Act Town
     const actTowns = [0, 38, 68, 96, 102];
     tp.targetZone = actTowns[campaign.getActForZone(zoneLevel) - 1] || 0;
@@ -7383,7 +7383,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const text = $('auth-status-text');
         const btnLogin = $('btn-open-auth');
         const btnLogout = $('btn-logout');
-        
+
         if (session) {
             text.textContent = `Cloud Connected: ${session.user.email}`;
             text.style.color = 'var(--cyan)';
@@ -7402,7 +7402,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- CONSOLIDATED CHARACTER LISTENERS ---
-    
+
     // 1. Show Creation Screen
     $('btn-show-create')?.addEventListener('click', () => {
         $('screen-char-select').classList.add('hidden');
@@ -7423,26 +7423,26 @@ window.addEventListener('DOMContentLoaded', () => {
 
         initAudio();
         const slotId = SaveSystem.newSlotId();
-        
+
         // Start game logic
         const activeDiffBtn = document.querySelector('.diff-btn.active');
         window._difficulty = activeDiffBtn ? parseInt(activeDiffBtn.dataset.diff) : 0;
-        
+
         startGame(slotId, null, name);
-        
+
         // Immediate Dual Save
         saveGame();
-        
+
         addCombatLog(`A new legend is born: ${name}`, 'log-heal');
     });
 
     // 3. Enter World with Selected Character
     $('btn-enter-world')?.addEventListener('click', async () => {
         if (!selectedCharSlot) return;
-        
+
         initAudio();
         let saveData = null;
-        
+
         // Always try to load the most up-to-date version
         if (selectedCharSlot._isCloud) {
             const cloud = await DB.getSaves();
@@ -7450,7 +7450,7 @@ window.addEventListener('DOMContentLoaded', () => {
         } else {
             saveData = SaveSystem.loadSlot(selectedCharSlot.id);
         }
-        
+
         if (saveData) {
             startGame(selectedCharSlot.id, saveData);
             addCombatLog(`Welcome back, ${selectedCharSlot.name}.`, 'log-info');
@@ -7518,7 +7518,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (name === 'obj_chest_open') path = 'assets/map_objects/treasure_chest_open.png';
         if (name === 'obj_shrine') path = 'assets/map_objects/arcane_shrine.png';
         if (name === 'obj_shrine_used') path = 'assets/map_objects/arcane_shrine_inactive.png';
-        
+
         // Tree Overrides (Transparent HD)
         if (name === 'obj_tree_oak') path = 'assets/obj_tree_oak.png';
         if (name === 'obj_tree_palm') path = 'assets/obj_tree_palm.png';
@@ -8485,7 +8485,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- CONSOLIDATED CHARACTER LISTENERS ---
-    
+
     // 1. Show Creation Screen
     $('btn-show-create')?.addEventListener('click', () => {
         $('screen-char-select').classList.add('hidden');
@@ -8506,26 +8506,26 @@ window.addEventListener('DOMContentLoaded', () => {
 
         initAudio();
         const slotId = SaveSystem.newSlotId();
-        
+
         // Start game logic
         const activeDiffBtn = document.querySelector('.diff-btn.active');
         window._difficulty = activeDiffBtn ? parseInt(activeDiffBtn.dataset.diff) : 0;
-        
+
         startGame(slotId, null, name);
-        
+
         // Immediate Dual Save
         saveGame();
-        
+
         addCombatLog(`A new legend is born: ${name}`, 'log-heal');
     });
 
     // 3. Enter World with Selected Character
     $('btn-enter-world')?.addEventListener('click', async () => {
         if (!selectedCharSlot) return;
-        
+
         initAudio();
         let saveData = null;
-        
+
         // Always try to load the most up-to-date version
         if (selectedCharSlot._isCloud) {
             const cloud = await DB.getSaves();
@@ -8533,7 +8533,7 @@ window.addEventListener('DOMContentLoaded', () => {
         } else {
             saveData = SaveSystem.loadSlot(selectedCharSlot.id);
         }
-        
+
         if (saveData) {
             startGame(selectedCharSlot.id, saveData);
             addCombatLog(`Welcome back, ${selectedCharSlot.name}.`, 'log-info');
