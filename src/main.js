@@ -8699,5 +8699,3 @@ function setChatChannel(channel) {
     });
     container.scrollTop = container.scrollHeight;
 }
-eight;
-}
