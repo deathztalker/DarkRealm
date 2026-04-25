@@ -537,9 +537,6 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         curHighestZone = loadPlayerData.highestZone;
     }
 
-    // Set initial theme
-    window.currentTheme = resolveTheme(zoneLevel, dungeon);
-
     // Initial Seed Setup
     if (!window._currentZoneSeed) {
         const nameHash = (charName || 'unknown').split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0);
@@ -551,6 +548,11 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
 
     // Generate dungeon
     dungeon = new Dungeon(80, 60, 16);
+    if (window._currentZoneSeed) dungeon._seed = window._currentZoneSeed;
+
+    // Set initial theme
+    window.currentTheme = resolveTheme(zoneLevel, dungeon);
+
     dungeon.generate(zoneLevel, window.currentTheme, window._currentZoneSeed);
 
     // Create player
