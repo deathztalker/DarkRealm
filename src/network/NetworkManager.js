@@ -369,10 +369,16 @@ export class NetworkManager {
     }
 
     setupPartyRealtime() {
-        // Create channel first
-        const channel = DB.client.channel('party-sync-v2');
+        const channelName = 'party-sync-v3';
         
-        // Register callbacks BEFORE subscribing
+        // Remove existing channel if it exists to avoid "after subscribe" error
+        const existingChannel = DB.client.getChannels().find(c => c.name === channelName);
+        if (existingChannel) {
+            DB.client.removeChannel(existingChannel);
+        }
+
+        const channel = DB.client.channel(channelName);
+        
         channel.on('postgres_changes', {
             event: '*',
             schema: 'public',
@@ -384,7 +390,6 @@ export class NetworkManager {
             }
         });
 
-        // Finally, subscribe
         channel.subscribe();
     }
 

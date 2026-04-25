@@ -1,9 +1,11 @@
 package api
 
 import (
+	"net/http"
+
 	"dark-realm-server/game"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/websocket/v2"
+	"github.com/valyala/fasthttp/fasthttpadaptor"
 )
 
 func SetupRoutes(app *fiber.App, hub *game.Hub) {
@@ -12,23 +14,19 @@ func SetupRoutes(app *fiber.App, hub *game.Hub) {
 		return c.SendString("OK")
 	})
 
-	// WebSocket Upgrade Middleware
-	app.Use("/ws", func(c *fiber.Ctx) error {
-		if websocket.IsWebSocketUpgrade(c) {
-			c.Locals("allowed", true)
-			return c.Next()
-		}
-		return fiber.ErrUpgradeRequired
-	})
-
-	// WebSocket Endpoint
-	app.Get("/ws/:playerID/:zoneID", websocket.New(func(c *websocket.Conn) {
+	// WebSocket Endpoint usando Gorilla vía adaptador
+	app.Get("/ws/:playerID/:zoneID", func(c *fiber.Ctx) error {
 		playerID := c.Params("playerID")
 		zoneID := c.Params("zoneID")
 		zoneType := c.Query("type", "dungeon")
 
 		zone := hub.GetOrCreateZone(zoneID, zoneType)
 
-		game.HandleConnection(zone, c, playerID)
-	}))
+		// Adaptamos el handler de net/http para fasthttp (Fiber)
+		fasthttpadaptor.NewFastHTTPHandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			game.ServeWs(zone, w, r, playerID)
+		})(c.Context())
+
+		return nil
+	})
 }
