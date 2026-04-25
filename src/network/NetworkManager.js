@@ -147,18 +147,7 @@ export class NetworkManager {
 
     setupSocketHandlers() {
         this.socket.on('current_players', (players) => {
-            console.log('Connected to game server. ID:', this.socket.id);
-            this.isConnected = true;
-            this.startPingLoop();
-            
-            // If we had a pending join request, fulfill it now
-            if (this.pendingZoneJoin) {
-                this.joinZone(this.pendingZoneJoin.zoneId);
-                this.pendingZoneJoin = null;
-            }
-        });
-
-        this.socket.on('current_players', (players) => {
+            console.log('[Network] Current players in zone:', players);
             for (const id in players) {
                 if (id !== this.socket.id) {
                     const pData = players[id];
