@@ -52,7 +52,6 @@ func (z *Zone) Run() {
 					delete(z.players, client.PlayerID)
 					z.broadcastPlayerLeft(client.PlayerID)
 				}
-				// Cerrar conexión de Fiber
 				client.fconn.Close()
 				close(client.send)
 				log.Printf("[Zone %s] Client unregistered", z.ID)
@@ -75,62 +74,123 @@ func (z *Zone) handleMessage(msg []byte) {
 		return
 	}
 
+	playerID := event.PlayerID
+
 	switch event.Type {
 	case "join_zone":
 		var payload struct {
-			PlayerData interface{} `json:"playerData"`
+			PlayerData map[string]interface{} `json:"playerData"`
 		}
 		json.Unmarshal(event.Payload, &payload)
 		
 		z.mu.Lock()
-		// Guardar jugador en la zona
-		z.players[event.PlayerID] = payload.PlayerData
+		// Asegurar que el objeto tiene el ID correcto
+		pData := payload.PlayerData
+		if pData == nil { pData = make(map[string]interface{}) }
+		pData["id"] = playerID
+		
+		z.players[playerID] = pData
 		
 		// 1. Enviar lista de jugadores actuales al que entra
-		currentPlayersEvent := map[string]interface{}{
-			"type":    "current_players",
-			"payload": z.players,
-		}
-		z.sendToClient(event.PlayerID, currentPlayersEvent)
+		z.sendToClient(playerID, "current_players", z.players)
 		
 		// 2. Notificar a los demás que alguien entró
-		playerJoinedEvent := map[string]interface{}{
-			"type":    "player_joined",
-			"payload": payload.PlayerData,
-		}
-		z.broadcastToOthers(event.PlayerID, playerJoinedEvent)
+		z.broadcastToOthers(playerID, "player_joined", pData)
 		z.mu.Unlock()
 
+	case "move":
+		z.mu.Lock()
+		if p, ok := z.players[playerID].(map[string]interface{}); ok {
+			var moveData map[string]interface{}
+			json.Unmarshal(event.Payload, &moveData)
+			for k, v := range moveData {
+				p[k] = v
+			}
+			z.broadcastToOthers(playerID, "player_moved", p)
+		}
+		z.mu.Unlock()
+
+	case "chat_message":
+		z.mu.RLock()
+		if p, ok := z.players[playerID].(map[string]interface{}); ok {
+			var text string
+			json.Unmarshal(event.Payload, &text)
+			chatPayload := map[string]interface{}{
+				"id":     time.Now().UnixMilli(),
+				"sender": p["name"],
+				"text":   text,
+				"time":   time.Now().Format("15:04"),
+			}
+			z.broadcastToAllRaw("chat_message", chatPayload)
+		}
+		z.mu.RUnlock()
+
+	case "projectile_fire":
+		var projData interface{}
+		json.Unmarshal(event.Payload, &projData)
+		z.broadcastToOthers(playerID, "projectile_spawn", projData)
+
+	case "skill_use":
+		var skillData interface{}
+		json.Unmarshal(event.Payload, &skillData)
+		// El cliente espera 'player_skill' con el ID del que la usó
+		if sMap, ok := skillData.(map[string]interface{}); ok {
+			sMap["id"] = playerID
+			z.broadcastToOthers(playerID, "player_skill", sMap)
+		}
+
+	case "enemy_damaged", "enemy_death", "enemy_sync", "npc_sync", "portal_spawn":
+		// Relays simples manteniendo el mismo tipo
+		var payload interface{}
+		json.Unmarshal(event.Payload, &payload)
+		z.broadcastToOthers(playerID, event.Type, payload)
+
 	default:
-		// Relay standard events (move, skill_use, etc.)
-		z.broadcastToAll(msg)
+		// Relay genérico para cualquier otro evento (trade, party, etc.)
+		var payload interface{}
+		json.Unmarshal(event.Payload, &payload)
+		z.broadcastToOthers(playerID, event.Type, payload)
 	}
 }
 
-func (z *Zone) sendToClient(playerID string, event interface{}) {
-	msg, _ := json.Marshal(event)
+func (z *Zone) sendToClient(playerID string, eventType string, payload interface{}) {
+	msg, _ := json.Marshal(map[string]interface{}{
+		"type":    eventType,
+		"payload": payload,
+	})
 	for client := range z.clients {
 		if client.PlayerID == playerID {
-			client.send <- msg
+			select {
+			case client.send <- msg:
+			default:
+			}
 			break
 		}
 	}
 }
 
-func (z *Zone) broadcastToAll(message []byte) {
+func (z *Zone) broadcastToAllRaw(eventType string, payload interface{}) {
+	msg, _ := json.Marshal(map[string]interface{}{
+		"type":    eventType,
+		"payload": payload,
+	})
 	z.mu.RLock()
 	defer z.mu.RUnlock()
 	for client := range z.clients {
 		select {
-		case client.send <- message:
+		case client.send <- msg:
 		default:
-			// Client slow, skip or unregister handled in Run
 		}
 	}
 }
 
-func (z *Zone) broadcastToOthers(senderID string, event interface{}) {
-	msg, _ := json.Marshal(event)
+func (z *Zone) broadcastToOthers(senderID string, eventType string, payload interface{}) {
+	msg, _ := json.Marshal(map[string]interface{}{
+		"type":    eventType,
+		"payload": payload,
+	})
+	z.mu.RLock()
+	defer z.mu.RUnlock()
 	for client := range z.clients {
 		if client.PlayerID != senderID {
 			select {
@@ -144,13 +204,5 @@ func (z *Zone) broadcastToOthers(senderID string, event interface{}) {
 func (z *Zone) tick() {}
 
 func (z *Zone) broadcastPlayerLeft(playerID string) {
-	event := map[string]interface{}{
-		"type": "player_left",
-		"payload": map[string]string{
-			"id": playerID,
-		},
-		"ts": time.Now().UnixMilli(),
-	}
-	msg, _ := json.Marshal(event)
-	z.broadcastToAll(msg)
+	z.broadcastToOthers(playerID, "player_left", playerID)
 }
