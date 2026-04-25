@@ -52,7 +52,8 @@ export class NetworkManager {
     async init() {
         // --- Standard WebSockets for High-Speed Movement Sync ---
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const serverUrl = isLocal ? 'ws://localhost:3000' : 'wss://darkrealm-production.up.railway.app';
+        // En local usamos 8080 para coincidir con Railway, en producción WSS al dominio raíz (Railway mapea 443 -> 8080 interno)
+        const serverUrl = isLocal ? 'ws://localhost:8080' : 'wss://darkrealm-production.up.railway.app';
 
         console.log(`Connecting to game server via WebSocket at: ${serverUrl}`);
         this.setupWebSocket(serverUrl);

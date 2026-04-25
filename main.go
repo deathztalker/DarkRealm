@@ -41,7 +41,7 @@ func main() {
 	// 4. Iniciar Servidor
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "3000"
+		port = "8080"
 	}
 
 	log.Printf(">>> GO MMO SERVER LIVE ON PORT %s <<<", port)
