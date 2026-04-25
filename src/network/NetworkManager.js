@@ -50,19 +50,12 @@ export class NetworkManager {
     }
 
     async init() {
-        // --- Socket.io for High-Speed Movement Sync ---
-        if (typeof io !== 'undefined') {
-            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            const serverUrl = isLocal ? 'http://localhost:3000' : 'https://darkrealm-production.up.railway.app';
+        // --- Standard WebSockets for High-Speed Movement Sync ---
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const serverUrl = isLocal ? 'ws://localhost:3000' : 'wss://darkrealm-production.up.railway.app';
 
-            console.log(`Connecting to socket server at: ${serverUrl}`);
-            this.socket = io(serverUrl);
-            this.setupSocketHandlers();
-            this.setupTradeHandlers();
-            this.setupDuelHandlers();
-        } else {
-            console.warn('Socket.io client not found. Running movement in offline mode.');
-        }
+        console.log(`Connecting to game server via WebSocket at: ${serverUrl}`);
+        this.setupWebSocket(serverUrl);
 
         // --- Supabase for Persistent Chat & Social ---
         if (DB.isLoggedIn()) {
@@ -90,8 +83,61 @@ export class NetworkManager {
         }
     }
 
+    setupWebSocket(url) {
+        // Mock socket.on/emit for compatibility with existing code
+        this.socket = {
+            listeners: {},
+            on: (event, callback) => {
+                this.socket.listeners[event] = callback;
+            },
+            emit: (event, payload) => {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify({ type: event, payload, ts: Date.now() }));
+                }
+            },
+            id: 'ws_' + Math.random().toString(36).substr(2, 9)
+        };
+
+        this.connectWS(url);
+    }
+
+    connectWS(url) {
+        const fullUrl = `${url}/ws/${this.game.player?.charName || 'guest'}/${window.zoneLevel || 0}`;
+        this.ws = new WebSocket(fullUrl);
+
+        this.ws.onopen = () => {
+            console.log('Connected to game server.');
+            this.isConnected = true;
+            this.startPingLoop();
+            
+            if (this.socket.listeners['connect']) this.socket.listeners['connect']();
+            
+            if (this.pendingZoneJoin) {
+                this.joinZone(this.pendingZoneJoin.zoneId);
+                this.pendingZoneJoin = null;
+            }
+        };
+
+        this.ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                const handler = this.socket.listeners[data.type];
+                if (handler) handler(data.payload || data);
+            } catch (e) {
+                console.error('WS parse error:', e);
+            }
+        };
+
+        this.ws.onclose = () => {
+            console.warn('WS disconnected. Reconnecting in 3s...');
+            this.isConnected = false;
+            this.otherPlayers.clear();
+            setTimeout(() => this.connectWS(url), 3000);
+        };
+    }
+
     setupSocketHandlers() {
-        this.socket.on('connect', () => {
+        this.socket.on('current_players', (players) => {
             console.log('Connected to game server. ID:', this.socket.id);
             this.isConnected = true;
             this.startPingLoop();
