@@ -369,13 +369,15 @@ export class NetworkManager {
     }
 
     setupPartyRealtime() {
-        const channelName = 'party-sync-v3';
+        // Generar un nombre de canal único para esta sesión para evitar conflictos
+        const channelName = 'party_' + Math.random().toString(36).substring(7);
         
-        // Remove existing channel if it exists to avoid "after subscribe" error
-        const existingChannel = DB.client.getChannels().find(c => c.name === channelName);
-        if (existingChannel) {
-            DB.client.removeChannel(existingChannel);
-        }
+        // Limpiar absolutamente todos los canales previos para evitar el error "after subscribe"
+        DB.client.getChannels().forEach(c => {
+            if (c.name.includes('party')) {
+                DB.client.removeChannel(c);
+            }
+        });
 
         const channel = DB.client.channel(channelName);
         

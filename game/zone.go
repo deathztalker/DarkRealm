@@ -52,6 +52,8 @@ func (z *Zone) Run() {
 					delete(z.players, client.PlayerID)
 					z.broadcastPlayerLeft(client.PlayerID)
 				}
+				// Cerrar conexión de Fiber
+				client.fconn.Close()
 				close(client.send)
 				log.Printf("[Zone %s] Client unregistered", z.ID)
 			}
