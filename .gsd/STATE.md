@@ -13,18 +13,15 @@ updated: 2026-04-17T14:30:00-04:00
 
 ## Last Action
 
-✅ **Phase 4 COMPLETE: Skill System & Balance**
-- **All Skills & Crushing Blow:** Lógica de combate implementada y verificada.
-- **Endgame Systems:** Infinite Rifts con portales y Secret Cow Level operativos.
-- **Alquimia de Runas:** Cubo Horádrico con todas las recetas de mejora de runas y gemas.
-- **Visuales Definitivos:** Sincronización masiva de 100% de activos animados (Héroes Pro, Jefes y NPCs).
-- **UI Pro:** Panel de estadísticas avanzadas y árbol de talentos con tooltips dinámicos.
+✅ **MMO Server Migration COMPLETE: Node.js -> Go (Fiber)**
+- **Architecture:** Servidor Go autoritativo con soporte para Redis y Supabase (pgx).
+- **Railway Ready:** Los archivos del servidor Go se han movido a la raíz (`main.go`, `go.mod`, `Dockerfile`) para que Railway los detecte automáticamente.
+- **Backups:** Servidor original de Node.js movido a `server_old_node/`.
 
 ## Next Steps
 
-1. **Wave 1: Launch Prep**: Realizar un "smoke test" de la progresión del Acto 1 al 5.
-2. **Audio Polish**: Verificar que el ambiente sonoro sea consistente en las nuevas zonas del Rift.
-3. **CI/CD Deployment**: Publicar la versión estable v1.0 en GitHub Pages.
+1. **Deploy to Railway**: Simplemente haz push de estos cambios y Railway debería reconstruir usando el nuevo Dockerfile de Go.
+2. **Phase 7: Verification**: Monitorear los logs en Railway para asegurar que la conexión a Supabase y Redis sea exitosa.
 
 ## Active Decisions
 
