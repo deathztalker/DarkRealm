@@ -369,20 +369,23 @@ export class NetworkManager {
     }
 
     setupPartyRealtime() {
-        // Subscribe to party_members changes for the current user
-        DB.client
-            .channel('party-sync')
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'party_members'
-            }, async (payload) => {
-                const userId = DB.session?.user.id;
-                if (payload.new.user_id === userId || payload.old?.user_id === userId) {
-                    await this.refreshPartyState();
-                }
-            })
-            .subscribe();
+        // Create channel first
+        const channel = DB.client.channel('party-sync-v2');
+        
+        // Register callbacks BEFORE subscribing
+        channel.on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'party_members'
+        }, async (payload) => {
+            const userId = DB.session?.user.id;
+            if (payload.new.user_id === userId || (payload.old && payload.old.user_id === userId)) {
+                await this.refreshPartyState();
+            }
+        });
+
+        // Finally, subscribe
+        channel.subscribe();
     }
 
     async refreshPartyState() {
