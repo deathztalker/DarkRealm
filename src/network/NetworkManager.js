@@ -85,6 +85,7 @@ export class NetworkManager {
     }
 
     setupWebSocket(url) {
+        const charName = this.game.player?.charName || 'guest';
         // Mock socket.on/emit for compatibility with existing code
         this.socket = {
             listeners: {},
@@ -93,17 +94,24 @@ export class NetworkManager {
             },
             emit: (event, payload) => {
                 if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                    this.ws.send(JSON.stringify({ type: event, payload, ts: Date.now() }));
+                    // Importante: Enviar player_id en la raíz para que Go lo lea correctamente
+                    this.ws.send(JSON.stringify({ 
+                        type: event, 
+                        player_id: charName,
+                        payload, 
+                        ts: Date.now() 
+                    }));
                 }
             },
-            id: 'ws_' + Math.random().toString(36).substr(2, 9)
+            id: charName // Usar el nombre del personaje como ID único
         };
 
         this.connectWS(url);
     }
 
     connectWS(url) {
-        const fullUrl = `${url}/ws/${this.game.player?.charName || 'guest'}/${window.zoneLevel || 0}`;
+        const charName = this.game.player?.charName || 'guest';
+        const fullUrl = `${url}/ws/${charName}/${window.zoneLevel || 0}`;
         this.ws = new WebSocket(fullUrl);
 
         this.ws.onopen = () => {
