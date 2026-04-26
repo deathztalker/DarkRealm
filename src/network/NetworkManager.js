@@ -149,11 +149,13 @@ export class NetworkManager {
 
     setupSocketHandlers() {
         this.socket.on('current_players', (players) => {
-            console.log('[Network] Current players in zone:', players);
+            console.log('[Network] Received current_players:', players);
             for (const id in players) {
+                console.log(`[Network] Processing player id: ${id}, my id: ${this.socket.id}`);
                 if (id !== this.socket.id) {
                     const pData = players[id];
                     const charName = pData.charName || pData.name || id;
+                    console.log(`[Network] Adding other player: ${charName} at (${pData.x}, ${pData.y})`);
                     this.otherPlayers.set(id, {
                         ...pData,
                         charName: charName
@@ -162,19 +164,20 @@ export class NetworkManager {
             }
             if (this.otherPlayers.size === 0) {
                 this.isHost = true;
-                console.log('No other players. You are now the Zone Host.');
+                console.log('[Network] No other players. You are now the Zone Host.');
             }
         });
 
         this.socket.on('player_joined', (player) => {
             const charName = player.charName || player.name || player.id || 'Other Player';
             const pID = player.id || charName;
+            console.log(`[Network] Player joined event: ${charName} (ID: ${pID})`);
             player.charName = charName;
             this.otherPlayers.set(pID, player);
             this.game.onChatMessage?.({ sender: 'System', text: `${charName} has entered the realm.`, isSystem: true });
         });
 
-        // --- MMO: Portals & Synced Objects ---
+        // ... MMO: Portals & Synced Objects ...
         this.socket.on('portal_spawn', (data) => {
             // Check if portal already exists locally
             const existing = this.game.gameObjects?.find(o => o.id === data.id);
@@ -187,7 +190,7 @@ export class NetworkManager {
             }
         });
 
-        // --- Social Invites ---
+        // ... Social Invites ...
         this.socket.on('party_invite', (data) => {
             console.log('[Network] Party invite received:', data);
             window.addSocialRequest?.(data.fromId, data.from, 'party');
@@ -221,6 +224,7 @@ export class NetworkManager {
             const pID = data.id || data.charName;
             const player = this.otherPlayers.get(pID);
             if (player) {
+                // console.log(`[Network] Player moved: ${pID} to (${data.x}, ${data.y})`);
                 Object.assign(player, data);
                 player.charName = data.charName || data.name || player.charName;
 
@@ -231,6 +235,11 @@ export class NetworkManager {
                     member.y = data.y;
                     window.updatePartyHUD?.(this.currentParty.members);
                 }
+            } else {
+                // If we don't have this player, maybe we missed join_zone?
+                // console.warn(`[Network] Received move for unknown player: ${pID}`);
+                const charName = data.charName || data.name || pID;
+                this.otherPlayers.set(pID, { ...data, charName });
             }
         });
 
