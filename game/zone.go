@@ -175,6 +175,9 @@ func (z *Zone) handleMessage(msg []byte) {
 		z.broadcastToOthersLocked(playerID, "player_joined", pData)
 		z.mu.Unlock()
 
+	case "ping":
+		z.sendToClientLocked(playerID, "pong", event.Payload)
+
 	case "move":
 		z.mu.Lock()
 		if p, ok := z.players[playerID].(map[string]interface{}); ok {

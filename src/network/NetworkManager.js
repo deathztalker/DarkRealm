@@ -280,10 +280,22 @@ export class NetworkManager {
             if (this.game.onGoldPickup) this.game.onGoldPickup(goldId);
         });
 
+        this.socket.on('merc_sync', (data) => {
+            const pID = data.player_id || data.id;
+            const player = this.otherPlayers.get(pID);
+            if (player) player.mercenary = data;
+        });
+
+        this.socket.on('minion_sync', (data) => {
+            const pID = data.player_id || data.id;
+            const player = this.otherPlayers.get(pID);
+            if (player) player.minions = data.minions || data;
+        });
+
         this.socket.on('dungeon_init', (data) => {
-            console.log(`[Network] Dungeon Init: Seed=${data.seed}`);
-            window._currentZoneSeed = data.seed;
+            console.log(`[Network] Dungeon Init Request: Seed=${data.seed}`);
             if (this.game.onDungeonInit) this.game.onDungeonInit(data.seed);
+            window._currentZoneSeed = data.seed;
         });
 
         this.socket.on('chat_message', (msg) => {

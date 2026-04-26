@@ -1,5 +1,5 @@
 /**
- * Renderer — Canvas 2D layer manager & Asset Loader
+ * Renderer â€” Canvas 2D layer manager & Asset Loader
  */
 
 export const Assets = {
@@ -220,12 +220,19 @@ export class Renderer {
 
         const sw = img.width / 7;
         const sh = img.height / 16;
+        const totalRows = Math.floor(img.height / sh);
+        
         const dirMap = { 'up': 0, 'left': 1, 'down': 2, 'right': 3 };
         const dIdx = dirMap[dir] !== undefined ? dirMap[dir] : 2;
 
         let row = dIdx;
-        if (state === 'walk') row = 8 + dIdx;
-        if (state === 'attack') row = 12 + dIdx;
+        // If the sprite sheet is short (e.g. Shaman has only 4 rows), we clamp the row
+        if (totalRows <= 4) {
+            row = dIdx % totalRows;
+        } else {
+            if (state === 'walk') row = 8 + dIdx;
+            if (state === 'attack') row = 12 + dIdx;
+        }
 
         const frameCount = 6;
         const animSpeed = state === 'attack' ? 0.015 : 0.008;
