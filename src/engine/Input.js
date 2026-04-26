@@ -208,8 +208,9 @@ export class Input {
         // --- UI Toggle Hotkeys: Allow through even if UI is open (for toggling), but block repeat ---
         const uiMap = {
             'KeyI': 'ui:toggle:inventory', 
-            'KeyC': 'ui:toggle:character',
+            'KeyB': 'ui:toggle:character',
             'KeyO': 'ui:toggle:mercenary', 
+            'KeyK': 'ui:toggle:social',
             'KeyT': 'ui:toggle:talents',
             'KeyJ': 'ui:toggle:journal', 
             'KeyH': 'ui:toggle:achievements',

@@ -15,6 +15,7 @@ export class NetworkManager {
         this.currentParty = null; 
         this.pendingZoneJoin = null;
         this.partyStateLoaded = false;
+        this.initEvents();
     }
 
     initEvents() {

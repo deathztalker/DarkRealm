@@ -823,15 +823,15 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         const headerEl = tradePanel.querySelector('#trade-partner-name');
         if (headerEl) headerEl.textContent = `Trading with: ${partnerName}`;
         // Clear offer slots
-        const myOffer = tradePanel.querySelector('#trade-my-offer');
-        const theirOffer = tradePanel.querySelector('#trade-their-offer');
+        const myOffer = tradePanel.querySelector('#trade-my-slots');
+        const theirOffer = tradePanel.querySelector('#trade-their-slots');
         if (myOffer) myOffer.innerHTML = '';
         if (theirOffer) theirOffer.innerHTML = '';
         tradePanel.classList.remove('hidden');
         addCombatLog(`Trade started with ${partnerName}`, 'log-info');
     };
     network.onTradePartnerUpdate = (items) => {
-        const theirOffer = document.querySelector('#trade-their-offer');
+        const theirOffer = document.querySelector('#trade-their-slots');
         if (!theirOffer) return;
         theirOffer.innerHTML = '';
         (items || []).forEach(item => {
@@ -842,9 +842,9 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         });
     };
     network.onTradeStatusUpdate = (status) => {
-        const lockBtn = document.getElementById('btn-trade-lock');
+        const lockBtn = document.getElementById('trade-btn-lock');
         if (lockBtn) lockBtn.textContent = status.lock1 && status.lock2 ? '✔ LOCKED' : 'LOCK';
-        const acceptBtn = document.getElementById('btn-trade-accept');
+        const acceptBtn = document.getElementById('trade-btn-accept');
         if (acceptBtn) acceptBtn.disabled = !(status.lock1 && status.lock2);
     };
     network.onTradeExecute = (receive, give) => {
@@ -3998,6 +3998,10 @@ bus.on('ui:toggle:inventory', () => togglePanel('inventory'));
 bus.on('ui:toggle:talents', () => togglePanel('talents'));
 bus.on('ui:toggle:character', () => togglePanel('character'));
 bus.on('ui:toggle:mercenary', () => togglePanel('mercenary'));
+bus.on('ui:toggle:social', () => togglePanel('social'));
+bus.on('ui:toggle:stash', () => togglePanel('stash'));
+bus.on('ui:toggle:cube', () => togglePanel('cube'));
+bus.on('ui:toggle:journal', () => togglePanel('quests'));
 
 // renderInventory was merged down to line 3147
 
