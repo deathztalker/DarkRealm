@@ -57,7 +57,7 @@ func (h *Hub) MoveClient(playerID string, newZoneID string, currentZone *Zone, o
 
 	// 1. Salir de la zona actual
 	if currentZone != nil {
-		currentZone.unregister <- client
+		currentZone.Inbox <- ZoneEvent{Type: EventUnregister, Client: client}
 	}
 
 	// 2. Obtener o crear la nueva zona
@@ -67,11 +67,11 @@ func (h *Hub) MoveClient(playerID string, newZoneID string, currentZone *Zone, o
 	client.Zone = newZone
 
 	// 4. Entrar en la nueva zona
-	newZone.register <- client
+	newZone.Inbox <- ZoneEvent{Type: EventRegister, Client: client}
 	
 	// 5. Re-enviar el mensaje original para que la nueva zona lo procese
 	if originalMsg != nil {
-		newZone.broadcast <- originalMsg
+		newZone.Inbox <- ZoneEvent{Type: EventMessage, Data: originalMsg}
 	}
 	
 	log.Printf("[Hub] Player %s moved to room %s", playerID, newZoneID)

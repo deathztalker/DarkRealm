@@ -9,6 +9,20 @@ import (
 	"dark-realm-server/broadcast"
 )
 
+type ZoneEventType int
+
+const (
+	EventRegister ZoneEventType = iota
+	EventUnregister
+	EventMessage
+)
+
+type ZoneEvent struct {
+	Type   ZoneEventType
+	Client *Client
+	Data   []byte
+}
+
 type Zone struct {
 	ID         string
 	Type       string
@@ -17,9 +31,7 @@ type Zone struct {
 	Hub        *Hub
 	clients    map[*Client]bool
 	players    map[string]interface{} // player_id -> playerData
-	broadcast  chan []byte
-	register   chan *Client
-	unregister chan *Client
+	Inbox      chan ZoneEvent
 	mu         sync.RWMutex
 }
 
@@ -30,9 +42,7 @@ func NewZone(id, zoneType string, hub *Hub) *Zone {
 		Hub:        hub,
 		clients:    make(map[*Client]bool),
 		players:    make(map[string]interface{}),
-		broadcast:  make(chan []byte),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
+		Inbox:      make(chan ZoneEvent, 1024),
 	}
 }
 
@@ -42,53 +52,60 @@ func (z *Zone) Run() {
 
 	for {
 		select {
-		case client := <-z.register:
-			z.mu.Lock()
-			z.clients[client] = true
-			
-			// Auto-assign host if none exists
-			if z.HostID == "" && client.PlayerID != "" {
-				z.HostID = client.PlayerID
-				log.Printf("[Zone %s] Player %s assigned as HOST", z.ID, z.HostID)
-				z.sendToClient(z.HostID, "host_assignment", true)
-			} else {
-				z.sendToClient(client.PlayerID, "host_assignment", false)
-			}
-			z.mu.Unlock()
-			log.Printf("[Zone %s] Client registered: %s", z.ID, client.PlayerID)
-
-		case client := <-z.unregister:
-			z.mu.Lock()
-			if _, ok := z.clients[client]; ok {
-				delete(z.clients, client)
-				pID := client.PlayerID
-				if pID != "" {
-					delete(z.players, pID)
-					z.broadcastPlayerLeft(pID)
-					
-					// If host left, pick a new one
-					if z.HostID == pID {
-						z.HostID = ""
-						for c := range z.clients {
-							if c.PlayerID != "" {
-								z.HostID = c.PlayerID
-								log.Printf("[Zone %s] Host migrated to %s", z.ID, z.HostID)
-								z.sendToClient(z.HostID, "host_assignment", true)
-								break
-							}
-						}
-					}
-				}
-				log.Printf("[Zone %s] Client unregistered: %s", z.ID, pID)
-			}
-			z.mu.Unlock()
-
-		case message := <-z.broadcast:
-			z.handleMessage(message)
+		case event := <-z.Inbox:
+			z.handleEvent(event)
 
 		case <-ticker.C:
 			z.tick()
 		}
+	}
+}
+
+func (z *Zone) handleEvent(event ZoneEvent) {
+	switch event.Type {
+	case EventRegister:
+		z.mu.Lock()
+		z.clients[event.Client] = true
+		
+		// Auto-assign host if none exists
+		if z.HostID == "" && event.Client.PlayerID != "" {
+			z.HostID = event.Client.PlayerID
+			log.Printf("[Zone %s] Player %s assigned as HOST", z.ID, z.HostID)
+			z.sendToClientLocked(z.HostID, "host_assignment", true)
+		} else {
+			z.sendToClientLocked(event.Client.PlayerID, "host_assignment", false)
+		}
+		z.mu.Unlock()
+		log.Printf("[Zone %s] Client registered: %s", z.ID, event.Client.PlayerID)
+
+	case EventUnregister:
+		z.mu.Lock()
+		if _, ok := z.clients[event.Client]; ok {
+			delete(z.clients, event.Client)
+			pID := event.Client.PlayerID
+			if pID != "" {
+				delete(z.players, pID)
+				z.broadcastPlayerLeftLocked(pID)
+				
+				// If host left, pick a new one
+				if z.HostID == pID {
+					z.HostID = ""
+					for c := range z.clients {
+						if c.PlayerID != "" {
+							z.HostID = c.PlayerID
+							log.Printf("[Zone %s] Host migrated to %s", z.ID, z.HostID)
+							z.sendToClientLocked(z.HostID, "host_assignment", true)
+							break
+						}
+					}
+				}
+			}
+			log.Printf("[Zone %s] Client unregistered: %s", z.ID, pID)
+		}
+		z.mu.Unlock()
+
+	case EventMessage:
+		z.handleMessage(event.Data)
 	}
 }
 
@@ -146,16 +163,16 @@ func (z *Zone) handleMessage(msg []byte) {
 		z.players[playerID] = pData
 		
 		// 1. Enviar lista de jugadores actuales al que entra
-		z.sendToClient(playerID, "current_players", z.players)
+		z.sendToClientLocked(playerID, "current_players", z.players)
 
 		// 1.5 Enviar semilla del dungeon (AUTORITATIVA)
-		z.sendToClient(playerID, "dungeon_init", map[string]interface{}{"seed": z.Seed})
+		z.sendToClientLocked(playerID, "dungeon_init", map[string]interface{}{"seed": z.Seed})
 		
 		// 1.7 Confirmar Host status
-		z.sendToClient(playerID, "host_assignment", z.HostID == playerID)
+		z.sendToClientLocked(playerID, "host_assignment", z.HostID == playerID)
 
 		// 2. Notificar a los demás que alguien entró
-		z.broadcastToOthers(playerID, "player_joined", pData)
+		z.broadcastToOthersLocked(playerID, "player_joined", pData)
 		z.mu.Unlock()
 
 	case "move":
@@ -166,8 +183,8 @@ func (z *Zone) handleMessage(msg []byte) {
 			for k, v := range moveData {
 				p[k] = v
 			}
-			log.Printf("[Zone %s] Player %s moved to %.1f, %.1f", z.ID, playerID, p["x"], p["y"])
-			z.broadcastToOthers(playerID, "player_moved", p)
+			// log.Printf("[Zone %s] Player %s moved to %.1f, %.1f", z.ID, playerID, p["x"], p["y"])
+			z.broadcastToOthersLocked(playerID, "player_moved", p)
 		} else {
 			log.Printf("[Zone %s] Player %s moved but not found in z.players", z.ID, playerID)
 		}
@@ -256,12 +273,16 @@ func (z *Zone) handleMessage(msg []byte) {
 }
 
 func (z *Zone) sendToClient(playerID string, eventType string, payload interface{}) {
+	z.mu.RLock()
+	defer z.mu.RUnlock()
+	z.sendToClientLocked(playerID, eventType, payload)
+}
+
+func (z *Zone) sendToClientLocked(playerID string, eventType string, payload interface{}) {
 	msg, _ := json.Marshal(map[string]interface{}{
 		"type":    eventType,
 		"payload": payload,
 	})
-	z.mu.RLock()
-	defer z.mu.RUnlock()
 	for client := range z.clients {
 		if client.PlayerID == playerID {
 			select {
@@ -289,12 +310,16 @@ func (z *Zone) broadcastToAllRaw(eventType string, payload interface{}) {
 }
 
 func (z *Zone) broadcastToOthers(senderID string, eventType string, payload interface{}) {
+	z.mu.RLock()
+	defer z.mu.RUnlock()
+	z.broadcastToOthersLocked(senderID, eventType, payload)
+}
+
+func (z *Zone) broadcastToOthersLocked(senderID string, eventType string, payload interface{}) {
 	msg, _ := json.Marshal(map[string]interface{}{
 		"type":    eventType,
 		"payload": payload,
 	})
-	z.mu.RLock()
-	defer z.mu.RUnlock()
 	for client := range z.clients {
 		if client.PlayerID != senderID {
 			select {
@@ -307,6 +332,6 @@ func (z *Zone) broadcastToOthers(senderID string, eventType string, payload inte
 
 func (z *Zone) tick() {}
 
-func (z *Zone) broadcastPlayerLeft(playerID string) {
-	z.broadcastToOthers(playerID, "player_left", playerID)
+func (z *Zone) broadcastPlayerLeftLocked(playerID string) {
+	z.broadcastToOthersLocked(playerID, "player_left", playerID)
 }

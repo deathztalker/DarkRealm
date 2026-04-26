@@ -17,7 +17,7 @@ type Client struct {
 func (c *Client) readPump() {
 	defer func() {
 		if c.Zone != nil {
-			c.Zone.unregister <- c
+			c.Zone.Inbox <- ZoneEvent{Type: EventUnregister, Client: c}
 		}
 		c.Hub.UnregisterClient(c.PlayerID)
 	}()
@@ -28,7 +28,7 @@ func (c *Client) readPump() {
 			break
 		}
 		if c.Zone != nil {
-			c.Zone.broadcast <- message
+			c.Zone.Inbox <- ZoneEvent{Type: EventMessage, Data: message}
 		}
 	}
 }
@@ -59,7 +59,7 @@ func HandleFiberConnection(hub *Hub, zone *Zone, conn *websocket.Conn, playerID 
 	hub.RegisterClient(client)
 	
 	if zone != nil {
-		zone.register <- client
+		zone.Inbox <- ZoneEvent{Type: EventRegister, Client: client}
 	}
 
 	go client.writePump()
