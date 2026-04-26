@@ -108,9 +108,14 @@ export class NetworkManager {
         this.ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                console.log(`[Network Incoming] Type: ${data.type}`, data.payload || data);
+                if (data.type !== 'player_moved' && data.type !== 'enemy_sync') {
+                    console.log(`[Network Incoming] Type: ${data.type}`, data.payload || data);
+                }
                 const handler = this.socket.listeners[data.type];
                 if (handler) handler(data.payload || data);
+                else if (data.type !== 'player_moved' && data.type !== 'enemy_sync') {
+                    console.warn(`[Network] No handler for event type: ${data.type}`);
+                }
             } catch (e) {
                 console.error('[Network] WS parse error:', e);
             }

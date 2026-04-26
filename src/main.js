@@ -8523,6 +8523,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
                         if (cmd === '/coords') {
                             addCombatLog(`Current Coords: (${Math.round(player.x)}, ${Math.round(player.y)})`, 'log-info');
+                        } else if (cmd === '/who') {
+                            const count = network.otherPlayers.size;
+                            addCombatLog(`Players in zone (${count + 1}):`, 'log-info');
+                            addCombatLog(`- ${player.charName} (Me) at (${Math.round(player.x)}, ${Math.round(player.y)})`, 'log-info');
+                            network.otherPlayers.forEach((p, id) => {
+                                addCombatLog(`- ${p.charName || id} at (${Math.round(p.x)}, ${Math.round(p.y)})`, 'log-info');
+                            });
                         } else if (cmd === '/tp') {
                             if (!arg) {
                                 addCombatLog('Usage: /tp [playername]', 'log-info');
