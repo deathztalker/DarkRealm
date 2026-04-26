@@ -286,6 +286,23 @@ export class Player {
                         this._hasConviction = true;
                         this._convictionLvl = scaledLvl;
                         break;
+                    case 'holy_freeze': case 'holy_freeze_aura':
+                        this._hasHolyFreeze = true;
+                        this._holyFreezeLvl = scaledLvl;
+                        break;
+                    case 'sanctuary': case 'sanctuary_aura':
+                        this._hasSanctuary = true;
+                        this._sanctuaryLvl = scaledLvl;
+                        break;
+                    case 'vigor': case 'vigor_aura':
+                        s.pctMoveSpeed = (s.pctMoveSpeed || 0) + (10 + scaledLvl * 2);
+                        break;
+                    case 'blessing_of_kings':
+                        s.pctStr = (s.pctStr || 0) + 10;
+                        s.pctDex = (s.pctDex || 0) + 10;
+                        s.pctVit = (s.pctVit || 0) + 10;
+                        s.pctInt = (s.pctInt || 0) + 10;
+                        break;
                     case 'meditation':
                         s.manaRegenPerSec = (s.manaRegenPerSec || 0) + (this.maxMp * (0.05 + scaledLvl * 0.02));
                         break;
@@ -887,6 +904,29 @@ export class Player {
                         }
                     });
                 }
+                if (this.activeAura === 'holy_freeze_aura') {
+                    if (enemies) enemies.forEach(e => {
+                        if (e.hp <= 0) return;
+                        if ((e.x - this.x)**2 + (e.y - this.y)**2 < 160*160) {
+                            applyDamage(this, e, { dealt: 5 + slvl*2.5, isCrit: false, type: 'cold' }, 'holy_freeze_aura');
+                            applyStatus(e, 'chill', 3, 30 + slvl);
+                            if (fx) fx.emitBurst(e.x, e.y, '#80d0ff', 6);
+                        }
+                    });
+                }
+                if (this.activeAura === 'sanctuary_aura' || this.activeAura === 'sanctuary') {
+                    if (enemies) enemies.forEach(e => {
+                        if (e.hp <= 0) return;
+                        if ((e.x - this.x)**2 + (e.y - this.y)**2 < 180*180) {
+                            const isUndead = e.type === 'undead' || e.id?.includes('skeleton') || e.id?.includes('zombie');
+                            if (isUndead) {
+                                applyDamage(this, e, { dealt: 15 + slvl*5, isCrit: false, type: 'magic' }, 'sanctuary_pulse');
+                                e.pushX = (e.x - this.x) * 2; e.pushY = (e.y - this.y) * 2;
+                                if (fx) fx.emitHolyBurst(e.x, e.y);
+                            }
+                        }
+                    });
+                }
                 if (this.activeAura === 'conviction') {
                     if (enemies) enemies.forEach(e => {
                         if (e.hp <= 0) { e.armorDebuff = 0; e.resDebuff = 0; return; }
@@ -1228,15 +1268,18 @@ export class Player {
         const dmg = Math.round(((skill.dmgBase || 8) + (skill.dmgPerLvl || 4) * slvl) * (1 + (this.minionDmgPct || 0) / 100) * (1 + synBonus) * statScaling);
 
         let sprite = 'summon_skeleton'; // fallback
-        if (skillId.includes('golem')) sprite = 'summon_clay_golem';
+        if (skillId.includes('golem')) sprite = (skillId === 'fire_golem') ? 'enemy_energy_elemental' : (skillId === 'iron_golem' ? 'summon_iron_golem' : 'summon_clay_golem');
         if (skillId === 'blood_golem') sprite = 'summon_blood_golem';
-        if (skillId === 'iron_golem') sprite = 'summon_iron_golem';
         if (skillId === 'skeleton_mage') sprite = 'summon_skeleton_mage';
         if (skillId === 'raise_skeleton') sprite = 'summon_skeleton';
         if (skillId.includes('wolf')) sprite = 'summon_dire_wolf';
         if (skillId.includes('grizzly') || skillId.includes('bear')) sprite = 'summon_grizzly';
         if (skillId.includes('valkyrie')) sprite = 'summon_valkyrie';
-        if (skillId.includes('voidwalker') || skillId.includes('succubus') || skillId.includes('imp')) sprite = 'summon_voidwalker';
+        if (skillId.includes('voidwalker') || skillId.includes('succubus') || skillId.includes('imp') || skillId === 'summon_felguard') {
+            sprite = (skillId === 'summon_felguard') ? 'enemy_demon' : 'summon_voidwalker';
+        }
+        if (skillId === 'oak_sage') sprite = 'env_tree';
+        if (skillId === 'heart_of_wolverine') sprite = 'enemy_ghost';
 
         const minion = {
             id: `minion_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -1244,7 +1287,7 @@ export class Player {
             x: this.x + (Math.random()-0.5)*30, y: this.y + (Math.random()-0.5)*30,
             hp, maxHp: hp, damage: dmg,
             moveSpeed: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k))) ? 0 : 80,
-            isStationary: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k))),
+            isStationary: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k)) || skillId === 'oak_sage' || skillId === 'heart_of_wolverine'),
             attackRange: (skill.group === 'totem' || skillId.includes('mage') || skillId.includes('imp')) ? 200 : 25,
             attackCd: 0, attackSpeed: 1.2, age: 0, duration: 20 + slvl * 2, icon: `skill_${skillId}`, sprite,
             animState: 'idle', facingDir: 'south',
@@ -1252,6 +1295,7 @@ export class Player {
             formationOffset: { x: (Math.random()-0.5)*80, y: (Math.random()-0.5)*80 }
         };
         this.minions.push(minion); bus.emit('minion:spawned', { minion });
+        this._statsDirty = true; this._recalcStats(); // Recalc for sage buffs
     }
 
     updateMinions(dt, enemies, dungeon) {

@@ -1,202 +1,235 @@
 /**
  * WARLOCK — Class Definition
- * Three trees: Affliction (DoT debuffs) · Demonology (demon summon) · Destruction (burst damage)
+ * Three trees: Affliction (curses & DoTs) · Demonology (summons) · Destruction (burst fire)
  */
 export const WARLOCK_CLASS = {
-    id: 'warlock', name: 'Warlock', icon: '🔮',
-    description: 'Wields corrupting shadow magic to drain life, summon demons, and unleash devastating chaos fire. Trades immediate safety for overwhelming power.',
-    stats: { str: 10, dex: 15, vit: 15, int: 30 },
+    id: 'warlock', name: 'Warlock', icon: '🔥',
+    description: 'A dark mage who deals in souls and demons. Masters of periodic damage and powerful demonic allies.',
+    stats: { str: 10, dex: 15, vit: 20, int: 25 },
     trees: [
 
-        // ═══ AFFLICTION — DoT master ═══
+        // ═══ AFFLICTION — Damage Over Time ═══
         {
-            id: 'affliction', name: 'Affliction', icon: '☠️',
+            id: 'affliction', name: 'Affliction', icon: '🟣',
             nodes: [
                 {
+                    id: 'curse_of_exhaustion', row: 0, col: 0, type: 'active', icon: '🐢', name: 'Curse of Exhaustion',
+                    desc: 'Active · Reduces target movement speed by 30% + 2% per point for 12 seconds.',
+                    tip: 'Max lvl (20): 70% slow.',
+                    maxPts: 20, mana: 8, cd: 0, group: 'shadow'
+                },
+                {
                     id: 'corruption', row: 0, col: 1, type: 'active', icon: '☠️', name: 'Corruption',
-                    desc: 'Active · Instantly apply a powerful curse doing 8 + 4 per point shadow damage per second for 6 seconds.',
-                    tip: 'Max lvl (20): 88/s × 6s = 528 DoT.',
-                    maxPts: 20, mana: 8, cd: 0, group: 'shadow', dmgBase: 8, dmgPerLvl: 4
+                    desc: 'Active · Corrupts the target, dealing 10 + 5 per point shadow damage per second for 15s.',
+                    tip: 'Max lvl (20): 110/s shadow DoT.',
+                    maxPts: 20, mana: 12, cd: 0, group: 'shadow'
                 },
                 {
                     id: 'shadow_mastery', row: 1, col: 0, type: 'passive', icon: '🟣', name: 'Shadow Mastery',
-                    desc: 'Passive · +5% shadow damage per point. At 10 points, your DoT spells can critically strike.',
+                    desc: 'Passive · Increases all shadow damage dealt by 5% per point.',
                     tip: 'Max lvl (20): +100% shadow damage.',
                     maxPts: 20
                 },
                 {
                     id: 'siphon_life', row: 1, col: 2, type: 'active', icon: '🩸', name: 'Siphon Life',
-                    desc: 'Active · Deals 4 + 2 per point shadow damage per second for 10 seconds, healing you for 100% of the damage dealt.',
-                    tip: 'Max lvl (20): 44/s DoT and Heal.',
-                    maxPts: 20, mana: 12, cd: 0, group: 'shadow', dmgBase: 4, dmgPerLvl: 2, req: 'corruption:1'
+                    desc: 'Active · Deals 8 + 4 per point shadow damage per second and heals you for 100% of the damage.',
+                    tip: 'Max lvl (20): Powerful self-healing DoT.',
+                    maxPts: 20, mana: 15, cd: 0, group: 'shadow', req: 'corruption:3'
+                },
+                {
+                    id: 'malefic_grasp', row: 2, col: 0, type: 'active', icon: '🖐️', name: 'Malefic Grasp',
+                    desc: 'Active · Channels shadow energy into the target, dealing damage and causing your other DoTs to tick 50% faster.',
+                    tip: 'Max lvl (20): Massive DoT acceleration.',
+                    maxPts: 20, mana: 20, cd: 0, group: 'shadow', req: 'shadow_mastery:1'
                 },
                 {
                     id: 'haunt', row: 2, col: 1, type: 'active', icon: '👻', name: 'Haunt',
-                    desc: 'Active · Send a haunt that deals 10 + 6 per point shadow damage per second for 8 seconds AND increases all shadow damage taken by 20%.',
-                    tip: 'Max lvl (20): 1,040 DoT + 20% debuff.',
-                    maxPts: 20, mana: 14, cd: 8, group: 'shadow', dmgBase: 10, dmgPerLvl: 6, req: 'corruption:3'
+                    desc: 'Active · A ghostly soul that deals 30 + 15 damage and increases all your DoT damage by 20% on the target.',
+                    tip: 'Max lvl (20): 330 damage + DoT boost.',
+                    maxPts: 20, mana: 18, cd: 8, group: 'shadow', dmgBase: 30, dmgPerLvl: 15, req: 'siphon_life:3'
                 },
                 {
                     id: 'soul_siphon', row: 3, col: 0, type: 'passive', icon: '🌀', name: 'Soul Siphon',
-                    desc: 'Passive · Your Drain and Siphon spells heal for an additional +2% per point for each Affliction effect on the target.',
-                    tip: 'Massive healing when fully dotted.',
-                    maxPts: 20, req: 'shadow_mastery:5'
+                    desc: 'Passive · Killing a target with your shadow spells restores 2 + 1 per point mana.',
+                    tip: 'Max lvl (20): 22 mana on kill.',
+                    maxPts: 20, req: 'haunt:1'
                 },
                 {
                     id: 'agony', row: 3, col: 2, type: 'active', icon: '😱', name: 'Agony',
-                    desc: 'Active · Apply a ramping DoT starting at 2 + 1 per point shadow damage per second, doubling every 2 seconds up to 6 ticks.',
-                    tip: 'Max lvl (20): Tick 6 = 704/s.',
-                    maxPts: 20, mana: 12, cd: 0, group: 'shadow', dmgBase: 2, dmgPerLvl: 1, req: 'haunt:3',
-                    synergies: [{ from: 'shadow_mastery', pctPerPt: 4 }]
+                    desc: 'Active · A curse that deals increasing shadow damage over 20s, starting at 5 and ending at 50 + 20/lvl.',
+                    tip: 'Max lvl (20): Extreme long-term damage.',
+                    maxPts: 20, mana: 10, cd: 0, group: 'shadow', req: 'haunt:1'
                 },
                 {
                     id: 'unstable_affliction', row: 4, col: 1, type: 'active', icon: '☣️', name: 'Unstable Affliction',
-                    desc: 'Active · Deals 15 + 8 per point shadow damage over 5 seconds. If the target dies, it explodes dealing the remaining damage as AoE.',
-                    tip: 'Max lvl (20): 175/s DoT.',
-                    maxPts: 20, mana: 16, cd: 0, group: 'shadow', dmgBase: 15, dmgPerLvl: 8, req: 'haunt:5'
+                    desc: 'Active · High damage shadow DoT. If dispelled, it deals massive burst damage and silences.',
+                    tip: 'Max lvl (20): 250/s shadow DoT.',
+                    maxPts: 20, mana: 25, cd: 0, group: 'shadow', req: 'agony:5'
                 },
                 {
                     id: 'soul_fire', row: 5, col: 0, type: 'active', icon: '🔥', name: 'Soul Fire',
-                    desc: 'Active · Channel 1s to unleash a bolt of shadow fire dealing 70 + 25 per point damage. Instant if target has 3+ DoTs.',
-                    tip: 'Max lvl (20): 570 damage nuke.',
-                    maxPts: 20, mana: 25, cd: 0, group: 'shadow', dmgBase: 70, dmgPerLvl: 25, req: 'agony:5'
+                    desc: 'Active · Consumes a Soul Shard to deal 100 + 50 shadow-fire damage instantly.',
+                    tip: 'Max lvl (20): 1,100 burst damage.',
+                    maxPts: 20, mana: 30, cd: 15, group: 'fire', req: 'unstable_affliction:1'
                 },
                 {
                     id: 'seed', row: 5, col: 2, type: 'active', icon: '🌑', name: 'Seed of Corruption',
-                    desc: 'Active · Plant a ticking bomb. When they take 200 + 50 per point total shadow damage they explode for 60 + 20 per point AoE shadow damage.',
-                    tip: 'Max lvl (20): 460 AoE explosion.',
-                    maxPts: 20, mana: 20, cd: 3, group: 'shadow', dmgBase: 60, dmgPerLvl: 20, req: 'unstable_affliction:3'
+                    desc: 'Active · Embeds a seed that explodes after taking enough damage, dealing shadow damage to all nearby.',
+                    tip: 'Max lvl (20): Powerful shadow AoE.',
+                    maxPts: 20, mana: 35, cd: 0, group: 'shadow', req: 'unstable_affliction:1'
                 },
                 {
                     id: 'pandemic', row: 6, col: 1, type: 'active', icon: '🦠', name: 'Pandemic',
-                    desc: 'Active · Instantly refresh the duration of all DoTs on the target and spread them to 3 nearby enemies.',
-                    tip: 'Max lvl (1): Ultimate DoT spread tool.',
-                    maxPts: 1, mana: 30, cd: 20, req: 'seed:5'
+                    desc: 'Active · Spreads all your active DoTs from the target to all nearby enemies. 60s cooldown.',
+                    tip: 'Max lvl (20): Instant multi-target infection.',
+                    maxPts: 20, mana: 50, cd: 60, group: 'shadow', req: 'soul_fire:1'
                 }
             ]
         },
 
-        // ═══ DEMONOLOGY — Demon command ═══
+        // ═══ DEMONOLOGY — Summons ═══
         {
-            id: 'demonology', name: 'Demonology', icon: '😈',
+            id: 'demonology', name: 'Demonology', icon: '👹',
             nodes: [
                 {
+                    id: 'summon_felguard', row: 0, col: 0, type: 'active', icon: '⚔️', name: 'Summon Felguard',
+                    desc: 'Summon · A powerful demonic warrior that cleaves enemies and has high HP.',
+                    tip: 'Max lvl (20): Ultimate melee demon minion.',
+                    maxPts: 20, mana: 40, cd: 30, group: 'summon'
+                },
+                {
                     id: 'summon_imp', row: 0, col: 1, type: 'active', icon: '😈', name: 'Summon Imp',
-                    desc: 'Active · Summon a fire imp companion that shoots fire bolts for 10 + 5 per point fire damage.',
-                    tip: 'Max lvl (20): Imp deals 110 fire per shot.',
-                    maxPts: 20, mana: 20, cd: 5
+                    desc: 'Summon · A small demon that fires firebolts and grants the master Fire Resistance.',
+                    tip: 'Max lvl (20): Ranged fire support.',
+                    maxPts: 20, mana: 15, cd: 10, group: 'summon'
                 },
                 {
                     id: 'demon_armor', row: 1, col: 0, type: 'passive', icon: '🛡️', name: 'Demon Armor',
-                    desc: 'Passive · +20 flat armor and +2% all resistances per point. At 10 points, +5 HP regen per second.',
-                    tip: 'Max lvl (20): +400 flat armor · +40% all res.',
+                    desc: 'Passive · +20 armor and +2% all resistances per point.',
+                    tip: 'Max lvl (20): +400 armor · +40% Resists.',
                     maxPts: 20
                 },
                 {
-                    id: 'summon_succubus', row: 1, col: 2, type: 'active', icon: '💃', name: 'Summon Succubus',
-                    desc: 'Active · Replace your demon with a Succubus dealing 25 + 10 physical damage that periodically charms enemies.',
-                    tip: 'Max lvl (20): High melee DPS and CC.',
-                    maxPts: 20, mana: 30, cd: 5, req: 'summon_imp:3'
+                    id: 'demonic_empowerment', row: 1, col: 2, type: 'passive', icon: '⚡', name: 'Demonic Empowerment',
+                    desc: 'Passive · Your demons deal 10% more damage and attack 5% faster per point.',
+                    tip: 'Max lvl (20): +200% demon damage.',
+                    maxPts: 20, req: 'summon_imp:1'
                 },
                 {
-                    id: 'soul_link', row: 2, col: 0, type: 'passive', icon: '🔗', name: 'Soul Link',
-                    desc: 'Passive · +1% life steal per point. A portion of your pet\'s damage heals you.',
-                    tip: 'Max lvl (20): +20% life steal.',
-                    maxPts: 20, req: 'demon_armor:3'
+                    id: 'summon_succubus', row: 2, col: 1, type: 'active', icon: '💃', name: 'Summon Succubus',
+                    desc: 'Summon · A demoness who seduces enemies, reducing their defense and dealing shadow damage.',
+                    tip: 'Max lvl (20): Utility and single-target DPS.',
+                    maxPts: 20, mana: 25, cd: 15, group: 'summon', req: 'demon_armor:3'
                 },
                 {
-                    id: 'summon_voidwalker', row: 2, col: 2, type: 'active', icon: '🌑', name: 'Summon Voidwalker',
-                    desc: 'Active · Replace your demon with a Voidwalker, a tank with 300 + 80 per point HP that taunts enemies.',
-                    tip: 'Max lvl (20): Voidwalker has 1,900 HP.',
-                    maxPts: 20, mana: 35, cd: 5, req: 'summon_succubus:3'
+                    id: 'soul_link', row: 3, col: 0, type: 'passive', icon: '🔗', name: 'Soul Link',
+                    desc: 'Passive · 10% + 1% per point of damage you take is shared with your active demon.',
+                    tip: 'Max lvl (20): 30% damage redirection.',
+                    maxPts: 20, req: 'summon_succubus:1'
                 },
                 {
-                    id: 'demonic_sacrifice', row: 3, col: 1, type: 'active', icon: '💀', name: 'Demonic Sacrifice',
-                    desc: 'Active · Sacrifice your current demon to gain a massive buff based on the demon type for 30 minutes.',
-                    tip: 'Sacrifice Imp for fire dmg, Voidwalker for HP regen.',
-                    maxPts: 1, mana: 0, cd: 0, req: 'summon_voidwalker:1'
+                    id: 'summon_voidwalker', row: 3, col: 2, type: 'active', icon: '🌑', name: 'Summon Voidwalker',
+                    desc: 'Summon · A shadow demon that tanks enemies and can consume its own life to shield the master.',
+                    tip: 'Max lvl (20): High HP shadow tank.',
+                    maxPts: 20, mana: 30, cd: 20, group: 'summon', req: 'soul_link:1'
                 },
                 {
-                    id: 'master_demonologist', row: 4, col: 1, type: 'passive', icon: '👹', name: 'Master Demonologist',
-                    desc: 'Passive · Grants you and your summoned demon +3% damage and +3% damage reduction per point.',
-                    tip: 'Max lvl (20): +60% dmg / DR.',
+                    id: 'demonic_sacrifice', row: 4, col: 1, type: 'active', icon: '💀', name: 'Demonic Sacrifice',
+                    desc: 'Active · Sacrifice your demon to gain a massive buff to HP, Mana, or Damage for 30s.',
+                    tip: 'Max lvl (20): Ultimate master boost.',
+                    maxPts: 20, mana: 10, cd: 60, group: 'buff', req: 'summon_voidwalker:3'
+                },
+                {
+                    id: 'master_demonologist', row: 5, col: 1, type: 'passive', icon: '👹', name: 'Master Demonologist',
+                    desc: 'Passive · While a demon is active, you deal 3% more damage and take 3% less damage per point.',
+                    tip: 'Max lvl (20): +60% damage/reduction.',
                     maxPts: 20, req: 'demonic_sacrifice:1'
                 },
                 {
-                    id: 'dark_pact', row: 5, col: 0, type: 'active', icon: '💉', name: 'Dark Pact',
-                    desc: 'Active · Sacrifice 20% of your current HP to empower your next spell to deal +100 + 5% per point damage.',
-                    tip: 'Max lvl (20): +200% next spell damage.',
-                    maxPts: 20, mana: 0, cd: 10, req: 'soul_link:5'
+                    id: 'dark_pact', row: 6, col: 0, type: 'active', icon: '💉', name: 'Dark Pact',
+                    desc: 'Active · Drains 10% of your demon\'s HP to restore 20% of your mana.',
+                    tip: 'Max lvl (20): Infinite mana sustain.',
+                    maxPts: 20, mana: 0, cd: 5, group: 'buff', req: 'master_demonologist:1'
                 },
                 {
-                    id: 'metamorphosis', row: 5, col: 2, type: 'active', icon: '👹', name: 'Metamorphosis',
-                    desc: 'Active · Transform into a demon lord for 30 + 1 per point seconds: +200% size, spells deal +50% damage.',
-                    tip: 'Max lvl (20): 50s demon form.',
-                    maxPts: 20, mana: 30, cd: 120, req: 'master_demonologist:5'
-                },
+                    id: 'metamorphosis', row: 6, col: 2, type: 'active', icon: '👹', name: 'Metamorphosis',
+                    desc: 'Active · Transform into a demon for 20s: +100% damage and +50% armor. 120s cooldown.',
+                    tip: 'Max lvl (20): Become the demon.',
+                    maxPts: 20, mana: 50, cd: 120, group: 'buff', req: 'master_demonologist:5'
+                }
             ]
         },
 
-        // ═══ DESTRUCTION — Burst damage ═══
+        // ═══ DESTRUCTION — Burst Fire ═══
         {
             id: 'destruction', name: 'Destruction', icon: '💥',
             nodes: [
                 {
                     id: 'shadow_bolt', row: 0, col: 1, type: 'active', icon: '🌑', name: 'Shadow Bolt',
-                    desc: 'Active · Fire a bolt of shadow energy dealing 18 + 10 per point shadow damage.',
-                    tip: 'Max lvl (20): 218 shadow damage per cast.',
-                    maxPts: 20, mana: 10, cd: 0.5, group: 'shadow', dmgBase: 18, dmgPerLvl: 10
+                    desc: 'Active · Fires a bolt of shadow energy dealing 20 + 10 shadow damage.',
+                    tip: 'Max lvl (20): 220 shadow damage.',
+                    maxPts: 20, mana: 10, cd: 0, group: 'shadow'
+                },
+                {
+                    id: 'shadowburn', row: 0, col: 2, type: 'active', icon: '🔥', name: 'Shadowburn',
+                    desc: 'Active · Instantly blasts the target for 40 + 20 shadow damage. If the target dies, restores the mana cost.',
+                    tip: 'Max lvl (20): 440 damage finisher.',
+                    maxPts: 20, mana: 15, cd: 15, group: 'shadow'
                 },
                 {
                     id: 'aff_mastery', row: 1, col: 0, type: 'passive', icon: '🔴', name: 'Chaos Mastery',
-                    desc: 'Passive · +5% shadow and fire damage per point. At 10 points, critical strike damage increased by 20%.',
-                    tip: 'Max lvl (20): +100% damage.',
+                    desc: 'Passive · Increases fire and shadow damage by 5% per point.',
+                    tip: 'Max lvl (20): +100% Chaos damage.',
                     maxPts: 20
                 },
                 {
+                    id: 'ember_storm', row: 1, col: 1, type: 'passive', icon: '🌪️', name: 'Ember Storm',
+                    desc: 'Passive · Reduces the cast time and mana cost of fire spells by 5% per point.',
+                    tip: 'Max lvl (20): +100% fire efficiency.',
+                    maxPts: 20, req: 'shadow_bolt:1'
+                },
+                {
                     id: 'immolate_warlock', row: 1, col: 2, type: 'active', icon: '🔥', name: 'Immolate',
-                    desc: 'Active · Burns the enemy for 20 + 5 per point fire damage, then 10 + 4 per point per sec for 15s.',
-                    tip: 'Max lvl (20): 120 impact + 90/s.',
-                    maxPts: 20, mana: 14, cd: 0, group: 'fire', dmgBase: 20, dmgPerLvl: 5, req: 'shadow_bolt:1'
+                    desc: 'Active · Burns the target for 15 + 8 damage and an additional 10 + 4 damage over 15s.',
+                    tip: 'Max lvl (20): Fire DoT and burst.',
+                    maxPts: 20, mana: 15, cd: 0, group: 'fire', req: 'shadow_bolt:3'
                 },
                 {
                     id: 'conflagrate', row: 2, col: 1, type: 'active', icon: '💥', name: 'Conflagrate',
-                    desc: 'Active · Cause a burning target to explode for 50 + 20 per point fire/shadow damage.',
-                    tip: 'Max lvl (20): 450 chaos damage.',
-                    maxPts: 20, mana: 16, cd: 6, group: 'fire', dmgBase: 50, dmgPerLvl: 20, req: 'immolate_warlock:3'
+                    desc: 'Active · Consumes an Immolate effect to deal massive instant fire damage and stun for 1s.',
+                    tip: 'Max lvl (20): Destruction combo piece.',
+                    maxPts: 20, mana: 12, cd: 6, group: 'fire', req: 'immolate_warlock:5'
                 },
                 {
                     id: 'incinerate', row: 3, col: 0, type: 'active', icon: '🐍', name: 'Incinerate',
-                    desc: 'Active · Sends a wave of fire dealing 30 + 12 per point. Deals +50% damage if target is Immolated.',
-                    tip: 'Max lvl (20): 270 base fire damage.',
-                    maxPts: 20, mana: 12, cd: 0, group: 'fire', dmgBase: 30, dmgPerLvl: 12, req: 'conflagrate:3'
+                    desc: 'Active · Channels a beam of fire dealing 25 + 12 fire damage per second.',
+                    tip: 'Max lvl (20): 265/s fire beam.',
+                    maxPts: 20, mana: 15, cd: 0, group: 'fire', req: 'conflagrate:1'
                 },
                 {
                     id: 'backdraft', row: 3, col: 2, type: 'passive', icon: '💨', name: 'Backdraft',
-                    desc: 'Passive · Casting Conflagrate reduces the cast time and global cooldown of your next 3 destruction spells by 10% per point.',
-                    tip: 'Max lvl (3): 30% cast speed burst.',
-                    maxPts: 3, req: 'conflagrate:5'
+                    desc: 'Passive · After casting Conflagrate, your next 3 fire spells have +30% haste.',
+                    tip: 'Max lvl (20): +30% haste buff.',
+                    maxPts: 20, req: 'conflagrate:3'
                 },
                 {
                     id: 'chaos_bolt', row: 4, col: 1, type: 'active', icon: '💥', name: 'Chaos Bolt',
-                    desc: 'Active · Hurl a bolt of chaos energy that CANNOT be resisted or blocked, dealing 60 + 25 per point damage.',
-                    tip: 'Max lvl (20): 560 damage.',
-                    maxPts: 20, mana: 22, cd: 8, group: 'shadow', dmgBase: 60, dmgPerLvl: 25, req: 'conflagrate:5',
-                    synergies: [{ from: 'aff_mastery', pctPerPt: 4 }]
+                    desc: 'Active · Unleashes a bolt of chaos dealing 80 + 40 damage. This damage cannot be resisted.',
+                    tip: 'Max lvl (20): 880 unresistable damage.',
+                    maxPts: 20, mana: 30, cd: 12, group: 'fire', req: 'backdraft:1'
                 },
                 {
                     id: 'rain_of_fire', row: 5, col: 0, type: 'active', icon: '🌋', name: 'Rain of Fire',
-                    desc: 'Active · Call a column of fire that scorches the earth dealing 25 + 10 per point fire damage per second.',
-                    tip: 'Max lvl (20): 225/s × 5s = 1,125 total.',
-                    maxPts: 20, mana: 30, cd: 12, group: 'fire', dmgBase: 25, dmgPerLvl: 10, req: 'chaos_bolt:5',
-                    synergies: [{ from: 'aff_mastery', pctPerPt: 3 }]
+                    desc: 'Active · Call down fire from the sky, dealing 20 + 10 fire damage per second in an area.',
+                    tip: 'Max lvl (20): Classic fire AoE.',
+                    maxPts: 20, mana: 25, cd: 5, group: 'fire', req: 'chaos_bolt:1'
                 },
                 {
                     id: 'hellfire', row: 5, col: 2, type: 'active', icon: '🔥', name: 'Hellfire',
-                    desc: 'Active · Ignites the area around you, dealing 40 + 15 per point fire damage to enemies and 10% of that to yourself per second.',
-                    tip: 'Max lvl (20): 340/s point-blank AoE.',
-                    maxPts: 20, mana: 25, cd: 0, group: 'fire', dmgBase: 40, dmgPerLvl: 15, req: 'chaos_bolt:5'
-                },
+                    desc: 'Active · Ignites the ground around you, dealing massive fire damage to you and all nearby enemies.',
+                    tip: 'Max lvl (20): Dangerous close-range burst.',
+                    maxPts: 20, mana: 35, cd: 10, group: 'fire', req: 'chaos_bolt:1'
+                }
             ]
         },
     ]

@@ -38,7 +38,7 @@ export const NECROMANCER_CLASS = {
                     maxPts: 20
                 },
                 {
-                    id: 'clay_golem', row: 2, col: 1, type: 'active', icon: '🗿', name: 'Clay Golem',
+                    id: 'clay_golem', row: 2, col: 0, type: 'active', icon: '🗿', name: 'Clay Golem',
                     desc: 'Active · Summon a golem with 200 + 50 per point HP that slows enemies.',
                     tip: 'Max lvl (20): 1,200 HP tank.',
                     maxPts: 20, mana: 35, cd: 5, req: 'skeleton_mastery:5',
@@ -47,10 +47,16 @@ export const NECROMANCER_CLASS = {
                     ]
                 },
                 {
+                    id: 'golem_mastery', row: 2, col: 2, type: 'passive', icon: '🧠', name: 'Golem Mastery',
+                    desc: 'Passive · Boosts golem HP by 20% and Damage by 5% per point. Also adds Regen.',
+                    tip: 'Max lvl (20): +400% golem HP.',
+                    maxPts: 20, req: 'clay_golem:1'
+                },
+                {
                     id: 'blood_golem', row: 3, col: 0, type: 'active', icon: '🩸', name: 'Blood Golem',
                     desc: 'Active · Summon a golem that shares life with you. When it deals damage, you heal.',
                     tip: 'Max lvl (20): Life-stealing tank golem.',
-                    maxPts: 40, mana: 40, cd: 10, req: 'clay_golem:3',
+                    maxPts: 20, mana: 40, cd: 10, req: 'clay_golem:3',
                     synergies: [
                         { from: 'clay_golem', pctPerPt: 10 }
                     ]
@@ -62,10 +68,28 @@ export const NECROMANCER_CLASS = {
                     maxPts: 20, req: 'skeleton_mastery:10'
                 },
                 {
-                    id: 'death_commander', row: 4, col: 1, type: 'active', icon: '👑', name: 'Death Commander',
+                    id: 'iron_golem', row: 4, col: 0, type: 'active', icon: '⚙️', name: 'Iron Golem',
+                    desc: 'Active · Summon a golem from a metal item, inheriting its properties and granting Thorns.',
+                    tip: 'Max lvl (20): Massive physical reflect.',
+                    maxPts: 20, mana: 50, cd: 30, req: 'blood_golem:3'
+                },
+                {
+                    id: 'death_commander', row: 4, col: 2, type: 'active', icon: '👑', name: 'Death Commander',
                     desc: 'Active · For 15 seconds, your minions deal 100% more damage and attack 50% faster. 120s cooldown.',
                     tip: 'Max lvl (20): Ultimate army burst.',
                     maxPts: 20, mana: 50, cd: 120, group: 'buff', req: 'minion_instability:5'
+                },
+                {
+                    id: 'fire_golem', row: 5, col: 1, type: 'active', icon: '🔥', name: 'Fire Golem',
+                    desc: 'Active · Summon a golem that burns nearby enemies and heals from fire damage.',
+                    tip: 'Max lvl (20): Living volcano minion.',
+                    maxPts: 20, mana: 60, cd: 30, req: 'iron_golem:3'
+                },
+                {
+                    id: 'army_of_dead', row: 6, col: 1, type: 'active', icon: '💀', name: 'Army of the Dead',
+                    desc: 'Active · Instantly raise 5 skeletons and 3 skeletal mages to fight for 30s. 300s cooldown.',
+                    tip: 'Max lvl (1): Instant warband.',
+                    maxPts: 1, mana: 100, cd: 300, req: 'death_commander:5'
                 }
             ]
         },
@@ -75,46 +99,71 @@ export const NECROMANCER_CLASS = {
             id: 'bone', name: 'Bone/Poison', icon: '🦴',
             nodes: [
                 {
-                    id: 'bone_spear', row: 0, col: 1, type: 'active', icon: '🔱', name: 'Bone Spear',
+                    id: 'teeth', row: 0, col: 1, type: 'active', icon: '🦷', name: 'Teeth',
+                    desc: 'Active · Fire multiple bone teeth dealing 5 + 3 per point magic damage.',
+                    tip: 'Max lvl (20): Shotgun magic damage.',
+                    maxPts: 20, mana: 5, cd: 0, group: 'magic', dmgBase: 5, dmgPerLvl: 3,
+                    synergies: [{ from: 'bone_spear', pctPerPt: 15 }]
+                },
+                {
+                    id: 'bone_spear', row: 1, col: 1, type: 'active', icon: '🔱', name: 'Bone Spear',
                     desc: 'Active · Launch a spear dealing 20 + 10 per point shadow damage.',
                     tip: 'Max lvl (20): 220 shadow damage piercing.',
-                    maxPts: 20, mana: 11, cd: 0, group: 'shadow', dmgBase: 20, dmgPerLvl: 10,
+                    maxPts: 20, mana: 11, cd: 0, group: 'shadow', dmgBase: 20, dmgPerLvl: 10, req: 'teeth:3',
                     synergies: [{ from: 'bone_mastery', pctPerPt: 5 }]
                 },
                 {
-                    id: 'poison_nova', row: 1, col: 0, type: 'active', icon: '🤢', name: 'Poison Nova',
+                    id: 'poison_nova', row: 2, col: 0, type: 'active', icon: '🤢', name: 'Poison Nova',
                     desc: 'Active · Emit a ring of poison dealing 15 + 8 per point damage per second for 5s.',
                     tip: 'Max lvl (20): 175/s poison AoE.',
                     maxPts: 20, mana: 20, cd: 3, group: 'poison', dmgBase: 15, dmgPerLvl: 8, req: 'bone_spear:3',
                     synergies: [{ from: 'poison_blade', pctPerPt: 4 }]
                 },
                 {
-                    id: 'bone_armor', row: 1, col: 2, type: 'active', icon: '🦴', name: 'Bone Armor',
+                    id: 'bone_wall', row: 2, col: 1, type: 'active', icon: '🧱', name: 'Bone Wall',
+                    desc: 'Active · Create a wall of bone that blocks pathing and has HP.',
+                    tip: 'Max lvl (20): Crowd control masterpiece.',
+                    maxPts: 20, mana: 15, cd: 5, req: 'bone_spear:5'
+                },
+                {
+                    id: 'bone_armor', row: 2, col: 2, type: 'active', icon: '🦴', name: 'Bone Armor',
                     desc: 'Active · Surround yourself with bone shards, absorbing 20 + 15 per point damage.',
                     tip: 'Max lvl (20): 320 damage absorbed.',
                     maxPts: 20, mana: 12, cd: 0, group: 'buff'
                 },
                 {
-                    id: 'toxic_spores', row: 2, col: 1, type: 'passive', icon: '🍄', name: 'Toxic Spores',
+                    id: 'poison_dagger', row: 3, col: 0, type: 'active', icon: '🗡️', name: 'Poison Dagger',
+                    desc: 'Active · Strike with a poisoned blade, dealing massive poison damage over time.',
+                    tip: 'Max lvl (20): Deadly melee infection.',
+                    maxPts: 20, mana: 10, cd: 0, group: 'poison', req: 'poison_nova:1'
+                },
+                {
+                    id: 'toxic_spores', row: 3, col: 2, type: 'passive', icon: '🍄', name: 'Toxic Spores',
                     desc: 'Passive · Your poison spells now also reduce enemy healing by 5% per point.',
                     tip: 'Max lvl (20): 100% healing reduction.',
                     maxPts: 20, req: 'poison_nova:5'
                 },
                 {
-                    id: 'corpse_explosion', row: 3, col: 1, type: 'active', icon: '💥', name: 'Corpse Explosion',
+                    id: 'corpse_explosion', row: 4, col: 1, type: 'active', icon: '💥', name: 'Corpse Explosion',
                     desc: 'Active · Explode a nearby corpse dealing 10% to 20% of the target\'s max HP as shadow/physical damage.',
                     tip: 'Max lvl (20): The ultimate clearing skill.',
                     maxPts: 20, mana: 25, cd: 1, group: 'shadow', req: 'toxic_spores:3',
                     synergies: [{ from: 'bone_mastery', pctPerPt: 3 }]
                 },
                 {
-                    id: 'blood_mastery', row: 4, col: 1, type: 'passive', icon: '💉', name: 'Blood Mastery',
+                    id: 'bone_mastery', row: 4, col: 2, type: 'passive', icon: '💪', name: 'Bone Mastery',
+                    desc: 'Passive · Bone spells deal 5% more damage and cost 5% less mana per point.',
+                    tip: 'Max lvl (20): +100% bone efficiency.',
+                    maxPts: 20, req: 'bone_wall:5'
+                },
+                {
+                    id: 'blood_mastery', row: 5, col: 1, type: 'passive', icon: '💉', name: 'Blood Mastery',
                     desc: 'Passive · Increases your maximum HP by 2% per point and your Life Steal by 0.5% per point.',
                     tip: 'Max lvl (20): +40% HP · +10% Life Steal.',
                     maxPts: 20, req: 'corpse_explosion:5'
                 },
                 {
-                    id: 'bone_spirit', row: 5, col: 1, type: 'active', icon: '👻', name: 'Bone Spirit',
+                    id: 'bone_spirit', row: 6, col: 1, type: 'active', icon: '👻', name: 'Bone Spirit',
                     desc: 'Active · Release a homing spirit that seeks a target dealing 80 + 35 per point shadow damage. Costs 10% of your current HP instead of mana.',
                     tip: 'Max lvl (20): 780 homing shadow damage.',
                     maxPts: 20, mana: 0, cd: 2, group: 'shadow', dmgBase: 80, dmgPerLvl: 35, req: 'blood_mastery:5',
@@ -146,25 +195,49 @@ export const NECROMANCER_CLASS = {
                     maxPts: 20, mana: 12, cd: 0, req: 'weaken:3'
                 },
                 {
-                    id: 'iron_maiden', row: 2, col: 1, type: 'active', icon: '⚔️', name: 'Iron Maiden',
+                    id: 'terror', row: 2, col: 0, type: 'active', icon: '😱', name: 'Terror',
+                    desc: 'Active · Curse enemies causing them to flee in fear for 4 + 1s per point.',
+                    tip: 'Max lvl (20): Massive crowd control.',
+                    maxPts: 20, mana: 15, cd: 10, req: 'amplify_damage:3'
+                },
+                {
+                    id: 'iron_maiden', row: 2, col: 2, type: 'active', icon: '⚔️', name: 'Iron Maiden',
                     desc: 'Active · Curse a target: all physical damage they deal is reflected back.',
                     tip: 'Max lvl (20): Reflect 100% damage.',
                     maxPts: 20, mana: 8, cd: 0, req: 'amplify_damage:3'
                 },
                 {
-                    id: 'revive_elite', row: 3, col: 1, type: 'active', icon: '✨', name: 'Revive',
+                    id: 'confuse', row: 3, col: 0, type: 'active', icon: '🌀', name: 'Confuse',
+                    desc: 'Active · Curse enemies causing them to attack random nearby targets.',
+                    tip: 'Max lvl (20): Chaos in enemy ranks.',
+                    maxPts: 20, mana: 25, cd: 15, req: 'terror:3'
+                },
+                {
+                    id: 'life_tap_curse', row: 3, col: 2, type: 'active', icon: '🩸', name: 'Life Tap',
+                    desc: 'Active · Curse enemies so that attackers heal for 50% of damage dealt to them.',
+                    tip: 'Max lvl (20): Ultimate survivability.',
+                    maxPts: 20, mana: 20, cd: 0, req: 'iron_maiden:3'
+                },
+                {
+                    id: 'revive_elite', row: 4, col: 1, type: 'active', icon: '✨', name: 'Revive',
                     desc: 'Active · Revive a monster corpse as a servant that retains all abilities.',
                     tip: 'Max lvl (20): 13 minute duration.',
                     maxPts: 20, mana: 45, cd: 2, req: 'decrepify:5'
                 },
                 {
-                    id: 'bone_prison', row: 4, col: 0, type: 'active', icon: '🦴', name: 'Bone Prison',
+                    id: 'lower_resist', row: 5, col: 0, type: 'active', icon: '🔥', name: 'Lower Resist',
+                    desc: 'Active · Reduces enemy elemental resistances (Fire, Cold, Light, Poison) by 30% + 1% per level.',
+                    tip: 'Max lvl (20): -50% Elemental Resists.',
+                    maxPts: 20, mana: 30, cd: 0, req: 'revive_elite:1'
+                },
+                {
+                    id: 'bone_prison', row: 5, col: 2, type: 'active', icon: '🦴', name: 'Bone Prison',
                     desc: 'Active · Create a ring of bone walls around the target, trapping them for 6 + 0.5 per point seconds.',
                     tip: 'Max lvl (20): 16s area denial and entrapment.',
                     maxPts: 20, mana: 20, cd: 15, req: 'revive_elite:1'
                 },
                 {
-                    id: 'curse_mastery', row: 5, col: 1, type: 'passive', icon: '🔮', name: 'Curse Mastery',
+                    id: 'curse_mastery', row: 6, col: 1, type: 'passive', icon: '🔮', name: 'Curse Mastery',
                     desc: 'Passive · You can now apply up to 2 different curses to the same enemy. Additionally, curse durations are increased by 50%.',
                     tip: 'Max lvl (1): Stack Amplify Damage and Decrepify for ultimate carnage.',
                     maxPts: 1, req: 'revive_elite:5'

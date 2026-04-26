@@ -61,10 +61,22 @@ export const DRUID_CLASS = {
                     synergies: [{ from: 'shred', pctPerPt: 10 }]
                 },
                 {
+                    id: 'rabies', row: 4, col: 0, type: 'active', icon: '🤢', name: 'Rabies',
+                    desc: 'Active · A toxic bite dealing 20 + 15 poison damage per second that spreads to nearby enemies.',
+                    tip: 'Max lvl (20): Deadly viral poison.',
+                    maxPts: 20, mana: 15, cd: 6, group: 'poison', req: 'lacerate:3'
+                },
+                {
                     id: 'feral_charge', row: 4, col: 1, type: 'active', icon: '🏃', name: 'Feral Charge',
                     desc: 'Active · Charge a target, dealing 20 + 10 per point damage and immobilizing them for 2 seconds.',
                     tip: 'Max lvl (20): 220 damage gap closer.',
                     maxPts: 20, mana: 10, cd: 12, group: 'melee', dmgBase: 20, dmgPerLvl: 10, req: 'feral_mastery:5'
+                },
+                {
+                    id: 'fire_claws', row: 4, col: 2, type: 'active', icon: '🔥', name: 'Fire Claws',
+                    desc: 'Active · Melee strikes add 15 + 12 fire damage per point.',
+                    tip: 'Max lvl (20): +255 fire damage on hit.',
+                    maxPts: 20, mana: 5, cd: 0, group: 'fire', req: 'maul:3'
                 },
                 {
                     id: 'king_of_the_jungle', row: 5, col: 1, type: 'active', icon: '👑', name: 'King of Jungle',
@@ -99,11 +111,23 @@ export const DRUID_CLASS = {
                     maxPts: 20, mana: 12, cd: 0, group: 'buff', req: 'twister:3'
                 },
                 {
+                    id: 'fissure', row: 2, col: 0, type: 'active', icon: '🌋', name: 'Fissure',
+                    desc: 'Active · Open vents in the ground dealing 10 + 5 fire damage per second.',
+                    tip: 'Max lvl (20): 110/s fire AoE.',
+                    maxPts: 20, mana: 15, cd: 2, group: 'fire', dmgBase: 10, dmgPerLvl: 5, req: 'nature_mastery:1'
+                },
+                {
                     id: 'hurricane', row: 2, col: 1, type: 'active', icon: '🌀', name: 'Hurricane',
                     desc: 'Active · Deals 12 + 6 per point cold damage per second and slows enemies.',
                     tip: 'Max lvl (20): 132/s cold AoE.',
                     maxPts: 20, mana: 20, cd: 12, group: 'cold', dmgBase: 12, dmgPerLvl: 6, req: 'nature_mastery:5',
                     synergies: [{ from: 'twister', pctPerPt: 10 }]
+                },
+                {
+                    id: 'volcano', row: 2, col: 2, type: 'active', icon: '🔥', name: 'Volcano',
+                    desc: 'Active · Create a small volcano that erupts dealing 25 + 12 fire/physical damage.',
+                    tip: 'Max lvl (20): Powerful static AoE.',
+                    maxPts: 20, mana: 25, cd: 4, group: 'fire', dmgBase: 25, dmgPerLvl: 12, req: 'nature_mastery:1'
                 },
                 {
                     id: 'solar_beam', row: 3, col: 0, type: 'active', icon: '☀️', name: 'Solar Beam',
@@ -118,6 +142,12 @@ export const DRUID_CLASS = {
                     tip: 'Max lvl (20): 270 fire meteor storm.',
                     maxPts: 20, mana: 40, cd: 60, group: 'fire', dmgBase: 30, dmgPerLvl: 12, req: 'hurricane:5',
                     synergies: [{ from: 'nature_mastery', pctPerPt: 5 }]
+                },
+                {
+                    id: 'boulder_toss', row: 4, col: 0, type: 'active', icon: '🪨', name: 'Boulder Toss',
+                    desc: 'Active · Launch a heavy boulder that rolls through enemies dealing physical/fire damage.',
+                    tip: 'Max lvl (20): High knockback clearing spell.',
+                    maxPts: 20, mana: 18, cd: 2, group: 'fire', req: 'volcano:3'
                 },
                 {
                     id: 'force_of_nature', row: 4, col: 1, type: 'active', icon: '🌳', name: 'Force of Nature',
@@ -162,6 +192,12 @@ export const DRUID_CLASS = {
                     maxPts: 20, mana: 12, cd: 0
                 },
                 {
+                    id: 'oak_sage', row: 1, col: 1, type: 'active', icon: '🌳', name: 'Oak Sage',
+                    desc: 'Summon · A nature spirit that increases the maximum life of all nearby allies by 10% + 5% per level.',
+                    tip: 'Max lvl (20): +110% Maximum HP aura.',
+                    maxPts: 20, mana: 25, cd: 5, req: 'healing_touch:1'
+                },
+                {
                     id: 'innervate', row: 1, col: 2, type: 'active', icon: '💎', name: 'Innervate',
                     desc: 'Active · Restores 20 + 5 per point mana per second for 10 seconds.',
                     tip: 'Max lvl (20): 120/s mana regen.',
@@ -172,6 +208,12 @@ export const DRUID_CLASS = {
                     desc: 'Active · Heals for 50 + 20 HP instantly + 8 + 4 HP/s for 15s.',
                     tip: 'Max lvl (20): Strong hybrid heal.',
                     maxPts: 20, mana: 20, cd: 2, req: 'rejuvenation:3'
+                },
+                {
+                    id: 'heart_of_wolverine', row: 2, col: 2, type: 'active', icon: '🦁', name: 'Heart of Wolverine',
+                    desc: 'Summon · A spirit that increases the damage and attack rating of all nearby allies by 10% + 5% per level.',
+                    tip: 'Max lvl (20): +110% Damage aura.',
+                    maxPts: 20, mana: 30, cd: 5, req: 'oak_sage:3'
                 },
                 {
                     id: 'tranquility', row: 3, col: 0, type: 'active', icon: '☮️', name: 'Tranquility',

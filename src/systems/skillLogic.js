@@ -1,3 +1,11 @@
+import { bus } from '../engine/EventBus.js';
+import { applyStatus, applyDot, DMG_TYPE, applyDamage } from './combat.js';
+import { fx } from '../engine/ParticleSystem.js';
+
+/**
+ * SkillLogic — Specialized logic for character skills.
+ * Strictly synchronized with src/data/class_*.js
+ */
 export const SkillLogic = {
     /**
      * Triggered when a skill projectile or melee hit connects with a target.
@@ -50,14 +58,14 @@ export const SkillLogic = {
         }
 
         // ══════════════ SORCERESS ══════════════
-        if (['fire_bolt', 'fireball', 'meteor', 'immolate', 'fire_storm'].includes(skillId)) {
+        if (['fire_bolt', 'fireball', 'meteor', 'immolate', 'fire_storm', 'immolate_warlock'].includes(skillId)) {
             applyDot(target, baseDmg * 0.2, 'fire', 4, 'sorc_burn');
             if (['meteor', 'immolate'].includes(skillId)) {
                 fx.emitBurst(target.x, target.y, '#ff4000', 15, 3);
                 fx.shake(200, 4);
             }
         }
-        if (['ice_bolt', 'blizzard', 'frozen_orb', 'frost_nova', 'absolute_zero'].includes(skillId)) {
+        if (['ice_bolt', 'blizzard', 'frozen_orb', 'frost_nova', 'absolute_zero', 'ice_arrow'].includes(skillId)) {
             applyStatus(target, 'chill', 2.5 + slvl * 0.1, 40);
             if (skillId === 'ice_blast' || skillId === 'ice_trap') applyStatus(target, 'frozen', 1.5);
         }
@@ -81,12 +89,25 @@ export const SkillLogic = {
             target.resDebuff = Math.max(target.resDebuff || 0, 30 + slvl);
             applyStatus(target, 'curse', 10 + slvl);
         }
+        if (skillId === 'life_tap_curse') {
+            target.lifeTap = true;
+            applyStatus(target, 'curse', 10 + slvl);
+        }
+        if (skillId === 'terror') {
+            applyStatus(target, 'fleeing', 4 + slvl);
+        }
+        if (skillId === 'confuse') {
+            applyStatus(target, 'confused', 10);
+        }
         if (skillId === 'bone_prison') {
             applyStatus(target, 'rooted', 6 + slvl * 0.5);
             bus.emit('combat:log', { text: "Bone Prison!", cls: 'log-info' });
         }
         if (skillId === 'poison_nova') {
             applyDot(target, 5 + slvl * 3, 'poison', 5, 'necro_pois');
+        }
+        if (skillId === 'poison_dagger') {
+            applyDot(target, 20 + slvl * 10, 'poison', 8, 'necro_stab');
         }
 
         // ══════════════ ROGUE ══════════════
@@ -124,12 +145,10 @@ export const SkillLogic = {
             applyStatus(target, 'chill', 6, 50);
         }
         if (skillId === 'lava_burst') {
-            // Guaranteed to crit if target is burning - handled in player._useSkill
             if (fx) fx.emitBurst(target.x, target.y, '#ff4000', 15, 3);
         }
         if (attacker.talents?.baseLevel('storm_caller') > 0 && ['lightning_bolt', 'chain_lightning'].includes(skillId)) {
             if (Math.random() < 0.15) {
-                // Reset Chain Lightning CD
                 const clIdx = attacker.hotbar.indexOf('chain_lightning');
                 if (clIdx !== -1) {
                     attacker.cooldowns[clIdx] = 0;
@@ -143,8 +162,11 @@ export const SkillLogic = {
         if (skillId === 'maul' || skillId === 'bear_slam') {
             applyStatus(target, 'stun', skillId === 'bear_slam' ? 1.5 : 1.0);
         }
+        if (skillId === 'rabies') {
+            applyDot(target, 10 + slvl * 5, 'poison', 10, 'druid_rabies');
+            target.rabiesSpread = true;
+        }
         if (skillId === 'shred') {
-            // Shred deals 30% more damage if the target is bleeding
             const isBleeding = target._dots && target._dots.some(d => d.type === 'physical');
             if (isBleeding) {
                 applyDamage(attacker, target, { dealt: baseDmg * 0.3, isCrit: false, type: 'physical' }, 'shred_bonus');
@@ -159,6 +181,18 @@ export const SkillLogic = {
             if (target.type === 'undead' || target.type === 'demon' || target.id.includes('skeleton') || target.id.includes('zombie')) {
                 applyStatus(target, 'stun', 3.0);
                 if (fx) fx.emitHolyBurst(target.x, target.y);
+            }
+        }
+        if (skillId === 'vengeance') {
+            applyDamage(attacker, target, { dealt: baseDmg * 0.2, isCrit: false, type: 'fire' }, 'vengeance_fire');
+            applyDamage(attacker, target, { dealt: baseDmg * 0.2, isCrit: false, type: 'cold' }, 'vengeance_cold');
+            applyDamage(attacker, target, { dealt: baseDmg * 0.2, isCrit: false, type: 'lightning' }, 'vengeance_light');
+        }
+
+        // ══════════════ WARLOCK ══════════════
+        if (skillId === 'shadowburn') {
+            if (target.hp / target.maxHp < 0.2) {
+                applyDamage(attacker, target, { dealt: baseDmg * 2, isCrit: true, type: 'shadow' }, 'shadowburn_exec');
             }
         }
     },
@@ -199,11 +233,6 @@ export const SkillLogic = {
             bus.emit('combat:log', { text: "Arcane Power!", cls: 'log-crit' });
         }
 
-        if (skillId === 'mirror_image') {
-            // Usually spawns minions, we can just emit log
-            bus.emit('combat:log', { text: "Mirror Images!", cls: 'log-info' });
-        }
-
         if (skillId === 'bloodlust') {
             applyStatus(attacker, 'bloodlust', 15);
             if (fx) fx.shake(600, 10);
@@ -216,7 +245,6 @@ export const SkillLogic = {
         }
 
         if (skillId === 'lay_on_hands') {
-            const healAmount = attacker.maxHp;
             attacker.hp = attacker.maxHp;
             attacker.mp = Math.min(attacker.maxMp, attacker.mp + 10 + slvl * 2);
             if (fx) fx.emitHeal(attacker.x, attacker.y);
@@ -232,7 +260,6 @@ export const SkillLogic = {
             bus.emit('combat:log', { text: "Preparation: Cooldowns Reset!", cls: 'log-info' });
         }
 
-        // ══════════════ RUNES / ITEMS ══════════════
         if (skillId === 'battle_orders') {
             const pct = 15 + slvl * 3;
             attacker._buffs = attacker._buffs || [];
@@ -241,14 +268,6 @@ export const SkillLogic = {
             attacker.maxMp *= (1 + pct / 100);
             bus.emit('combat:log', { text: `Battle Orders: +${pct}% Life & Mana!`, cls: 'log-crit' });
             if (fx) fx.emitBurst(attacker.x, attacker.y, '#ffd700', 30, 2.5);
-        }
-
-        if (skillId === 'battle_command') {
-            attacker._buffs = attacker._buffs || [];
-            attacker._buffs.push({ id: 'bc', type: 'bc', name: 'Battle Command', duration: 120 + slvl * 10, value: 1 });
-            attacker.allSkillBonus = (attacker.allSkillBonus || 0) + 1;
-            bus.emit('combat:log', { text: `Battle Command: +1 All Skills!`, cls: 'log-crit' });
-            if (fx) fx.emitBurst(attacker.x, attacker.y, '#30ccff', 30, 2.5);
         }
 
         if (skillId === 'teleport') {

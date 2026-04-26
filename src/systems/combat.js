@@ -320,8 +320,16 @@ export function applyDamage(attacker, target, dmgResult, skillId = null, context
     // ── Apply HP loss ─────────────────────────────────────────
     finalDealt = Math.max(0, finalDealt);
     target.hp = Math.max(0, safeNum(target.hp) - finalDealt);
-    if (finalDealt > 0)
+    if (finalDealt > 0) {
         target.lastAttacker = attacker ? (attacker.name || attacker.charName) : (skillId || 'Environment');
+        
+        // --- Life Tap Curse Logic ---
+        if (target.lifeTap && finalDealt > 0 && attacker && attacker.hp > 0) {
+            const heal = Math.round(finalDealt * 0.5);
+            attacker.hp = Math.min(safeNum(attacker.maxHp), attacker.hp + heal);
+            if (fx && Math.random() < 0.2) fx.emitHeal(attacker.x, attacker.y);
+        }
+    }
 
     // ── PvP Duel floor ────────────────────────────────────────
     const isDuel = window.network?.duelOpponentId &&
@@ -481,6 +489,19 @@ export function updateStatuses(entities, dt) {
                             target: ent, dealt: dmg, isCrit: false,
                             type: dot.type, worldX: ent.x, worldY: ent.y,
                         });
+                        
+                        // --- Rabies Spread Logic ---
+                        if (dot.source === 'druid_rabies' || ent.rabiesSpread) {
+                            entities.forEach(other => {
+                                if (other === ent || safeNum(other.hp) <= 0) return;
+                                const dist = Math.hypot(other.x - ent.x, other.y - ent.y);
+                                if (dist < 80 && Math.random() < 0.3) {
+                                    applyDot(other, dot.dmgPerSec, 'poison', dot.remaining, 'druid_rabies');
+                                    if (fx) fx.emitPoisonCloud(other.x, other.y, 10);
+                                }
+                            });
+                        }
+
                         if (ent.hp <= 0) {
                             bus.emit('entity:death', { entity: ent, killer: null });
                             return false;
