@@ -694,6 +694,43 @@ export class NetworkManager {
         }
     }
 
+    broadcastLootSpawn(item) {
+        if (this.isConnected && this.isHost) {
+            this.socket.emit('loot_spawn', {
+                id: item.id,
+                baseId: item.baseId,
+                name: item.name,
+                rarity: item.rarity,
+                icon: item.icon,
+                x: item.x,
+                y: item.y
+            });
+        }
+    }
+
+    broadcastLootPickup(lootId) {
+        if (this.isConnected) {
+            this.socket.emit('loot_pickup', lootId);
+        }
+    }
+
+    broadcastGoldSpawn(gold) {
+        if (this.isConnected && this.isHost) {
+            this.socket.emit('gold_spawn', {
+                id: gold.id || `gold_${Date.now()}_${Math.random()}`,
+                x: gold.x,
+                y: gold.y,
+                amount: gold.amount
+            });
+        }
+    }
+
+    broadcastGoldPickup(goldId) {
+        if (this.isConnected) {
+            this.socket.emit('gold_pickup', goldId);
+        }
+    }
+
     joinZone(zoneId) {
         if (!this.isConnected) {
             console.log(`[Network] Delaying join for zone ${zoneId} until connected.`);

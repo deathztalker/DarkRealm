@@ -215,6 +215,12 @@ func (z *Zone) handleMessage(msg []byte) {
 			})
 		}
 
+	case "loot_spawn", "loot_pickup", "gold_spawn", "gold_pickup":
+		// Multi-player World Sync
+		var payload interface{}
+		json.Unmarshal(event.Payload, &payload)
+		z.broadcastToOthers(playerID, event.Type, payload)
+
 	case "enemy_sync", "npc_sync", "portal_spawn":
 		// Relays simples manteniendo el mismo tipo
 		var payload interface{}

@@ -756,6 +756,19 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
             droppedItems.splice(idx, 1);
         }
     };
+
+    network.onGoldSpawn = (data) => {
+        if (!droppedGold.some(g => g.id === data.id)) {
+            droppedGold.push({ ...data, active: true });
+        }
+    };
+
+    network.onGoldPickup = (goldId) => {
+        const idx = droppedGold.findIndex(g => g.id === goldId);
+        if (idx !== -1) {
+            droppedGold.splice(idx, 1);
+        }
+    };
     
     // Init Social HUD
     if (!socialHUD) {
@@ -1723,18 +1736,43 @@ function checkInteractions(pos) {
                         o.icon = 'obj_chest_open'; // Update live instance icon
                     }
                 }
-                for (let i = 0; i < res.count; i++) {
-                    const itm = loot.generate(zoneLevel);
-                    droppedItems.push({ ...itm, x: o.x + (Math.random() - 0.5) * 20, y: o.y + (Math.random() - 0.5) * 20 });
+                
+                // MMO: Tell others the object updated
+                if (network.isConnected) {
+                    network.socket.emit('object_update', { id: o.id, isOpen: true });
+                }
+
+                if (network.isHost) {
+                    for (let i = 0; i < res.count; i++) {
+                        const itm = loot.generate(zoneLevel);
+                        itm.id = `loot_${Date.now()}_${Math.random()}`;
+                        itm.x = o.x + (Math.random() - 0.5) * 20;
+                        itm.y = o.y + (Math.random() - 0.5) * 20;
+                        droppedItems.push(itm);
+                        network.broadcastLootSpawn(itm);
+                    }
                 }
                 addCombatLog(`You opened a chest!`, 'log-info');
             } else if (res && res.type === 'BREAKABLE') {
-                // Drop gold or trash
-                const goldAmt = 5 + Math.floor(Math.random() * 15) * (1 + difficulty * 0.5);
-                droppedGold.push({ x: o.x, y: o.y, amount: Math.round(goldAmt) });
-                if (Math.random() < 0.15) {
-                    const itm = loot.generate(zoneLevel, 'normal');
-                    droppedItems.push({ ...itm, x: o.x, y: o.y });
+                // MMO: Tell others the object was destroyed
+                if (network.isConnected) {
+                    network.socket.emit('object_update', { id: o.id, destroyed: true });
+                }
+
+                if (network.isHost) {
+                    // Drop gold or trash
+                    const goldAmt = 5 + Math.floor(Math.random() * 15) * (1 + difficulty * 0.5);
+                    const goldObj = { id: `gold_${Date.now()}_${Math.random()}`, x: o.x, y: o.y, amount: Math.round(goldAmt) };
+                    droppedGold.push(goldObj);
+                    network.broadcastGoldSpawn(goldObj);
+
+                    if (Math.random() < 0.15) {
+                        const itm = loot.generate(zoneLevel, 'normal');
+                        itm.id = `loot_${Date.now()}_${Math.random()}`;
+                        itm.x = o.x; itm.y = o.y;
+                        droppedItems.push(itm);
+                        network.broadcastLootSpawn(itm);
+                    }
                 }
                 addCombatLog(`You smashed a barrel!`, 'log-info');
                 fx.emitBurst(o.x, o.y, '#8b4513', 10, 1.5);
@@ -1852,6 +1890,10 @@ function checkInteractions(pos) {
                 if (player.addToInventory(di)) {
                     addCombatLog(`Picked up ${di.name}`, 'log-item');
                     bus.emit('item:pickup', { item: di });
+                    
+                    // MMO Sync: Tell others to remove this item
+                    if (network.isConnected) network.broadcastLootPickup(di.id);
+
                     droppedItems.splice(i, 1);
                     playLoot();
                     renderInventory();
@@ -1911,100 +1953,118 @@ function checkDeaths() {
 
             player.addXp(e.xpReward);
 
-            // Bosses guarantee a loot explosion (Multi-drop)
-            if (e.type === 'boss') {
-                const dropCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
-                for (let i = 0; i < dropCount; i++) {
-                    const r = Math.random();
-                    const rarity = r < 0.05 ? 'unique' : (r < 0.15 ? 'set' : (r < 0.4 ? 'rare' : 'magic'));
-                    const bossItem = loot.generate(zoneLevel, rarity);
-                    if (bossItem) {
-                        bossItem.x = e.x + (Math.random() - 0.5) * 40;
-                        bossItem.y = e.y + (Math.random() - 0.5) * 40;
-                        droppedItems.push(bossItem);
+            // Authoritative Loot & Gold Generation (Host Only)
+            if (network.isHost) {
+                // Bosses guarantee a loot explosion (Multi-drop)
+                if (e.type === 'boss') {
+                    const dropCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
+                    for (let i = 0; i < dropCount; i++) {
+                        const r = Math.random();
+                        const rarity = r < 0.05 ? 'unique' : (r < 0.15 ? 'set' : (r < 0.4 ? 'rare' : 'magic'));
+                        const bossItem = loot.generate(zoneLevel, rarity);
+                        if (bossItem) {
+                            bossItem.x = e.x + (Math.random() - 0.5) * 40;
+                            bossItem.y = e.y + (Math.random() - 0.5) * 40;
+                            bossItem.id = `loot_${Date.now()}_${Math.random()}`;
+                            droppedItems.push(bossItem);
+                            network.broadcastLootSpawn(bossItem);
 
-                        const beamColors = { rare: '#ffff00', unique: '#ff8000', set: '#00ff00', magic: '#8080ff' };
-                        if (beamColors[bossItem.rarity]) fx.emitBurst(bossItem.x, bossItem.y - 10, beamColors[bossItem.rarity], 8, 1);
+                            const beamColors = { rare: '#ffff00', unique: '#ff8000', set: '#00ff00', magic: '#8080ff' };
+                            if (beamColors[bossItem.rarity]) fx.emitBurst(bossItem.x, bossItem.y - 10, beamColors[bossItem.rarity], 8, 1);
+                        }
                     }
+
+                    // CEREMONIAL VICTORY
+                    const banner = $('boss-victory-announcement');
+                    if (banner) {
+                        $('vic-boss-name').textContent = e.name || 'Act Boss';
+                        banner.classList.remove('hidden');
+                        setTimeout(() => banner.classList.add('hidden'), 4000);
+                    }
+                    fx.shake(2000, 15); // Powerful shake
+                    timeScale = 0.05; // Dramatic Slow-Mo Finish
+                    addCombatLog('DEATH BLOW!', 'log-crit');
                 }
 
-                // CEREMONIAL VICTORY
-                const banner = $('boss-victory-announcement');
-                if (banner) {
-                    $('vic-boss-name').textContent = e.name || 'Act Boss';
-                    banner.classList.remove('hidden');
-                    setTimeout(() => banner.classList.add('hidden'), 4000);
+                // Standard Loot with MF/GF
+                const item = loot.roll(e, { magicFind: player.magicFind || 0 });
+                if (item) {
+                    item.x = e.x + (Math.random() - 0.5) * 20;
+                    item.y = e.y + (Math.random() - 0.5) * 20;
+                    item.id = `loot_${Date.now()}_${Math.random()}`;
+                    droppedItems.push(item);
+                    network.broadcastLootSpawn(item);
+
+                    // Loot beam for rare+ items
+                    const beamColors = { rare: '#ffff00', unique: '#ff8000', set: '#00ff00', magic: '#6060ff' };
+                    const beamC = beamColors[item.rarity];
+                    if (beamC) fx.emitBurst(item.x, item.y - 20, beamC, 12, 1);
                 }
-                fx.shake(2000, 15); // Powerful shake
-                timeScale = 0.05; // Dramatic Slow-Mo Finish
-                addCombatLog('DEATH BLOW!', 'log-crit');
-            }
 
-            // Mana/Life after kill
-            if (player.manaAfterKill) {
-                player.mp = Math.min(player.maxMp, player.mp + player.manaAfterKill);
-                if (fx) fx.emitManaSteal(player.x, player.y);
-            }
-            if (player.lifeAfterKill) {
-                player.hp = Math.min(player.maxHp, player.hp + player.lifeAfterKill);
-                if (fx) fx.emitHeal(player.x, player.y);
-            }
+                // Quest Item Drops
+                if (e.isRadament) {
+                    const qItem = { ...ITEM_BASES.book_of_skill, id: 'book_of_skill', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'radament' };
+                    droppedItems.push(qItem);
+                    network.broadcastLootSpawn(qItem);
+                } else if (e.isBeetleburst) {
+                    const qItem = { ...ITEM_BASES.staff_of_kings, id: 'staff_of_kings', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' };
+                    droppedItems.push(qItem);
+                    network.broadcastLootSpawn(qItem);
+                } else if (e.isColdworm) {
+                    const qItem = { ...ITEM_BASES.viper_amulet, id: 'viper_amulet', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' };
+                    droppedItems.push(qItem);
+                    network.broadcastLootSpawn(qItem);
+                } else if (e.isSarina) {
+                    const qItem = { id: 'khalim_heart', name: "Khalim's Heart", rarity: 'unique', icon: 'item_charm_small', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' };
+                    droppedItems.push(qItem);
+                    network.broadcastLootSpawn(qItem);
+                } else if (e.isCouncil) {
+                    const qItem = { id: 'khalim_brain', name: "Khalim's Brain", rarity: 'unique', icon: 'item_charm_large', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' };
+                    droppedItems.push(qItem);
+                    network.broadcastLootSpawn(qItem);
+                } else if (e.isShenk) {
+                    addCombatLog("Shenk the Overseer: 'BAAL SHALL... REWARD... ME...'", 'log-dmg');
+                } else if (e.isHephaisto) {
+                    const hammer = { ...ITEM_BASES.hellforge_hammer, id: 'hellforge_hammer', baseId: 'hellforge_hammer', rarity: 'unique', x: e.x, y: e.y, identified: true };
+                    droppedItems.push(hammer);
+                    network.broadcastLootSpawn(hammer);
+                    addCombatLog("Hephaisto slayed! The Hellforge Hammer is ours.", 'log-crit');
+                } else if (e.name === 'Mephisto' || e.isMephisto) {
+                    const stone = { ...ITEM_BASES.mephisto_soulstone, id: 'mephisto_soulstone', baseId: 'mephisto_soulstone', rarity: 'unique', x: e.x + 10, y: e.y + 10, identified: true };
+                    droppedItems.push(stone);
+                    network.broadcastLootSpawn(stone);
+                    addCombatLog("Mephisto's Soulstone has been recovered!", 'log-crit');
+                }
 
-            // Loot with MF/GF
-            const item = loot.roll(e, { magicFind: player.magicFind || 0 });
-            if (item) {
-                item.x = e.x + (Math.random() - 0.5) * 20;
-                item.y = e.y + (Math.random() - 0.5) * 20;
-                droppedItems.push(item);
-                // Loot beam for rare+ items
-                const beamColors = { rare: '#ffff00', unique: '#ff8000', set: '#00ff00', magic: '#6060ff' };
-                const beamC = beamColors[item.rarity];
-                if (beamC) fx.emitBurst(item.x, item.y - 20, beamC, 12, 1);
-            }
+                // Horadric Fragment Drops
+                const fragChance = 0.10 + (player.magicFind || 0) / 1000;
+                if (Math.random() < fragChance) {
+                    const fragment = {
+                        id: `frag_${Date.now()}`,
+                        name: 'Horadric Fragment',
+                        rarity: 'magic',
+                        icon: 'item_ruby',
+                        x: e.x + (Math.random() - 0.5) * 30,
+                        y: e.y + (Math.random() - 0.5) * 30
+                    };
+                    droppedItems.push(fragment);
+                    network.broadcastLootSpawn(fragment);
+                    if (fx) fx.emitBurst(fragment.x, fragment.y, '#00ffff', 10, 1);
+                }
 
-            // --- Phase 29: Quest Item Drops ---
-            if (e.isRadament) {
-                droppedItems.push({ ...ITEM_BASES.book_of_skill, id: 'book_of_skill', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'radament' });
-            } else if (e.isBeetleburst) {
-                droppedItems.push({ ...ITEM_BASES.staff_of_kings, id: 'staff_of_kings', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' });
-            } else if (e.isColdworm) {
-                droppedItems.push({ ...ITEM_BASES.viper_amulet, id: 'viper_amulet', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' });
-            } else if (e.isSarina) {
-                droppedItems.push({ id: 'khalim_heart', name: "Khalim's Heart", rarity: 'unique', icon: 'item_charm_small', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' });
-            } else if (e.isCouncil) {
-                droppedItems.push({ id: 'khalim_brain', name: "Khalim's Brain", rarity: 'unique', icon: 'item_charm_large', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' });
-            } else if (e.isShenk) {
-                addCombatLog("Shenk the Overseer: 'BAAL SHALL... REWARD... ME...'", 'log-dmg');
-            } else if (e.isHephaisto) {
-                // Drop Hellforge Hammer
-                const hammer = { ...ITEM_BASES.hellforge_hammer, id: 'hellforge_hammer', baseId: 'hellforge_hammer', rarity: 'unique', x: e.x, y: e.y, identified: true };
-                droppedItems.push(hammer);
-                addCombatLog("Hephaisto slayed! The Hellforge Hammer is ours.", 'log-crit');
-            } else if (e.name === 'Mephisto' || e.isMephisto) {
-                // Drop Mephisto's Soulstone
-                const stone = { ...ITEM_BASES.mephisto_soulstone, id: 'mephisto_soulstone', baseId: 'mephisto_soulstone', rarity: 'unique', x: e.x + 10, y: e.y + 10, identified: true };
-                droppedItems.push(stone);
-                addCombatLog("Mephisto's Soulstone has been recovered!", 'log-crit');
+                // Gold Drops (FIXED: Now properly pushed to droppedGold)
+                const goldAmt = loot.rollGold(e, player.goldFind || 0);
+                if (goldAmt > 0) {
+                    const goldObj = {
+                        id: `gold_${Date.now()}_${Math.random()}`,
+                        x: e.x + (Math.random() - 0.5) * 15,
+                        y: e.y + (Math.random() - 0.5) * 15,
+                        amount: goldAmt
+                    };
+                    droppedGold.push(goldObj);
+                    network.broadcastGoldSpawn(goldObj);
+                }
             }
-
-            // --- Phase 29: Horadric Fragment Drops ---
-            const fragChance = 0.10 + (player.magicFind || 0) / 1000;
-            const fragRoll = Math.random();
-            if (fragRoll < fragChance) {
-                const fragment = {
-                    id: 'horadric_fragment',
-                    name: 'Horadric Fragment',
-                    rarity: 'magic',
-                    icon: 'item_ruby',
-                    x: e.x + (Math.random() - 0.5) * 30,
-                    y: e.y + (Math.random() - 0.5) * 30
-                };
-                droppedItems.push(fragment);
-                if (fx) fx.emitBurst(fragment.x, fragment.y, '#00ffff', 10, 1);
-            }
-
-            const goldAmt = loot.rollGold(e, player.goldFind || 0);
-            addCombatLog(`${e.name} slain! +${e.xpReward} XP`, (item || fragRoll < fragChance) ? 'log-item' : 'log-level');
 
             // Kill counter
             killCount++;
