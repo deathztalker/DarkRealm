@@ -12,6 +12,7 @@ import (
 type Zone struct {
 	ID         string
 	Type       string
+	Seed       int
 	clients    map[*Client]bool
 	players    map[string]interface{} // player_id -> playerData
 	broadcast  chan []byte
@@ -80,10 +81,21 @@ func (z *Zone) handleMessage(msg []byte) {
 	case "join_zone":
 		var payload struct {
 			PlayerData map[string]interface{} `json:"playerData"`
+			Seed       int                    `json:"seed"`
 		}
 		json.Unmarshal(event.Payload, &payload)
 		
 		z.mu.Lock()
+		// Server-Authoritative Seed Logic
+		if len(z.players) == 0 && z.Seed == 0 {
+			if payload.Seed != 0 {
+				z.Seed = payload.Seed
+			} else {
+				z.Seed = int(time.Now().UnixNano() % 1000000)
+			}
+			log.Printf("[Zone %s] Initialized authoritative seed: %d", z.ID, z.Seed)
+		}
+
 		// Asegurar que el objeto tiene el ID correcto
 		pData := payload.PlayerData
 		if pData == nil { pData = make(map[string]interface{}) }
@@ -93,6 +105,9 @@ func (z *Zone) handleMessage(msg []byte) {
 		
 		// 1. Enviar lista de jugadores actuales al que entra
 		z.sendToClient(playerID, "current_players", z.players)
+
+		// 1.5 Enviar semilla del dungeon (AUTORITATIVA)
+		z.sendToClient(playerID, "dungeon_init", map[string]interface{}{"seed": z.Seed})
 		
 		// 2. Notificar a los demás que alguien entró
 		z.broadcastToOthers(playerID, "player_joined", pData)

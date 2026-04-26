@@ -29,6 +29,7 @@ import { fx } from './engine/ParticleSystem.js';
 import { Vendor } from './vendorSystem.js';
 import { VendorUI } from './ui/vendorUI.js';
 import { campaign } from './systems/campaignSystem.js';
+import { Projectile } from './entities/projectile.js';
 
 // Expose globals for external modules
 window.loot = loot;
@@ -701,6 +702,60 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         onWhisper: (data) => addChatMessage(data.sender, data.text, 'whisper')
     });
     window.networkManager = network; // Expose for Mercenary/Combat systems
+
+    // --- Sync Authoritative Dungeon Seed ---
+    network.onDungeonInit = (seed) => {
+        if (!seed || seed === window._currentZoneSeed) return;
+        console.log(`[MMO] Syncing Server Seed: ${seed}`);
+        window._currentZoneSeed = seed;
+        if (dungeon) {
+            dungeon.generate(zoneLevel, window.currentTheme, seed);
+            // Sync entities to new layout
+            npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
+            gameObjects = (dungeon.objectSpawns || []).map(s => {
+                const obj = new GameObject(s.type, s.x, s.y, s.icon, s.id);
+                if (s.spriteSize) obj.spriteSize = s.spriteSize;
+                if (s.type === 'portal') obj.targetZone = s.targetZone;
+                if (s.type === 'waypoint') obj.zone = s.zone;
+                if (s.shrineType) obj.shrineType = s.shrineType;
+                obj.isOpen = s.isOpen || false;
+                return obj;
+            });
+            if (zoneLevel > 0) {
+                enemies = dungeon.enemySpawns.map(s => new Enemy(s));
+            }
+            player.setRefs(dungeon, camera, enemies);
+            explored = Array.from({ length: dungeon.height }, () => Array(dungeon.width).fill(false));
+            addCombatLog(`Dungeon layout synced with server.`, 'log-info');
+        }
+    };
+
+    // --- Remote Asset Handlers ---
+    network.spawnRemoteProjectile = (data) => {
+        const p = new Projectile(data.x, data.y, data.targetX, data.targetY, data.type, data.speed, data.icon, null, data.skillId);
+        p.isRemote = true;
+        projectiles.push(p);
+    };
+
+    network.onRemoteLootSpawn = (data) => {
+        // data: { id, baseId, name, rarity, icon, x, y }
+        if (!droppedItems.some(it => it.id === data.id)) {
+            droppedItems.push({ ...data, active: true });
+            if (['unique', 'set', 'rare'].includes(data.rarity)) {
+                const beamColors = { rare: '#ffff00', unique: '#ff8000', set: '#00ff00' };
+                if (window.fx) fx.emitBurst(data.x, data.y - 20, beamColors[data.rarity], 12, 1);
+            }
+        }
+    };
+
+    network.onRemoteLootPickup = (lootId) => {
+        const idx = droppedItems.findIndex(it => it.id === lootId);
+        if (idx !== -1) {
+            const it = droppedItems[idx];
+            if (window.fx) fx.emitBurst(it.x, it.y, '#fff', 5, 0.5);
+            droppedItems.splice(idx, 1);
+        }
+    };
     
     // Init Social HUD
     if (!socialHUD) {

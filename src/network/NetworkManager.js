@@ -323,6 +323,14 @@ export class NetworkManager {
             }
         });
 
+        this.socket.on('dungeon_init', (data) => {
+            console.log(`[Network] Dungeon Init: Seed=${data.seed}`);
+            window._currentZoneSeed = data.seed;
+            if (this.game.onDungeonInit) {
+                this.game.onDungeonInit(data.seed);
+            }
+        });
+
         this.socket.on('zone_theme_sync', (theme) => {
             if (!this.isHost) {
                 console.log(`[MMO] Syncing zone theme to: ${theme}`);
