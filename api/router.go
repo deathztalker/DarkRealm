@@ -28,6 +28,6 @@ func SetupRoutes(app *fiber.App, hub *game.Hub) {
 		zone := hub.GetOrCreateZone(zoneID, zoneType)
 
 		// Llamamos a un handler adaptado a Fiber
-		game.HandleFiberConnection(zone, c, playerID)
+		game.HandleFiberConnection(hub, zone, c, playerID)
 	}))
 }

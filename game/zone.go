@@ -14,6 +14,7 @@ type Zone struct {
 	Type       string
 	Seed       int
 	HostID     string
+	Hub        *Hub
 	clients    map[*Client]bool
 	players    map[string]interface{} // player_id -> playerData
 	broadcast  chan []byte
@@ -22,10 +23,11 @@ type Zone struct {
 	mu         sync.RWMutex
 }
 
-func NewZone(id, zoneType string) *Zone {
+func NewZone(id, zoneType string, hub *Hub) *Zone {
 	return &Zone{
 		ID:         id,
 		Type:       zoneType,
+		Hub:        hub,
 		clients:    make(map[*Client]bool),
 		players:    make(map[string]interface{}),
 		broadcast:  make(chan []byte),
@@ -48,7 +50,9 @@ func (z *Zone) Run() {
 			if z.HostID == "" && client.PlayerID != "" {
 				z.HostID = client.PlayerID
 				log.Printf("[Zone %s] Player %s assigned as HOST", z.ID, z.HostID)
-				// We'll send the host_assignment after they fully join in join_zone
+				z.sendToClient(z.HostID, "host_assignment", true)
+			} else {
+				z.sendToClient(client.PlayerID, "host_assignment", false)
 			}
 			z.mu.Unlock()
 			log.Printf("[Zone %s] Client registered: %s", z.ID, client.PlayerID)
@@ -75,8 +79,6 @@ func (z *Zone) Run() {
 						}
 					}
 				}
-				client.fconn.Close()
-				close(client.send)
 				log.Printf("[Zone %s] Client unregistered: %s", z.ID, pID)
 			}
 			z.mu.Unlock()
@@ -104,12 +106,25 @@ func (z *Zone) handleMessage(msg []byte) {
 		var payload struct {
 			PlayerData map[string]interface{} `json:"playerData"`
 			Seed       int                    `json:"seed"`
+			RoomName   string                 `json:"roomName"`
 		}
 		json.Unmarshal(event.Payload, &payload)
 		
+		roomName := payload.RoomName
+		if roomName == "" {
+			roomName = z.ID
+		}
+
+		// Si el roomName es diferente al ID de esta zona, mover al cliente
+		if roomName != z.ID && z.Hub != nil {
+			log.Printf("[Zone %s] Moving player %s to room %s", z.ID, playerID, roomName)
+			z.Hub.MoveClient(playerID, roomName, z)
+			return
+		}
+
 		z.mu.Lock()
 		// Server-Authoritative Seed Logic
-		if len(z.players) == 0 && z.Seed == 0 {
+		if z.Seed == 0 {
 			if payload.Seed != 0 {
 				z.Seed = payload.Seed
 			} else {
@@ -152,18 +167,24 @@ func (z *Zone) handleMessage(msg []byte) {
 
 	case "chat_message":
 		z.mu.RLock()
+		var text string
+		json.Unmarshal(event.Payload, &text)
+		
+		senderName := playerID
 		if p, ok := z.players[playerID].(map[string]interface{}); ok {
-			var text string
-			json.Unmarshal(event.Payload, &text)
-			chatPayload := map[string]interface{}{
-				"id":     time.Now().UnixMilli(),
-				"sender": p["name"],
-				"text":   text,
-				"time":   time.Now().Format("15:04"),
+			if name, ok := p["charName"].(string); ok {
+				senderName = name
 			}
-			z.broadcastToAllRaw("chat_message", chatPayload)
+		}
+
+		chatPayload := map[string]interface{}{
+			"id":     time.Now().UnixMilli(),
+			"sender": senderName,
+			"text":   text,
+			"time":   time.Now().Format("15:04"),
 		}
 		z.mu.RUnlock()
+		z.broadcastToAllRaw("chat_message", chatPayload)
 
 	case "projectile_fire":
 		var projData interface{}
@@ -173,31 +194,24 @@ func (z *Zone) handleMessage(msg []byte) {
 	case "skill_use":
 		var skillData interface{}
 		json.Unmarshal(event.Payload, &skillData)
-		// El cliente espera 'player_skill' con el ID del que la usó
 		if sMap, ok := skillData.(map[string]interface{}); ok {
 			sMap["id"] = playerID
 			z.broadcastToOthers(playerID, "player_skill", sMap)
 		}
 
 	case "enemy_damaged":
-		// OPTIMIZATION: If a Guest damages an enemy, we MUST notify the Host so they can sync HP.
-		// We also relay to others for immediate visual feedback.
 		var payload interface{}
 		json.Unmarshal(event.Payload, &payload)
 		z.mu.RLock()
-		isHost := (playerID == z.HostID)
 		hostID := z.HostID
 		z.mu.RUnlock()
 		
-		if !isHost && hostID != "" {
-			// Direct hit to host to ensure authoritative HP update
+		if playerID != hostID && hostID != "" {
 			z.sendToClient(hostID, "enemy_damaged", payload)
 		}
-		// Relay to everyone else (including the host if we didn't send it specifically, but sendToOthers handles that)
 		z.broadcastToOthers(playerID, "enemy_damaged", payload)
 
 	case "enemy_death":
-		// Only the Host should ideally broadcast death to prevent double-loot bugs.
 		z.mu.RLock()
 		isHost := (playerID == z.HostID)
 		z.mu.RUnlock()
@@ -207,28 +221,24 @@ func (z *Zone) handleMessage(msg []byte) {
 		
 		if isHost {
 			z.broadcastToOthers(playerID, "enemy_death", payload)
-		} else {
-			// Guest thinks it died? Tell the host to check.
+		} else if z.HostID != "" {
 			z.sendToClient(z.HostID, "enemy_damaged", map[string]interface{}{
 				"enemyId": payload, 
-				"damage": 999999, // Overkill to trigger host-side death
+				"damage": 999999, 
 			})
 		}
 
 	case "loot_spawn", "loot_pickup", "gold_spawn", "gold_pickup":
-		// Multi-player World Sync
 		var payload interface{}
 		json.Unmarshal(event.Payload, &payload)
 		z.broadcastToOthers(playerID, event.Type, payload)
 
-	case "enemy_sync", "npc_sync", "portal_spawn":
-		// Relays simples manteniendo el mismo tipo
+	case "enemy_sync", "npc_sync", "portal_spawn", "object_update":
 		var payload interface{}
 		json.Unmarshal(event.Payload, &payload)
 		z.broadcastToOthers(playerID, event.Type, payload)
 
 	default:
-		// Relay genérico para cualquier otro evento (trade, party, etc.)
 		var payload interface{}
 		json.Unmarshal(event.Payload, &payload)
 		z.broadcastToOthers(playerID, event.Type, payload)
@@ -240,6 +250,8 @@ func (z *Zone) sendToClient(playerID string, eventType string, payload interface
 		"type":    eventType,
 		"payload": payload,
 	})
+	z.mu.RLock()
+	defer z.mu.RUnlock()
 	for client := range z.clients {
 		if client.PlayerID == playerID {
 			select {

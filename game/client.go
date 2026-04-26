@@ -8,6 +8,7 @@ import (
 
 type Client struct {
 	PlayerID string
+	Hub      *Hub
 	Zone     *Zone
 	fconn    *websocket.Conn
 	send     chan []byte
@@ -15,7 +16,10 @@ type Client struct {
 
 func (c *Client) readPump() {
 	defer func() {
-		c.Zone.unregister <- c
+		if c.Zone != nil {
+			c.Zone.unregister <- c
+		}
+		c.Hub.UnregisterClient(c.PlayerID)
 	}()
 	for {
 		_, message, err := c.fconn.ReadMessage()
@@ -23,7 +27,9 @@ func (c *Client) readPump() {
 			log.Printf("read error: %v", err)
 			break
 		}
-		c.Zone.broadcast <- message
+		if c.Zone != nil {
+			c.Zone.broadcast <- message
+		}
 	}
 }
 
@@ -42,16 +48,20 @@ func (c *Client) writePump() {
 	}
 }
 
-func HandleFiberConnection(zone *Zone, conn *websocket.Conn, playerID string) {
+func HandleFiberConnection(hub *Hub, zone *Zone, conn *websocket.Conn, playerID string) {
 	client := &Client{
 		PlayerID: playerID, 
-		Zone: zone, 
-		fconn: conn, 
-		send: make(chan []byte, 256),
+		Hub:      hub,
+		Zone:     zone,
+		fconn:    conn, 
+		send:     make(chan []byte, 256),
 	}
-	client.Zone.register <- client
+	hub.RegisterClient(client)
+	
+	if zone != nil {
+		zone.register <- client
+	}
 
-	// En Fiber websocket, el loop de lectura debe ser el principal
 	go client.writePump()
 	client.readPump()
 }

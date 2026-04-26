@@ -8,7 +8,7 @@ export class NetworkManager {
     constructor(game) {
         this.game = game;
         this.socket = null;
-        this.otherPlayers = new Map(); // socketId -> { x, y, animState, facingDir, classId, name }
+        this.otherPlayers = new Map(); // socketId -> { x, y, animState, facingDir, classId, charName }
         this.isConnected = false;
         this.isHost = false; // Is this client the 'Host' responsible for enemy AI sync?
         this.chatSubscription = null;
@@ -97,7 +97,7 @@ export class NetworkManager {
                     // Importante: Enviar player_id en la raíz para que Go lo lea correctamente
                     this.ws.send(JSON.stringify({ 
                         type: event, 
-                        player_id: charName,
+                        player_id: charName, 
                         payload, 
                         ts: Date.now() 
                     }));
@@ -106,12 +106,14 @@ export class NetworkManager {
             id: charName // Usar el nombre del personaje como ID único
         };
 
+        this.setupSocketHandlers();
         this.connectWS(url);
     }
 
     connectWS(url) {
         const charName = this.game.player?.charName || 'guest';
-        const fullUrl = `${url}/ws/${charName}/${window.zoneLevel || 0}`;
+        // Encode character name for safe URL usage
+        const fullUrl = `${url}/ws/${encodeURIComponent(charName)}/${window.zoneLevel || 0}`;
         this.ws = new WebSocket(fullUrl);
 
         this.ws.onopen = () => {
@@ -153,7 +155,7 @@ export class NetworkManager {
                     const pData = players[id];
                     this.otherPlayers.set(id, {
                         ...pData,
-                        charName: pData.name || 'Other Player'
+                        charName: pData.charName || pData.name || 'Other Player'
                     });
                 }
             }
@@ -164,8 +166,9 @@ export class NetworkManager {
         });
 
         this.socket.on('player_joined', (player) => {
-            player.charName = player.name || 'Other Player';
-            this.otherPlayers.set(player.id, player);
+            const pID = player.id || player.charName || 'stranger';
+            player.charName = player.charName || player.name || 'Other Player';
+            this.otherPlayers.set(pID, player);
             this.game.onChatMessage?.({ sender: 'System', text: `${player.charName} has entered the realm.`, isSystem: true });
         });
 
@@ -213,14 +216,15 @@ export class NetworkManager {
         });
 
         this.socket.on('player_moved', (data) => {
-            const player = this.otherPlayers.get(data.id);
+            const pID = data.id || data.charName;
+            const player = this.otherPlayers.get(pID);
             if (player) {
                 Object.assign(player, data);
-                if (data.name) player.charName = data.name;
+                player.charName = data.charName || data.name || player.charName;
 
                 // If in party, update HUD stats
-                if (this.currentParty && this.currentParty.members.some(m => m.id === player.id)) {
-                    const member = this.currentParty.members.find(m => m.id === player.id);
+                if (this.currentParty && this.currentParty.members.some(m => m.id === pID)) {
+                    const member = this.currentParty.members.find(m => m.id === pID);
                     member.x = data.x;
                     member.y = data.y;
                     window.updatePartyHUD?.(this.currentParty.members);
@@ -320,6 +324,18 @@ export class NetworkManager {
             // Remove item from global dropped items list
             if (this.game.onRemoteLootPickup) {
                 this.game.onRemoteLootPickup(lootId);
+            }
+        });
+
+        this.socket.on('gold_spawn', (data) => {
+            if (this.game.onGoldSpawn) {
+                this.game.onGoldSpawn(data);
+            }
+        });
+
+        this.socket.on('gold_pickup', (goldId) => {
+            if (this.game.onGoldPickup) {
+                this.game.onGoldPickup(goldId);
             }
         });
 
