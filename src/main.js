@@ -986,13 +986,24 @@ function gameLoop(timestamp) {
                 }
             }
 
-            // Sync minions & mercenary stats
-            if (player.minions.length > 0) {
-                const minionData = player.minions.map(m => ({ x: m.x, y: m.y, icon: m.icon, hp: m.hp, maxHp: m.maxHp }));
-                network.socket.emit('minion_sync', minionData);
-            }
-            if (mercenary && mercenary.hp > 0) {
-                network.socket.emit('merc_sync', { x: mercenary.x, y: mercenary.y, icon: mercenary.icon, hp: mercenary.hp, maxHp: mercenary.maxHp });
+            // Sync minions & mercenary stats (with throttle)
+            this._lastCompSync = this._lastCompSync || 0;
+            if (Date.now() - this._lastCompSync > 200) {
+                this._lastCompSync = Date.now();
+                if (player.minions.length > 0) {
+                    const minionData = player.minions.map(m => ({ 
+                        id: m.id, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, 
+                        sprite: m.sprite, name: m.name, anim: m.animState, dir: m.facingDir 
+                    }));
+                    network.socket.emit('minion_sync', minionData);
+                }
+                if (window.mercenary && window.mercenary.hp > 0) {
+                    const m = window.mercenary;
+                    network.socket.emit('merc_sync', { 
+                        id: 'merc_' + player.charName, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, 
+                        sprite: m.sprite, name: m.name, anim: m.animState, dir: m.facingDir 
+                    });
+                }
             }
         }
 
@@ -2636,12 +2647,21 @@ function updateHud() {
     const mpText = $('mp-text');
     if (mpText) mpText.textContent = `${Math.ceil(player.mp)}`;
 
-    // XP Bar
-    const xpPct = player.xpToNext ? (player.xp / player.xpToNext * 100) : 100;
+    // XP Bar (WoW Style)
+    const isParagon = player.level >= 99;
+    const xpToNext = isParagon ? (100000 + (player.paragonLevel * 50000)) : player.xpToNext;
+    const xpPct = xpToNext ? (player.xp / xpToNext * 100) : 100;
+    
     const xpBar = $('xp-bar');
     if (xpBar) {
-        xpBar.style.width = xpPct + '%';
-        $('xp-bar-container').title = `Level ${player.level} — ${Math.floor(xpPct)}%`;
+        xpBar.style.width = Math.min(100, xpPct) + '%';
+        const xpText = $('xp-text');
+        if (xpText) {
+            const current = Math.floor(player.xp);
+            const label = isParagon ? `Paragon ${player.paragonLevel}` : `Level ${player.level}`;
+            xpText.textContent = `${label}: ${current.toLocaleString()} / ${xpToNext.toLocaleString()} (${Math.floor(xpPct)}%)`;
+        }
+        $('xp-bar-container').title = `Next Level in: ${(xpToNext - player.xp).toLocaleString()} XP`;
     }
 
     // --- Phase 3 Wave 6: Mercenary HUD Update ---

@@ -27,11 +27,21 @@ export class HUDManager {
         const mpText = this.$('mp-text');
         if (mpText) mpText.textContent = `${Math.ceil(player.mp)}`;
 
-        const xpPct = player.xpToNext ? (player.xp / player.xpToNext * 100) : 100;
+        const isParagon = player.level >= 99;
+        const xpToNext = isParagon ? (100000 + (player.paragonLevel * 50000)) : player.xpToNext;
+        const xpPct = xpToNext ? (player.xp / xpToNext * 100) : 100;
+        
         const xpBar = this.$('xp-bar');
         if (xpBar) {
-            xpBar.style.width = xpPct + '%';
-            this.$('xp-bar-container').title = `Level ${player.level} — ${Math.floor(xpPct)}%`;
+            xpBar.style.width = Math.min(100, xpPct) + '%';
+            
+            const xpText = this.$('xp-text');
+            if (xpText) {
+                const current = Math.floor(player.xp);
+                const label = isParagon ? `Paragon ${player.paragonLevel}` : `Level ${player.level}`;
+                xpText.textContent = `${label}: ${current.toLocaleString()} / ${xpToNext.toLocaleString()} (${Math.floor(xpPct)}%)`;
+            }
+            this.$('xp-bar-container').title = `Next Level in: ${(xpToNext - player.xp).toLocaleString()} XP`;
         }
     }
 
