@@ -8516,22 +8516,31 @@ window.addEventListener('DOMContentLoaded', () => {
             if (e.key === 'Enter') {
                 const text = chatInput.value.trim();
                 if (text) {
-                    if (text.startsWith('/w ')) { const p = text.split(' '); network.sendWhisper(p[1], p.slice(2).join(' ')); }
-                    else if (text.startsWith('/f add ')) network.addFriend(text.replace('/f add ', '').trim());
-                    else if (text.startsWith('/p invite ')) network.inviteToParty(text.replace('/p invite ', '').trim());
-                    else if (text === '/p leave') network.leaveParty();
-                    else if (text.startsWith('/inspect ')) network.inspectPlayer(text.replace('/inspect ', '').trim());
-                    else if (text.startsWith('/trade invite ')) network.sendTradeInvite(text.replace('/trade invite ', '').trim());
-                    else if (text === '/trade accept') network.acceptTrade();
-                    else if (text.startsWith('/duel ')) network.sendDuelInvite(text.replace('/duel ', '').trim());
-                    else if (text === '/duel accept') network.acceptDuel();
-                    else if (text === '/ah') { togglePanel('auction'); refreshAuctions(); }
                     if (text.startsWith('/')) {
                         const parts = text.split(' ');
                         const cmd = parts[0].toLowerCase();
                         const arg = parts.slice(1).join(' ');
 
-                        if (cmd === '/p' || cmd === '/party') {
+                        if (cmd === '/coords') {
+                            addCombatLog(`Current Coords: (${Math.round(player.x)}, ${Math.round(player.y)})`, 'log-info');
+                        } else if (cmd === '/tp') {
+                            if (!arg) {
+                                addCombatLog('Usage: /tp [playername]', 'log-info');
+                            } else {
+                                const target = [...network.otherPlayers.values()].find(p => p.charName?.toLowerCase() === arg.toLowerCase());
+                                if (target) {
+                                    player.x = target.x;
+                                    player.y = target.y;
+                                    addCombatLog(`Teleported to ${target.charName}`, 'log-level');
+                                } else {
+                                    addCombatLog(`Player "${arg}" not found in this zone.`, 'log-dmg');
+                                }
+                            }
+                        } else if (cmd === '/w') { 
+                            const targetName = parts[1];
+                            const msg = parts.slice(2).join(' ');
+                            if (targetName && msg) network.sendWhisper(targetName, msg);
+                        } else if (cmd === '/p' || cmd === '/party' || cmd === '/party_invite') {
                             if (!arg) addCombatLog('Usage: /party [name]', 'log-info');
                             else network.sendPartyInvite(arg);
                         } else if (cmd === '/trade') {
@@ -8542,8 +8551,13 @@ window.addEventListener('DOMContentLoaded', () => {
                             else network.sendDuelInvite(arg);
                         } else if (cmd === '/rift') {
                             nextZone(128);
+                        } else if (cmd === '/ah') {
+                            togglePanel('auction');
+                            refreshAuctions();
+                        } else if (cmd === '/inspect') {
+                            if (arg) network.inspectPlayer(arg);
                         } else {
-                            addCombatLog('Unknown command.', 'log-dmg');
+                            addCombatLog(`Unknown command: ${cmd}`, 'log-dmg');
                         }
                     } else {
                         network.sendChat(text);
