@@ -118,7 +118,7 @@ func (z *Zone) handleMessage(msg []byte) {
 		// Si el roomName es diferente al ID de esta zona, mover al cliente
 		if roomName != z.ID && z.Hub != nil {
 			log.Printf("[Zone %s] Moving player %s to room %s", z.ID, playerID, roomName)
-			z.Hub.MoveClient(playerID, roomName, z)
+			z.Hub.MoveClient(playerID, roomName, z, msg)
 			return
 		}
 
