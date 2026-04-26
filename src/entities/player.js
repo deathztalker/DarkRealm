@@ -823,10 +823,24 @@ export class Player {
         return bonus;
     }
 
+    hasSpecificSkillBonus(skillId) {
+        for (const item of Object.values(this.equipment)) {
+            if (!item || item.identified === false) continue;
+            if (item.mods?.some(m => m.stat === `+skill:${skillId}`)) return true;
+            if (item.insertedRunes?.some(r => r.bonuses && r.bonuses[`+skill:${skillId}`])) return true;
+        }
+        for (const item of this.inventory) {
+            if (!item || item.type !== 'charm' || item.identified === false) continue;
+            if (item.mods?.some(m => m.stat === `+skill:${skillId}`)) return true;
+        }
+        return false;
+    }
+
     effectiveSkillLevel(skillId) {
         const base = this.talents.baseLevel(skillId) || 0;
-        if (base <= 0) return 0;
-        return base + this.getSkillBonus(skillId);
+        const bonus = this.getSkillBonus(skillId);
+        if (base <= 0 && !this.hasSpecificSkillBonus(skillId)) return 0;
+        return base + bonus;
     }
 
     _onClick(data) {
@@ -1370,7 +1384,7 @@ export class Player {
         this.xp += finalAmt;
         
         // Visual Feedback
-        if (window.fx) window.fx.emitFloatingText(this.x, this.y - 20, `+${finalAmt} XP`, '#4caf50');
+        if (fx) fx.emitText(this.x, this.y - 20, `+${finalAmt} XP`, '#4caf50');
 
         if (this.level < 99) {
             let lv = false;

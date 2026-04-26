@@ -3634,13 +3634,8 @@ function updateSkillBar() {
             if (draggedSkill) return;
             e.stopPropagation();
 
-            // If ALT is held OR slot is empty, open picker
-            if (e.altKey || !skillId) {
-                openSkillPicker(i, e.clientX, e.clientY);
-            } else {
-                // Otherwise, USE the skill
-                bus.emit(`skill:use:${i}`, { mouse: { x: player.x, y: player.y } });
-            }
+            // Simple click opens picker (Diablo-style)
+            openSkillPicker(i, e.clientX, e.clientY);
         });
 
         // Right-click to clear
@@ -8557,8 +8552,8 @@ function openSkillPicker(slotIdx, x, y) {
     const grid = document.createElement('div');
     grid.className = 'skill-picker-grid';
 
-    // Get all learned active/toggle skills
-    const skills = Object.values(player.skillMap).filter(s => (s.type === 'active' || s.type === 'toggle') && player.talents.baseLevel(s.id) > 0);
+    // Get all learned active/toggle skills (including item bonuses)
+    const skills = Object.values(player.skillMap).filter(s => (s.type === 'active' || s.type === 'toggle') && player.effectiveSkillLevel(s.id) > 0);
 
     if (skills.length === 0) {
         grid.innerHTML = `<div style="grid-column: span 4; text-align: center; color: #666; font-size: 11px; padding: 20px;">No active skills learned yet.<br>Spend Talent Points first!</div>`;
