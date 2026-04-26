@@ -1918,6 +1918,10 @@ function checkInteractions(pos) {
                 totalGoldCollected += dg.amount;
                 addCombatLog(`Picked up ${dg.amount} Gold`, 'log-heal');
                 bus.emit('gold:pickup', { amount: dg.amount });
+
+                // MMO Sync: Tell others to remove this gold pile
+                if (network && network.isConnected) network.broadcastGoldPickup(dg.id);
+
                 droppedGold.splice(i, 1);
                 updateHud();
                 renderInventory();
