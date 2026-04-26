@@ -153,9 +153,10 @@ export class NetworkManager {
             for (const id in players) {
                 if (id !== this.socket.id) {
                     const pData = players[id];
+                    const charName = pData.charName || pData.name || id;
                     this.otherPlayers.set(id, {
                         ...pData,
-                        charName: pData.charName || pData.name || 'Other Player'
+                        charName: charName
                     });
                 }
             }
@@ -166,10 +167,11 @@ export class NetworkManager {
         });
 
         this.socket.on('player_joined', (player) => {
-            const pID = player.id || player.charName || 'stranger';
-            player.charName = player.charName || player.name || 'Other Player';
+            const charName = player.charName || player.name || player.id || 'Other Player';
+            const pID = player.id || charName;
+            player.charName = charName;
             this.otherPlayers.set(pID, player);
-            this.game.onChatMessage?.({ sender: 'System', text: `${player.charName} has entered the realm.`, isSystem: true });
+            this.game.onChatMessage?.({ sender: 'System', text: `${charName} has entered the realm.`, isSystem: true });
         });
 
         // --- MMO: Portals & Synced Objects ---
@@ -448,11 +450,17 @@ export class NetworkManager {
         const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         // Determinar el nombre del remitente real
-        const isMe = msg.sender_id === DB.session?.user.id;
-        const senderName = isMe ? (this.game.player?.charName || 'Me') : (msg.sender_name || 'Other Player');
+        const myId = DB.session?.user.id;
+        const isMe = msg.sender_id === myId;
+        
+        // Priorizar sender_name del mensaje, si no existe o es genérico, intentar resolverlo
+        let senderName = msg.sender_name;
+        if (!senderName || senderName === 'Me' || senderName === 'Other Player') {
+            senderName = isMe ? (this.game.player?.charName || 'Me') : (msg.sender_name || 'Stranger');
+        }
 
         if (msg.is_whisper) {
-            if (isMe || msg.receiver_id === DB.session?.user.id) {
+            if (isMe || msg.receiver_id === myId) {
                 const targetName = msg.receiver_name || 'Recipient';
                 this.game.onWhisper?.({
                     sender: senderName,

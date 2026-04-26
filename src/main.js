@@ -1500,7 +1500,7 @@ function gameLoop(timestamp) {
             ctx.shadowColor = '#0044ff';
             ctx.shadowBlur = 10;
             ctx.fillStyle = '#88aaff';
-            ctx.fillText(op.name || 'Player', op.x, op.y - 20);
+            ctx.fillText(op.charName || op.name || 'Player', op.x, op.y - 20);
             ctx.shadowBlur = 0;
             ctx.restore();
         });

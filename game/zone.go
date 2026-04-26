@@ -95,11 +95,15 @@ func (z *Zone) Run() {
 func (z *Zone) handleMessage(msg []byte) {
 	var event broadcast.GameEvent
 	if err := json.Unmarshal(msg, &event); err != nil {
-		log.Printf("Error unmarshaling event: %v", err)
+		log.Printf("[Zone %s] Error unmarshaling event: %v", z.ID, err)
 		return
 	}
 
 	playerID := event.PlayerID
+	if playerID == "" {
+		log.Printf("[Zone %s] Received event type %s with empty player_id", z.ID, event.Type)
+		return
+	}
 
 	switch event.Type {
 	case "join_zone":
@@ -123,6 +127,7 @@ func (z *Zone) handleMessage(msg []byte) {
 		}
 
 		z.mu.Lock()
+		log.Printf("[Zone %s] Player %s joining room", z.ID, playerID)
 		// Server-Authoritative Seed Logic
 		if z.Seed == 0 {
 			if payload.Seed != 0 {
@@ -161,7 +166,10 @@ func (z *Zone) handleMessage(msg []byte) {
 			for k, v := range moveData {
 				p[k] = v
 			}
+			// log.Printf("[Zone %s] Player %s moved to %.1f, %.1f", z.ID, playerID, p["x"], p["y"])
 			z.broadcastToOthers(playerID, "player_moved", p)
+		} else {
+			log.Printf("[Zone %s] Player %s moved but not found in z.players", z.ID, playerID)
 		}
 		z.mu.Unlock()
 
@@ -176,6 +184,8 @@ func (z *Zone) handleMessage(msg []byte) {
 				senderName = name
 			}
 		}
+
+		log.Printf("[Zone %s] Chat from %s: %s", z.ID, senderName, text)
 
 		chatPayload := map[string]interface{}{
 			"id":     time.Now().UnixMilli(),
