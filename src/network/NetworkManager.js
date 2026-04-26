@@ -379,7 +379,7 @@ export class NetworkManager {
         
         // Limpiar absolutamente todos los canales previos para evitar el error "after subscribe"
         DB.client.getChannels().forEach(c => {
-            if (c.name.includes('party')) {
+            if (c.name?.includes('party')) {
                 DB.client.removeChannel(c);
             }
         });
