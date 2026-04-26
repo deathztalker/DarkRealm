@@ -166,7 +166,7 @@ func (z *Zone) handleMessage(msg []byte) {
 			for k, v := range moveData {
 				p[k] = v
 			}
-			// log.Printf("[Zone %s] Player %s moved to %.1f, %.1f", z.ID, playerID, p["x"], p["y"])
+			log.Printf("[Zone %s] Player %s moved to %.1f, %.1f", z.ID, playerID, p["x"], p["y"])
 			z.broadcastToOthers(playerID, "player_moved", p)
 		} else {
 			log.Printf("[Zone %s] Player %s moved but not found in z.players", z.ID, playerID)
