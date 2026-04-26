@@ -1430,18 +1430,27 @@ function gameLoop(timestamp) {
     // ─── RENDER OTHER MMO PLAYERS ───────────────────────────────────────
     if (network && network.otherPlayers && network.otherPlayers.size > 0) {
         const ctx = renderer.ctx;
+        // console.log(`[MMO] Rendering ${network.otherPlayers.size} other players`);
         network.otherPlayers.forEach((op) => {
+            if (op.x === undefined || op.y === undefined) return;
+
             // Shadow beneath
             ctx.save();
             ctx.fillStyle = 'rgba(0,80,255,0.25)';
             ctx.beginPath();
             ctx.ellipse(op.x, op.y + 6, 8, 4, 0, 0, Math.PI * 2);
             ctx.fill();
+
+            // Debug circle (Helpful if sprite fails to load)
+            ctx.strokeStyle = '#00f';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(op.x, op.y, 10, 0, Math.PI * 2); ctx.stroke();
+
             // Character sprite
             renderer.drawAnim(
                 `class_${op.classId || 'warrior'}`,
                 op.x, op.y - 4, 18,
-                op.animState || 'idle', op.facingDir || 'south',
+                op.animState || 'idle', op.facingDir || 'down',
                 lastTime
             );
 
