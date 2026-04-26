@@ -249,14 +249,27 @@ func (z *Zone) handleMessage(msg []byte) {
 		var payload interface{}
 		json.Unmarshal(event.Payload, &payload)
 		
-		if isHost {
-			z.broadcastToOthers(playerID, "enemy_death", payload)
-		} else if z.HostID != "" {
+		// Always broadcast death to ensure sync, regardless of who kills
+		z.broadcastToAllRaw("enemy_death", payload)
+		
+		if !isHost && z.HostID != "" {
 			z.sendToClient(z.HostID, "enemy_damaged", map[string]interface{}{
 				"enemyId": payload, 
 				"damage": 999999, 
 			})
 		}
+
+	case "share_xp":
+		var xpData interface{}
+		json.Unmarshal(event.Payload, &xpData)
+		// Distribute XP to EVERYONE in the zone
+		z.broadcastToAllRaw("gain_xp", xpData)
+
+	case "minion_sync", "merc_sync":
+		var payload interface{}
+		json.Unmarshal(event.Payload, &payload)
+		// Forward summons and mercenaries to other players
+		z.broadcastToOthers(playerID, event.Type, payload)
 
 	case "loot_spawn", "loot_pickup", "gold_spawn", "gold_pickup":
 		var payload interface{}

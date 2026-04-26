@@ -341,13 +341,24 @@ export class NetworkManager {
         this.socket.on('merc_sync', (data) => {
             const pID = data.player_id || data.id;
             const player = this.otherPlayers.get(pID);
-            if (player) player.mercenary = data;
+            if (player) {
+                player.mercenary = data.mercenary || data;
+            }
         });
 
         this.socket.on('minion_sync', (data) => {
             const pID = data.player_id || data.id;
             const player = this.otherPlayers.get(pID);
-            if (player) player.minions = data.minions || data;
+            if (player) {
+                player.minions = data.minions || data;
+            }
+        });
+
+        this.socket.on('gain_xp', (data) => {
+            if (this.game.player) {
+                this.game.player.addXp(data.amount || data);
+                if (window.addCombatLog) window.addCombatLog(`Party XP: +${data.amount || data}`, 'log-info');
+            }
         });
 
         this.socket.on('dungeon_init', (data) => {

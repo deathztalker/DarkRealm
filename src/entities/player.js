@@ -1364,9 +1364,14 @@ export class Player {
     }
 
     addXp(amount) {
-        if (this.hp <= 0) return;
+        if (this.hp <= 0 || amount <= 0) return;
         let mult = 1.0; if (this._buffs) { const b = this._buffs.find(x => x.id === 'shrine_exp'); if (b) mult += b.value / 100; }
-        this.xp += Math.round(amount * mult);
+        const finalAmt = Math.round(amount * mult);
+        this.xp += finalAmt;
+        
+        // Visual Feedback
+        if (window.fx) window.fx.emitFloatingText(this.x, this.y - 20, `+${finalAmt} XP`, '#4caf50');
+
         if (this.level < 99) {
             let lv = false;
             while (this.xp >= this.xpToNext) { this.xp -= this.xpToNext; this.level++; this.statPoints += 5; this.talents.unspent++; lv = true; bus.emit('player:levelup', { level: this.level }); if (fx) fx.emitLevelUp(this.x, this.y); }
