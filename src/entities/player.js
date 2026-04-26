@@ -254,6 +254,22 @@ export class Player {
                 allAuras.set(this.activeAura, (allAuras.get(this.activeAura) || 0) + slvl);
             }
 
+            // --- MMO Party Auras ---
+            this.partyAuras = [];
+            if (typeof window !== 'undefined' && window.network && window.network.isConnected) {
+                const AURA_RANGE_SQ = 600 * 600; // Increased range for party auras (600px radius)
+                window.network.otherPlayers.forEach(op => {
+                    if (op.activeAura && op.hp > 0 && op.state !== 'dead') {
+                        const dSq = (op.x - this.x) ** 2 + (op.y - this.y) ** 2;
+                        if (dSq < AURA_RANGE_SQ) {
+                            const partySlvl = Math.max(1, Math.floor((op.level || 1) / 4));
+                            allAuras.set(op.activeAura, Math.max((allAuras.get(op.activeAura) || 0), partySlvl));
+                            this.partyAuras.push({ id: op.activeAura, level: partySlvl, source: op.charName || 'Party' });
+                        }
+                    }
+                });
+            }
+
             for (const [auraId, level] of allAuras) {
                 const scaledLvl = level * auraScale;
                 switch(auraId) {

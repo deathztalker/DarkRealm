@@ -2764,6 +2764,14 @@ function updateHud() {
             const auraName = player.activeAura.replace('_', ' ').toUpperCase();
             createStatusIcon(player.activeAura, '🕯️', '#ffd700', `Aura: ${auraName}`, { type: 'aura', name: auraName, id: player.activeAura });
         }
+        
+        // Party Auras
+        if (player.partyAuras) {
+            for (const pa of player.partyAuras) {
+                const auraName = pa.id.replace('_', ' ').toUpperCase();
+                createStatusIcon(pa.id + '_party', '🕯️', '#ffaa00', `Party Aura: ${auraName} (Lv${pa.level})`, { type: 'aura', name: auraName, id: pa.id });
+            }
+        }
 
         // Shrine / Skill Buffs
         for (const b of (player._buffs || [])) {
@@ -3471,11 +3479,10 @@ function renderMinimap() {
     const ctx = mc.getContext('2d');
     const mw = mc.width, mh = mc.height;
 
-    // Minimap Discovery (Mobile: Radius-based, Desktop: Camera-based)
-    const isMobileMap = window.innerWidth <= 1024 || document.body.classList.contains('is-mobile');
+    // Minimap Discovery (Unified Radius)
     if (explored) {
-        if (isMobileMap) {
-            const radius = 10;
+        if (player) {
+            const radius = 18;
             const px = Math.floor(player.x / dungeon.tileSize);
             const py = Math.floor(player.y / dungeon.tileSize);
             for (let r = Math.max(0, py - radius); r <= Math.min(dungeon.height - 1, py + radius); r++) {
@@ -3483,19 +3490,6 @@ function renderMinimap() {
                 for (let c = Math.max(0, px - radius); c <= Math.min(dungeon.width - 1, px + radius); c++) {
                     const dist = Math.sqrt((r - py) ** 2 + (c - px) ** 2);
                     if (dist <= radius) explored[r][c] = true;
-                }
-            }
-        } else if (camera) {
-            const ts = dungeon.tileSize;
-            const camL = Math.max(0, Math.floor(camera.x / ts));
-            const camR = Math.min(dungeon.width - 1, Math.ceil((camera.x + camera.w / camera.zoom) / ts));
-            const camT = Math.max(0, Math.floor(camera.y / ts));
-            const camB = Math.min(dungeon.height - 1, Math.ceil((camera.y + camera.h / camera.zoom) / ts));
-
-            for (let r = camT; r <= camB; r++) {
-                if (!explored[r]) continue;
-                for (let c = camL; c <= camR; c++) {
-                    explored[r][c] = true;
                 }
             }
         }

@@ -175,11 +175,51 @@ export class NetworkManager {
         });
 
         this.socket.on('party_invite', (data) => {
-            window.addSocialRequest?.(data.fromId, data.from, 'party');
-            this.game.onChatMessage?.({
-                sender: 'System', text: `${data.from} has invited you to a party!`,
-                time: new Date().toLocaleTimeString(), isSystem: true
-            });
+            const myName = this.game.player?.charName || 'guest';
+            if (data && data.to === myName) {
+                window.addSocialRequest?.(data.fromId, data.from, 'party');
+                this.game.onChatMessage?.({
+                    sender: 'System', text: `${data.from} has invited you to a party!`,
+                    time: new Date().toLocaleTimeString(), isSystem: true
+                });
+            }
+        });
+
+        this.socket.on('party_accept', (data) => {
+            const myName = this.game.player?.charName || 'guest';
+            if (data && data.to === myName) {
+                const partyId = `party_${Date.now()}`;
+                const partyData = {
+                    id: partyId,
+                    leaderId: myName,
+                    members: [
+                        { id: myName, name: myName },
+                        { id: data.fromId, name: data.from }
+                    ]
+                };
+                this.currentParty = partyData;
+                window.addCombatLog?.(`${data.from} joined your party!`, 'log-info');
+            }
+        });
+
+        this.socket.on('trade_invite', (data) => {
+            const myName = this.game.player?.charName || 'guest';
+            if (data && data.to === myName) {
+                window.addSocialRequest?.(data.fromId, data.from, 'trade');
+                this.game.onChatMessage?.({
+                    sender: 'System', text: `${data.from} has invited you to trade!`,
+                    time: new Date().toLocaleTimeString(), isSystem: true
+                });
+            }
+        });
+
+        this.socket.on('trade_accept', (data) => {
+            const myName = this.game.player?.charName || 'guest';
+            if (data && data.to === myName) {
+                const tradeId = `trade_${data.fromId}_${myName}`;
+                this.game.onTradeStart?.({ tradeId, partner: data.from });
+                window.addCombatLog?.(`${data.from} accepted trade!`, 'log-info');
+            }
         });
 
         this.socket.on('party_joined', (party) => {
@@ -440,14 +480,27 @@ export class NetworkManager {
     }
 
     async sendPartyInvite(name) {
-        if (this.isConnected) this.socket.emit('party_invite', name);
-        this.game.onChatMessage?.({ sender: 'System', text: `Invited ${name} to party.`, time: new Date().toLocaleTimeString(), isSystem: true });
+        if (this.isConnected) {
+            const myName = this.game.player?.charName || 'guest';
+            this.socket.emit('party_invite', { from: myName, fromId: myName, to: name });
+            this.game.onChatMessage?.({ sender: 'System', text: `Invited ${name} to party.`, time: new Date().toLocaleTimeString(), isSystem: true });
+        }
     }
 
-    acceptPartyInvite(fromId) {
+    acceptPartyInvite(fromId, fromName) {
         if (this.isConnected) {
-            this.socket.emit('party_accept', fromId);
+            const myName = this.game.player?.charName || 'guest';
+            this.socket.emit('party_accept', { from: myName, fromId: myName, to: fromId, toName: fromName });
             window.addCombatLog?.('Accepted party invite', 'log-info');
+            
+            this.currentParty = {
+                id: `party_${Date.now()}`,
+                leaderId: fromId,
+                members: [
+                    { id: fromId, name: fromName },
+                    { id: myName, name: myName }
+                ]
+            };
         }
     }
 
@@ -459,8 +512,22 @@ export class NetworkManager {
 
     sendDuelInvite(name) { if (this.isConnected) this.socket.emit('duel_invite', name); }
     acceptDuel() { if (this.isConnected && this.pendingDuelFrom) { this.socket.emit('duel_accept', this.pendingDuelFrom); this.pendingDuelFrom = null; } }
-    sendTradeInvite(name) { if (this.isConnected) this.socket.emit('trade_invite', name); }
-    acceptTrade() { if (this.isConnected && this.pendingTradeFrom) { this.socket.emit('trade_accept', this.pendingTradeFrom); this.pendingTradeFrom = null; } }
+    sendTradeInvite(name) {
+        if (this.isConnected) {
+            const myName = this.game.player?.charName || 'guest';
+            this.socket.emit('trade_invite', { from: myName, fromId: myName, to: name });
+            this.game.onChatMessage?.({ sender: 'System', text: `Trade invite sent to ${name}.`, time: new Date().toLocaleTimeString(), isSystem: true });
+        }
+    }
+
+    acceptTrade(fromId, fromName) {
+        if (this.isConnected) {
+            const myName = this.game.player?.charName || 'guest';
+            this.socket.emit('trade_accept', { from: myName, fromId: myName, to: fromId, toName: fromName });
+            const tradeId = `trade_${fromId}_${myName}`;
+            this.game.onTradeStart?.({ tradeId, partner: fromName });
+        }
+    }
 
     startPingLoop() {
         if (!this.socket) return;

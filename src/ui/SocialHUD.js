@@ -174,9 +174,9 @@ export class SocialHUD {
         
         if (accepted) {
             window.addCombatLog?.(`Accepted ${req.type} from ${req.fromName}`, 'log-info');
-            if (req.type === 'trade') this.network.acceptTrade();
-            else if (req.type === 'party') this.network.acceptPartyInvite(req.fromId);
-            else if (req.type === 'duel') this.network.acceptDuel();
+            if (req.type === 'trade') this.network.acceptTrade(req.fromId, req.fromName);
+            else if (req.type === 'party') this.network.acceptPartyInvite(req.fromId, req.fromName);
+            else if (req.type === 'duel') this.network.acceptDuel(req.fromId);
         } else {
             window.addCombatLog?.(`Declined ${req.type} from ${req.fromName}`, 'log-info');
         }
