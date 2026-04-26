@@ -83,6 +83,18 @@ const UNIQUE_ENEMIES = [
 export class Enemy {
     constructor(spawn) {
         this.syncId = spawn.syncId || `enemy_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // --- MMO Determinism ---
+        // Temporarily hijack Math.random so that all enemy stats and affixes are identical across clients
+        const originalRandom = Math.random;
+        if (spawn.syncId) {
+            let seed = parseInt(spawn.syncId.replace(/\D/g, '').substring(0, 8)) || 12345;
+            Math.random = () => {
+                seed = (seed * 9301 + 49297) % 233280;
+                return seed / 233280;
+            };
+        }
+
         let types = Object.keys(ENEMY_TYPES);
         const zone = spawn.level || 1;
 
@@ -385,6 +397,9 @@ export class Enemy {
 
         this._dots = [];
         this.hitFlashTimer = 0;
+
+        // Restore Math.random
+        Math.random = originalRandom;
     }
 
     update(dt, player, dungeon, allEnemies) {

@@ -757,6 +757,7 @@ export class Dungeon {
                 const isElite = !isBoss && this.rng() < 0.15;
 
                 const spawn = {
+                    syncId: `enemy_${this.rng()}`,
                     x: sx * this.tileSize + this.tileSize / 2,
                     y: sy * this.tileSize + this.tileSize / 2,
                     type: isBoss ? 'boss' : isElite ? 'elite' : 'normal',
@@ -881,6 +882,7 @@ export class Dungeon {
         else if (zoneLevel === 127) { bossName = 'Uber Diablo'; bossIcon = 'boss_diablo'; hpMult = 30.0; isUber = true; }
 
         this.enemySpawns.push({
+            syncId: `enemy_${this.rng()}`,
             x: cx * this.tileSize, y: cy * this.tileSize,
             type: 'boss', level: zoneLevel, name: bossName, icon: bossIcon,
             hpMult, dmgMult: 2.0 + (zoneLevel / 20),

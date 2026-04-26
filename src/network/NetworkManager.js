@@ -166,7 +166,7 @@ export class NetworkManager {
         this.socket.on('portal_spawn', (data) => {
             const existing = this.game.gameObjects?.find(o => o.id === data.id);
             if (!existing) {
-                const tp = new this.game.GameObjectClass('portal', data.x, data.y, 'obj_portal', data.id);
+                const tp = new window.GameObjectClass('portal', data.x, data.y, 'obj_portal', data.id);
                 tp.targetZone = data.targetZone;
                 tp.name = data.name || 'Town Portal';
                 this.game.gameObjects?.push(tp);
