@@ -1430,9 +1430,11 @@ function gameLoop(timestamp) {
     // ─── RENDER OTHER MMO PLAYERS ───────────────────────────────────────
     if (network && network.otherPlayers && network.otherPlayers.size > 0) {
         const ctx = renderer.ctx;
-        // console.log(`[MMO] Rendering ${network.otherPlayers.size} other players`);
-        network.otherPlayers.forEach((op) => {
-            if (op.x === undefined || op.y === undefined) return;
+        network.otherPlayers.forEach((op, id) => {
+            if (op.x === undefined || op.y === undefined) {
+                // console.warn(`[MMO] Player ${op.charName || id} has undefined coords:`, op);
+                return;
+            }
 
             // Shadow beneath
             ctx.save();
