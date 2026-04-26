@@ -404,10 +404,6 @@ export class Enemy {
 
     update(dt, player, dungeon, allEnemies) {
         if (this.hp <= 0) {
-            if (this.state !== 'dead') {
-                this.state = 'dead';
-                this._onDeath(player);
-            }
             return;
         }
         this.hp = Math.min(this.maxHp, this.hp + (this.hpRegen || 0) * dt);

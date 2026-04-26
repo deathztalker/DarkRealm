@@ -1991,6 +1991,11 @@ function checkDeaths() {
                 handleBossDeath(e);
             }
 
+            // --- Ensure all death triggers run (Quest items, Enchanted explosions) ---
+            if (typeof e._onDeath === 'function') {
+                e._onDeath(player);
+            }
+
             player.addXp(e.xpReward);
 
             // Authoritative Loot & Gold Generation (Host Only)
