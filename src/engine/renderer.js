@@ -213,29 +213,48 @@ export class Renderer {
         const img = Assets.get(spriteName);
         if (!img || (img.naturalWidth === 0 && !img.complete)) return;
 
+        // If it's a simple icon (square), use drawSprite
         if (img.width === img.height || img.width <= 64) {
             this.drawSprite(spriteName, x, y, size, state === 'idle', time, filter);
             return;
         }
 
+        // Most sheets are 7 columns wide (6 frames + 1 spacer/special)
         const sw = img.width / 7;
-        const sh = img.height / 16;
+        // Frame height is usually equal to frame width in these pixel art sheets
+        const sh = sw; 
         const totalRows = Math.floor(img.height / sh);
         
-        const dirMap = { 'up': 0, 'left': 1, 'down': 2, 'right': 3 };
-        const dIdx = dirMap[dir] !== undefined ? dirMap[dir] : 2;
+        // Support multiple direction naming conventions
+        const dirMap = { 
+            'up': 0, 'north': 0,
+            'left': 1, 'west': 1,
+            'down': 2, 'south': 2,
+            'right': 3, 'east': 3 
+        };
+        const dIdx = dirMap[dir] !== undefined ? dirMap[dir] : 2; // Default to south/down
 
         let row = dIdx;
-        // If the sprite sheet is short (e.g. Shaman has only 4 rows), we clamp the row
-        if (totalRows <= 4) {
-            row = dIdx % totalRows;
-        } else {
+        
+        // Row Mapping Logic:
+        // 0-3: Idle
+        // 4-7: Special/Run?
+        // 8-11: Walk
+        // 12-15: Attack
+        if (totalRows >= 16) {
             if (state === 'walk') row = 8 + dIdx;
-            if (state === 'attack') row = 12 + dIdx;
+            else if (state === 'attack') row = 12 + dIdx;
+            else if (state === 'cast') row = 12 + dIdx; // Fallback cast to attack rows
+        } else if (totalRows >= 8) {
+            // Simplified sheet: 4 Idle, 4 Walk
+            if (state === 'walk' || state === 'attack' || state === 'cast') row = 4 + dIdx;
         }
+        
+        // Final safety clamp
+        row = row % totalRows;
 
         const frameCount = 6;
-        const animSpeed = state === 'attack' ? 0.015 : 0.008;
+        const animSpeed = (state === 'attack' || state === 'cast') ? 0.015 : 0.008;
         const col = Math.floor(time * animSpeed) % frameCount;
 
         const sx = col * sw;
@@ -246,7 +265,7 @@ export class Renderer {
         const drawH = sh * scale;
 
         this.ctx.save();
-        const isPixelArt = sw <= 64 && sh <= 64;
+        const isPixelArt = sw <= 128;
         this.ctx.imageSmoothingEnabled = !isPixelArt;
 
         if (filter) this.ctx.filter = filter;
@@ -254,7 +273,8 @@ export class Renderer {
         
         this.drawShadow(x, y + drawH * 0.3, drawW * 0.35);
         
-        this.ctx.drawImage(img, sx, sy, sw, sh, x - drawW / 2, y - drawH * 0.6, drawW, drawH);
+        // Draw the frame. Offset Y by half height to center on base.
+        this.ctx.drawImage(img, sx, sy, sw, sh, x - drawW / 2, y - drawH * 0.8, drawW, drawH);
         this.ctx.restore();
     }
 }
