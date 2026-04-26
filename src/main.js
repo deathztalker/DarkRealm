@@ -3438,7 +3438,7 @@ function getIconForSkill(id) {
     if (s.includes('shadow') || s.includes('dark')) return 'ra-hood';
     if (s.includes('heal') || s.includes('touch') || s.includes('regeneration')) return 'ra-health';
 
-    return 'ra-uncertainty';
+    return 'ra-help';
 }
 window.getIconForSkill = getIconForSkill;
 
