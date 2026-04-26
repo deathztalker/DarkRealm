@@ -45,7 +45,7 @@ func (h *Hub) UnregisterClient(playerID string) {
 	h.mu.Unlock()
 }
 
-func (h *Hub) MoveClient(playerID string, newZoneID string, currentZone *Zone) {
+func (h *Hub) MoveClient(playerID string, newZoneID string, currentZone *Zone, originalMsg []byte) {
 	h.mu.RLock()
 	client, ok := h.clients[playerID]
 	h.mu.RUnlock()
@@ -61,7 +61,6 @@ func (h *Hub) MoveClient(playerID string, newZoneID string, currentZone *Zone) {
 	}
 
 	// 2. Obtener o crear la nueva zona
-	// Usamos "dungeon" como tipo por defecto si no sabemos
 	newZone := h.GetOrCreateZone(newZoneID, "dungeon")
 
 	// 3. Actualizar referencia en el cliente
@@ -69,6 +68,11 @@ func (h *Hub) MoveClient(playerID string, newZoneID string, currentZone *Zone) {
 
 	// 4. Entrar en la nueva zona
 	newZone.register <- client
+	
+	// 5. Re-enviar el mensaje original para que la nueva zona lo procese
+	if originalMsg != nil {
+		newZone.broadcast <- originalMsg
+	}
 	
 	log.Printf("[Hub] Player %s moved to room %s", playerID, newZoneID)
 }
