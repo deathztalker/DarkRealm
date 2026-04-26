@@ -188,7 +188,7 @@ export class NetworkManager {
         this.socket.on('party_accept', (data) => {
             const myName = this.game.player?.charName || 'guest';
             if (data && data.to === myName) {
-                const partyId = `party_${Date.now()}`;
+                const partyId = `party_${myName}`;
                 const partyData = {
                     id: partyId,
                     leaderId: myName,
@@ -280,6 +280,16 @@ export class NetworkManager {
 
         this.socket.on('enemy_sync', (data) => {
             if (!this.isHost) {
+                const aliveIds = new Set(data.map(ed => ed.id));
+                if (this.game.enemies) {
+                    this.game.enemies.forEach(enemy => {
+                        if (enemy.hp > 0 && !aliveIds.has(enemy.syncId)) {
+                            enemy.hp = 0;
+                            enemy.state = 'dead';
+                        }
+                    });
+                }
+
                 data.forEach(ed => {
                     const enemy = this.game.enemies?.find(e => e.syncId === ed.id);
                     if (enemy) {
@@ -495,7 +505,7 @@ export class NetworkManager {
             window.addCombatLog?.('Accepted party invite', 'log-info');
             
             this.currentParty = {
-                id: `party_${Date.now()}`,
+                id: `party_${fromId}`,
                 leaderId: fromId,
                 members: [
                     { id: fromId, name: fromName },

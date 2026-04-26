@@ -256,9 +256,9 @@ export class Player {
 
             // --- MMO Party Auras ---
             this.partyAuras = [];
-            if (typeof window !== 'undefined' && window.network && window.network.isConnected) {
+            if (typeof window !== 'undefined' && window.networkManager && window.networkManager.isConnected) {
                 const AURA_RANGE_SQ = 600 * 600; // Increased range for party auras (600px radius)
-                window.network.otherPlayers.forEach(op => {
+                window.networkManager.otherPlayers.forEach(op => {
                     if (op.activeAura && op.hp > 0 && op.state !== 'dead') {
                         const dSq = (op.x - this.x) ** 2 + (op.y - this.y) ** 2;
                         if (dSq < AURA_RANGE_SQ) {
