@@ -987,9 +987,9 @@ function gameLoop(timestamp) {
             }
 
             // Sync minions & mercenary stats (with throttle)
-            this._lastCompSync = this._lastCompSync || 0;
-            if (Date.now() - this._lastCompSync > 200) {
-                this._lastCompSync = Date.now();
+            window._lastCompSync = window._lastCompSync || 0;
+            if (Date.now() - window._lastCompSync > 200) {
+                window._lastCompSync = Date.now();
                 if (player.minions.length > 0) {
                     const minionData = player.minions.map(m => ({ 
                         id: m.id, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, 
