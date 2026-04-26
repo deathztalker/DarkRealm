@@ -1063,8 +1063,27 @@ export class Player {
         const statValue = this[scaleStat] || 10;
         const statMult = 1 + (statValue / 100);
         
-        const totalBase = baseDmg * (1 + synBonus) * statMult;
+        let totalBase = baseDmg * (1 + synBonus) * statMult;
+        
+        // --- Special Multipliers ---
+        if (this._shadowStepBuff) {
+            totalBase *= 1.5;
+            this._shadowStepBuff = false;
+        }
+
+        if (skillId === 'eviscerate' || skillId === 'rupture') {
+            const cp = this.comboPoints || 0;
+            totalBase *= (1 + cp * 0.5);
+            this.comboPoints = 0;
+        }
+
         const type = skillType(skill);
+        
+        // --- Force Crit Logic ---
+        let oldCrit = this.critChance;
+        if (skillId === 'ambush') this.critChance = 100;
+        if (skillId === 'lava_burst' && target && target._dots && target._dots.some(d => d.type === 'fire')) this.critChance = 100;
+
         const isAoE = ['blizzard', 'nova', 'wall', 'storm', 'meteor', 'armageddon', 'hurricane', 'volcano', 'fissure', 'earthquake', 'rain_of', 'consecration', 'trap', 'static'].some(kw => skillId.includes(kw));
         const isNova = ['nova', 'storm', 'hurricane', 'armageddon', 'warcry', 'static', 'totemic_wrath'].some(kw => skillId.includes(kw));
         const isMelee = skill.group === 'melee';
@@ -1151,7 +1170,7 @@ export class Player {
                     bus.emit('combat:log', { text: "SHIELD SHATTERED!", cls: 'log-dmg' });
                 }
                 
-                const hitCount = (skillId === 'zeal') ? Math.floor(3 + 0.2 * slvl) : 1;
+                const hitCount = (skillId === 'zeal') ? Math.floor(3 + 0.2 * slvl) : (skillId === 'double_swing' ? 2 : 1);
                 for (let i = 0; i < hitCount; i++) {
                     setTimeout(() => {
                         if (target && target.hp > 0) {
@@ -1176,7 +1195,7 @@ export class Player {
             }
         } else if (isAoE) {
             const rad = isNova ? 100 : 70, aX = isNova ? this.x : targetX, aY = isNova ? this.y : targetY;
-            const dur = ['blizzard', 'fire_wall', 'consecration'].some(k => skillId.includes(k)) ? 6 : 0.6;
+            const dur = ['blizzard', 'fire_wall', 'consecration', 'earthquake'].some(k => skillId.includes(k)) ? 6 : 0.6;
             if (['meteor', 'volcano', 'fissure'].some(k => skillId === k)) {
                 setTimeout(() => { bus.emit('combat:spawnAoE', { aoe: new AoEZone(targetX, targetY, 60, 0.5, totalBase, type, this, 0.5, skillId) }); if (fx) { fx.emitShockwave(targetX, targetY, 60, '#ff6000'); fx.shake(400, 6); } }, 1500);
                 if (fx) for (let i = 0; i < 15; i++) setTimeout(() => fx.emitFireTrail(targetX + (Math.random()-0.5)*20, targetY - 30 + i * 3), i * 100);

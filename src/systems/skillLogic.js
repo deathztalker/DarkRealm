@@ -1,11 +1,3 @@
-import { bus } from '../engine/EventBus.js';
-import { applyStatus, applyDot, DMG_TYPE, applyDamage } from './combat.js';
-import { fx } from '../engine/ParticleSystem.js';
-
-/**
- * SkillLogic — Specialized logic for character skills.
- * Strictly synchronized with src/data/class_*.js
- */
 export const SkillLogic = {
     /**
      * Triggered when a skill projectile or melee hit connects with a target.
@@ -29,6 +21,19 @@ export const SkillLogic = {
             applyStatus(target, 'curse', 10);
             bus.emit('combat:log', { text: "Healing Reduced!", cls: 'log-dmg' });
         }
+        if (skillId === 'bloodthirst') {
+            const heal = attacker.maxHp * 0.04;
+            attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
+            if (fx) fx.emitHeal(attacker.x, attacker.y);
+            bus.emit('combat:log', { text: `Bloodthirst: +${Math.round(heal)} HP`, cls: 'log-heal' });
+        }
+        if (attacker._revengeReady) {
+            const heal = baseDmg * 0.20;
+            attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
+            attacker._revengeReady = false;
+            if (fx) fx.emitHeal(attacker.x, attacker.y);
+            bus.emit('combat:log', { text: `Revenge Ready Exhausted! +${Math.round(heal)} HP`, cls: 'log-heal' });
+        }
         if (skillId === 'shockwave') {
             applyStatus(target, 'stun', 2.0);
         }
@@ -37,7 +42,7 @@ export const SkillLogic = {
         }
         if (skillId === 'execute') {
             if (target.hp / target.maxHp < 0.3) {
-                if (fx) { fx.emitBurst(target.x, target.y, '#ff0000', 20); fx.shake(300, 6); }
+                if (fx) { fx.emitBurst(target.x, target.y, '#ff0000', 20); fx.shake(500, 8); }
             }
         }
         if (skillId === 'leap_attack' || skillId === 'slam' || skillId === 'heroic_leap') {
@@ -89,6 +94,11 @@ export const SkillLogic = {
             attacker.comboPoints = Math.min(attacker.maxComboPoints || 5, (attacker.comboPoints || 0) + 1);
             bus.emit('combat:log', { text: `Combo Points: ${attacker.comboPoints}`, cls: 'log-info' });
         }
+        if (skillId === 'shadow_step') {
+            attacker._shadowStepBuff = true; // +50% dmg on next hit
+            if (fx) fx.emitShadow(attacker.x, attacker.y);
+            bus.emit('combat:log', { text: "Shadow Step: Next attack +50% DMG!", cls: 'log-info' });
+        }
         if (skillId === 'ambush') {
             attacker.comboPoints = Math.min(attacker.maxComboPoints || 5, (attacker.comboPoints || 0) + 3);
             bus.emit('combat:log', { text: `Combo Points: ${attacker.comboPoints}`, cls: 'log-info' });
@@ -104,6 +114,29 @@ export const SkillLogic = {
         if (skillId === 'death_mark') {
             target.dmgTakenMult = Math.max(target.dmgTakenMult || 1, 2.0);
             applyStatus(target, 'death_mark', 10);
+        }
+
+        // ══════════════ SHAMAN ══════════════
+        if (skillId === 'flame_shock') {
+            applyDot(target, 5 + slvl * 3, 'fire', 10, 'shaman_flame_shock');
+        }
+        if (skillId === 'frost_shock') {
+            applyStatus(target, 'chill', 6, 50);
+        }
+        if (skillId === 'lava_burst') {
+            // Guaranteed to crit if target is burning - handled in player._useSkill
+            if (fx) fx.emitBurst(target.x, target.y, '#ff4000', 15, 3);
+        }
+        if (attacker.talents?.baseLevel('storm_caller') > 0 && ['lightning_bolt', 'chain_lightning'].includes(skillId)) {
+            if (Math.random() < 0.15) {
+                // Reset Chain Lightning CD
+                const clIdx = attacker.hotbar.indexOf('chain_lightning');
+                if (clIdx !== -1) {
+                    attacker.cooldowns[clIdx] = 0;
+                    bus.emit('combat:log', { text: "Storm Caller: Chain Lightning Reset!", cls: 'log-crit' });
+                    if (fx) fx.emitLightning(attacker.x, attacker.y - 40, attacker.x, attacker.y, 2);
+                }
+            }
         }
 
         // ══════════════ DRUID ══════════════
@@ -134,13 +167,25 @@ export const SkillLogic = {
      * Triggered on skill cast (cooldown start).
      */
     onCast(attacker, skillId, slvl, targetX, targetY, allEnemies) {
-        if (skillId === 'bone_armor' || skillId === 'cyclone_armor' || skillId === 'ignore_pain') {
-            const absorb = skillId === 'ignore_pain' ? 100 + slvl * 40 : 20 + slvl * 15;
+        if (skillId === 'bone_armor' || skillId === 'cyclone_armor') {
+            const absorb = 20 + slvl * 15;
             attacker.boneArmor = (attacker.boneArmor || 0) + absorb;
             applyStatus(attacker, 'shielded', 3600);
             bus.emit('combat:log', { text: `Absorb Shield (${absorb})`, cls: 'log-info' });
         }
         
+        if (skillId === 'ignore_pain') {
+            const absorb = (attacker.maxHp || 100) * 0.5;
+            attacker.boneArmor = (attacker.boneArmor || 0) + absorb;
+            applyStatus(attacker, 'shielded', 10 + slvl);
+            bus.emit('combat:log', { text: `Ignore Pain: ${Math.round(absorb)} Shield!`, cls: 'log-info' });
+        }
+
+        if (skillId === 'bladestorm' || skillId === 'whirlwind') {
+            applyStatus(attacker, 'cc_immune', 5 + slvl * 0.5);
+            bus.emit('combat:log', { text: "Unstoppable!", cls: 'log-crit' });
+        }
+
         if (skillId === 'cloak_of_shadows') {
             attacker._dots = []; // clear all dots
             attacker.magicImmune = true;
@@ -161,7 +206,13 @@ export const SkillLogic = {
 
         if (skillId === 'bloodlust') {
             applyStatus(attacker, 'bloodlust', 15);
+            if (fx) fx.shake(600, 10);
             bus.emit('combat:log', { text: "BLOODLUST!", cls: 'log-crit' });
+        }
+
+        if (skillId === 'earthquake') {
+            if (fx) fx.shake(1500, 15);
+            bus.emit('combat:log', { text: "THE EARTH TREMBLES!", cls: 'log-crit' });
         }
 
         if (skillId === 'lay_on_hands') {

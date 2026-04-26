@@ -242,6 +242,13 @@ export function applyDamage(attacker, target, dmgResult, skillId = null, context
     if (target.blockChance && type === DMG_TYPE.PHYSICAL && dealt > 0) {
         if (Math.random() * 100 < clamp(safeNum(target.blockChance), 0, 75)) {
             _emitDamage(attacker, target, 'Blocked!', false, 'physical');
+            
+            // --- Warrior Revenge Logic ---
+            if (target.isPlayer && target.talents?.baseLevel('revenge') > 0) {
+                target._revengeReady = true;
+                if (fx) fx.emitBurst(target.x, target.y - 15, '#ffd700', 8, 1);
+            }
+
             // Parry (new): small chance on block to stun the attacker briefly
             if (safeNum(target.parryChance) > 0 && Math.random() * 100 < target.parryChance && attacker) {
                 applyStatus(attacker, 'stun', 0.4, 0);
