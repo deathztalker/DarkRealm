@@ -2917,90 +2917,429 @@ function updateHud() {
 
 // ——— ICON HELPERS (RPG-AWESOME) ———
 function getIconForSkill(id) {
-    if (!id) return 'ra-player';
+    const iconMap = {
+        // ========== WARRIOR ==========
+        'warrior': 'ra-crossed-swords',
+        'arms': 'ra-sword',
+        'bash': 'ra-muscle-up',
+        'double_swing': 'ra-sword-array',
+        'rend': 'ra-dripping-sword',
+        'whirlwind': 'ra-tornado-discs',
+        'combat_mastery': 'ra-crossed-axes',
+        'berserk': 'ra-player-pyromaniac',
+        'cleave': 'ra-axe-swing',
+        'execute': 'ra-decapitation',
+        'defense': 'ra-heavy-shield',
+        'shield_bash': 'ra-bolt-shield',
+        'iron_skin': 'ra-knight-helmet',
+        'block_mastery': 'ra-round-shield',
+        'revenge': 'ra-player-dodge',
+        'taunt': 'ra-horn-call',
+        'fortify': 'ra-guarded-tower',
+        'life_tap': 'ra-crowned-heart',
+        'last_stand': 'ra-blast',
+        'battle': 'ra-castle-flag',
+        'warcry': 'ra-screaming',
+        'shout': 'ra-speech-bubble',
+        'leap_attack': 'ra-boot-stomp',
+        'battle_orders': 'ra-hand-emblem',
+        'commanding_shout': 'ra-speech-bubbles',
+        'slam': 'ra-groundbreaker',
+        'avatar_of_war': 'ra-heavy-fall',
+        'war_syn': 'ra-all-for-one',
+        'mortal_strike': 'ra-bleeding-eye',
+        'overpower': 'ra-heavy-fall',
+        'spell_reflection': 'ra-shield-reflect',
+        'vanguard': 'ra-heavy-shield',
+        'second_wind': 'ra-breath-mist',
+        'ignore_pain': 'ra-muscle-up',
+        'shattering_throw': 'ra-decapitation',
+        'blood_rage': 'ra-burning-eye',
+        'piercing_howl': 'ra-screaming',
+        'heroic_leap': 'ra-boot-stomp',
+        'titanic_might': 'ra-crown',
+
+        // ========== SORCERESS ==========
+        'sorceress': 'ra-crystal-wand',
+        'fire': 'ra-fire-symbol',
+        'fire_bolt': 'ra-small-fire',
+        'fireball': 'ra-fire-bomb',
+        'fire_mastery': 'ra-burning-embers',
+        'meteor': 'ra-burning-meteor',
+        'fire_storm': 'ra-arson',
+        'immolate': 'ra-campfire',
+        'enchant': 'ra-fireball-sword',
+        'inferno': 'ra-fire-breath',
+        'fire_wall': 'ra-fire',
+        'combustion': 'ra-burning-meteor',
+        'cold': 'ra-snowflake',
+        'ice_bolt': 'ra-frost-emblem',
+        'frost_nova': 'ra-frostfire',
+        'ice_blast': 'ra-cold-heart',
+        'frozen_armor': 'ra-crystal-cluster',
+        'blizzard': 'ra-ice-cube',
+        'cold_mastery': 'ra-frozen-arrow',
+        'frozen_orb': 'ra-crystal-ball',
+        'absolute_zero': 'ra-brain-freeze',
+        'glacial_spike': 'ra-ice-cube',
+        'shatter': 'ra-broken-skull',
+        'lightning': 'ra-lightning-bolt',
+        'charged_bolt': 'ra-focused-lightning',
+        'lightning_bolt': 'ra-lightning-frequency',
+        'chain_lightning': 'ra-lightning-branches',
+        'static_field': 'ra-energise',
+        'teleport': 'ra-player-teleport',
+        'light_mastery': 'ra-lightning-sword',
+        'lightning_mastery': 'ra-lightning-sword',
+        'nova': 'ra-explosion',
+        'energy_shield': 'ra-shield-reflect',
+        'thunder_storm': 'ra-lightning-storm',
+        'lightning_surge': 'ra-focused-lightning',
+        'static_charge': 'ra-energise',
+        'arcane_shield': 'ra-shield-reflect',
+        'chain_lightning_mastery': 'ra-lightning-branches',
+        'slow_time': 'ra-hourglass',
+
+        // ========== NECROMANCER ==========
+        'necromancer': 'ra-skull',
+        'summoning': 'ra-tombstone',
+        'raise_skeleton': 'ra-broken-bone',
+        'summon_skeleton': 'ra-broken-bone',
+        'skeleton_mastery': 'ra-broken-skull',
+        'skeleton_mage': 'ra-death-skull',
+        'golem': 'ra-monster-skull',
+        'golem_mastery': 'ra-gear-hammer',
+        'clay_golem': 'ra-monster-skull',
+        'blood_golem': 'ra-health-decrease',
+        'iron_golem': 'ra-gear-hammer',
+        'fire_golem': 'ra-flame-spin',
+        'summon_resist': 'ra-circular-shield',
+        'revive': 'ra-regeneration',
+        'revive_elite': 'ra-regeneration',
+        'army_of_dead': 'ra-dead-tree',
+        'minion_instability': 'ra-explosion',
+        'death_commander': 'ra-crown',
+        'curses': 'ra-eye-monster',
+        'amplify_damage': 'ra-broken-shield',
+        'weaken': 'ra-health-decrease',
+        'iron_maiden': 'ra-crown-of-thorns',
+        'life_tap_curse': 'ra-heart-bottle',
+        'decrepify': 'ra-noose',
+        'lower_resist': 'ra-acid',
+        'mass_curse': 'ra-overmind',
+        'confuse': 'ra-shattered-glass',
+        'terror': 'ra-screaming',
+        'curse_mastery': 'ra-eye-monster',
+        'bone': 'ra-bone-bite',
+        'teeth': 'ra-tooth',
+        'bone_spear': 'ra-spear-head',
+        'bone_armor': 'ra-bone-knife',
+        'bone_wall': 'ra-metal-gate',
+        'bone_spirit': 'ra-desert-skull',
+        'bone_mastery': 'ra-crossed-bones',
+        'bone_prison': 'ra-locked-fortress',
+        'bone_storm': 'ra-skull-trophy',
+        'poison_nova': 'ra-poison-cloud',
+        'poison_dagger': 'ra-plain-dagger',
+        'toxic_spores': 'ra-poison-cloud',
+        'corpse_explosion': 'ra-explosion',
+        'blood_mastery': 'ra-drop',
+
+        // ========== PALADIN ==========
+        'paladin': 'ra-ankh',
+        'holy': 'ra-angel-wings',
+        'holy_light': 'ra-sunbeams',
+        'holy_smite': 'ra-sun-symbol',
+        'blessed_hammer': 'ra-hammer-drop',
+        'holy_shock': 'ra-player-thunder-struck',
+        'consecration': 'ra-aura',
+        'holy_mastery': 'ra-sun',
+        'divine_shield': 'ra-crowned-shield',
+        'divine_storm': 'ra-holy-water',
+        'foh': 'ra-shot-through-the-heart',
+        'exorcism': 'ra-sunbeams',
+        'avenging_wrath': 'ra-angel-wings',
+        'auras': 'ra-radial-balance',
+        'might_aura': 'ra-biceps',
+        'prayer_aura': 'ra-health-increase',
+        'holy_fire_aura': 'ra-fire-ring',
+        'holy_freeze_aura': 'ra-snowflake-2',
+        'resist_all': 'ra-fire-shield',
+        'vigor': 'ra-forward',
+        'fanaticism': 'ra-flaming-claw',
+        'conviction': 'ra-gavel',
+        'aura_mastery': 'ra-triforce',
+        'sanctuary': 'ra-aura',
+        'blessing_of_kings': 'ra-crown',
+        'combat': 'ra-sword-brandish',
+        'charge': 'ra-cavalry',
+        'smite': 'ra-flat-hammer',
+        'zeal': 'ra-dervish-swords',
+        'vengeance': 'ra-flaming-trident',
+        'cleansing': 'ra-hospital-cross',
+        'judgment': 'ra-crown',
+        'crusader_mastery': 'ra-book',
+        'crusader_strike': 'ra-bolt-shield',
+        'hammer_of_wrath': 'ra-hammer-drop',
+        'lay_on_hands': 'ra-health',
+        'avengers_shield': 'ra-shield-reflect',
+        'holy_shield': 'ra-heavy-shield',
+        'prot_mastery': 'ra-book',
+        'hammer_righteous': 'ra-hammer-drop',
+        'shield_of_righteousness': 'ra-bolt-shield',
+        'holy_wrath': 'ra-sunbeams',
+        'guardian_of_ancient_kings': 'ra-angel-wings',
+
+        // ========== SHAMAN ==========
+        'shaman': 'ra-eclipse',
+        'elemental': 'ra-minerals',
+        'lightning_bolt': 'ra-lightning-frequency',
+        'chain_lightning': 'ra-lightning-branches',
+        'thunder_strike': 'ra-thunder-blade',
+        'elem_mastery': 'ra-thunderball',
+        'storm_caller': 'ra-tornado',
+        'earthquake': 'ra-fissure',
+        'cl_syn': 'ra-tesla',
+        'flame_shock': 'ra-fire',
+        'frost_shock': 'ra-snowflake',
+        'elemental_focus': 'ra-focused-lightning',
+        'lava_burst': 'ra-magma',
+        'bloodlust': 'ra-burning-eye',
+        'totems': 'ra-torch',
+        'searing_totem': 'ra-fire-ace',
+        'stoneskin_totem': 'ra-stone-wall',
+        'windfury_totem': 'ra-feathered-wing',
+        'totem_mastery': 'ra-lit-candelabra',
+        'totemic_wrath': 'ra-bomb-explosion',
+        'totem_syn': 'ra-candle-fire',
+        'tremor_totem': 'ra-cyclone',
+        'magma_totem': 'ra-magma',
+        'earthbind_totem': 'ra-stone-wall',
+        'totemic_recall': 'ra-cycle',
+        'restoration': 'ra-potion-ball',
+        'healing_wave': 'ra-heal',
+        'healing_stream': 'ra-water-drop',
+        'healing_stream_totem': 'ra-water-drop',
+        'healing_spring': 'ra-water-drop',
+        'earth_shield': 'ra-armor-vest',
+        'mana_tide': 'ra-ocean-emblem',
+        'nature_swiftness': 'ra-feather-wing',
+        'resto_mastery': 'ra-health-potion',
+        'ancestral_spirit': 'ra-winged-emblem',
+        'water_shield': 'ra-shield-reflect',
+        'chain_heal': 'ra-heal',
+        'hw_syn': 'ra-droplets',
+
+        // ========== ROGUE ==========
+        'rogue': 'ra-hood',
+        'assassination': 'ra-daggers',
+        'claw_strike': 'ra-sword',
+        'shadow_step': 'ra-footsteps',
+        'backstab': 'ra-diving-dagger',
+        'ambush': 'ra-cloak-and-dagger',
+        'eviscerate': 'ra-dripping-knife',
+        'lethality': 'ra-bowie-knife',
+        'vanish': 'ra-smoke',
+        'fan_of_knives': 'ra-daggers',
+        'death_blossom': 'ra-shuriken',
+        'death_mark': 'ra-on-target',
+        'smoke_bomb': 'ra-smoke',
+        'blade_dance': 'ra-spinning-blades',
+        'cloak_of_shadows': 'ra-hood',
+        'shadow_clone': 'ra-ghost',
+        'assassinate': 'ra-on-target',
+        'assassin_mastery': 'ra-book',
+        'poison': 'ra-poison-bottle',
+        'poison_blade': 'ra-dripping-blade',
+        'envenom': 'ra-venomous-snake',
+        'noxious_cloud': 'ra-gloop',
+        'plague': 'ra-biohazard',
+        'virulence': 'ra-bottle-vapors',
+        'pandemic': 'ra-skull-ring',
+        'shiv': 'ra-plain-dagger',
+        'venom': 'ra-poison-cloud',
+        'lethal_toxins': 'ra-poison-cloud',
+        'poison_sentry': 'ra-biohazard',
+        'rupture': 'ra-dripping-sword',
+        'traps': 'ra-bear-trap',
+        'fire_trap': 'ra-explosive-materials',
+        'fire_sentry': 'ra-fire-bomb',
+        'shock_trap': 'ra-electric-whip',
+        'blade_trap': 'ra-circular-saw',
+        'trap_mastery': 'ra-caltrop',
+        'shadow_mine': 'ra-bombs',
+        'spike_trap': 'ra-spikeball',
+        'shadow_strike': 'ra-plain-dagger',
+        'death_sentry': 'ra-barbed-arrow',
+        'shadow_dance': 'ra-spinning-blades',
+        'ice_trap': 'ra-snowflake-2',
+        'unfair_advantage': 'ra-shattered-glass',
+        'evasion': 'ra-player-dodge',
+        'preparation': 'ra-cycle',
+
+        // ========== WARLOCK ==========
+        'warlock': 'ra-burning-eye',
+        'destruction': 'ra-flame-spin',
+        'shadow_bolt': 'ra-bottled-bolt',
+        'drain_life': 'ra-bleeding-hearts',
+        'soul_fire': 'ra-alien-fire',
+        'shadow_mastery': 'ra-arcane-mask',
+        'chaos_bolt': 'ra-beam-wake',
+        'seed': 'ra-sprout',
+        'dark_pact': 'ra-cut-palm',
+        'rain_of_chaos': 'ra-fireball',
+        'rain_of_fire': 'ra-fireball',
+        'hellfire': 'ra-fire',
+        'affliction': 'ra-tentacles-skull',
+        'corruption': 'ra-tentacle',
+        'agony': 'ra-broken-heart',
+        'haunt': 'ra-batwings',
+        'aff_mastery': 'ra-bleeding-eye',
+        'siphon_life': 'ra-glass-heart',
+        'unstable': 'ra-radioactive',
+        'unstable_affliction': 'ra-radioactive',
+        'dark_soul': 'ra-crescent-moon',
+        'doom': 'ra-evil-moon',
+        'curse_of_exhaustion': 'ra-tentacle',
+        'pandemic': 'ra-skull-ring',
+        'demonology': 'ra-dragon',
+        'imp': 'ra-demon-skull',
+        'summon_imp': 'ra-demon-skull',
+        'voidwalker': 'ra-tentacles',
+        'summon_voidwalker': 'ra-tentacles',
+        'demon_armor': 'ra-vest',
+        'soul_link': 'ra-two-hearts',
+        'demonfire_passive': 'ra-hot-surface',
+        'succubus': 'ra-love-howl',
+        'summon_succubus': 'ra-love-howl',
+        'infernal': 'ra-lava',
+        'metamorphosis': 'ra-hydra',
+        'shadowburn': 'ra-burning-embers',
+        'conflagrate': 'ra-explosion',
+        'incinerate': 'ra-fire-breath',
+        'backdraft': 'ra-wind-slap',
+        'master_demonologist': 'ra-dragon',
+        'demonic_sacrifice': 'ra-skull',
+        'demonic_empowerment': 'ra-bolt-shield',
+        'summon_felguard': 'ra-axe-swing',
+
+        // ========== DRUID ==========
+        'druid': 'ra-leaf',
+        'shapeshifting': 'ra-wolf-head',
+        'wolf_form': 'ra-wolf-howl',
+        'dire_wolf': 'ra-wolf-bite',
+        'maul': 'ra-paw-front',
+        'shred': 'ra-wolf-bite',
+        'fury': 'ra-wolf-claws',
+        'feral_mastery': 'ra-pawprint',
+        'bear_form': 'ra-muscle-fat',
+        'bear_slam': 'ra-stone-hammer',
+        'lacerate': 'ra-dripping-blade',
+        'rabies': 'ra-rat',
+        'feral_charge': 'ra-forward',
+        'fire_claws': 'ra-flaming-claw',
+        'king_of_the_jungle': 'ra-lion',
+        'primal_rage': 'ra-insect-jaws',
+        'elemental_druid': 'ra-mountains',
+        'fissure': 'ra-eruption',
+        'cyclone_armor': 'ra-fluffy-swirl',
+        'tornado': 'ra-twister',
+        'twister': 'ra-cycle',
+        'hurricane': 'ra-heat-haze',
+        'volcano': 'ra-magma',
+        'nature_mastery': 'ra-trefoil-lily',
+        'armageddon': 'ra-meteor-impact',
+        'solar_beam': 'ra-sunbeams',
+        'boulder_toss': 'ra-stone-hammer',
+        'force_of_nature': 'ra-tree-branch',
+        'starfall': 'ra-meteor-impact',
+        'entangling_roots': 'ra-vine-whip',
+        'summoning_druid': 'ra-sprout-emblem',
+        'raven': 'ra-raven',
+        'spirit_wolf': 'ra-wolf-bite',
+        'summon_wolf': 'ra-animal-skull',
+        'vine': 'ra-vine-whip',
+        'oak_sage': 'ra-acorn',
+        'heart_of_wolverine': 'ra-hearts',
+        'grizzly': 'ra-crab-claw',
+        'stampede': 'ra-lion',
+        'companion_hawk': 'ra-bird-claw',
+        'healing_touch': 'ra-heal',
+        'rejuvenation': 'ra-regeneration',
+        'innervate': 'ra-focused-lightning',
+        'regrowth': 'ra-regeneration',
+        'tranquility': 'ra-angel-wings',
+        'wild_growth': 'ra-trefoil-lily',
+        'tree_of_life': 'ra-tree-face',
+
+        // ========== RANGER ==========
+        'ranger': 'ra-archer',
+        'marksmanship': 'ra-archery-target',
+        'ice_arrow': 'ra-snowflake',
+        'magic_arrow': 'ra-magic-swirl',
+        'immolation_arrow': 'ra-flaming-arrow',
+        'power_shot': 'ra-supersonic-arrow',
+        'multi_shot': 'ra-arrow-cluster',
+        'guided_arrow': 'ra-broadhead-arrow',
+        'bow_mastery': 'ra-crossbow',
+        'piercing_arrow': 'ra-supersonic-arrow',
+        'explosive_arrow': 'ra-fire-bomb',
+        'rapid_fire': 'ra-lightning-frequency',
+        'volley': 'ra-arrow-cluster',
+        'strafe': 'ra-arrow-flights',
+        'rain_of_arrows': 'ra-target-arrows',
+        'traps_ranger': 'ra-spiked-wall',
+        'frost_trap': 'ra-snowflake-2',
+        'ice_trap': 'ra-snowflake-2',
+        'ensnare': 'ra-net',
+        'immolation_trap': 'ra-fire-bomb',
+        'viper_arrow': 'ra-chemical-arrow',
+        'lightning_sentry': 'ra-focused-lightning',
+        'death_sentry': 'ra-barbed-arrow',
+        'snake_trap': 'ra-venomous-snake',
+        'explosive_trap': 'ra-fire-bomb',
+        'trap_launcher': 'ra-hand',
+        'nature_ranger': 'ra-pine-tree',
+        'companion_hawk_r': 'ra-eagle-emblem',
+        'comp_mastery': 'ra-thorn-arrow',
+        'wolf_pack': 'ra-wolf-pack',
+        'wolf_companion': 'ra-wolf-pack',
+        'spirit_guide': 'ra-owl',
+        'harmony': 'ra-yin-yang',
+        'stampede_ranger': 'ra-horse-head',
+        'black_arrow': 'ra-arrow-scope',
+        'minefield': 'ra-mine-explosion',
+        'mark_death': 'ra-targeted',
+        'hunters_mark': 'ra-targeted',
+        'tracking': 'ra-targeted',
+        'nature_affinity': 'ra-leaf',
+        'aspect_hawk': 'ra-eagle-emblem',
+        'aspect_cheetah': 'ra-lion',
+        'bestial_wrath': 'ra-burning-eye',
+        'spirit_bond': 'ra-chain',
+
+        // ========== MISC / SYNERGIES ==========
+        'chain_reaction': 'ra-chain',
+        'fortress': 'ra-castle-emblem',
+    };
+
+    if (iconMap[id]) return iconMap[id];
+    
+    // Pattern Matcher for new/missing skills
     const s = id.toLowerCase();
+    if (s.includes('summon') || s.includes('raise')) return 'ra-tombstone';
+    if (s.includes('mastery') || s.includes('knowledge') || s.includes('affinity')) return 'ra-book';
+    if (s.includes('strike') || s.includes('attack') || s.includes('hit')) return 'ra-sword';
+    if (s.includes('bolt') || s.includes('blast') || s.includes('shot')) return 'ra-lightning-bolt';
+    if (s.includes('nova') || s.includes('burst') || s.includes('explosion')) return 'ra-explosion';
+    if (s.includes('shield') || s.includes('armor') || s.includes('wall')) return 'ra-shield-reflect';
+    if (s.includes('fire') || s.includes('burn') || s.includes('flame')) return 'ra-fire';
+    if (s.includes('ice') || s.includes('cold') || s.includes('frost') || s.includes('snow')) return 'ra-snowflake';
+    if (s.includes('poison') || s.includes('toxic') || s.includes('viper') || s.includes('venom')) return 'ra-poison-cloud';
+    if (s.includes('shadow') || s.includes('dark')) return 'ra-hood';
+    if (s.includes('heal') || s.includes('touch') || s.includes('regeneration')) return 'ra-health';
 
-    // Specific Exact Matches for Polish
-    if (s === 'warrior') return 'ra-sword';
-    if (s === 'sorceress') return 'ra-crystal-wand';
-    if (s === 'necromancer') return 'ra-skull';
-    if (s === 'paladin') return 'ra-shield';
-    if (s === 'shaman') return 'ra-lightning-sword';
-    if (s === 'rogue') return 'ra-hood';
-    if (s === 'warlock') return 'ra-burning-eye';
-    if (s === 'druid') return 'ra-wolf-head';
-    if (s === 'ranger') return 'ra-crossbow';
-
-    // Warrior
-    if (s.includes('whirlwind') || s.includes('bladestorm')) return 'ra-spinning-sword';
-    if (s.includes('bloodthirst') || s.includes('mortal_strike') || s.includes('blood_rage')) return 'ra-bleeding-eye';
-    if (s.includes('colossus_strike') || s.includes('slam') || s.includes('bash')) return 'ra-groundbreaker';
-    if (s.includes('shield') || s.includes('block') || s.includes('iron_skin') || s.includes('fortify') || s.includes('vanguard')) return 'ra-heavy-shield';
-    if (s.includes('taunt') || s.includes('shout') || s.includes('warcry') || s.includes('howl') || s.includes('orders')) return 'ra-horn-call';
-    if (s.includes('leap')) return 'ra-boot-stomp';
-    if (s.includes('berserk') || s.includes('ignore_pain') || s.includes('revenge')) return 'ra-muscle-up';
-    if (s.includes('execute') || s.includes('shattering_throw')) return 'ra-decapitation';
-    if (s.includes('avatar_of_war') || s.includes('titanic_might')) return 'ra-crown';
-
-    // Sorceress
-    if (s.includes('meteor') || s.includes('immolate') || s.includes('fire_storm') || s.includes('combustion') || s.includes('fireball')) return 'ra-burning-meteor';
-    if (s.includes('fire')) return 'ra-fire';
-    if (s.includes('cold') || s.includes('ice') || s.includes('frost') || s.includes('blizzard') || s.includes('zero') || s.includes('shatter')) return 'ra-snowflake';
-    if (s.includes('light') || s.includes('shock') || s.includes('static') || s.includes('nova')) return 'ra-lightning-bolt';
-    if (s.includes('teleport')) return 'ra-player-teleport';
-    if (s.includes('hydra')) return 'ra-dragon';
-
-    // Necromancer
-    if (s.includes('skeleton') || s.includes('bone') || s.includes('teeth')) return 'ra-bone-bite';
-    if (s.includes('golem')) return 'ra-golem-head';
-    if (s.includes('curse') || s.includes('amplify') || s.includes('weaken') || s.includes('decrepify') || s.includes('lower_resist')) return 'ra-eye-monster';
-    if (s.includes('poison_nova') || s.includes('spores')) return 'ra-poison-cloud';
-    if (s.includes('army_of_dead') || s.includes('revive')) return 'ra-tombstone';
-
-    // Paladin
-    if (s.includes('consecration') || s.includes('foh') || s.includes('holy_wrath') || s.includes('divine_storm')) return 'ra-sunbeams';
-    if (s.includes('holy_light') || s.includes('blessed_hammer') || s.includes('smite')) return 'ra-hammer-drop';
-    if (s.includes('aura') || s.includes('might') || s.includes('prayer') || s.includes('vigor') || s.includes('fanaticism') || s.includes('conviction') || s.includes('cleansing')) return 'ra-aura';
-    if (s.includes('charge') || s.includes('zeal') || s.includes('vengeance') || s.includes('judgment')) return 'ra-flaming-sword';
-
-    // Rogue / Assassin
-    if (s.includes('assassin') || s.includes('backstab') || s.includes('ambush') || s.includes('eviscerate') || s.includes('rupture') || s.includes('shiv')) return 'ra-daggers';
-    if (s.includes('trap') || s.includes('sentry') || s.includes('mine')) return 'ra-bear-trap';
-    if (s.includes('shadow') || s.includes('vanish') || s.includes('dance') || s.includes('cloak')) return 'ra-hood';
-    if (s.includes('poison_blade') || s.includes('envenom') || s.includes('lethal_toxins')) return 'ra-dripping-blade';
-
-    // Warlock
-    if (s.includes('shadow_bolt') || s.includes('corruption') || s.includes('agony') || s.includes('affliction') || s.includes('siphon') || s.includes('haunt')) return 'ra-bleeding-eye';
-    if (s.includes('demon') || s.includes('imp') || s.includes('succubus') || s.includes('voidwalker') || s.includes('metamorphosis')) return 'ra-bat-wings';
-    if (s.includes('chaos') || s.includes('hellfire') || s.includes('incinerate') || s.includes('rain_of_fire') || s.includes('soul_fire')) return 'ra-alien-fire';
-    if (s.includes('dark_pact') || s.includes('soul_link')) return 'ra-two-hearts';
-
-    // Druid
-    if (s.includes('wolf') || s.includes('feral') || s.includes('rabies') || s.includes('fury')) return 'ra-wolf-howl';
-    if (s.includes('bear') || s.includes('maul')) return 'ra-bear-head';
-    if (s.includes('raven') || s.includes('vine') || s.includes('oak') || s.includes('grizzly') || s.includes('spirit_guide')) return 'ra-trefoil-lily';
-    if (s.includes('volcano') || s.includes('fissure') || s.includes('tornado') || s.includes('hurricane') || s.includes('twister') || s.includes('armageddon') || s.includes('earthquake')) return 'ra-tornado';
-    if (s.includes('shape') || s.includes('primal')) return 'ra-gemini';
-
-    // Ranger
-    if (s.includes('arrow') || s.includes('bow') || s.includes('shot') || s.includes('strafe')) return 'ra-supersonic-arrow';
-    if (s.includes('hawk') || s.includes('pack') || s.includes('companion')) return 'ra-bird-claw';
-    if (s.includes('mark') || s.includes('tracking')) return 'ra-targeted';
-
-    // Shaman (Ensuring his premium look remains)
-    if (s.includes('totem')) return 'ra-totem-head';
-    if (s.includes('healing_wave') || s.includes('healing_stream') || s.includes('restoration')) return 'ra-water-drop';
-
-    // Fallbacks
-    if (s.includes('mastery') || s.includes('knowledge') || s.includes('wisdom')) return 'ra-book';
-    if (s.includes('strike') || s.includes('attack') || s.includes('swing') || s.includes('combat')) return 'ra-sword';
-    if (s.includes('heal') || s.includes('life') || s.includes('health') || s.includes('wind')) return 'ra-health';
-    if (s.includes('mana') || s.includes('energy') || s.includes('focus')) return 'ra-crystal-wand';
-    if (s.includes('speed') || s.includes('swift') || s.includes('haste') || s.includes('dash')) return 'ra-run';
-    if (s.includes('power') || s.includes('might') || s.includes('strength')) return 'ra-muscle-up';
-    if (s.includes('defense') || s.includes('resist') || s.includes('protect')) return 'ra-shield';
-
-    return 'ra-player';
+    return 'ra-uncertainty';
 }
 window.getIconForSkill = getIconForSkill;
 

@@ -1210,7 +1210,9 @@ export class Player {
                     bus.emit('combat:log', { text: "SHIELD SHATTERED!", cls: 'log-dmg' });
                 }
                 
-                const hitCount = (skillId === 'zeal') ? Math.floor(3 + 0.2 * slvl) : (skillId === 'double_swing' ? 2 : 1);
+                const multiHits = { 'zeal': Math.floor(3 + 0.2 * slvl), 'double_swing': 2, 'strafe': 5, 'multi_shot': 3 };
+                const hitCount = multiHits[skillId] || 1;
+
                 for (let i = 0; i < hitCount; i++) {
                     setTimeout(() => {
                         if (target && target.hp > 0) {
