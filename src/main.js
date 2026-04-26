@@ -3660,6 +3660,25 @@ function showSkillTooltip(skillId, x, y) {
     moveTooltip(x, y);
 }
 
+function formatPremiumDescription(text) {
+    if (!text) return '';
+    let t = text;
+    // Numbers
+    t = t.replace(/(\d+)/g, '<span style="color:var(--gold); font-weight:bold;">$1</span>');
+    // Keywords
+    const keys = {
+        'Fire': '#ff6030', 'Cold': '#30ccff', 'Lightning': '#ffff40', 'Poison': '#50ff50',
+        'Magic': '#ff00ff', 'Holy': '#ffd700', 'Shadow': '#cc60ff', 'Physical': '#ffffff',
+        'Mana': '#4850b8', 'Health': '#ff4444', 'Life': '#ff4444', 'Stun': '#aaa',
+        'Freeze': '#80d0ff', 'Burn': '#f60', 'Bleed': '#f00'
+    };
+    Object.entries(keys).forEach(([k, c]) => {
+        const re = new RegExp(`\\b(${k})\\b`, 'gi');
+        t = t.replace(re, `<span style="color:${c}; font-weight:bold;">$1</span>`);
+    });
+    return t;
+}
+
 function skillTooltipText(skillId) {
     const skill = player.skillMap[skillId];
     if (!skill) return '';
@@ -3667,14 +3686,14 @@ function skillTooltipText(skillId) {
     const effLvl = player.effectiveSkillLevel(skillId);
     const synBonus = player.talents.synergyBonus ? player.talents.synergyBonus(skillId) : 0;
 
-    let t = `<div class="tooltip-inner" style="color:#fff; min-width: 220px;">`;
-    t += `<div class="tooltip-name" style="color:var(--gold);">${skill.name} <span style="color:#aaa; font-size:12px;">(Lv ${effLvl})</span></div>`;
-    t += `<div class="tooltip-rarity" style="color:#666; margin-bottom: 8px;">— Active Skill —</div>`;
-    t += `<div class="tooltip-stats" style="color:#ccc; font-size:12px;">${skill.desc}</div>`;
+    let t = `<div class="tooltip-inner" style="color:#fff; min-width: 240px; padding: 12px; border: 1px solid #444; background: rgba(10,8,5,0.95); box-shadow: 0 0 20px rgba(0,0,0,0.8);">`;
+    t += `<div class="tooltip-name" style="color:var(--gold); font-size: 16px; font-family: Cinzel, serif; border-bottom: 1px solid #bf642f; padding-bottom: 4px; margin-bottom: 8px;">${skill.name} <span style="color:#aaa; font-size:12px;">(Lv ${effLvl})</span></div>`;
+    t += `<div class="tooltip-rarity" style="color:#888; font-size: 10px; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 1px;">— Active Skill —</div>`;
+    t += `<div class="tooltip-stats" style="color:#ccc; font-size:12px; line-height: 1.4;">${formatPremiumDescription(skill.desc)}</div>`;
 
-    t += `<div style="margin-top:10px; padding-top:6px; border-top:1px solid #333;">`;
-    if (skill.mana) t += `<div style="color:#4850b8;">Mana Cost: ${skill.mana}</div>`;
-    if (skill.cd) t += `<div style="color:#aaa;">Cooldown: ${skill.cd}s</div>`;
+    t += `<div style="margin-top:12px; padding-top:8px; border-top:1px solid #333;">`;
+    if (skill.mana) t += `<div style="color:#4850b8; font-size: 11px;">Mana Cost: <span style="color:#fff;">${skill.mana}</span></div>`;
+    if (skill.cd) t += `<div style="color:#aaa; font-size: 11px;">Cooldown: <span style="color:#fff;">${skill.cd}s</span></div>`;
 
     if (skill.dmgBase) {
         const baseDmg = skill.dmgBase + (skill.dmgPerLvl || 0) * (effLvl - 1);
@@ -3695,24 +3714,28 @@ function skillTooltipText(skillId) {
         const finalDmg = Math.round(totalBase * finalMultiplier);
 
         const dmgColors = { fire: '#ff6030', cold: '#30ccff', lightning: '#ffff40', poison: '#50ff50', shadow: '#cc60ff', physical: '#ffffff', holy: '#ffd700' };
-        t += `<div style="color:${dmgColors[dmgType] || '#fff'}; font-weight:bold; margin-top:4px;">Damage: ${finalDmg} ${dmgType}</div>`;
+        t += `<div style="color:${dmgColors[dmgType] || '#fff'}; font-weight:bold; margin-top:6px; font-size: 13px; text-shadow: 0 0 5px rgba(0,0,0,0.5);">Damage: ${finalDmg} ${dmgType.toUpperCase()}</div>`;
 
         if (synBonus > 0) {
-            t += `<div style="color:#00ff00; font-size:11px;">+${Math.round(synBonus * 100)}% from Active Synergies</div>`;
+            t += `<div style="color:#00ff00; font-size:11px; margin-top: 2px;">+${Math.round(synBonus * 100)}% from Synergies</div>`;
         }
     }
 
     if (skill.synergies && skill.synergies.length > 0) {
-        t += `<div style="margin-top:8px; padding-top:6px; border-top:1px dashed #555;">`;
-        t += `<div style="color:#ffd700; font-size:11px; margin-bottom:2px;">★ Synergies:</div>`;
+        t += `<div style="margin-top:12px; padding-top:8px; border-top:1px dashed #555;">`;
+        t += `<div style="color:#ffd700; font-size:11px; margin-bottom:4px; font-family: Cinzel;">★ SYNERGIES:</div>`;
         for (const syn of skill.synergies) {
             const fromSkill = player.skillMap[syn.from];
             const slvl = player.talents.points ? (player.talents.points[syn.from] || 0) : 0;
-            const activeBonus = slvl * syn.pctPerPt;
-            const color = slvl > 0 ? '#00ff00' : '#888';
-            t += `<div style="color:${color}; font-size:10px; margin-left:6px;">• ${fromSkill ? fromSkill.name : syn.from}: +${syn.pctPerPt}% per point (+${activeBonus}% active)</div>`;
+            const activeBonus = Math.round(slvl * syn.pctPerPt * 100);
+            const color = slvl > 0 ? '#00ff00' : '#666';
+            t += `<div style="color:${color}; font-size:10px; margin-left:8px; margin-bottom: 2px;">• ${fromSkill ? fromSkill.name : syn.from}: +${Math.round(syn.pctPerPt * 100)}% (+${activeBonus}% active)</div>`;
         }
         t += `</div>`;
+    }
+
+    if (skill.tip) {
+        t += `<div style="margin-top:10px; font-style:italic; color:#888; font-size:10px; border-top: 1px solid #222; padding-top: 6px;">Tip: ${skill.tip}</div>`;
     }
 
     t += `</div></div>`;
@@ -4906,7 +4929,11 @@ function renderTalentTree() {
                 const el = document.createElement('div');
                 el.className = `talent-node ${node.type === 'active' ? 'active-skill' : ''} ${pts > 0 ? (isMaxed ? 'maxed' : 'unlocked') : ''} ${!reqMet ? 'locked' : ''}`;
                 el.innerHTML = `<span style="display:flex;justify-content:center;align-items:center;width:100%;height:100%;"><i class="ra ${getIconForSkill(node.id)}" style="font-size:32px; color: ${pts > 0 ? 'var(--gold)' : '#aaa'}; text-shadow:0 0 4px #000;"></i></span><span class="talent-node-pts">${pts}/${node.maxPts}</span>`;
-                el.title = `${node.name}\n${node.desc}\n\nBase: ${pts} / ${node.maxPts}${eff > pts ? ` (+${eff - pts} from items)` : ''}${node.mana ? `\nMana: ${node.mana}` : ''}${node.cd ? `\nCD: ${node.cd}s` : ''}${node.req ? `\nRequires: ${node.req}` : ''}${node.endgame ? `\n\n[Endgame] ${node.endgame}` : ''}`;
+                
+                // --- PREMIUM TOOLTIP HOOKS ---
+                el.addEventListener('mouseenter', (e) => showSkillTooltip(node.id, e.clientX, e.clientY));
+                el.addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
+                el.addEventListener('mouseleave', () => hideTooltip());
 
                 if (canSpend) {
                     el.addEventListener('click', () => {

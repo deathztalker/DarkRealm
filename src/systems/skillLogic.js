@@ -261,15 +261,15 @@ export const SkillLogic = {
         }
 
         if (skillId === 'battle_orders') {
-            const pct = 15 + slvl * 3;
+            const pct = 5 + slvl * 1.5;
             attacker._buffs = attacker._buffs || [];
             // Remove old BO to prevent HP stacking exploit
             attacker._buffs = attacker._buffs.filter(b => b.id !== 'bo');
-            attacker._buffs.push({ id: 'bo', type: 'bo', name: 'Battle Orders', duration: 120 + slvl * 10, value: pct });
+            attacker._buffs.push({ id: 'bo', type: 'bo', name: 'Battle Orders', duration: 60 + slvl * 3, value: pct });
             
             attacker.maxHp *= (1 + pct / 100);
             attacker.maxMp *= (1 + pct / 100);
-            bus.emit('combat:log', { text: `Battle Orders: +${pct}% Life & Mana!`, cls: 'log-crit' });
+            bus.emit('combat:log', { text: `Battle Orders: +${Math.round(pct)}% Life & Mana!`, cls: 'log-crit' });
             if (fx) {
                 fx.emitBurst(attacker.x, attacker.y, '#ffd700', 30, 2.5);
                 fx.shake(200, 5);
