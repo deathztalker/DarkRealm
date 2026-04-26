@@ -14,6 +14,7 @@ export class NetworkManager {
         this.chatSubscription = null;
         this.currentParty = null; 
         this.pendingZoneJoin = null;
+        this.partyStateLoaded = false;
     }
 
     initEvents() {
@@ -64,6 +65,7 @@ export class NetworkManager {
                 console.error('Error loading recent messages:', e);
             }
             this.setupPartyRealtime();
+            await this.refreshPartyState();
         }
     }
 
@@ -94,8 +96,13 @@ export class NetworkManager {
         const fullUrl = `${url}/ws/${encodeURIComponent(charName)}/${window.zoneLevel || 0}`;
         this.ws = new WebSocket(fullUrl);
 
-        this.ws.onopen = () => {
+        this.ws.onopen = async () => {
             console.log('[Network] Connected to game server.');
+            
+            if (DB.isLoggedIn() && !this.partyStateLoaded) {
+                await this.refreshPartyState();
+            }
+
             this.isConnected = true;
             this.startPingLoop();
             if (this.socket.listeners['connect']) this.socket.listeners['connect']();
@@ -346,7 +353,12 @@ export class NetworkManager {
     }
 
     async refreshPartyState() {
-        const userId = DB.session?.user.id;
+        const userId = DB.session?.user?.id;
+        if (!userId) {
+            this.partyStateLoaded = true;
+            return;
+        }
+        
         const { data: memberRecord } = await DB.client
             .from('party_members').select('party_id').eq('user_id', userId).maybeSingle();
 
@@ -362,6 +374,7 @@ export class NetworkManager {
         } else {
             this.currentParty = null;
         }
+        this.partyStateLoaded = true;
         window.updatePartyHUD?.(this.currentParty?.members || []);
     }
 

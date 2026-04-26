@@ -723,8 +723,20 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
             });
             if (zoneLevel > 0) {
                 enemies = dungeon.enemySpawns.map(s => new Enemy(s));
+                window.enemies = enemies; // Ensure global reference is updated
             }
             player.setRefs(dungeon, camera, enemies);
+            
+            // Sync player and followers to new spawn point
+            if (player && dungeon.playerStart) {
+                player.x = dungeon.playerStart.x;
+                player.y = dungeon.playerStart.y;
+                if (camera) camera.follow(player);
+                if (typeof activePet !== 'undefined' && activePet) { activePet.x = player.x; activePet.y = player.y; }
+                if (player.minions) player.minions.forEach(m => { m.x = player.x; m.y = player.y; });
+                if (typeof mercenary !== 'undefined' && mercenary) { mercenary.x = player.x; mercenary.y = player.y; }
+            }
+            
             explored = Array.from({ length: dungeon.height }, () => Array(dungeon.width).fill(false));
             addCombatLog(`Dungeon layout synced with server.`, 'log-info');
         }
