@@ -724,7 +724,9 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
             if (zoneLevel > 0) {
                 enemies = dungeon.enemySpawns.map(s => new Enemy(s));
                 window.enemies = enemies; // Ensure global reference is updated
+                if (network.game) network.game.enemies = enemies; // Update network reference
             }
+            if (network.game) network.game.gameObjects = gameObjects; // Update network reference
             player.setRefs(dungeon, camera, enemies);
             
             // Sync player and followers to new spawn point

@@ -342,7 +342,8 @@ export class NetworkManager {
 
         this.socket.on('dungeon_init', (data) => {
             console.log(`[Network] Dungeon Init Request: Seed=${data.seed}`);
-            if (this.game.onDungeonInit) this.game.onDungeonInit(data.seed);
+            if (this.onDungeonInit) this.onDungeonInit(data.seed);
+            else if (this.game.onDungeonInit) this.game.onDungeonInit(data.seed);
             window._currentZoneSeed = data.seed;
         });
 
@@ -598,6 +599,5 @@ export class NetworkManager {
         console.log(`[Network] Joining Layer: ${roomName} | Seed: ${seed}`);
         this.otherPlayers.clear(); this.isHost = false;
         this.socket.emit('join_zone', { zoneId, roomName, seed, playerData: this.game.player.serialize() });
-        window._currentZoneSeed = seed;
     }
 }
