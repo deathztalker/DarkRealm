@@ -4,10 +4,12 @@
 
 export const Assets = {
     images: {},
+    version: '20260427_0258', // Cache busting version
     load: function (name, path) {
         if (this.images[name]) return;
         const img = new Image();
-        img.src = path;
+        const sep = path.includes('?') ? '&' : '?';
+        img.src = `${path}${sep}v=${this.version}`;
         img.onload = () => {
             // Track completion if needed
         };

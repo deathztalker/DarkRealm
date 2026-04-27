@@ -712,7 +712,21 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         
         if (dungeon && seedChanged) {
             console.log(`[MMO] Re-generating dungeon with server seed: ${seed}`);
+            
+            // Recalculate theme using the new authoritative seed
+            dungeon._seed = seed;
+            window.currentTheme = resolveTheme(zoneLevel, dungeon);
+            
             dungeon.generate(zoneLevel, window.currentTheme, seed);
+            
+            // Move player to the correct start position for this new layout
+            if (player) {
+                player.x = dungeon.playerStart.x;
+                player.y = dungeon.playerStart.y;
+                player.targetX = player.x;
+                player.targetY = player.y;
+            }
+            
             // Sync entities to new layout
             npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
             gameObjects = (dungeon.objectSpawns || []).map(s => {
