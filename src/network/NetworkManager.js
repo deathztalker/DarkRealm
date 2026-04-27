@@ -493,7 +493,8 @@ export class NetworkManager {
                 x, y, animState, facingDir,
                 hp: p.hp, maxHp: p.maxHp,
                 mp: p.mp, maxMp: p.maxMp,
-                activeAura: p.activeAura
+                activeAura: p.activeAura,
+                classId: p.classId
             });
         }
     }
