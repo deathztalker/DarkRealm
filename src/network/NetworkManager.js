@@ -366,10 +366,18 @@ export class NetworkManager {
         });
 
         this.socket.on('minion_sync', (data) => {
-            const pID = data.player_id || data.id;
+            const pID = data.player_id;
             const player = this.otherPlayers.get(pID);
             if (player) {
-                player.minions = data.minions || data;
+                player.minions = data.data || [];
+            }
+        });
+
+        this.socket.on('merc_sync', (data) => {
+            const pID = data.player_id;
+            const player = this.otherPlayers.get(pID);
+            if (player) {
+                player.mercenary = data.data || null;
             }
         });
 
@@ -453,7 +461,8 @@ export class NetworkManager {
                 name: m.user_id === userId ? this.game.player.charName : 'Party Member',
                 hp: 100, maxHp: 100, mp: 80, maxMp: 80
             }));
-        } else {
+        } else if (!this.currentParty) {
+            // Only clear if no WS-based party exists
             this.currentParty = null;
         }
         this.partyStateLoaded = true;

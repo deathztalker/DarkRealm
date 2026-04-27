@@ -268,8 +268,12 @@ func (z *Zone) handleMessage(msg []byte) {
 	case "minion_sync", "merc_sync":
 		var payload interface{}
 		json.Unmarshal(event.Payload, &payload)
-		// Forward summons and mercenaries to other players
-		z.broadcastToOthers(playerID, event.Type, payload)
+		// Wrap payload with sender's player ID so client knows whose summons these are
+		wrappedPayload := map[string]interface{}{
+			"player_id": playerID,
+			"data":      payload,
+		}
+		z.broadcastToOthers(playerID, event.Type, wrappedPayload)
 
 	case "loot_spawn", "loot_pickup", "gold_spawn", "gold_pickup":
 		var payload interface{}
