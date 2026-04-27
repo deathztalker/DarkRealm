@@ -35,35 +35,42 @@ characters = {
     'enemy_energy_elemental': '990a9ad3-49de-4a63-9ca2-f1dc3ec92e7a'
 }
 
-def find_anim_folder(base_path, anim_keywords):
+def find_anim_folders(base_path, anim_keywords):
     search_path = os.path.join(base_path, "animations")
-    if not os.path.exists(search_path): return None
+    if not os.path.exists(search_path): return []
+    matched = []
     for folder in os.listdir(search_path):
         for kw in anim_keywords:
             if kw.lower() in folder.lower():
-                return os.path.join(search_path, folder)
-    return None
+                matched.append(os.path.join(search_path, folder))
+                break
+    return matched
 
-def get_frames(folder_path, dir_name):
-    if not folder_path: return []
+def get_frames(folder_paths, dir_name):
+    if not folder_paths: return []
     synonyms = {
         'north': ['north', 'up', 'back'],
         'south': ['south', 'down', 'front'],
         'west': ['west', 'left'],
         'east': ['east', 'right']
     }
-    
-    for syn in synonyms.get(dir_name, [dir_name]):
-        path = os.path.join(folder_path, syn)
-        if os.path.exists(path):
-            return sorted(glob.glob(os.path.join(path, "*.png")))
-            
-    # Fallbacks
-    for fb in ['front', 'south', 'down']:
-        fallback = os.path.join(folder_path, fb)
-        if os.path.exists(fallback):
-            return sorted(glob.glob(os.path.join(fallback, "*.png")))
-            
+
+    # Search in all matched folders for the direction
+    for folder_path in folder_paths:
+        for syn in synonyms.get(dir_name, [dir_name]):
+            path = os.path.join(folder_path, syn)
+            if os.path.exists(path):
+                frames = sorted(glob.glob(os.path.join(path, "*.png")))
+                if frames: return frames
+
+    # Fallbacks in all matched folders
+    for folder_path in folder_paths:
+        for fb in ['front', 'south', 'down']:
+            fallback = os.path.join(folder_path, fb)
+            if os.path.exists(fallback):
+                frames = sorted(glob.glob(os.path.join(fallback, "*.png")))
+                if frames: return frames
+
     return []
 
 def get_base_rot(tmp_dir, dir_name):
@@ -76,11 +83,11 @@ def get_base_rot(tmp_dir, dir_name):
     for syn in synonyms.get(dir_name, [dir_name]):
         path = os.path.join(tmp_dir, "rotations", f"{syn}.png")
         if os.path.exists(path): return path
-        
+
     for fb in ['front', 'south', 'down']:
         path = os.path.join(tmp_dir, "rotations", f"{fb}.png")
         if os.path.exists(path): return path
-        
+
     return None
 
 print("🚀 Corrigiendo Spritesheets para el motor 7x16...")
@@ -97,19 +104,19 @@ for name in characters:
             c_sw, c_sh = img.size
 
     img_out = Image.new('RGBA', (c_sw * COLS, c_sh * ROWS), (0,0,0,0))
-    
-    # Carpetas de animaciones
-    idle_p = find_anim_folder(tmp_dir, ["breathing", "idle"])
-    walk_p = find_anim_folder(tmp_dir, ["walking", "walk", "run"])
-    attack_p = find_anim_folder(tmp_dir, ["fireball", "punch", "attack", "cross-punch"])
+
+    # Carpetas de animaciones (Listas)
+    idle_folders = find_anim_folders(tmp_dir, ["breathing", "idle"])
+    walk_folders = find_anim_folders(tmp_dir, ["walking", "walk", "run"])
+    attack_folders = find_anim_folders(tmp_dir, ["fireball", "punch", "attack", "cross-punch"])
 
     for d_name, d_idx in DIRS_MAP.items():
         base_rot = get_base_rot(tmp_dir, d_name)
         if not base_rot: base_rot = first_frame
 
-        idles = get_frames(idle_p, d_name)
-        walks = get_frames(walk_p, d_name)
-        attacks = get_frames(attack_p, d_name)
+        idles = get_frames(idle_folders, d_name)
+        walks = get_frames(walk_folders, d_name)
+        attacks = get_frames(attack_folders, d_name)
 
         for i in range(COLS):
             # IDLE (Filas 0-3)
@@ -126,5 +133,4 @@ for name in characters:
 
     img_out.save(f"assets/{name}.png")
     print(f"✅ Corregido: assets/{name}.png")
-
 print("✨ ¡Todo arreglado! Las animaciones ahora deben ejecutarse correctamente.")
