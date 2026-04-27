@@ -279,13 +279,16 @@ export class NetworkManager {
         });
 
         this.socket.on('enemy_sync', (data) => {
-            if (!this.isHost) {
+            if (!this.isHost && Array.isArray(data)) {
                 const aliveIds = new Set(data.map(ed => ed.id));
+                let matched = 0, killed = 0;
+                
                 if (this.game.enemies) {
                     this.game.enemies.forEach(enemy => {
                         if (enemy.hp > 0 && !aliveIds.has(enemy.syncId)) {
                             enemy.hp = 0;
                             enemy.state = 'dead';
+                            killed++;
                         }
                     });
                 }
@@ -294,10 +297,26 @@ export class NetworkManager {
                     const enemy = this.game.enemies?.find(e => e.syncId === ed.id);
                     if (enemy) {
                         enemy.x = ed.x; enemy.y = ed.y;
-                        enemy.hp = ed.hp; enemy.animState = ed.anim;
+                        enemy.hp = ed.hp; 
+                        if (ed.maxHp) enemy.maxHp = ed.maxHp;
+                        enemy.animState = ed.anim;
                         enemy.facingDir = ed.dir;
+                        matched++;
                     }
                 });
+                
+                // Log sync health periodically (every ~3 seconds at 30fps)
+                if (!this._syncLogCounter) this._syncLogCounter = 0;
+                this._syncLogCounter++;
+                if (this._syncLogCounter % 90 === 1) {
+                    const localCount = this.game.enemies?.filter(e => e.hp > 0).length || 0;
+                    console.log(`[EnemySync] Host: ${data.length} alive | Local: ${localCount} alive | Matched: ${matched} | Killed: ${killed}`);
+                    if (matched === 0 && data.length > 0 && localCount > 0) {
+                        console.warn('[EnemySync] ⚠️ ZERO matches! SyncId mismatch detected.');
+                        console.warn('[EnemySync] Host IDs:', data.slice(0, 3).map(d => d.id));
+                        console.warn('[EnemySync] Local IDs:', this.game.enemies.filter(e => e.hp > 0).slice(0, 3).map(e => e.syncId));
+                    }
+                }
             }
         });
 

@@ -14,7 +14,8 @@ CHARACTERS = {
     "3a7a04c0-dec4-4b08-b40d-73cc5e31af23": "tmp_class_druid",
     "9662bc55-3b12-4ad1-a916-c34ad4bf9194": "tmp_class_rogue",
     "155d0a79-8c7d-4136-8ec2-944559a9997a": "tmp_class_warlock",
-    
+    "ae37eab8-b1f5-4c5b-b207-65a6148f0b4f": "tmp_class_shaman",
+
     # Jefes Mayores
     "d33759f6-cf40-45bc-850d-297270013d01": "tmp_boss_cow_king",
     "3080de8c-2ad5-414c-ac79-9fb2490e3413": "tmp_boss_baal",

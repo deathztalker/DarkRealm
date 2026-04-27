@@ -756,8 +756,9 @@ export class Dungeon {
                 const isBoss = (i === this.rooms.length - 1 && n === 0);
                 const isElite = !isBoss && this.rng() < 0.15;
 
+                this.rng(); // advance RNG deterministically
                 const spawn = {
-                    syncId: `enemy_${this.rng()}`,
+                    syncId: `e_${i}_${n}_${this._seed}`,
                     x: sx * this.tileSize + this.tileSize / 2,
                     y: sy * this.tileSize + this.tileSize / 2,
                     type: isBoss ? 'boss' : isElite ? 'elite' : 'normal',
@@ -881,8 +882,9 @@ export class Dungeon {
         else if (zoneLevel === 125) { bossName = 'Baal'; bossIcon = 'boss_baal'; hpMult = 15.0; isBaal = true; }
         else if (zoneLevel === 127) { bossName = 'Uber Diablo'; bossIcon = 'boss_diablo'; hpMult = 30.0; isUber = true; }
 
+        this.rng(); // advance RNG deterministically
         this.enemySpawns.push({
-            syncId: `enemy_${this.rng()}`,
+            syncId: `boss_${zoneLevel}_${this._seed}`,
             x: cx * this.tileSize, y: cy * this.tileSize,
             type: 'boss', level: zoneLevel, name: bossName, icon: bossIcon,
             hpMult, dmgMult: 2.0 + (zoneLevel / 20),

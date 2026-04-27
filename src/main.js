@@ -705,10 +705,13 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
 
     // --- Sync Authoritative Dungeon Seed ---
     network.onDungeonInit = (seed) => {
-        if (!seed || seed === window._currentZoneSeed) return;
-        console.log(`[MMO] Syncing Server Seed: ${seed}`);
+        if (!seed) return;
+        const seedChanged = (seed !== window._currentZoneSeed);
+        console.log(`[MMO] Server Seed: ${seed} | Local Seed: ${window._currentZoneSeed} | Changed: ${seedChanged}`);
         window._currentZoneSeed = seed;
-        if (dungeon) {
+        
+        if (dungeon && seedChanged) {
+            console.log(`[MMO] Re-generating dungeon with server seed: ${seed}`);
             dungeon.generate(zoneLevel, window.currentTheme, seed);
             // Sync entities to new layout
             npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
@@ -723,10 +726,23 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
             });
             if (zoneLevel > 0) {
                 enemies = dungeon.enemySpawns.map(s => new Enemy(s));
-                window.enemies = enemies; // Ensure global reference is updated
-                if (network.game) network.game.enemies = enemies; // Update network reference
+                
+                // Apply difficulty & rift scaling (same as initial generation)
+                const diffMult = window.DIFFICULTY_MULT?.[window._difficulty] || 1;
+                let riftMult = 1.0;
+                if (zoneLevel >= 128) riftMult = Math.pow(1.15, zoneLevel - 127);
+                for (const e of enemies) {
+                    let hpM = diffMult * riftMult;
+                    let dmgM = diffMult * riftMult;
+                    e.maxHp = Math.round(e.maxHp * hpM);
+                    e.hp = e.maxHp;
+                    e.dmg = Math.round(e.dmg * dmgM);
+                }
+                
+                window.enemies = enemies;
+                if (network.game) network.game.enemies = enemies;
             }
-            if (network.game) network.game.gameObjects = gameObjects; // Update network reference
+            if (network.game) network.game.gameObjects = gameObjects;
             player.setRefs(dungeon, camera, enemies);
             
             // Sync player and followers to new spawn point
@@ -740,7 +756,13 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
             }
             
             explored = Array.from({ length: dungeon.height }, () => Array(dungeon.width).fill(false));
-            addCombatLog(`Dungeon layout synced with server.`, 'log-info');
+            addCombatLog(`Dungeon layout synced with server seed: ${seed}`, 'log-info');
+        }
+        
+        // Log syncId of first few enemies for cross-client verification
+        if (enemies && enemies.length > 0) {
+            console.log(`[MMO] Enemy verification — Total: ${enemies.length}, First 3 syncIds:`,
+                enemies.slice(0, 3).map(e => e.syncId));
         }
     };
 
@@ -963,14 +985,18 @@ function gameLoop(timestamp) {
                 });
             }
 
-            // Host-only: Sync all enemies & NPCs
+            // Host-only: Sync all enemies & NPCs (throttled to ~10 updates/sec)
             if (network.isHost) {
-                if (enemies.length > 0) {
-                    const enemyData = enemies.map(e => ({
+                if (!window._lastEnemySyncTime) window._lastEnemySyncTime = 0;
+                const now = performance.now();
+                if (now - window._lastEnemySyncTime > 100 && enemies.length > 0) {
+                    window._lastEnemySyncTime = now;
+                    const enemyData = enemies.filter(e => e.hp > 0).map(e => ({
                         id: e.syncId,
-                        x: e.x,
-                        y: e.y,
-                        hp: e.hp,
+                        x: Math.round(e.x * 10) / 10,
+                        y: Math.round(e.y * 10) / 10,
+                        hp: Math.round(e.hp),
+                        maxHp: Math.round(e.maxHp),
                         anim: e.animState,
                         dir: e.facingDir
                     }));
@@ -1054,8 +1080,17 @@ function gameLoop(timestamp) {
         camera.update(dt);
     }
 
-    // Update entities — pass dungeon for collision checks
-    for (const e of (enemies || [])) e.update(dt, player, dungeon, enemies);
+    // Update entities — Host runs full AI, Guests only animate (sync receives actual positions)
+    const isNetHost = !network || !network.isConnected || network.isHost;
+    for (const e of (enemies || [])) {
+        if (isNetHost) {
+            e.update(dt, player, dungeon, enemies);
+        } else {
+            // Guest: only advance timers for smooth animation, no AI/movement
+            if (e.hitFlashTimer > 0) e.hitFlashTimer -= dt;
+            e.stateTimer = (e.stateTimer || 0) + dt;
+        }
+    }
     for (const n of npcs) n.update(dt);
     if (activePet) activePet.update(dt, player, droppedGold);
     if (player) player.updateMinions(dt, enemies, dungeon);
