@@ -46,14 +46,42 @@ def find_anim_folder(base_path, anim_keywords):
 
 def get_frames(folder_path, dir_name):
     if not folder_path: return []
-    path = os.path.join(folder_path, dir_name)
-    if os.path.exists(path):
-        return sorted(glob.glob(os.path.join(path, "*.png")))
-    # Fallback al sur si no existe la direccion
-    fallback = os.path.join(folder_path, "south")
-    if os.path.exists(fallback):
-        return sorted(glob.glob(os.path.join(fallback, "*.png")))
+    synonyms = {
+        'north': ['north', 'up', 'back'],
+        'south': ['south', 'down', 'front'],
+        'west': ['west', 'left'],
+        'east': ['east', 'right']
+    }
+    
+    for syn in synonyms.get(dir_name, [dir_name]):
+        path = os.path.join(folder_path, syn)
+        if os.path.exists(path):
+            return sorted(glob.glob(os.path.join(path, "*.png")))
+            
+    # Fallbacks
+    for fb in ['front', 'south', 'down']:
+        fallback = os.path.join(folder_path, fb)
+        if os.path.exists(fallback):
+            return sorted(glob.glob(os.path.join(fallback, "*.png")))
+            
     return []
+
+def get_base_rot(tmp_dir, dir_name):
+    synonyms = {
+        'north': ['north', 'up', 'back'],
+        'south': ['south', 'down', 'front'],
+        'west': ['west', 'left'],
+        'east': ['east', 'right']
+    }
+    for syn in synonyms.get(dir_name, [dir_name]):
+        path = os.path.join(tmp_dir, "rotations", f"{syn}.png")
+        if os.path.exists(path): return path
+        
+    for fb in ['front', 'south', 'down']:
+        path = os.path.join(tmp_dir, "rotations", f"{fb}.png")
+        if os.path.exists(path): return path
+        
+    return None
 
 print("🚀 Corrigiendo Spritesheets para el motor 7x16...")
 
@@ -76,8 +104,8 @@ for name in characters:
     attack_p = find_anim_folder(tmp_dir, ["fireball", "punch", "attack", "cross-punch"])
 
     for d_name, d_idx in DIRS_MAP.items():
-        base_rot = os.path.join(tmp_dir, "rotations", f"{d_name}.png")
-        if not os.path.exists(base_rot): base_rot = first_frame
+        base_rot = get_base_rot(tmp_dir, d_name)
+        if not base_rot: base_rot = first_frame
 
         idles = get_frames(idle_p, d_name)
         walks = get_frames(walk_p, d_name)
