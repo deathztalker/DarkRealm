@@ -131,6 +131,11 @@ for name in characters:
             f = attacks[i % len(attacks)] if attacks else base_rot
             img_out.paste(Image.open(f).convert('RGBA'), (i * c_sw, (12 + d_idx) * c_sh))
 
+    # Guardar con fingerprint para cache busting (pixel casi invisible en la esquina)
+    import time
+    timestamp_pixel = int(time.time()) % 256
+    img_out.putpixel((0, 0), (0, 0, 0, 1)) # Alpha 1, casi invisible
+    
     img_out.save(f"assets/{name}.png")
     print(f"✅ Corregido: assets/{name}.png")
 print("✨ ¡Todo arreglado! Las animaciones ahora deben ejecutarse correctamente.")
