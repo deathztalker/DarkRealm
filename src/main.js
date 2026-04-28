@@ -67,7 +67,6 @@ let worldZones = {}; // Persistent state for each zone: { level: { dungeon, enem
 let floatingTexts = []; // Phase 15: Damage Numbers
 let state = 'MENU', selectedClass = null;
 let lastTime = 0, lastSaveTime = 0;
-let worldTime = 8 * 60; // Start at 08:00 AM
 let isNightManual = false; // Internal flag for state checks
 let portalReturnZone = null;
 let portalReturnCoords = null;
@@ -980,19 +979,8 @@ function gameLoop(timestamp) {
     if (window.mobileControls) window.mobileControls.update(player);
 
     // --- Phase 3.1: Atmospheric Weather System ---
-    if (window.fx && player) {
-        const theme = window.currentTheme;
-        if (theme === 'snow') {
-            window.fx.emitBlizzard(renderer.width, renderer.height);
-        } else if (theme === 'desert') {
-            window.fx.emitSand(renderer.width, renderer.height);
-        } else if (theme === 'hell') {
-            window.fx.emitEmbers(renderer.width, renderer.height);
-        } else if (theme === 'jungle' || theme === 'temple') {
-            window.fx.emitRain(renderer.width, renderer.height);
-        } else if (theme === 'wilderness') {
-            window.fx.emitMist(renderer.width, renderer.height);
-        }
+    if (player) {
+        WeatherSystem.update(dt, zoneLevel, window.currentTheme);
     }
 
     if (player) {
