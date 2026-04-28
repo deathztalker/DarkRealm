@@ -31,6 +31,66 @@ export const SETS = {
             3: [{ stat: 'allRes', value: 15 }, { stat: 'manaRegenPerSec', value: 20 }],
             4: [{ stat: '+allSkills', value: 2 }]
         }
+    },
+    // ═══ D2 CLASSIC SETS ═══
+    tal_rasha: {
+        name: "Tal Rasha's Wrappings",
+        bonuses: {
+            2: [{ stat: 'flatMP', value: 60 }, { stat: 'manaRegenPerSec', value: 10 }],
+            3: [{ stat: 'fireRes', value: 30 }, { stat: 'lightRes', value: 30 }, { stat: 'coldRes', value: 30 }],
+            4: [{ stat: '+allSkills', value: 2 }, { stat: 'magicFind', value: 65 }],
+            5: [{ stat: 'pctDmg', value: 150 }, { stat: 'flatHP', value: 200 }]
+        }
+    },
+    immortal_king: {
+        name: "Immortal King's Call",
+        bonuses: {
+            2: [{ stat: 'pctDmg', value: 60 }, { stat: 'pctIAS', value: 20 }],
+            3: [{ stat: 'flatHP', value: 200 }, { stat: 'flatArmor', value: 150 }],
+            4: [{ stat: 'crushingBlow', value: 25 }, { stat: 'allRes', value: 30 }],
+            5: [{ stat: '+allSkills', value: 3 }, { stat: 'pctDmgReduce', value: 25 }]
+        }
+    },
+    natalya: {
+        name: "Natalya's Odium",
+        bonuses: {
+            2: [{ stat: 'pctIAS', value: 20 }, { stat: 'critChance', value: 10 }],
+            3: [{ stat: 'flatDEX', value: 30 }, { stat: 'pctMoveSpeed', value: 20 }],
+            4: [{ stat: '+allSkills', value: 2 }, { stat: 'critMulti', value: 50 }]
+        }
+    },
+    aldur: {
+        name: "Aldur's Watchtower",
+        bonuses: {
+            2: [{ stat: 'lifeRegenPerSec', value: 15 }, { stat: 'flatHP', value: 100 }],
+            3: [{ stat: 'allRes', value: 25 }, { stat: 'flatArmor', value: 100 }],
+            4: [{ stat: '+allSkills', value: 2 }, { stat: 'pctDmg', value: 80 }]
+        }
+    },
+    trang_oul: {
+        name: "Trang-Oul's Avatar",
+        bonuses: {
+            2: [{ stat: 'pctPoisonDmg', value: 40 }, { stat: 'flatMP', value: 100 }],
+            3: [{ stat: 'allRes', value: 25 }, { stat: 'manaRegenPerSec', value: 15 }],
+            4: [{ stat: '+allSkills', value: 2 }, { stat: 'pctShadowDmg', value: 40 }],
+            5: [{ stat: 'lifeStealPct', value: 15 }, { stat: 'pctDmgReduce', value: 20 }]
+        }
+    },
+    lightbringer: {
+        name: "Lightbringer's Valor",
+        bonuses: {
+            2: [{ stat: 'flatHP', value: 150 }, { stat: 'allRes', value: 15 }],
+            3: [{ stat: 'lifeRegenPerSec', value: 20 }, { stat: 'blockChance', value: 20 }],
+            4: [{ stat: '+allSkills', value: 2 }, { stat: 'flatArmor', value: 250 }]
+        }
+    },
+    earthfury: {
+        name: "The Earthfury",
+        bonuses: {
+            2: [{ stat: 'flatLightDmg', value: 30 }, { stat: 'manaRegenPerSec', value: 10 }],
+            3: [{ stat: 'allRes', value: 20 }, { stat: 'critChance', value: 10 }],
+            4: [{ stat: '+allSkills', value: 2 }, { stat: 'pctDmg', value: 100 }]
+        }
     }
 };
 
@@ -51,7 +111,52 @@ export const SET_ITEMS = [
     { id: 'milabrega_orb', name: "Milabrega's Orb", base: 'buckler', rarity: RARITY.SET, icon: 'item_shield', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'magicFind', value: 20 }] },
     { id: 'milabrega_diadem', name: "Milabrega's Diadem", base: 'crown', rarity: RARITY.SET, icon: 'item_crown', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'flatMP', value: 15 }, { stat: 'flatHP', value: 15 }] },
     { id: 'milabrega_robe', name: "Milabrega's Robe", base: 'chain_mail', rarity: RARITY.SET, icon: 'item_chain_mail', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'flatDmgReduce', value: 2 }] },
-    { id: 'milabrega_rod', name: "Milabrega's Rod", base: 'war_hammer', rarity: RARITY.SET, icon: 'item_war_hammer', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'pctDmg', value: 50 }] }
+    { id: 'milabrega_rod', name: "Milabrega's Rod", base: 'war_hammer', rarity: RARITY.SET, icon: 'item_war_hammer', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'pctDmg', value: 50 }] },
+
+    // ═══ TAL RASHA'S WRAPPINGS (Sorceress) ═══
+    { id: 'tal_rasha_lidless', name: "Tal Rasha's Lidless Eye", base: 'wand', rarity: RARITY.SET, icon: 'item_wand', dropLvl: 40, setId: 'tal_rasha', setName: "Tal Rasha's Wrappings", mods: [{ stat: '+allSkills', value: 1 }, { stat: 'flatMP', value: 77 }, { stat: 'manaRegenPerSec', value: 10 }] },
+    { id: 'tal_rasha_adjudication', name: "Tal Rasha's Adjudication", base: 'amulet', rarity: RARITY.SET, icon: 'item_amulet', dropLvl: 45, setId: 'tal_rasha', setName: "Tal Rasha's Wrappings", mods: [{ stat: 'flatLightDmg', value: 42 }, { stat: 'allRes', value: 15 }, { stat: 'flatHP', value: 50 }] },
+    { id: 'tal_rasha_guardianship', name: "Tal Rasha's Guardianship", base: 'plate_mail', rarity: RARITY.SET, icon: 'item_plate_mail', dropLvl: 50, setId: 'tal_rasha', setName: "Tal Rasha's Wrappings", mods: [{ stat: 'flatArmor', value: 200 }, { stat: 'magicFind', value: 25 }, { stat: 'coldRes', value: 40 }] },
+    { id: 'tal_rasha_horadric', name: "Tal Rasha's Horadric Crest", base: 'circlet', rarity: RARITY.SET, icon: 'item_circlet', dropLvl: 48, setId: 'tal_rasha', setName: "Tal Rasha's Wrappings", mods: [{ stat: 'lifeStealPct', value: 6 }, { stat: 'manaStealPct', value: 6 }, { stat: 'allRes', value: 15 }] },
+    { id: 'tal_rasha_belt', name: "Tal Rasha's Fine-Spun Cloth", base: 'leather_belt', rarity: RARITY.SET, icon: 'item_belt', dropLvl: 35, setId: 'tal_rasha', setName: "Tal Rasha's Wrappings", mods: [{ stat: 'flatMP', value: 30 }, { stat: 'magicFind', value: 10 }, { stat: 'flatDEX', value: 15 }] },
+
+    // ═══ IMMORTAL KING'S CALL (Warrior) ═══
+    { id: 'ik_stone_crusher', name: "Immortal King's Stone Crusher", base: 'war_hammer', rarity: RARITY.SET, icon: 'item_war_hammer', dropLvl: 55, setId: 'immortal_king', setName: "Immortal King's Call", mods: [{ stat: 'pctDmg', value: 200 }, { stat: 'flatSTR', value: 40 }, { stat: 'crushingBlow', value: 35 }] },
+    { id: 'ik_soul_cage', name: "Immortal King's Soul Cage", base: 'plate_mail', rarity: RARITY.SET, icon: 'item_plate_mail', dropLvl: 60, setId: 'immortal_king', setName: "Immortal King's Call", mods: [{ stat: 'flatArmor', value: 300 }, { stat: 'flatHP', value: 150 }, { stat: 'pctDmgReduce', value: 10 }] },
+    { id: 'ik_will', name: "Immortal King's Will", base: 'great_helm', rarity: RARITY.SET, icon: 'item_great_helm', dropLvl: 52, setId: 'immortal_king', setName: "Immortal King's Call", mods: [{ stat: 'flatSTR', value: 25 }, { stat: 'flatVIT', value: 25 }, { stat: 'magicFind', value: 25 }] },
+    { id: 'ik_forge', name: "Immortal King's Forge", base: 'gauntlets', rarity: RARITY.SET, icon: 'item_gauntlets', dropLvl: 50, setId: 'immortal_king', setName: "Immortal King's Call", mods: [{ stat: 'pctIAS', value: 25 }, { stat: 'flatSTR', value: 20 }, { stat: 'flatDEX', value: 20 }] },
+    { id: 'ik_pillar', name: "Immortal King's Pillar", base: 'war_boots', rarity: RARITY.SET, icon: 'item_war_boots', dropLvl: 48, setId: 'immortal_king', setName: "Immortal King's Call", mods: [{ stat: 'pctMoveSpeed', value: 30 }, { stat: 'flatVIT', value: 20 }, { stat: 'allRes', value: 15 }] },
+
+    // ═══ NATALYA'S ODIUM (Rogue) ═══
+    { id: 'natalya_mark', name: "Natalya's Mark", base: 'rune_blade', rarity: RARITY.SET, icon: 'item_rune_blade', dropLvl: 50, setId: 'natalya', setName: "Natalya's Odium", mods: [{ stat: 'pctDmg', value: 120 }, { stat: 'pctIAS', value: 30 }, { stat: 'critChance', value: 15 }] },
+    { id: 'natalya_shadow', name: "Natalya's Shadow", base: 'chain_mail', rarity: RARITY.SET, icon: 'item_chain_mail', dropLvl: 48, setId: 'natalya', setName: "Natalya's Odium", mods: [{ stat: 'flatDEX', value: 20 }, { stat: 'pctMoveSpeed', value: 15 }, { stat: 'allRes', value: 20 }] },
+    { id: 'natalya_soul', name: "Natalya's Soul", base: 'war_boots', rarity: RARITY.SET, icon: 'item_war_boots', dropLvl: 45, setId: 'natalya', setName: "Natalya's Odium", mods: [{ stat: 'pctMoveSpeed', value: 30 }, { stat: 'flatDEX', value: 15 }, { stat: 'coldRes', value: 25 }] },
+    { id: 'natalya_totem', name: "Natalya's Totem", base: 'circlet', rarity: RARITY.SET, icon: 'item_circlet', dropLvl: 46, setId: 'natalya', setName: "Natalya's Odium", mods: [{ stat: 'critMulti', value: 30 }, { stat: 'flatDEX', value: 15 }, { stat: 'magicFind', value: 15 }] },
+
+    // ═══ ALDUR'S WATCHTOWER (Druid) ═══
+    { id: 'aldur_rhythm', name: "Aldur's Rhythm", base: 'mace', rarity: RARITY.SET, icon: 'item_mace', dropLvl: 42, setId: 'aldur', setName: "Aldur's Watchtower", mods: [{ stat: 'pctDmg', value: 80 }, { stat: 'pctIAS', value: 20 }, { stat: 'lifeStealPct', value: 5 }] },
+    { id: 'aldur_deception', name: "Aldur's Deception", base: 'chain_mail', rarity: RARITY.SET, icon: 'item_chain_mail', dropLvl: 44, setId: 'aldur', setName: "Aldur's Watchtower", mods: [{ stat: 'flatHP', value: 100 }, { stat: 'allRes', value: 15 }, { stat: 'flatArmor', value: 80 }] },
+    { id: 'aldur_advance', name: "Aldur's Advance", base: 'war_boots', rarity: RARITY.SET, icon: 'item_war_boots', dropLvl: 40, setId: 'aldur', setName: "Aldur's Watchtower", mods: [{ stat: 'pctMoveSpeed', value: 30 }, { stat: 'flatHP', value: 50 }, { stat: 'fireRes', value: 40 }] },
+    { id: 'aldur_stony_gaze', name: "Aldur's Stony Gaze", base: 'great_helm', rarity: RARITY.SET, icon: 'item_great_helm', dropLvl: 43, setId: 'aldur', setName: "Aldur's Watchtower", mods: [{ stat: 'lifeRegenPerSec', value: 10 }, { stat: 'flatMP', value: 50 }, { stat: 'coldRes', value: 25 }] },
+
+    // ═══ TRANG-OUL'S AVATAR (Necromancer) ═══
+    { id: 'trang_wing', name: "Trang-Oul's Wing", base: 'tower_shield', rarity: RARITY.SET, icon: 'item_tower_shield', dropLvl: 50, setId: 'trang_oul', setName: "Trang-Oul's Avatar", mods: [{ stat: 'allRes', value: 20 }, { stat: 'blockChance', value: 25 }, { stat: 'flatArmor', value: 100 }] },
+    { id: 'trang_scales', name: "Trang-Oul's Scales", base: 'plate_mail', rarity: RARITY.SET, icon: 'item_plate_mail', dropLvl: 55, setId: 'trang_oul', setName: "Trang-Oul's Avatar", mods: [{ stat: 'flatHP', value: 120 }, { stat: 'pctPoisonDmg', value: 25 }, { stat: 'pctDmgReduce', value: 15 }] },
+    { id: 'trang_claws', name: "Trang-Oul's Claws", base: 'gauntlets', rarity: RARITY.SET, icon: 'item_gauntlets', dropLvl: 48, setId: 'trang_oul', setName: "Trang-Oul's Avatar", mods: [{ stat: 'pctIAS', value: 20 }, { stat: 'flatMP', value: 40 }, { stat: 'poisRes', value: 30 }] },
+    { id: 'trang_guise', name: "Trang-Oul's Guise", base: 'circlet', rarity: RARITY.SET, icon: 'item_circlet', dropLvl: 52, setId: 'trang_oul', setName: "Trang-Oul's Avatar", mods: [{ stat: '+allSkills', value: 1 }, { stat: 'flatMP', value: 60 }, { stat: 'manaRegenPerSec', value: 8 }] },
+    { id: 'trang_girth', name: "Trang-Oul's Girth", base: 'leather_belt', rarity: RARITY.SET, icon: 'item_belt', dropLvl: 47, setId: 'trang_oul', setName: "Trang-Oul's Avatar", mods: [{ stat: 'flatHP', value: 66 }, { stat: 'cannotBeFrozen', value: 1 }] },
+
+    // ═══ LIGHTBRINGER'S VALOR (Paladin) ═══
+    { id: 'lightbringer_blade', name: "Lightbringer's Blade", base: 'long_sword', rarity: RARITY.SET, icon: 'item_sword', dropLvl: 55, setId: 'lightbringer', setName: "Lightbringer's Valor", mods: [{ stat: 'pctDmg', value: 130 }, { stat: 'flatHP', value: 80 }, { stat: 'allRes', value: 15 }] },
+    { id: 'lightbringer_aegis', name: "Lightbringer's Aegis", base: 'tower_shield', rarity: RARITY.SET, icon: 'item_tower_shield', dropLvl: 53, setId: 'lightbringer', setName: "Lightbringer's Valor", mods: [{ stat: 'blockChance', value: 30 }, { stat: 'flatArmor', value: 200 }, { stat: 'allRes', value: 20 }] },
+    { id: 'lightbringer_crown', name: "Lightbringer's Crown", base: 'crown', rarity: RARITY.SET, icon: 'item_crown', dropLvl: 52, setId: 'lightbringer', setName: "Lightbringer's Valor", mods: [{ stat: '+allSkills', value: 1 }, { stat: 'lifeRegenPerSec', value: 12 }, { stat: 'flatHP', value: 60 }] },
+    { id: 'lightbringer_plate', name: "Lightbringer's Plate", base: 'plate_mail', rarity: RARITY.SET, icon: 'item_plate_mail', dropLvl: 57, setId: 'lightbringer', setName: "Lightbringer's Valor", mods: [{ stat: 'flatArmor', value: 250 }, { stat: 'flatHP', value: 100 }, { stat: 'pctDmgReduce', value: 12 }] },
+
+    // ═══ THE EARTHFURY (Shaman) ═══
+    { id: 'earthfury_totem', name: "Earthfury's Totem", base: 'grand_totem', rarity: RARITY.SET, icon: 'item_grand_totem', dropLvl: 50, setId: 'earthfury', setName: "The Earthfury", mods: [{ stat: '+allSkills', value: 1 }, { stat: 'flatLightDmg', value: 30 }, { stat: 'manaRegenPerSec', value: 10 }] },
+    { id: 'earthfury_vestments', name: "Earthfury's Vestments", base: 'chain_mail', rarity: RARITY.SET, icon: 'item_chain_mail', dropLvl: 52, setId: 'earthfury', setName: "The Earthfury", mods: [{ stat: 'allRes', value: 20 }, { stat: 'flatHP', value: 80 }, { stat: 'flatMP', value: 60 }] },
+    { id: 'earthfury_epaulets', name: "Earthfury's Epaulets", base: 'great_helm', rarity: RARITY.SET, icon: 'item_great_helm', dropLvl: 48, setId: 'earthfury', setName: "The Earthfury", mods: [{ stat: 'critChance', value: 8 }, { stat: 'flatLightDmg', value: 20 }, { stat: 'allRes', value: 10 }] },
+    { id: 'earthfury_boots', name: "Earthfury's Boots", base: 'war_boots', rarity: RARITY.SET, icon: 'item_war_boots', dropLvl: 46, setId: 'earthfury', setName: "The Earthfury", mods: [{ stat: 'pctMoveSpeed', value: 25 }, { stat: 'flatHP', value: 40 }, { stat: 'lightRes', value: 30 }] }
 ];
 
 // Unique item definitions (hand-crafted, fixed mods)
