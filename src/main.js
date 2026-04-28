@@ -3547,8 +3547,11 @@ function getItemHtml(item, cantEquip = false, isGamble = false) {
 
     // Fallback icon logic if item.icon is missing
     let iconName = isGamble ? 'item_orb' : (item.icon || `item_${item.type || 'orb'}`);
+    
+    // Safety: Strip ghost "_hd" suffix that might exist in old saves/injections
+    if (typeof iconName === 'string') iconName = iconName.replace('_hd', '');
 
-    // Icon Aliasing System
+    // Icon Aliasing System — Maps logic types to existing physical assets
     const iconAliases = {
         'item_gem_perfect': 'item_ruby',
         'item_potion_rejuv': 'item_potion_hp',
@@ -3575,9 +3578,10 @@ function getItemHtml(item, cantEquip = false, isGamble = false) {
         'item_boots_leather': 'item_leather_boots',
         'item_boots_war': 'item_war_boots',
         'item_shield_buckler': 'item_buckler',
-        'item_shield_tower': 'item_tower_shield',
         'item_shield_source': 'item_source',
-        'item_key': 'item_ring'
+        'item_shield_royal': 'item_shield',
+        'item_shield_kite': 'item_shield_kite',
+        'item_staff_kings': 'item_staff_kings' 
     };
     if (iconAliases[iconName]) iconName = iconAliases[iconName];
 
