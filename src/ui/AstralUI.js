@@ -122,6 +122,41 @@ export const AstralUI = {
         window.isAstralOpen = false;
     },
 
+    formatStats(stats) {
+        if (!stats) return '';
+        const labels = {
+            flatSTR: 'Strength', flatINT: 'Intelligence', flatDEX: 'Dexterity',
+            pctPhysDmg: 'Physical Damage', pctArmor: 'Total Armor',
+            pctHP: 'Maximum Health', lifeRegenPerSec: 'Life Regen/s',
+            pctElemDmg: 'Elemental Damage', pctFCR: 'Faster Cast Rate',
+            critChance: 'Critical Strike Chance', manaRegenPerSec: 'Mana Regen/s',
+            allRes: 'All Resistances', pctPoisonDmg: 'Poison Damage',
+            pctShadowDmg: 'Shadow Damage', pctDmgVsCC: 'Damage vs Crowd Control',
+            pctMoveSpeed: 'Movement Speed', pctFireDmg: 'Fire Damage',
+            flatHP: 'Health', pctFireRes: 'Fire Resistance',
+            lifeCostEnabled: 'Skills Cost Life', manaToLifeConv: 'Mana to Life Conversion',
+            totalHpMult: 'Total Health', totalDmgMult: 'Total Damage',
+            armorToEsConv: 'Armor to Energy Shield', armorMult: 'Total Armor',
+            maxMinions: 'Max Minions', minionResistInherit: 'Minion Resistance Share',
+            dmgPerAura: 'Damage per Active Aura', attackRangeBonus: 'Attack Range',
+            deadlyStrike: 'Deadly Strike Chance', pctIAS: 'Attack Speed',
+            minionDmgPct: 'Minion Damage', minionIasPct: 'Minion Attack Speed',
+            minionHpPct: 'Minion Health', minionArmorPct: 'Minion Armor',
+            minionLifestealShare: 'Minion Life Leech Share'
+        };
+
+        return Object.entries(stats).map(([key, val]) => {
+            const label = labels[key] || key;
+            const sign = val >= 0 ? '+' : '';
+            const unit = key.startsWith('pct') || key.toLowerCase().includes('mult') || key.toLowerCase().includes('share') || key.toLowerCase().includes('inherit') ? '%' : '';
+            const color = val >= 0 ? '#4caf50' : '#ff4444';
+            return `<div style="display:flex; justify-content:space-between; gap:20px;">
+                        <span style="color:#bbb;">${label}</span>
+                        <span style="color:${color}; font-weight:bold;">${sign}${val}${unit}</span>
+                    </div>`;
+        }).join('');
+    },
+
     renderTab(tab) {
         this.currentTab = tab;
         const container = document.getElementById('astral-content');
