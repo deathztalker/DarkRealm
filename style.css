@@ -2454,33 +2454,61 @@ body.socketing-mode .inv-slot {
     font-size: 10px;
   }
 
-  /* MOBILE CHAT ADAPTATION */
+  /* MOBILE CHAT ADAPTATION — Ultra Compact */
   .chat-container {
-    width: 260px;
-    height: 120px;
-    bottom: 65px;
-    left: 5px;
-    background: rgba(0, 0, 0, 0.3);
+    width: 200px; /* Reduced from 260px */
+    height: 100px; /* Reduced from 120px */
+    bottom: 70px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.2); /* More transparent */
+    font-size: 11px;
+    border-radius: 8px;
+    backdrop-filter: blur(2px);
   }
   
   .chat-container.minimized {
-    height: 32px !important;
-    width: 150px !important;
+    height: 28px !important;
+    width: 100px !important;
+    background: rgba(191, 100, 47, 0.3) !important;
+    border: 1px solid var(--gold) !important;
+    border-radius: 14px; /* Pill shape */
     overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
   }
   
-  .chat-container.minimized .chat-messages-area,
-  .chat-container.minimized .chat-input-wrapper {
+  .chat-container.minimized .chat-tabs {
+    background: transparent !important;
+    border: none !important;
+    justify-content: center;
+  }
+  
+  .chat-container.minimized .chat-tab,
+  .chat-container.minimized #btn-chat-lock {
     display: none !important;
   }
 
+  .chat-container.minimized #btn-chat-min {
+    width: 100%;
+    color: #fff;
+    font-weight: bold;
+    font-size: 10px;
+  }
+
   .chat-container:not(:focus-within):not(.unlocked):not(.minimized) {
-    height: 32px;
-    background: transparent;
+    height: 28px;
+    background: rgba(0,0,0,0.1);
     border-color: transparent;
   }
-  .chat-messages-area { font-size: 11px !important; }
-  .chat-tab { padding: 4px 5px !important; font-size: 8px !important; }
+  
+  .chat-messages-area { 
+    font-size: 10px !important; 
+    padding: 4px !important;
+  }
+  
+  .chat-tab { 
+    padding: 2px 6px !important; 
+    font-size: 9px !important; 
+  }
 
   /* MMO LOGIN MOBILE */
   #login-screen .panel {
