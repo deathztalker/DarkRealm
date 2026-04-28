@@ -31,7 +31,7 @@ export const AstralUI = {
             .astral-content { flex: 1; position: relative; overflow: auto; padding: 20px; }
 
             /* Mutation Styles */
-            .mutation-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+            .mutation-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
             .mutation-card {
                 background: #1a1510; border: 1px solid #333; padding: 15px; border-radius: 4px;
                 display: flex; flex-direction: column; gap: 10px;
@@ -39,16 +39,31 @@ export const AstralUI = {
             .mutation-card-header { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #444; padding-bottom: 8px; }
             .mutation-node {
                 background: #111; border: 1px solid #444; padding: 10px; margin-top: 5px; cursor: pointer;
-                transition: border-color 0.2s; position: relative;
+                transition: all 0.2s; position: relative;
             }
-            .mutation-node:hover { border-color: var(--gold); }
+            .mutation-node:hover { border-color: var(--gold); background: #1a1a1a; }
             .mutation-node.unlocked { border-color: #4caf50; }
-            .mutation-node.maxed { border-color: var(--gold); box-shadow: inset 0 0 5px var(--gold); }
+            .mutation-node.maxed { border-color: var(--gold); box-shadow: inset 0 0 10px rgba(191, 100, 47, 0.5); }
             .mutation-node.locked { opacity: 0.5; cursor: not-allowed; }
+
+            .perk-box {
+                font-size: 10px; margin-top: 8px; padding: 6px; background: rgba(0,0,0,0.3);
+                border-left: 2px solid #444; color: #888; transition: all 0.3s;
+            }
+            .mutation-node.maxed .perk-box {
+                border-color: var(--gold); color: var(--gold); background: rgba(191, 100, 47, 0.1);
+                text-shadow: 0 0 5px rgba(191, 100, 47, 0.5);
+            }
 
             /* Astral Tree Canvas Style */
             #astral-canvas-container { width: 100%; height: 100%; position: relative; background: #000; overflow: hidden; cursor: grab; }
             #astral-canvas-container:active { cursor: grabbing; }
+
+            .astral-info-panel {
+                position: absolute; bottom: 20px; left: 20px; width: 300px;
+                background: rgba(10, 8, 5, 0.9); border: 1px solid #bf642f; padding: 15px;
+                pointer-events: none; opacity: 0; transition: opacity 0.2s;
+            }
 
             .close-astral { cursor: pointer; font-size: 24px; color: #888; }
             .close-astral:hover { color: #fff; }
@@ -77,6 +92,7 @@ export const AstralUI = {
                 <div id="astral-content" class="astral-content">
                     <!-- Dynamic Content -->
                 </div>
+                <div id="astral-info-panel" class="astral-info-panel"></div>
             </div>
         `;
         document.body.appendChild(overlay);
@@ -110,6 +126,8 @@ export const AstralUI = {
         const container = document.getElementById('astral-content');
         const pointsVal = document.getElementById('astral-points-val');
         pointsVal.textContent = window.player.astralPoints;
+
+        document.getElementById('astral-info-panel').style.opacity = '0';
 
         if (tab === 'mutations') this.renderMutations(container);
         else if (tab === 'runes') this.renderRuneCore(container);
@@ -168,6 +186,7 @@ export const AstralUI = {
                         <span style="color:var(--gold); font-size:10px;">${spent}/${node.max}</span>
                     </div>
                     <div style="font-size:10px; color:#ccc;">${node.desc}</div>
+                    ${node.masteryPerk ? `<div class="perk-box"><strong>MASTERY PERK:</strong> ${node.masteryPerk}</div>` : ''}
                 `;
 
                 nodeEl.onclick = () => {
@@ -189,7 +208,6 @@ export const AstralUI = {
     },
 
     renderRuneCore(container) {
-        // ✅ FIX: No nested template literals — innerHTML built with regular strings
         container.innerHTML =
             '<div style="display:flex; flex-direction:column; align-items:center; gap:30px; padding:20px;">' +
             '<h3 style="color:var(--gold); margin:0;">SOCKET SUPPORT RUNES</h3>' +
@@ -214,13 +232,11 @@ export const AstralUI = {
             const div = document.createElement('div');
             div.style.cssText = 'background:#1a1510; border:1px solid #bf642f; padding:10px; display:flex; flex-direction:column; align-items:center; gap:10px;';
 
-            // ✅ FIX: Build skill name label
             const label = document.createElement('div');
             label.style.cssText = 'font-weight:bold; font-size:12px; color:var(--gold);';
             label.textContent = skill.name;
             div.appendChild(label);
 
-            // ✅ FIX: Build sockets row without nested template literals
             const socketsRow = document.createElement('div');
             socketsRow.style.cssText = 'display:flex; gap:8px;';
 
@@ -294,6 +310,7 @@ export const AstralUI = {
         const canvas = document.getElementById('astral-canvas');
         const ctx = canvas.getContext('2d');
         const parent = document.getElementById('astral-canvas-container');
+        const infoPanel = document.getElementById('astral-info-panel');
 
         canvas.width = parent.clientWidth;
         canvas.height = parent.clientHeight;
@@ -302,13 +319,28 @@ export const AstralUI = {
         let offsetX = canvas.width / 2;
         let offsetY = canvas.height / 2;
 
+        const stars = Array.from({ length: 100 }, () => ({
+            x: Math.random() * 2000 - 1000,
+            y: Math.random() * 2000 - 1000,
+            size: Math.random() * 2,
+            opacity: Math.random()
+        }));
+
         const draw = () => {
-            ctx.fillStyle = '#000';
+            ctx.fillStyle = '#0a0805';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             ctx.save();
             ctx.translate(offsetX, offsetY);
             ctx.scale(zoom, zoom);
+
+            // Draw Stars
+            stars.forEach(s => {
+                ctx.fillStyle = `rgba(255, 255, 255, ${s.opacity})`;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
 
             // Draw connections
             ctx.strokeStyle = 'rgba(100, 200, 255, 0.2)';
@@ -331,26 +363,38 @@ export const AstralUI = {
             ASTRAL_CONSTELLATION.nodes.forEach(node => {
                 const pts = window.player.astralTree[node.id] || 0;
                 const active = pts > 0;
+                const isElder = node.id >= 100;
 
                 ctx.beginPath();
-                ctx.arc(node.pos.x * 5, node.pos.y * 5, 8, 0, Math.PI * 2);
-                ctx.fillStyle = active ? '#00ffff' : '#222';
+                if (isElder) {
+                    // Draw diamond for elder keynodes
+                    const x = node.pos.x * 5, y = node.pos.y * 5;
+                    ctx.moveTo(x, y - 12);
+                    ctx.lineTo(x + 12, y);
+                    ctx.lineTo(x, y + 12);
+                    ctx.lineTo(x - 12, y);
+                    ctx.closePath();
+                } else {
+                    ctx.arc(node.pos.x * 5, node.pos.y * 5, 8, 0, Math.PI * 2);
+                }
+
+                ctx.fillStyle = active ? (isElder ? '#ffd700' : '#00ffff') : '#222';
                 ctx.fill();
-                ctx.strokeStyle = active ? '#fff' : '#444';
+                ctx.strokeStyle = active ? '#fff' : (isElder ? '#bf642f' : '#444');
                 ctx.lineWidth = active ? 2 : 1;
                 ctx.stroke();
 
                 if (active) {
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = '#00ffff';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = isElder ? '#ffd700' : '#00ffff';
                     ctx.stroke();
                     ctx.shadowBlur = 0;
                 }
 
-                ctx.fillStyle = '#888';
-                ctx.font = '8px Arial';
+                ctx.fillStyle = isElder ? '#bf642f' : '#888';
+                ctx.font = `${isElder ? 'bold ' : ''}10px Arial`;
                 ctx.textAlign = 'center';
-                ctx.fillText(node.name, node.pos.x * 5, node.pos.y * 5 + 18);
+                ctx.fillText(node.name, node.pos.x * 5, node.pos.y * 5 + (isElder ? 25 : 18));
             });
 
             ctx.restore();
@@ -385,14 +429,32 @@ export const AstralUI = {
             const mouseX = (e.clientX - rect.left - offsetX) / zoom;
             const mouseY = (e.clientY - rect.top - offsetY) / zoom;
 
+            let clickedNode = null;
             ASTRAL_CONSTELLATION.nodes.forEach(node => {
                 const dx = mouseX - (node.pos.x * 5);
                 const dy = mouseY - (node.pos.y * 5);
-                if (dx * dx + dy * dy < 100) {
-                    this.tryUnlockAstral(node);
-                    draw();
+                if (dx * dx + dy * dy < 200) {
+                    clickedNode = node;
                 }
             });
+
+            if (clickedNode) {
+                this.tryUnlockAstral(clickedNode);
+                
+                // Show info
+                infoPanel.style.opacity = '1';
+                infoPanel.innerHTML = `
+                    <h3 style="margin:0; color:var(--gold);">${clickedNode.name}</h3>
+                    <div style="font-size:12px; color:#aaa; margin-top:5px;">
+                        ${clickedNode.special ? `<p style="color:#ffd700;"><strong>ELDER POWER:</strong> ${clickedNode.special}</p>` : ''}
+                        ${clickedNode.stats ? `<p>Grants: ${JSON.stringify(clickedNode.stats)}</p>` : ''}
+                        <p style="font-size:10px;">Level: ${window.player.astralTree[clickedNode.id] || 0}/${clickedNode.max}</p>
+                    </div>
+                `;
+                draw();
+            } else {
+                infoPanel.style.opacity = '0';
+            }
         };
     },
 

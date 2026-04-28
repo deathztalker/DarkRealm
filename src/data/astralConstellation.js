@@ -1,6 +1,6 @@
 /**
  * ASTRAL CONSTELLATION — Global passive tree for all classes.
- * Includes "Celestial Procs" that can be linked to skills.
+ * Includes "Celestial Procs" and "Elder Keynodes" (Game Changers).
  */
 export const ASTRAL_CONSTELLATION = {
     nodes: [
@@ -28,6 +28,35 @@ export const ASTRAL_CONSTELLATION = {
         { id: 30, name: 'Snakes Fangs', pos: { x: 0, y: 50 }, req: [2], max: 3, stats: { pctPoisonDmg: 8, pctShadowDmg: 8 } },
         { id: 31, name: 'Acid Spittle (Celestial Proc)', pos: { x: 0, y: 80 }, req: [30], max: 1,
             proc: { id: 'proc_acid', trigger: 'onAttack', chance: 20, cd: 1.0, effect: 'poison_bolt' }
+        },
+
+        // THE PHOENIX (Fire/Recovery)
+        { id: 40, name: 'Phoenix Wing', pos: { x: -40, y: 40 }, req: [2], max: 3, stats: { pctFireDmg: 8, flatHP: 25 } },
+        { id: 41, name: 'Phoenix Heart', pos: { x: -60, y: 60 }, req: [40], max: 3, stats: { lifeRegenPerSec: 5, pctFireRes: 10 } },
+        { id: 42, name: 'Rebirth (Celestial Proc)', pos: { x: -80, y: 80 }, req: [41], max: 1,
+            proc: { id: 'proc_rebirth', trigger: 'onLowHP', healthThreshold: 20, cd: 180.0, effect: 'heal_and_burst' }
+        },
+
+        // --- TIER 3: ELDER KEYNODES (Game Changers) ---
+        { 
+            id: 100, name: 'ELDER: Blood Magic', pos: { x: -120, y: 0 }, req: [11], max: 1,
+            special: 'Your skills cost Life instead of Mana. Mana pool is added to your Max Life.',
+            stats: { lifeCostEnabled: 1, manaToLifeConv: 1.0 }
+        },
+        {
+            id: 101, name: 'ELDER: Glass Cannon', pos: { x: 120, y: 0 }, req: [21], max: 1,
+            special: '-50% Total Health, but +50% Total Damage dealt.',
+            stats: { totalHpMult: -0.5, totalDmgMult: 0.5 }
+        },
+        {
+            id: 102, name: 'ELDER: Astral Barrier', pos: { x: 0, y: -120 }, req: [21], max: 1,
+            special: 'Armor is reduced to 0. You gain Energy Shield equal to 200% of your Armor.',
+            stats: { armorToEsConv: 2.0, armorMult: -1.0 }
+        },
+        {
+            id: 103, name: 'ELDER: The Alchemist', pos: { x: 0, y: 120 }, req: [30, 40], max: 1,
+            special: 'Potions also apply to your minions at 100% effectiveness.',
+            stats: { potionMinionShare: 1.0 }
         }
     ]
 };
@@ -56,7 +85,7 @@ export function getAstralStats(player) {
 }
 
 /**
- * Get active Procs from the Astral Tree.
+ * Get active Procs and Specials from the Astral Tree.
  */
 export function getAstralProcs(player) {
     const procs = [];
@@ -64,8 +93,9 @@ export function getAstralProcs(player) {
 
     ASTRAL_CONSTELLATION.nodes.forEach(node => {
         const pts = player.astralTree[node.id] || 0;
-        if (pts > 0 && node.proc) {
-            procs.push(node.proc);
+        if (pts > 0) {
+            if (node.proc) procs.push(node.proc);
+            if (node.special) procs.push({ id: `special_${node.id}`, text: node.special });
         }
     });
 
