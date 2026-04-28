@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Dark Realm — Action RPG</title>
   <meta name="description"
     content="Dark Realm — a browser-based action RPG inspired by Diablo 2, World of Warcraft and Path of Exile.">
@@ -25,7 +25,8 @@
     <div class="menu-bg-particles" id="particles"></div>
 
     <!-- Auth Status -->
-    <div id="auth-status-container">
+    <div id="auth-status-container" style="display: flex; gap: 10px; align-items: center;">
+      <button id="btn-toggle-fullscreen" class="btn-secondary small" title="Toggle Fullscreen">⛶</button>
       <span id="auth-status-text">Playing as Guest</span>
       <button id="btn-open-auth" class="btn-secondary small">Log In</button>
       <button id="btn-logout" class="btn-secondary small hidden">Logout</button>

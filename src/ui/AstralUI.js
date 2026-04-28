@@ -18,6 +18,17 @@ export const AstralUI = {
                 box-shadow: 0 0 30px rgba(0,0,0,1); display: flex; flex-direction: column;
                 position: relative; overflow: hidden;
             }
+            
+            @media (max-width: 768px) {
+                .astral-window { width: 100%; height: 100%; border: none; }
+                .mutation-grid, .fusion-grid { grid-template-columns: 1fr !important; gap: 10px; }
+                .astral-header { padding: 10px; flex-direction: column; gap: 10px; }
+                .astral-tabs { width: 100%; justify-content: center; overflow-x: auto; padding-bottom: 5px; }
+                .astral-tab { padding: 6px 10px; font-size: 11px; flex: 1; text-align: center; }
+                .astral-point-display { font-size: 12px; }
+                .astral-info-panel { width: calc(100% - 40px); left: 20px; bottom: 10px; padding: 10px; }
+            }
+
             .astral-header {
                 padding: 15px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center;
                 background: linear-gradient(to bottom, #1a1510, #0a0805);
@@ -653,6 +664,23 @@ export const AstralUI = {
 
             if (clickedNode) {
                 this.tryUnlockAstral(clickedNode);
+                
+                // Show persistent info on click (for mobile)
+                infoPanel.style.opacity = '1';
+                infoPanel.innerHTML = `
+                    <h3 style="margin:0; color:var(--gold); text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);">${clickedNode.name}</h3>
+                    <div style="font-size:12px; color:#ddd; margin-top:8px;">
+                        ${clickedNode.special ? `<p style="color:#ffd700; border-left: 2px solid #ffd700; padding-left: 6px;"><strong>ELDER POWER:</strong> ${clickedNode.special}</p>` : ''}
+                        ${clickedNode.proc ? `<p style="color:#00ffff; border-left: 2px solid #00ffff; padding-left: 6px;"><strong>CELESTIAL PROC:</strong> ${clickedNode.proc.effect.replace(/_/g, ' ')}</p>` : ''}
+                        ${clickedNode.stats ? `<div style="margin-top:8px; padding:8px; background:rgba(255,255,255,0.03); border:1px solid #333;">
+                            <div style="color:#888; font-size:10px; margin-bottom:4px; text-transform:uppercase;">Stat Bonuses:</div>
+                            ${this.formatStats(clickedNode.stats)}
+                        </div>` : ''}
+                        <div style="margin-top: 10px; font-size:10px; background: rgba(0,0,0,0.5); padding: 4px; text-align: center; border: 1px solid #444;">
+                            Level: <span style="color:#00ffff;">${window.player.astralTree[clickedNode.id] || 0}/${clickedNode.max}</span>
+                        </div>
+                    </div>
+                `;
                 draw(); // Redraw to update active states
             }
         };

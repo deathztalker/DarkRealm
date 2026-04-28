@@ -7850,6 +7850,17 @@ window.addEventListener('DOMContentLoaded', () => {
     if ($('btn-open-auth')) $('btn-open-auth').onclick = () => $('auth-modal').classList.remove('hidden');
     if ($('auth-close')) $('auth-modal').onclick = () => $('auth-modal').classList.add('hidden');
 
+    // Fullscreen Toggle
+    $('btn-toggle-fullscreen')?.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.warn(`Error attempting to enable full-screen mode: ${err.message}`);
+            });
+        } else {
+            if (document.exitFullscreen) document.exitFullscreen();
+        }
+    });
+
     $('btn-auth-login')?.addEventListener('click', async () => {
         const e = $('auth-email').value, p = $('auth-password').value;
         if (!e || !p) { $('auth-error').textContent = 'Enter email and password'; return; }
@@ -7956,6 +7967,13 @@ window.addEventListener('DOMContentLoaded', () => {
         if (saveData) {
             startGame(selectedCharSlot.id, saveData);
             addCombatLog(`Welcome back, ${selectedCharSlot.name}.`, 'log-info');
+            
+            // Mobile immersive hint
+            if (window.innerWidth <= 1024) {
+                setTimeout(() => {
+                    addCombatLog("PRO TIP: Tap the ⛶ button for Fullscreen mode!", 'log-item');
+                }, 3000);
+            }
         }
     });
 
@@ -9066,6 +9084,13 @@ window.addEventListener('DOMContentLoaded', () => {
         if (saveData) {
             startGame(selectedCharSlot.id, saveData);
             addCombatLog(`Welcome back, ${selectedCharSlot.name}.`, 'log-info');
+            
+            // Mobile immersive hint
+            if (window.innerWidth <= 1024) {
+                setTimeout(() => {
+                    addCombatLog("PRO TIP: Tap the ⛶ button for Fullscreen mode!", 'log-item');
+                }, 3000);
+            }
         }
     });
 
