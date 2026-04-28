@@ -55,7 +55,12 @@ export const SUPPORT_RUNES = {
     celerity: { name: 'Celerity', icon: 'ra-fast-forward', mod: { pctFCR: 25, pctIAS: 25 } },
     convergence: { name: 'Converging Paths', icon: 'ra-divergence', mod: { parallel: true, extraProjectiles: 1 } },
     
-    // Fused Legendary Runes (Created by combining standard support runes)
+    // Summoner Support Runes
+    legion: { name: 'Legion', icon: 'ra-pawn', mod: { extraMinions: 1, petDmgPct: -10 } },
+    feral: { name: 'Feral Speed', icon: 'ra-wolf-howl', mod: { petIasPct: 30, petMoveSpeed: 10 } },
+    vanguard: { name: 'Vanguard', icon: 'ra-shield', mod: { petHpPct: 50, petThreat: 30 } },
+
+    // Fused Legendary Runes
     celestial_fury: { 
         name: 'Celestial Fury', icon: 'item_rune_celestial', 
         fusion: ['multi_shot', 'echo'],

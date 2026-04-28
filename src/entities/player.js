@@ -1325,16 +1325,24 @@ export class Player {
     }
 
 _spawnMinion(skillId, slvl, skill) {
-    if (this.minions.length >= this.maxMinions) this.minions.shift();
+    const rm = this.getSupportRuneMods(skillId);
+    const as = getAstralStats(this);
+    
+    // Apply Max Minion Modifiers
+    let currentMax = this.maxMinions + (rm.extraMinions || 0) + (as.maxMinions || 0);
+    if (this.minions.length >= currentMax) this.minions.shift();
+
     const synBonus = this.talents.synergyBonus(skillId);
     const statScaling = 1 + (this.int / 100); 
 
     const m = getMutationMods(this, skillId);
 
-    let hp = Math.round((30 + slvl * 15) * (1 + (this.minionHpPct || 0) / 100) * (1 + synBonus));
+    let hp = Math.round((30 + slvl * 15) * (1 + (this.minionHpPct + (rm.petHpPct || 0) + (as.minionHpPct || 0)) / 100) * (1 + synBonus));
     if (m.minionHp) hp *= (1 + m.minionHp / 100);
 
-    const dmg = Math.round(((skill.dmgBase || 8) + (skill.dmgPerLvl || 4) * slvl) * (1 + (this.minionDmgPct || 0) / 100) * (1 + synBonus) * statScaling);
+    const dmgBase = ((skill.dmgBase || 8) + (skill.dmgPerLvl || 4) * slvl);
+    const dmgMult = (1 + (this.minionDmgPct + (rm.petDmgPct || 0) + (as.minionDmgPct || 0)) / 100) * (1 + synBonus) * statScaling;
+    const dmg = Math.round(dmgBase * dmgMult);
 
     let sprite = 'summon_skeleton'; // fallback
     if (skillId.includes('golem')) sprite = (skillId === 'fire_golem') ? 'enemy_energy_elemental' : (skillId === 'iron_golem' ? 'summon_iron_golem' : 'summon_clay_golem');
@@ -1342,7 +1350,7 @@ _spawnMinion(skillId, slvl, skill) {
     if (skillId === 'skeleton_mage') sprite = 'summon_skeleton_mage';
     if (skillId === 'raise_skeleton') {
         sprite = 'summon_skeleton';
-        if (m.archerConversion && Math.random() < m.archerConversion) sprite = 'summon_skeleton_mage'; // Use mage as archer for now
+        if (m.archerConversion && Math.random() < m.archerConversion) sprite = 'summon_skeleton_mage'; 
     }
     if (skillId.includes('wolf')) sprite = 'summon_dire_wolf';
     if (skillId.includes('grizzly') || skillId.includes('bear')) sprite = 'summon_grizzly';
@@ -1358,12 +1366,14 @@ _spawnMinion(skillId, slvl, skill) {
         name: skill.name || skillId.replace(/_/g, ' '), skillId,
         x: this.x + (Math.random()-0.5)*30, y: this.y + (Math.random()-0.5)*30,
         hp, maxHp: hp, damage: dmg,
-        armor: (m.minionArmor || 0),
-        explodeDmg: m.explodeDmg || 0,
-        moveSpeed: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k))) ? 0 : 80,
+        armor: (m.minionArmor || 0) + (as.minionArmorPct || 0),
+        explodeDmg: (m.explodeDmg || 0) + (rm.isLegendary && skillId.includes('dead') ? 50 : 0),
+        moveSpeed: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k))) ? 0 : (80 * (1 + (rm.petMoveSpeed || 0) / 100)),
         isStationary: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k)) || skillId === 'oak_sage' || skillId === 'heart_of_wolverine'),
         attackRange: (skill.group === 'totem' || skillId.includes('mage') || skillId.includes('imp') || sprite === 'summon_skeleton_mage') ? 200 : 25,
-        attackCd: 0, attackSpeed: 1.2, age: 0, duration: 20 + slvl * 2, icon: `skill_${skillId}`, sprite,
+        attackCd: 0, 
+        attackSpeed: 1.2 * (1 + (this.minionIasPct + (rm.petIasPct || 0) + (as.minionIasPct || 0)) / 100), 
+        age: 0, duration: 20 + slvl * 2, icon: `skill_${skillId}`, sprite,
         animState: 'idle', facingDir: 'south',
         size: (skillId.includes('golem') || skillId.includes('grizzly') || skillId.includes('valkyrie')) ? 24 : 16,
         formationOffset: { x: (Math.random()-0.5)*80, y: (Math.random()-0.5)*80 }
@@ -1381,7 +1391,14 @@ _spawnMinion(skillId, slvl, skill) {
             if (m.isStationary) {
                 let near = null, nD = m.attackRange || 200;
                 for (const e of enemies) { if (e.hp > 0 && e.state !== 'dead') { const d = Math.hypot(e.x-m.x, e.y-m.y); if (d < nD) { near = e; nD = d; } } }
-                if (near && m.attackCd <= 0) { applyDamage(this, near, calcDamage(this, m.damage, 'physical', near), m.skillId); m.attackCd = m.attackSpeed; if (fx) fx.emitBurst(near.x, near.y, '#ffff00', 5); }
+                if (near && m.attackCd <= 0) { 
+                    applyDamage(this, near, calcDamage(this, m.damage, 'physical', near), m.skillId); 
+                    m.attackCd = m.attackSpeed; 
+                    if (fx) fx.emitBurst(near.x, near.y, '#ffff00', 5); 
+                    
+                    // --- Astral Procs on Minion Hit ---
+                    this.checkAstralProcs('onMinionHit', near.x, near.y, near);
+                }
                 return true;
             }
             const dx = (this.x + m.formationOffset.x) - m.x, dy = (this.y + m.formationOffset.y) - m.y, dist = Math.hypot(dx, dy);
@@ -1781,6 +1798,11 @@ _spawnMinion(skillId, slvl, skill) {
                 const ang = Math.random() * Math.PI * 2;
                 const ptx = this.x + Math.cos(ang) * 200, pty = this.y + Math.sin(ang) * 200;
                 bus.emit('combat:spawnProjectile', { proj: Projectile.create(this.x, this.y, ptx, pty, 160, '#00ff00', 30 + this.level * 5, 'poison', this, false, 8, 0, 0, 'astral_acid') });
+            });
+        } else if (proc.effect === 'minion_lust') {
+            this.minions.forEach(m => {
+                m.lustTimer = 5.0; // 5s of enrage
+                if (fx) fx.emitBurst(m.x, m.y, '#ff0000', 10, 2);
             });
         }
     }

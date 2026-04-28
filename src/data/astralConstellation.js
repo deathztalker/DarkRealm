@@ -38,6 +38,15 @@ export const ASTRAL_CONSTELLATION = {
             proc: { id: 'proc_rebirth', trigger: 'onLowHP', healthThreshold: 25, cd: 120.0, effect: 'heal_and_burst' }
         },
 
+        // --- TIER 2: Constellations ---
+        // THE CHIMERA (Minions & Summons)
+        { id: 50, name: 'Chimera\'s Fang', pos: { x: 120, y: 60 }, req: [1], max: 5, stats: { minionDmgPct: 10, minionIasPct: 5 } },
+        { id: 51, name: 'Chimera\'s Hide', pos: { x: 150, y: 90 }, req: [50], max: 5, stats: { minionHpPct: 15, minionArmorPct: 10 } },
+        { id: 52, name: 'Chimera\'s Roar (Celestial Proc)', pos: { x: 180, y: 120 }, req: [51], max: 1,
+            proc: { id: 'proc_minion_enrage', trigger: 'onMinionHit', chance: 10, cd: 10.0, effect: 'minion_lust' }
+        },
+        { id: 53, name: 'Chimera\'s Bond', pos: { x: 210, y: 90 }, req: [51], max: 3, stats: { minionLifestealShare: 10, pctHP: 5 } },
+
         // --- TIER 3: ELDER KEYNODES (Game Changers) ---
         { 
             id: 100, name: 'ELDER: Blood Magic', pos: { x: -150, y: 0 }, req: [11], max: 1,
