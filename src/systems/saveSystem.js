@@ -42,7 +42,19 @@ export const SaveSystem = {
             const raw = localStorage.getItem(SLOTS_KEY);
             if (!raw) return [];
             const slots = JSON.parse(raw);
-            return Array.isArray(slots) ? slots : [];
+            if (!Array.isArray(slots)) return [];
+            
+            // Retroactive class name fix
+            import('../data/classes.js').then(({ getClass }) => {
+                slots.forEach(slot => {
+                    if (!slot.className && slot.classId) {
+                        const cls = getClass(slot.classId);
+                        if (cls) slot.className = cls.name;
+                    }
+                });
+            });
+
+            return slots;
         } catch { return []; }
     },
 

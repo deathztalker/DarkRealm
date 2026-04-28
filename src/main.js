@@ -439,7 +439,19 @@ function showClassInfo(classId) {
     const statsEl = document.getElementById('class-stats');
     if (nameEl) nameEl.innerHTML = `<i class="ra ${getIconForClass(cls.id)}" style="font-size:24px;vertical-align:middle;color:var(--gold);"></i> ${cls.name}`;
     if (descEl) descEl.textContent = cls.desc;
-    const statsHtml = ['str', 'dex', 'vit', 'int'].map(s => `<div class="class-stat-bar"><span>${s.toUpperCase()}</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${cls.statBars[s]}%"></div></div></div>`).join('');
+    
+    // Safety check for statBars and stats
+    const statsHtml = ['str', 'dex', 'vit', 'int'].map(s => {
+        let val = 0;
+        if (cls.statBars && cls.statBars[s] !== undefined) {
+            val = cls.statBars[s];
+        } else if (cls.stats && cls.stats[s] !== undefined) {
+            // Scale base stats (e.g. 30 -> 75%)
+            val = Math.min(100, cls.stats[s] * 2.5);
+        }
+        return `<div class="class-stat-bar"><span>${s.toUpperCase()}</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${val}%"></div></div></div>`;
+    }).join('');
+
     if (statsEl) {
         statsEl.innerHTML = statsHtml;
 

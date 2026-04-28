@@ -125,7 +125,7 @@ export const AstralUI = {
     formatStats(stats) {
         if (!stats) return '';
         const labels = {
-            flatSTR: 'Strength', flatINT: 'Intelligence', flatDEX: 'Dexterity',
+            flatSTR: 'Strength', flatINT: 'Intelligence', flatDEX: 'Dexterity', flatVIT: 'Vitality',
             pctPhysDmg: 'Physical Damage', pctArmor: 'Total Armor',
             pctHP: 'Maximum Health', lifeRegenPerSec: 'Life Regen/s',
             pctElemDmg: 'Elemental Damage', pctFCR: 'Faster Cast Rate',
@@ -146,13 +146,26 @@ export const AstralUI = {
         };
 
         return Object.entries(stats).map(([key, val]) => {
-            const label = labels[key] || key;
-            const sign = val >= 0 ? '+' : '';
-            const unit = key.startsWith('pct') || key.toLowerCase().includes('mult') || key.toLowerCase().includes('share') || key.toLowerCase().includes('inherit') ? '%' : '';
-            const color = val >= 0 ? '#4caf50' : '#ff4444';
-            return `<div style="display:flex; justify-content:space-between; gap:20px;">
-                        <span style="color:#bbb;">${label}</span>
-                        <span style="color:${color}; font-weight:bold;">${sign}${val}${unit}</span>
+            let label = labels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+            let displayVal = val;
+            let unit = '';
+
+            const isPct = key.startsWith('pct') || key.toLowerCase().includes('share') || key.toLowerCase().includes('inherit') || key.toLowerCase().includes('pct');
+            const isMult = key.toLowerCase().includes('mult') || key.toLowerCase().includes('conv');
+
+            if (isPct) {
+                unit = '%';
+            } else if (isMult) {
+                displayVal = Math.round(val * 100);
+                unit = '%';
+            }
+
+            const sign = displayVal >= 0 ? '+' : '';
+            const color = displayVal >= 0 ? '#4caf50' : '#ff4444';
+
+            return `<div style="display:flex; justify-content:space-between; gap:20px; font-size:11px; margin-bottom:2px;">
+                        <span style="color:#aaa;">${label}</span>
+                        <span style="color:${color}; font-weight:bold;">${sign}${displayVal}${unit}</span>
                     </div>`;
         }).join('');
     },
@@ -176,11 +189,11 @@ export const AstralUI = {
             const player = window.player;
             container.innerHTML = `
                 <div style="display:flex; flex-direction:column; align-items:center; gap:30px; padding:20px;">
-                    <h3 style="color:var(--gold); margin:0;">LEGENDARY RUNE FUSION</h3>
-                    <p style="font-size:12px; color:#888; max-width:600px; text-align:center;">
-                        Combine standard support runes to forge legendary variants with immense power.
+                    <h3 style="color:var(--gold); margin:0; text-shadow: 0 0 10px rgba(255,215,0,0.3);">LEGENDARY RUNE FUSION</h3>
+                    <p style="font-size:12px; color:#888; max-width:600px; text-align:center; font-style: italic;">
+                        "Combine the essence of lesser runes to forge artifacts of celestial power."
                     </p>
-                    <div class="fusion-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:20px; width:100%;"></div>
+                    <div class="fusion-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:20px; width:100%;"></div>
                 </div>
             `;
 
@@ -190,39 +203,54 @@ export const AstralUI = {
                 if (!rune.fusion) return;
 
                 const card = document.createElement('div');
-                card.style.cssText = 'background:#1a1510; border:1px solid #bf642f; padding:15px; border-radius:4px; display:flex; flex-direction:column; gap:10px;';
+                card.className = 'mutation-card'; // Reuse styled card
+                card.style.border = '1px solid #bf642f';
                 
                 const hasIngredients = rune.fusion.every(ingId => 
                     player.inventory.some(item => item && item.type === 'support_rune' && item.baseId === ingId)
                 );
 
                 card.innerHTML = `
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <img src="assets/${rune.icon}.png" style="width:32px; height:32px; image-rendering:pixelated;" onerror="this.src='assets/item_rune_el.png'">
-                        <div style="color:var(--gold); font-weight:bold;">${rune.name}</div>
+                    <div class="mutation-card-header">
+                        <div style="width:40px; height:40px; background:rgba(0,0,0,0.5); border:1px solid var(--gold); display:flex; align-items:center; justify-content:center; border-radius:4px; box-shadow: 0 0 10px rgba(255,215,0,0.2);">
+                            <img src="assets/${rune.icon}.png" style="width:32px; height:32px; image-rendering:pixelated;" onerror="this.src='assets/item_rune_el.png'">
+                        </div>
+                        <div style="flex:1">
+                            <div style="color:var(--gold); font-weight:bold; font-size:14px; letter-spacing:1px;">${rune.name.toUpperCase()}</div>
+                            <div style="font-size:9px; color:#888;">Legendary Fusion</div>
+                        </div>
                     </div>
-                    <div style="font-size:11px; color:#ccc;">${JSON.stringify(rune.mod)}</div>
-                    <div style="font-size:10px; color:#888; margin-top:5px;">Required Runes:</div>
-                    <div style="display:flex; gap:5px;">
-                        ${rune.fusion.map(ingId => {
-                            const ing = SUPPORT_RUNES[ingId];
-                            const playerHas = player.inventory.some(item => item && item.type === 'support_rune' && item.baseId === ingId);
-                            return `<div title="${ing.name}" style="width:24px; height:24px; background:rgba(0,0,0,0.5); border:1px solid ${playerHas ? '#4caf50' : '#ff4444'}; display:flex; align-items:center; justify-content:center;"><i class="ra ${ing.icon}" style="font-size:14px; color:${playerHas ? '#fff' : '#666'}"></i></div>`;
-                        }).join('')}
+                    <div style="padding:10px; background:rgba(0,0,0,0.2); border-radius:4px; margin-top:5px;">
+                        <div style="color:#888; font-size:9px; margin-bottom:6px; text-transform:uppercase; letter-spacing:1px;">Forged Properties:</div>
+                        ${this.formatStats(rune.mod)}
                     </div>
-                    <button class="btn-fusion" style="margin-top:10px; padding:8px; background:${hasIngredients ? '#bf642f' : '#333'}; border:none; color:#fff; cursor:${hasIngredients ? 'pointer' : 'not-allowed'}; font-family:inherit;" ${hasIngredients ? '' : 'disabled'}>
-                        FUSE RUNE
+                    <div style="margin-top:10px;">
+                        <div style="font-size:10px; color:#aaa; margin-bottom:6px;">Required Essence:</div>
+                        <div style="display:flex; gap:8px;">
+                            ${rune.fusion.map(ingId => {
+                                const ing = SUPPORT_RUNES[ingId];
+                                const playerHas = player.inventory.some(item => item && item.type === 'support_rune' && item.baseId === ingId);
+                                return `<div title="${ing.name}" style="width:32px; height:32px; background:rgba(0,0,0,0.5); border:1px solid ${playerHas ? '#4caf50' : '#444'}; display:flex; align-items:center; justify-content:center; position:relative; box-shadow: ${playerHas ? '0 0 5px rgba(76,175,80,0.3)' : 'none'};">
+                                            <i class="ra ${ing.icon}" style="font-size:18px; color:${playerHas ? '#fff' : '#444'}"></i>
+                                            ${playerHas ? '<div style="position:absolute; bottom:-2px; right:-2px; width:8px; height:8px; background:#4caf50; border-radius:50%; border:1px solid #111;"></div>' : ''}
+                                        </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                    <button class="btn-fusion" style="margin-top:15px; padding:10px; background:${hasIngredients ? 'linear-gradient(to bottom, #bf642f, #8a431c)' : '#222'}; border:1px solid ${hasIngredients ? '#ffd700' : '#444'}; color:${hasIngredients ? '#fff' : '#666'}; cursor:${hasIngredients ? 'pointer' : 'not-allowed'}; font-family:inherit; font-weight:bold; letter-spacing:1px; transition: all 0.2s;" ${hasIngredients ? '' : 'disabled'}>
+                        ${hasIngredients ? 'FORGE RUNE' : 'INSUFFICIENT ESSENCE'}
                     </button>
                 `;
 
-                card.querySelector('.btn-fusion').onclick = () => {
-                    if (hasIngredients) {
-                        // Consume ingredients
+                if (hasIngredients) {
+                    const btn = card.querySelector('.btn-fusion');
+                    btn.onmouseenter = () => btn.style.boxShadow = '0 0 15px rgba(191,100,47,0.5)';
+                    btn.onmouseleave = () => btn.style.boxShadow = 'none';
+                    btn.onclick = () => {
                         rune.fusion.forEach(ingId => {
                             const idx = player.inventory.findIndex(item => item && item.type === 'support_rune' && item.baseId === ingId);
                             if (idx !== -1) player.inventory[idx] = null;
                         });
-                        // Add fused rune
                         player.addToInventory({
                             id: `rune_${Date.now()}`,
                             baseId: id,
@@ -234,8 +262,8 @@ export const AstralUI = {
                         });
                         bus.emit('combat:log', { text: `Forged Legendary Rune: ${rune.name}!`, cls: 'log-info' });
                         this.renderFusion(container);
-                    }
-                };
+                    };
+                }
 
                 grid.appendChild(card);
             });
@@ -328,16 +356,36 @@ export const AstralUI = {
     renderRuneCore(container) {
         container.innerHTML =
             '<div style="display:flex; flex-direction:column; align-items:center; gap:30px; padding:20px;">' +
-            '<h3 style="color:var(--gold); margin:0;">SOCKET SUPPORT RUNES</h3>' +
+            '<h3 style="color:var(--gold); margin:0; text-shadow: 0 0 10px rgba(0,255,255,0.2);">SOCKET SUPPORT RUNES</h3>' +
             '<div id="rune-skill-list" style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center;"></div>' +
-            '<div style="background:#15100a; border:1px solid #444; padding:20px; width:80%; max-width:600px;">' +
-            '<h4 style="margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">Support Runes in Inventory</h4>' +
-            '<div id="astral-rune-inv" style="display:grid; grid-template-columns: repeat(auto-fill, 40px); gap:10px;"></div>' +
+            '<div style="display:flex; gap:20px; width:90%; max-width:900px; align-items: flex-start;">' +
+                '<div style="background:#15100a; border:1px solid #444; padding:20px; flex:1;">' +
+                    '<h4 style="margin-top:0; border-bottom:1px solid #333; padding-bottom:10px; color:#888; font-size:12px; text-transform:uppercase;">Inventory</h4>' +
+                    '<div id="astral-rune-inv" style="display:grid; grid-template-columns: repeat(auto-fill, 40px); gap:10px;"></div>' +
+                '</div>' +
+                '<div id="rune-detail-box" style="width:250px; background:#0d0d0d; border:1px solid #bf642f; padding:15px; min-height:100px; opacity:0; transition:opacity 0.2s;">' +
+                    '<div id="rune-detail-content"></div>' +
+                '</div>' +
             '</div>' +
             '</div>';
 
         const player = window.player;
         const skillList = container.querySelector('#rune-skill-list');
+        const detailBox = container.querySelector('#rune-detail-box');
+        const detailContent = container.querySelector('#rune-detail-content');
+
+        const showRuneDetail = (rune) => {
+            if (!rune) return;
+            detailBox.style.opacity = '1';
+            detailContent.innerHTML = `
+                <div style="color:var(--gold); font-weight:bold; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;">${rune.name.toUpperCase()}</div>
+                ${this.formatStats(rune.mod)}
+                ${rune.rarity === 'unique' ? '<div style="margin-top:10px; color:#ffd700; font-size:10px; font-style:italic;">Legendary Fused Artifact</div>' : ''}
+            `;
+        };
+
+        const hideRuneDetail = () => { detailBox.style.opacity = '0'; };
+
         const learnedSkills = Object.keys(player.skillMap).filter(
             id => player.effectiveSkillLevel(id) > 0 && player.skillMap[id].type === 'active'
         );
@@ -348,10 +396,10 @@ export const AstralUI = {
             if (!player.runeSlots[skillId]) player.runeSlots[skillId] = slots;
 
             const div = document.createElement('div');
-            div.style.cssText = 'background:#1a1510; border:1px solid #bf642f; padding:10px; display:flex; flex-direction:column; align-items:center; gap:10px;';
+            div.style.cssText = 'background:#1a1510; border:1px solid #bf642f; padding:10px; display:flex; flex-direction:column; align-items:center; gap:10px; width:120px;';
 
             const label = document.createElement('div');
-            label.style.cssText = 'font-weight:bold; font-size:12px; color:var(--gold);';
+            label.style.cssText = 'font-weight:bold; font-size:11px; color:var(--gold); text-align:center; height:24px; display:flex; align-items:center;';
             label.textContent = skill.name;
             div.appendChild(label);
 
@@ -363,13 +411,16 @@ export const AstralUI = {
                 socket.className = 'rune-socket';
                 socket.dataset.skill = skillId;
                 socket.dataset.idx = i;
-                socket.style.cssText = 'width:32px; height:32px; background:rgba(0,0,0,0.5); border:1px dashed #666; display:flex; align-items:center; justify-content:center; cursor:pointer;';
+                socket.style.cssText = 'width:32px; height:32px; background:rgba(0,0,0,0.5); border:1px solid #444; display:flex; align-items:center; justify-content:center; cursor:pointer;';
 
                 if (rune) {
                     const icon = document.createElement('i');
                     icon.className = 'ra ' + rune.icon;
-                    icon.style.cssText = 'font-size:20px; color:#00ffff;';
+                    icon.style.cssText = `font-size:20px; color:${rune.rarity === 'unique' ? '#ffd700' : '#00ffff'};`;
                     socket.appendChild(icon);
+                    
+                    socket.onmouseenter = () => showRuneDetail(rune);
+                    socket.onmouseleave = hideRuneDetail;
                 }
 
                 socket.onclick = () => {
@@ -383,7 +434,6 @@ export const AstralUI = {
                 };
 
                 socket.ondragover = (e) => e.preventDefault();
-
                 socket.ondrop = (e) => {
                     const invIdx = parseInt(e.dataTransfer.getData('invIdx'));
                     const item = player.inventory[invIdx];
@@ -407,15 +457,17 @@ export const AstralUI = {
         player.inventory.forEach((item, i) => {
             if (item && item.type === 'support_rune') {
                 const el = document.createElement('div');
-                el.style.cssText = 'width:40px; height:40px; background:#222; border:1px solid #444; display:flex; align-items:center; justify-content:center; cursor:grab;';
+                el.style.cssText = `width:40px; height:40px; background:#222; border:1px solid ${item.rarity === 'unique' ? '#bf642f' : '#444'}; display:flex; align-items:center; justify-content:center; cursor:grab;`;
 
                 const icon = document.createElement('i');
                 icon.className = 'ra ' + item.icon;
-                icon.style.cssText = 'font-size:24px; color:#00ffff;';
+                icon.style.cssText = `font-size:24px; color:${item.rarity === 'unique' ? '#ffd700' : '#00ffff'};`;
                 el.appendChild(icon);
 
                 el.draggable = true;
                 el.ondragstart = (e) => e.dataTransfer.setData('invIdx', i);
+                el.onmouseenter = () => showRuneDetail(item);
+                el.onmouseleave = hideRuneDetail;
                 invDiv.appendChild(el);
             }
         });
@@ -559,7 +611,10 @@ export const AstralUI = {
                         <div style="font-size:12px; color:#ddd; margin-top:8px;">
                             ${hoveredNode.special ? `<p style="color:#ffd700; border-left: 2px solid #ffd700; padding-left: 6px;"><strong>ELDER POWER:</strong> ${hoveredNode.special}</p>` : ''}
                             ${hoveredNode.proc ? `<p style="color:#00ffff; border-left: 2px solid #00ffff; padding-left: 6px;"><strong>CELESTIAL PROC:</strong> ${hoveredNode.proc.effect.replace(/_/g, ' ')}</p>` : ''}
-                            ${hoveredNode.stats ? `<p>Grants: <span style="color:#4caf50;">${JSON.stringify(hoveredNode.stats).replace(/[{}"']/g, '').replace(/:/g, ': +')}</span></p>` : ''}
+                            ${hoveredNode.stats ? `<div style="margin-top:8px; padding:8px; background:rgba(255,255,255,0.03); border:1px solid #333;">
+                                <div style="color:#888; font-size:10px; margin-bottom:4px; text-transform:uppercase;">Stat Bonuses:</div>
+                                ${this.formatStats(hoveredNode.stats)}
+                            </div>` : ''}
                             <div style="margin-top: 10px; font-size:10px; background: rgba(0,0,0,0.5); padding: 4px; text-align: center; border: 1px solid #444;">
                                 Level: <span style="color:#00ffff;">${window.player.astralTree[hoveredNode.id] || 0}/${hoveredNode.max}</span>
                             </div>

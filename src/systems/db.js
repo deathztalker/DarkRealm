@@ -1,4 +1,5 @@
 import { bus } from '../engine/EventBus.js';
+import { getClass } from '../data/classes.js';
 
 const SUPABASE_URL = 'https://rkarxmetbktowmmxkfam.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrYXJ4bWV0Ymt0b3dtbXhrZmFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NDY3MjksImV4cCI6MjA5MTUyMjcyOX0.eVctkjVHkscDH_o6G_txKpo-3MOabmHJySbWdsZFnIE';
@@ -68,22 +69,35 @@ export const DB = {
         }
         
         // Map postgres snake_case to the JS app's expected layout.
-        return data.map(dbRow => ({
-            id: dbRow.slot_id,
-            name: dbRow.player?.charName || dbRow.player?.className || 'Unknown',
-            classId: dbRow.player?.classId || 'warrior', // Extract from player jsonb
-            className: dbRow.player?.className || 'Warrior',
-            level: dbRow.player?.level || 1,
-            zoneLevel: dbRow.zone_level || 0,
-            stash: dbRow.stash || [],
-            cube: dbRow.cube || [],
-            mercenary: dbRow.mercenary || null,
-            difficulty: dbRow.difficulty || 0,
-            waypoints: dbRow.waypoints || [0],
-            campaign: dbRow.campaign || dbRow.extra_data?.campaign || dbRow.player?.campaign || null,
-            player: dbRow.player,
-            timestamp: new Date(dbRow.updated_at).getTime()
-        }));
+        return data.map(dbRow => {
+            const playerJson = dbRow.player || {};
+            const classId = playerJson.classId || 'warrior';
+            
+            // Try to find correct class name if missing in serialize
+            let className = playerJson.className;
+            if (!className) {
+                const cls = getClass(classId);
+                if (cls) className = cls.name;
+                className = className || (classId.charAt(0).toUpperCase() + classId.slice(1));
+            }
+
+            return {
+                id: dbRow.slot_id,
+                name: playerJson.charName || playerJson.className || 'Unknown',
+                classId: classId,
+                className: className,
+                level: playerJson.level || 1,
+                zoneLevel: dbRow.zone_level || 0,
+                stash: dbRow.stash || [],
+                cube: dbRow.cube || [],
+                mercenary: dbRow.mercenary || null,
+                difficulty: dbRow.difficulty || 0,
+                waypoints: dbRow.waypoints || [0],
+                campaign: dbRow.campaign || dbRow.extra_data?.campaign || playerJson.campaign || null,
+                player: playerJson,
+                timestamp: new Date(dbRow.updated_at).getTime()
+            };
+        });
     },
 
     async upsertSave(slotId, rawSaveData) {

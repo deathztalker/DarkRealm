@@ -1813,7 +1813,7 @@ _spawnMinion(skillId, slvl, skill) {
 
     serialize() {
         return {
-            classId: this.classId, level: this.level, xp: this.xp, charName: this.charName, isHardcore: this.isHardcore, 
+            classId: this.classId, className: this.className, level: this.level, xp: this.xp, charName: this.charName, isHardcore: this.isHardcore, 
             maxDifficulty: this.maxDifficulty || 0,
             x: this.x, y: this.y, hp: this.hp, mp: this.mp, baseStr: this.baseStr, baseDex: this.baseDex, baseVit: this.baseVit, baseInt: this.baseInt,
             statPoints: this.statPoints, gold: this.gold, totalMonstersSlain: this.totalMonstersSlain, totalGoldCollected: this.totalGoldCollected,
