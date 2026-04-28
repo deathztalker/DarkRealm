@@ -324,67 +324,73 @@ export class ParticleSystem {
     }
 
     emitRain(width, height) {
-        for (let i = 0; i < 3; i++) {
+        // Dynamic rain with depth feel
+        const count = Math.random() < 0.4 ? 4 : 2;
+        for (let i = 0; i < count; i++) {
             const px = Math.random() * width;
-            const py = -20;
-            const p = new Particle(px, py, 1, 15 + Math.random() * 5, 1200, 'rgba(100, 150, 255, 0.4)', 1);
+            const py = -50;
+            const speed = 18 + Math.random() * 8;
+            const length = 12 + Math.random() * 20;
+            const p = new Particle(px, py, 1.5, speed, 1000, 'rgba(120, 180, 255, 0.35)', 1);
             p.shape = 'line';
-            p.length = 15;
-            p.rotation = Math.PI / 2;
+            p.length = length;
+            p.rotation = Math.atan2(speed, 1.5);
             p.isScreenSpace = true;
             this.particles.push(p);
         }
     }
 
     emitSnow(width, height) {
-        if (Math.random() < 0.3) {
+        if (Math.random() < 0.25) {
             const px = Math.random() * width;
             const py = -20;
-            const p = new Particle(px, py, (Math.random() - 0.5) * 1, 1 + Math.random() * 2, 8000, '#fff', 1 + Math.random() * 2);
+            const p = new Particle(px, py, (Math.random() - 0.5) * 1.5, 0.8 + Math.random() * 1.2, 10000, '#ffffff', 1 + Math.random() * 2);
             p.shape = 'snowflake';
-            p.rotationSpeed = (Math.random() - 0.5) * 0.05;
+            p.rotationSpeed = (Math.random() - 0.5) * 0.04;
             p.isScreenSpace = true;
             this.particles.push(p);
         }
     }
 
     emitBlizzard(width, height) {
-        // High density snow with horizontal wind
-        for (let i = 0; i < 4; i++) {
-            const px = Math.random() * (width + 200) - 100;
+        // High density snow with horizontal wind (Act 5 feel)
+        for (let i = 0; i < 5; i++) {
+            const px = Math.random() * (width + 300) - 150;
             const py = -20;
-            const p = new Particle(px, py, 3 + Math.random() * 5, 2 + Math.random() * 3, 6000, '#fff', 1 + Math.random() * 2);
+            const p = new Particle(px, py, 4 + Math.random() * 6, 2 + Math.random() * 3, 5000, 'rgba(255,255,255,0.9)', 1 + Math.random() * 2);
             p.shape = 'snowflake';
-            p.rotationSpeed = (Math.random() - 0.5) * 0.1;
+            p.rotationSpeed = (Math.random() - 0.5) * 0.12;
             p.isScreenSpace = true;
             this.particles.push(p);
         }
-        // Swirling frost mist
-        if (Math.random() < 0.2) {
+        // Swirling frost mist (volumetric feel)
+        if (Math.random() < 0.15) {
             const mx = Math.random() * width;
             const my = Math.random() * height;
-            const mist = new Particle(mx, my, 2 + Math.random() * 2, (Math.random() - 0.5) * 0.5, 4000, 'rgba(230, 245, 255, 0.1)', 30 + Math.random() * 40);
+            const mist = new Particle(mx, my, 3 + Math.random() * 2, (Math.random() - 0.5) * 0.4, 3500, 'rgba(210, 240, 255, 0.08)', 40 + Math.random() * 60);
             mist.isScreenSpace = true;
             this.particles.push(mist);
         }
     }
 
     emitSand(width, height) {
-        for (let i = 0; i < 2; i++) {
-            const px = -20;
+        // Layered sandstorm
+        for (let i = 0; i < 3; i++) {
+            const px = -30;
             const py = Math.random() * height;
-            const p = new Particle(px, py, 4 + Math.random() * 4, (Math.random() - 0.5) * 0.5, 4000, 'rgba(212, 160, 23, 0.2)', 1 + Math.random() * 2);
+            const speed = 6 + Math.random() * 8;
+            const p = new Particle(px, py, speed, (Math.random() - 0.5) * 0.8, 3000, 'rgba(212, 170, 40, 0.15)', 1 + Math.random() * 3);
             p.isScreenSpace = true;
             this.particles.push(p);
         }
     }
 
     emitEmbers(width, height) {
-        if (Math.random() < 0.2) {
+        if (Math.random() < 0.25) {
             const px = Math.random() * width;
             const py = height + 20;
-            const p = new Particle(px, py, (Math.random() - 0.5) * 1, -(1 + Math.random() * 1.5), 3000, '#ff4500', 1.5);
-            p.gravity = -0.01;
+            const p = new Particle(px, py, (Math.random() - 0.5) * 1.2, -(1.5 + Math.random() * 2), 2500, '#ff5500', 1.5 + Math.random());
+            p.gravity = -0.015;
             p.isScreenSpace = true;
             this.particles.push(p);
         }

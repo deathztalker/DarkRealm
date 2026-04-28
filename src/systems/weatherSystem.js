@@ -91,6 +91,7 @@ export const WeatherSystem = {
     _leafAccum: 0,            // acumulador de hojas
     _emberAccum: 0,
     _lastTheme: null,
+    _lightningShake: 0,       // Shake duration for lightning
 
     // ─── Update ─────────────────────────────────────────────────────────────
 
@@ -116,10 +117,13 @@ export const WeatherSystem = {
         // Viento oscilante (para partículas climáticas)
         this._windOffset = Math.sin(Date.now() / 4000) * 0.8 + Math.sin(Date.now() / 1100) * 0.3;
 
-        // Flash de relámpago
+        // Flash de relámpago suave
         if (this._lightningFlash > 0) {
             this._lightningFlash -= dt;
-            this._lightningAlpha = Math.max(0, (this._lightningFlash / 80) * 0.35);
+            // Easing out flash
+            this._lightningAlpha = Math.pow(Math.max(0, this._lightningFlash / 120), 1.5) * 0.35;
+        } else {
+            this._lightningAlpha = 0;
         }
 
         // Partículas climáticas
@@ -141,8 +145,7 @@ export const WeatherSystem = {
         switch (theme) {
             case 'snow':
                 fx.emitBlizzard(W, H);
-                // Polvo de hielo fino extra
-                if (this._dustAccum > 80) {
+                if (this._dustAccum > 100) {
                     this._dustAccum = 0;
                     this._spawnIceDust(W, H);
                 }
@@ -150,8 +153,7 @@ export const WeatherSystem = {
 
             case 'desert':
                 fx.emitSand(W, H);
-                // Torbellinos de polvo ocasionales
-                if (this._dustAccum > 200) {
+                if (this._dustAccum > 250) {
                     this._dustAccum = 0;
                     this._spawnDustDevil(W, H);
                 }
@@ -159,46 +161,36 @@ export const WeatherSystem = {
 
             case 'hell':
                 fx.emitEmbers(W, H);
-                // Cenizas más densas
-                if (this._emberAccum > 120) {
+                if (this._emberAccum > 150) {
                     this._emberAccum = 0;
                     this._spawnAsh(W, H);
                 }
-                // Relámpagos de infierno ocasionales
-                if (Math.random() < 0.001) this._triggerHellLightning();
+                if (Math.random() < 0.0012) this._triggerHellLightning();
                 break;
 
             case 'jungle':
             case 'temple':
                 fx.emitRain(W, H);
-                // Hojas cayendo
-                if (this._leafAccum > 300) {
+                if (this._leafAccum > 400) {
                     this._leafAccum = 0;
                     this._spawnLeaf(W, H);
                 }
-                // Relámpagos de tormenta
-                if (Math.random() < 0.003) this._triggerLightning();
+                if (Math.random() < 0.002) this._triggerLightning();
                 break;
 
             case 'wilderness':
                 fx.emitMist(W, H);
-                // Hojas de bosque
-                if (this._leafAccum > 500) {
+                if (this._leafAccum > 600) {
                     this._leafAccum = 0;
                     this._spawnLeaf(W, H);
                 }
-                break;
-
-            case 'rift':
-                // Void sparks
-                if (Math.random() < 0.05) this._spawnVoidSpark(W, H);
                 break;
         }
 
         // Lluvia genérica de acto 1
         if (!theme && zoneLevel > 0 && zoneLevel <= 37) {
             fx.emitRain(W, H);
-            if (Math.random() < 0.004) this._triggerLightning();
+            if (Math.random() < 0.003) this._triggerLightning();
         }
     },
 
@@ -206,13 +198,13 @@ export const WeatherSystem = {
 
     _spawnIceDust(W, H) {
         if (!fx) return;
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 4; i++) {
             fx._spawn(
-                Math.random() * W, Math.random() * H * 0.5,
-                fx._rand(-0.3, 0.3) + this._windOffset, fx._rand(0.1, 0.4),
-                fx._rand(3000, 6000),
-                `rgba(180,230,255,${fx._rand(0.03, 0.08)})`,
-                fx._rand(20, 50),
+                Math.random() * W, Math.random() * H * 0.6,
+                fx._rand(-0.4, 0.4) + this._windOffset, fx._rand(0.1, 0.5),
+                fx._rand(4000, 7000),
+                `rgba(200,240,255,${fx._rand(0.04, 0.1)})`,
+                fx._rand(15, 40),
                 { shape: 'glow', gravity: 0 }
             );
         }
@@ -221,33 +213,33 @@ export const WeatherSystem = {
     _spawnDustDevil(W, H) {
         if (!fx) return;
         const cx = Math.random() * W;
-        const cy = H * 0.6 + Math.random() * H * 0.4;
-        for (let i = 0; i < 20; i++) {
-            const angle = (i / 20) * Math.PI * 2;
-            const r = fx._rand(10, 40);
+        const cy = H * 0.5 + Math.random() * H * 0.5;
+        for (let i = 0; i < 15; i++) {
+            const angle = (i / 15) * Math.PI * 2;
+            const r = fx._rand(8, 35);
             fx._spawn(
-                cx + Math.cos(angle) * r, cy + Math.sin(angle) * r * 0.3,
-                Math.cos(angle + Math.PI / 2) * 1.5 + this._windOffset,
-                fx._rand(-2, -0.5),
-                fx._rand(800, 1400),
-                `rgba(180,140,60,${fx._rand(0.15, 0.35)})`,
-                fx._rand(2, 5),
-                { gravity: -0.02 }
+                cx + Math.cos(angle) * r, cy + Math.sin(angle) * r * 0.4,
+                Math.cos(angle + Math.PI / 2) * 1.8 + this._windOffset,
+                fx._rand(-1.8, -0.4),
+                fx._rand(1000, 1800),
+                `rgba(190,150,70,${fx._rand(0.1, 0.3)})`,
+                fx._rand(1.5, 4),
+                { gravity: -0.015 }
             );
         }
     },
 
     _spawnAsh(W, H) {
         if (!fx) return;
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 6; i++) {
             fx._spawn(
-                Math.random() * W, H + 10,
-                fx._rand(-0.5, 0.5) + this._windOffset * 0.3,
-                fx._rand(-1.5, -0.4),
-                fx._rand(4000, 8000),
-                `rgba(80,60,50,${fx._rand(0.1, 0.25)})`,
-                fx._rand(2, 5),
-                { shape: 'snowflake', rotationSpeed: fx._rand(-0.02, 0.02), gravity: -0.005 }
+                Math.random() * W, H + 20,
+                fx._rand(-0.6, 0.6) + this._windOffset * 0.2,
+                fx._rand(-1.2, -0.3),
+                fx._rand(5000, 10000),
+                `rgba(90,70,60,${fx._rand(0.15, 0.4)})`,
+                fx._rand(2, 4),
+                { shape: 'snowflake', rotationSpeed: fx._rand(-0.03, 0.03), gravity: -0.008 }
             );
         }
     },
@@ -255,47 +247,43 @@ export const WeatherSystem = {
     _spawnLeaf(W, H) {
         if (!fx) return;
         const colors = [
-            `rgba(60,120,40,${fx._rand(0.4, 0.7)})`,
-            `rgba(80,140,50,${fx._rand(0.4, 0.7)})`,
-            `rgba(100,160,60,${fx._rand(0.3, 0.6)})`,
+            `rgba(80,140,50,${fx._rand(0.4, 0.6)})`,
+            `rgba(110,160,60,${fx._rand(0.4, 0.6)})`,
+            `rgba(140,110,40,${fx._rand(0.3, 0.5)})`, // Autumnal
         ];
         fx._spawn(
-            Math.random() * W, -10,
-            fx._rand(-1, 1) + this._windOffset * 0.5,
-            fx._rand(0.5, 1.5),
-            fx._rand(4000, 7000),
+            Math.random() * W, -20,
+            fx._rand(-1.5, 1.5) + this._windOffset * 0.4,
+            fx._rand(0.6, 1.8),
+            fx._rand(5000, 8000),
             colors[Math.floor(Math.random() * colors.length)],
-            fx._rand(3, 6),
-            { shape: 'spark', rotationSpeed: fx._rand(-0.05, 0.05), gravity: 0.005 }
+            fx._rand(2.5, 5),
+            { shape: 'spark', rotationSpeed: fx._rand(-0.08, 0.08), gravity: 0.006 }
         );
     },
 
     _spawnVoidSpark(W, H) {
         if (!fx) return;
-        const colors = ['#8020ff', '#c040ff', '#ff20ff', '#4000ff'];
+        const colors = ['#a040ff', '#d080ff', '#ff60ff', '#6040ff'];
         fx._spawn(
             Math.random() * W, Math.random() * H,
-            fx._rand(-1, 1), fx._rand(-2, -0.5),
-            fx._rand(500, 1200),
+            fx._rand(-1.2, 1.2), fx._rand(-2.5, -0.6),
+            fx._rand(600, 1500),
             colors[Math.floor(Math.random() * colors.length)],
-            fx._rand(1, 3),
-            { shape: 'spark', gravity: -0.01 }
+            fx._rand(1, 2.5),
+            { shape: 'spark', gravity: -0.012 }
         );
     },
 
     _triggerLightning() {
-        this._lightningFlash = 80;
-        this._lightningAlpha = 0.30;
-        // Retraso de trueno (visual solamente)
-        setTimeout(() => {
-            this._lightningFlash = 40;
-            this._lightningAlpha = 0.15;
-        }, 120);
+        this._lightningFlash = 120;
+        if (fx) fx.shake(300, 6); // Subtle shake for thunder
+        // Sound could be triggered here too
     },
 
     _triggerHellLightning() {
-        this._lightningFlash = 60;
-        this._lightningAlpha = 0.20;
+        this._lightningFlash = 90;
+        if (fx) fx.shake(200, 4);
     },
 
     // ─── Render Principal ────────────────────────────────────────────────────
