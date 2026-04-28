@@ -8018,15 +8018,18 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     // MMO HUD Listeners
-    $('btn-inventory')?.addEventListener('click', () => togglePanel('inventory'));
-    $('btn-talents')?.addEventListener('click', () => togglePanel('talents'));
-    $('btn-character')?.addEventListener('click', () => togglePanel('character'));
-    $('btn-mercenary')?.addEventListener('click', () => togglePanel('mercenary'));
-    $('btn-social')?.addEventListener('click', () => togglePanel('social'));
+    $('btn-inventory')?.addEventListener('click', () => bus.emit('ui:toggle:inventory'));
+    $('btn-talents')?.addEventListener('click', () => bus.emit('ui:toggle:talents'));
+    $('btn-astral')?.addEventListener('click', () => bus.emit('ui:toggle:astral'));
+    $('btn-character')?.addEventListener('click', () => bus.emit('ui:toggle:character'));
+    $('btn-mercenary')?.addEventListener('click', () => bus.emit('ui:toggle:mercenary'));
+    $('btn-social')?.addEventListener('click', () => bus.emit('ui:toggle:social'));
     $('btn-portal')?.addEventListener('click', () => bus.emit('action:town_portal'));
+    $('btn-map')?.addEventListener('click', () => bus.emit('ui:toggle:fullmap'));
     $('btn-stash')?.addEventListener('click', toggleTownPanels);
     $('btn-cube')?.addEventListener('click', toggleTownPanels);
-    $('btn-quests')?.addEventListener('click', () => togglePanel('quests'));
+    $('btn-quests')?.addEventListener('click', () => bus.emit('ui:toggle:journal'));
+    $('btn-leaderboard')?.addEventListener('click', () => bus.emit('ui:toggle:leaderboard'));
 
 
     initParticles();

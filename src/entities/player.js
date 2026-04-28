@@ -1221,6 +1221,7 @@ export class Player {
                 this.x = targetX; this.y = targetY; this.path = [];
                 if (fx) fx.emitBurst(this.x, this.y, '#b0b0ff', 12, 2);
             } else if (isBuff) {
+                let duration = (15 + slvl) * (1 + (rm.buffDurationPct || 0) / 100);
                 if (skill.type === 'toggle') {
                     const existingIdx = this._buffs.findIndex(b => b.id === skillId);
                     if (existingIdx !== -1) {
@@ -1231,7 +1232,7 @@ export class Player {
                         bus.emit('combat:log', { text: `${skill.name} Activated`, cls: 'log-info' });
                     }
                 } else {
-                    this._buffs.push({ id: skillId, duration: 15 + slvl, base: totalBase });
+                    this._buffs.push({ id: skillId, duration: duration, base: totalBase });
                 }
                 this._recalcStats();
                 if (fx) {
@@ -1269,7 +1270,8 @@ export class Player {
                     SkillLogic.onHit(this, target, skillId, slvl, totalBase);
                 }
             } else if (isAoE) {
-                const rad = isNova ? 100 : 70, aX = isNova ? this.x : targetX, aY = isNova ? this.y : targetY;
+                const rad = (isNova ? 100 : 70) * (1 + (rm.aoeRadiusPct || 0) / 100);
+                const aX = isNova ? this.x : targetX, aY = isNova ? this.y : targetY;
                 const dur = ['blizzard', 'fire_wall', 'consecration', 'earthquake'].some(k => skillId.includes(k)) ? 6 : 0.6;
                 if (['meteor', 'volcano', 'fissure'].some(k => skillId === k)) {
                     setTimeout(() => { bus.emit('combat:spawnAoE', { aoe: new AoEZone(targetX, targetY, 60, 0.5, totalBase, type, this, 0.5, skillId) }); if (fx) { fx.emitShockwave(targetX, targetY, 60, '#ff6000'); fx.shake(400, 6); } }, 1500);

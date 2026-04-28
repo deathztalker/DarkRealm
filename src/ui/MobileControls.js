@@ -3,7 +3,7 @@ import { getSkillMap } from '../data/classes.js';
 
 export class MobileControls {
     constructor(input) {
-        this.input = input; // Reference to Input handler to set keys
+        this.input = input; 
         this.active = false;
 
         this.joystick = {
@@ -18,19 +18,17 @@ export class MobileControls {
             maxRadius: 40
         };
 
-        this.skillButtons = []; // Stores { el, slotIdx, originalIcon }
+        this.skillButtons = []; 
         this._init();
     }
 
     _init() {
-        // Detect mobile or touch capability
         const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         if (!isTouch) return;
 
         this.active = true;
         document.body.classList.add('is-mobile');
 
-        // Force hide desktop HUD buttons immediately
         const desktopHud = document.getElementById('hud-buttons');
         if (desktopHud) desktopHud.style.display = 'none';
 
@@ -39,38 +37,36 @@ export class MobileControls {
     }
 
     _createUI() {
-        // Container
         const container = document.createElement('div');
         container.id = 'mobile-controls';
         container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1000; user-select:none;';
         document.getElementById('game-screen').appendChild(container);
 
-        // Joystick Base (Left Side)
+        // Joystick
         const jBase = document.createElement('div');
         jBase.id = 'joystick-base';
         jBase.style.cssText = 'position:absolute; bottom:calc(60px * var(--mobile-ui-scale)); left:calc(40px * var(--mobile-ui-scale)); width:calc(100px * var(--mobile-ui-scale)); height:calc(100px * var(--mobile-ui-scale)); background:rgba(0,0,0,0.3); border:2px solid rgba(212,175,55,0.3); border-radius:50%; pointer-events:auto; backdrop-filter: blur(2px);';
         container.appendChild(jBase);
         this.joystick.base = jBase;
 
-        // Joystick Stick
         const jStick = document.createElement('div');
         jStick.id = 'joystick-stick';
         jStick.style.cssText = 'position:absolute; top:50%; left:50%; width:calc(44px * var(--mobile-ui-scale)); height:calc(44px * var(--mobile-ui-scale)); background:rgba(212,175,55,0.4); border:1px solid rgba(212,175,55,0.6); border-radius:50%; transform:translate(-50%, -50%); transition: none; box-shadow: 0 0 10px rgba(0,0,0,0.5);';
         jBase.appendChild(jStick);
         this.joystick.stick = jStick;
 
-        // Buttons Container (Right side)
+        // Skill Buttons
         const btnContainer = document.createElement('div');
         btnContainer.id = 'mobile-buttons';
         btnContainer.style.cssText = 'position:absolute; bottom:0; right:0; width:calc(320px * var(--mobile-ui-scale)); height:calc(320px * var(--mobile-ui-scale)); pointer-events:none;';
         container.appendChild(btnContainer);
 
         const skillButtonDefs = [
-            { slot: 3, angle: -100, dist: 175, action: 'skill:use:3', icon: 'F' }, // Top Small
+            { slot: 3, angle: -100, dist: 175, action: 'skill:use:3', icon: 'F' },
             { slot: 2, angle: -125, dist: 175, action: 'skill:use:2', icon: 'R' },
             { slot: 1, angle: -150, dist: 170, action: 'skill:use:1', icon: 'E' },
-            { slot: 0, angle: -175, dist: 160, action: 'skill:use:0', icon: 'Q' }, // Far Left
-            { slot: 4, angle: -75, dist: 140, action: 'skill:use:4', icon: 'G' },  // Right
+            { slot: 0, angle: -175, dist: 160, action: 'skill:use:0', icon: 'Q' },
+            { slot: 4, angle: -75, dist: 140, action: 'skill:use:4', icon: 'G' },
             { slot: 'potion', angle: -200, dist: 110, action: 'potion:use:0', icon: '🧪' },
             { slot: 'interact', angle: -140, dist: 90, action: 'action:interact', icon: '⚔️', size: 'large' }
         ];
@@ -79,29 +75,13 @@ export class MobileControls {
             const btn = document.createElement('div');
             btn.className = 'mobile-btn';
             btn.innerHTML = `<span>${btnDef.icon}</span>`;
-
             const btnBaseSize = btnDef.size === 'large' ? 74 : 52;
             const btnSize = `calc(${btnBaseSize}px * var(--mobile-ui-scale))`;
             const btnFontSize = btnDef.size === 'large' ? 'calc(32px * var(--mobile-ui-scale))' : 'calc(18px * var(--mobile-ui-scale))';
             const dist = `calc(${btnDef.dist}px * var(--mobile-ui-scale))`;
-
             const rad = (btnDef.angle * Math.PI) / 180;
             
-            btn.style.cssText = `
-                position: absolute;
-                bottom: calc(50px * var(--mobile-ui-scale)); 
-                right: calc(50px * var(--mobile-ui-scale));
-                width: ${btnSize}; height: ${btnSize}; 
-                background: rgba(20, 20, 20, 0.85); 
-                border: 2px solid rgba(212,175,55,0.4); 
-                border-radius: 50%; 
-                display: flex; justify-content: center; align-items: center; 
-                font-size: ${btnFontSize}; color: white; 
-                pointer-events: auto;
-                transition: transform 0.1s, background 0.1s;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.6);
-                backdrop-filter: blur(4px);
-            `;
+            btn.style.cssText = `position: absolute; bottom: calc(50px * var(--mobile-ui-scale)); right: calc(50px * var(--mobile-ui-scale)); width: ${btnSize}; height: ${btnSize}; background: rgba(20, 20, 20, 0.85); border: 2px solid rgba(212,175,55,0.4); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: ${btnFontSize}; color: white; pointer-events: auto; transition: transform 0.1s, background 0.1s; box-shadow: 0 4px 10px rgba(0,0,0,0.6); backdrop-filter: blur(4px);`;
             
             const x = Math.cos(rad) * btnDef.dist; 
             const y = Math.sin(rad) * btnDef.dist;
@@ -110,11 +90,9 @@ export class MobileControls {
             if (btnDef.size === 'large') {
                 btn.style.border = '2px solid var(--gold, #d4af37)';
                 btn.style.boxShadow = '0 0 20px rgba(212,175,55,0.2)';
-                btn.style.zIndex = '5';
             }
 
             const baseTransform = `translate(calc(${x}px * var(--mobile-ui-scale)), calc(${y}px * var(--mobile-ui-scale)))`;
-
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 btn.style.transform = `${baseTransform} scale(0.9)`;
@@ -122,21 +100,15 @@ export class MobileControls {
                 bus.emit(btnDef.action, { mouse: this.input ? this.input.mouse : null });
                 if (navigator.vibrate) navigator.vibrate(15);
             });
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
+            btn.addEventListener('touchend', () => {
                 btn.style.transform = `${baseTransform} scale(1.0)`;
                 btn.style.background = 'rgba(20, 20, 20, 0.85)';
             });
-
             btnContainer.appendChild(btn);
 
-            if (typeof btnDef.slot === 'number') {
-                this.skillButtons.push({ el: btn, slot: btnDef.slot, originalIcon: btnDef.icon });
-            } else if (btnDef.slot === 'potion') {
-                this.potionButton = btn;
-            } else if (btnDef.slot === 'interact') {
-                this.interactButton = btn;
-            }
+            if (typeof btnDef.slot === 'number') this.skillButtons.push({ el: btn, slot: btnDef.slot, originalIcon: btnDef.icon });
+            else if (btnDef.slot === 'potion') this.potionButton = btn;
+            else if (btnDef.slot === 'interact') this.interactButton = btn;
         });
 
         // --- MOBILE SHORTCUTS DRAWER ("The Parchment") ---
@@ -177,9 +149,7 @@ export class MobileControls {
                 text-shadow: 1px 1px 2px #000;
             }
             .shortcuts-inner {
-                display: flex;
-                gap: 8px;
-                padding: 6px;
+                display: flex; gap: 8px; padding: 6px;
                 background: rgba(40, 30, 20, 0.7);
                 border: 1px solid #5a4530;
                 border-right: none;
@@ -188,14 +158,10 @@ export class MobileControls {
                 transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
                 transform-origin: right center;
                 width: auto;
-                max-width: 500px;
             }
             #mobile-ui-shortcuts.closed .shortcuts-inner {
-                width: 0 !important;
-                padding: 0 !important;
-                opacity: 0;
-                transform: scaleX(0);
-                border: none;
+                width: 0 !important; padding: 0 !important; opacity: 0;
+                transform: scaleX(0); border: none;
             }
             #mobile-ui-shortcuts.portrait { top: 120px; right: 0; flex-direction: row; }
             #mobile-ui-shortcuts.landscape { top: 10px; right: 0; flex-direction: row; }
@@ -212,7 +178,6 @@ export class MobileControls {
         
         let isOpen = false;
         uiBtnContainer.classList.add('closed');
-        uiBtnContainer.classList.add(window.innerHeight > window.innerWidth ? 'portrait' : 'landscape');
 
         handle.onclick = (e) => {
             e.stopPropagation();
@@ -227,15 +192,18 @@ export class MobileControls {
         container.appendChild(uiBtnContainer);
 
         const uiButtons = [
-            { id: 'inv', action: 'ui:toggle:inventory', icon: '🎒' },
             { id: 'char', action: 'ui:toggle:character', icon: '📊' },
-            { id: 'astral', action: 'ui:toggle:astral', icon: '✨' },
-            { id: 'merc', action: 'ui:toggle:mercenary', icon: '🛡️' },
+            { id: 'inv', action: 'ui:toggle:inventory', icon: '🎒' },
             { id: 'skill', action: 'ui:toggle:talents', icon: '📜' },
-            { id: 'social', action: 'ui:toggle:social', icon: '👥' },
+            { id: 'astral', action: 'ui:toggle:astral', icon: '✨' },
             { id: 'ques', action: 'ui:toggle:journal', icon: '📖' },
+            { id: 'merc', action: 'ui:toggle:mercenary', icon: '🛡️' },
+            { id: 'social', action: 'ui:toggle:social', icon: '👥' },
+            { id: 'port', action: 'action:town_portal', icon: '🌀' },
             { id: 'map', action: 'ui:toggle:fullmap', icon: '🗺️' },
-            { id: 'port', action: 'action:town_portal', icon: '🌀' }
+            { id: 'stash', action: 'ui:toggle:stash', icon: '📦' },
+            { id: 'cube', action: 'ui:toggle:cube', icon: '🎲' },
+            { id:  'lead', action: 'ui:toggle:leaderboard', icon: '🏆' }
         ];
 
         uiButtons.forEach(btnDef => {
@@ -282,11 +250,9 @@ export class MobileControls {
                 const iconClass = getRAIcon(skillId);
                 span.innerHTML = `<i class="ra ${iconClass}" style="color:var(--gold, #d4af37); font-size:24px;"></i>`;
                 btnObj.el.style.borderColor = 'rgba(212,175,55,0.8)';
-                btnObj.el.style.boxShadow = '0 0 10px rgba(212,175,55,0.2)';
             } else {
                 span.textContent = btnObj.originalIcon;
                 btnObj.el.style.borderColor = 'rgba(212,175,55,0.2)';
-                btnObj.el.style.boxShadow = 'none';
             }
         });
 
@@ -302,11 +268,7 @@ export class MobileControls {
             const span = this.interactButton.querySelector('span');
             if (weapon) {
                 const wType = weapon.type?.toLowerCase() || 'sword';
-                const iconMap = {
-                    'sword': 'ra-sword', 'axe': 'ra-axe', 'mace': 'ra-mace-head',
-                    'bow': 'ra-bow-arrow', 'staff': 'ra-crystal-wand', 'wand': 'ra-wand',
-                    'polearm': 'ra-halberd', 'shield': 'ra-heavy-shield'
-                };
+                const iconMap = { 'sword': 'ra-sword', 'axe': 'ra-axe', 'mace': 'ra-mace-head', 'bow': 'ra-bow-arrow', 'staff': 'ra-crystal-wand', 'wand': 'ra-wand', 'polearm': 'ra-halberd', 'shield': 'ra-heavy-shield' };
                 const icon = iconMap[wType] || 'ra-crossed-swords';
                 span.innerHTML = `<i class="ra ${icon}" style="color:var(--gold, #d4af37); font-size:32px;"></i>`;
                 this.interactButton.style.borderColor = '#bf642f';
