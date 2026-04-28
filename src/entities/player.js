@@ -1192,7 +1192,6 @@ export class Player {
         }
 
         // --- Multipliers from Runes ---
-        let totalBase = baseDmg * (1 + synBonus) * statMult;
         totalBase *= (1 + rm.pctDmg / 100);
         if (rm.pctPhysDmg && type === DMG_TYPE.PHYSICAL) totalBase *= (1 + rm.pctPhysDmg / 100);
         if (rm.cannotDealNonPhys && type !== DMG_TYPE.PHYSICAL) totalBase = 0;
