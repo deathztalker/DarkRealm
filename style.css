@@ -2456,16 +2456,28 @@ body.socketing-mode .inv-slot {
 
   /* MOBILE CHAT ADAPTATION */
   .chat-container {
-    width: 260px !important;
-    height: 120px !important;
-    bottom: 65px !important;
-    left: 5px !important;
-    background: rgba(0, 0, 0, 0.3) !important;
+    width: 260px;
+    height: 120px;
+    bottom: 65px;
+    left: 5px;
+    background: rgba(0, 0, 0, 0.3);
   }
-  .chat-container:not(:focus-within) {
+  
+  .chat-container.minimized {
     height: 32px !important;
-    background: transparent !important;
-    border-color: transparent !important;
+    width: 150px !important;
+    overflow: hidden;
+  }
+  
+  .chat-container.minimized .chat-messages-area,
+  .chat-container.minimized .chat-input-wrapper {
+    display: none !important;
+  }
+
+  .chat-container:not(:focus-within):not(.unlocked):not(.minimized) {
+    height: 32px;
+    background: transparent;
+    border-color: transparent;
   }
   .chat-messages-area { font-size: 11px !important; }
   .chat-tab { padding: 4px 5px !important; font-size: 8px !important; }
@@ -3405,6 +3417,7 @@ body.socketing-mode .inv-item:not(.unidentified) {
   border: 2px dashed rgba(191, 100, 47, 0.8) !important;
   cursor: move;
   box-shadow: 0 0 15px rgba(191, 100, 47, 0.4);
+  transition: none !important;
 }
 
 #game-canvas {

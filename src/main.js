@@ -9127,6 +9127,7 @@ let chatLocked = true;
 function initDraggableChat() {
     const container = document.getElementById('mmo-chat-container');
     const lockBtn = document.getElementById('btn-chat-lock');
+    const minBtn = document.getElementById('btn-chat-min');
     if (!container || !lockBtn) return;
 
     // Load saved position
@@ -9134,7 +9135,18 @@ function initDraggableChat() {
     if (savedPos) {
         container.style.left = savedPos.x + 'px';
         container.style.bottom = savedPos.y + 'px';
-        container.style.top = 'auto'; // Ensure bottom remains anchor
+        container.style.top = 'auto'; 
+    }
+
+    let isMinimized = false;
+    if (minBtn) {
+        minBtn.onclick = (e) => {
+            e.stopPropagation();
+            isMinimized = !isMinimized;
+            container.classList.toggle('minimized', isMinimized);
+            minBtn.innerText = isMinimized ? '▢' : '_';
+            minBtn.title = isMinimized ? 'Maximize Chat' : 'Minimize Chat';
+        };
     }
 
     lockBtn.onclick = (e) => {
@@ -9143,7 +9155,6 @@ function initDraggableChat() {
         lockBtn.innerText = chatLocked ? '🔒' : '🔓';
         container.classList.toggle('unlocked', !chatLocked);
         if (chatLocked) {
-            // Save position when locking
             const rect = container.getBoundingClientRect();
             localStorage.setItem('chat_position', JSON.stringify({
                 x: rect.left,
@@ -9152,36 +9163,57 @@ function initDraggableChat() {
         }
     };
 
-    // Drag logic
+    // Drag logic (Mouse & Touch)
     let isDragging = false;
     let startX, startY, initialX, initialY;
 
-    container.onmousedown = (e) => {
+    const onStart = (e) => {
         if (chatLocked) return;
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-
+        
         isDragging = true;
-        startX = e.clientX;
-        startY = e.clientY;
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        
+        startX = clientX;
+        startY = clientY;
         const rect = container.getBoundingClientRect();
         initialX = rect.left;
         initialY = rect.top;
-
-        document.onmousemove = (ev) => {
-            if (!isDragging) return;
-            const dx = ev.clientX - startX;
-            const dy = ev.clientY - startY;
-            container.style.left = (initialX + dx) + 'px';
-            container.style.top = (initialY + dy) + 'px';
-            container.style.bottom = 'auto';
-        };
-
-        document.onmouseup = () => {
-            isDragging = false;
-            document.onmousemove = null;
-            document.onmouseup = null;
-        };
+        
+        if (e.type.includes('mouse')) {
+            document.onmousemove = onMove;
+            document.onmouseup = onEnd;
+        } else {
+            document.ontouchmove = onMove;
+            document.ontouchend = onEnd;
+        }
     };
+
+    const onMove = (e) => {
+        if (!isDragging) return;
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+        container.style.left = (initialX + dx) + 'px';
+        container.style.top = (initialY + dy) + 'px';
+        container.style.bottom = 'auto';
+        
+        if (e.type.includes('touch')) e.preventDefault(); // Prevent scroll while dragging
+    };
+
+    const onEnd = () => {
+        isDragging = false;
+        document.onmousemove = null;
+        document.onmouseup = null;
+        document.ontouchmove = null;
+        document.ontouchend = null;
+    };
+
+    container.onmousedown = onStart;
+    container.ontouchstart = onStart;
 }
 
 function addChatMessage(sender, text, type = 'general') {
