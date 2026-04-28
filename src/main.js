@@ -970,15 +970,10 @@ function gameLoop(timestamp) {
     uiActiveBoss = closestBoss;
 
     // Update
-    // --- Phase 29: World Time Tick (1 sec real = 10 game mins) ---
-    worldTime = (worldTime + dt * 10) % 1440;
-    const hour = worldTime / 60;
-    window.isNight = (hour >= 20 || hour < 6);
-
     if (input) input.update();
     if (window.mobileControls) window.mobileControls.update(player);
 
-    // --- Phase 3.1: Atmospheric Weather System ---
+    // --- Phase 3.1: Atmospheric Weather & Time System ---
     if (player) {
         WeatherSystem.update(dt, zoneLevel, window.currentTheme);
     }

@@ -170,15 +170,9 @@ export class Player {
                 s.pctDmg = (s.pctDmg || 0) + 50;
                 s.pctIAS = (s.pctIAS || 0) + 30;
             }
-            if (b.id === 'bloodlust') {
-                s.pctIAS = (s.pctIAS || 0) + 70;
-            }
-            if (b.id === 'arcane_power') {
-                s.pctDmg = (s.pctDmg || 0) + 50;
-            }
-            if (b.id === 'blood_rage') {
-                s.pctDmg = (s.pctDmg || 0) + 40;
-            }
+            if (b.id === 'bloodlust') s.pctIAS = (s.pctIAS || 0) + 70;
+            if (b.id === 'arcane_power') s.pctDmg = (s.pctDmg || 0) + 50;
+            if (b.id === 'blood_rage') s.pctDmg = (s.pctDmg || 0) + 40;
             if (b.id === 'titanic_might') {
                 s.pctStr = (s.pctStr || 0) + 20;
                 s.pctArmor = (s.pctArmor || 0) + 10;
@@ -294,7 +288,9 @@ export class Player {
                 });
             }
 
+            let activeAuraCount = 0;
             for (const [auraId, level] of allAuras) {
+                activeAuraCount++;
                 const scaledLvl = level * auraScale;
                 switch(auraId) {
                     case 'might': case 'might_aura': 
@@ -352,6 +348,11 @@ export class Player {
                         s.pctDmg = (s.pctDmg || 0) + 50;
                         break;
                 }
+            }
+
+            // Apply Celestial Harmony Elder Power
+            if (as.dmgPerAura) {
+                s.pctDmg = (s.pctDmg || 0) + (activeAuraCount * as.dmgPerAura);
             }
         }
 
@@ -1653,8 +1654,8 @@ _spawnMinion(skillId, slvl, skill) {
             ctx.restore();
         }
 
-        // --- Legendary Aura Stacking Visuals & Particles ---
-        if (this.itemAuras) {
+        // --- Legendary & Skill Aura Stacking Visuals ---
+        if (this.itemAuras || this.activeAura) {
             let radiusOffset = 0;
             this._auraParticles = this._auraParticles || [];
             
@@ -1688,6 +1689,17 @@ _spawnMinion(skillId, slvl, skill) {
                 radiusOffset += 5;
             };
 
+            // 1. Skill Aura (Paladin Active)
+            if (this.activeAura) {
+                let auraColor = '#ffd700'; // Default gold
+                let particleType = 'holy';
+                if (this.activeAura.includes('fire')) auraColor = '#ff4500';
+                if (this.activeAura.includes('freeze')) auraColor = '#00ffff';
+                if (this.activeAura.includes('conviction')) auraColor = '#a040ff';
+                drawAuraRing(auraColor, particleType);
+            }
+
+            // 2. Legendary Item Auras
             if (this.itemAuras.has('shadowmourne')) drawAuraRing('#a040ff', 'skull');
             if (this.itemAuras.has('frostmourne')) drawAuraRing('#00ffff', 'ice');
             if (this.itemAuras.has('ashbringer')) drawAuraRing('#ffd700', 'holy');
