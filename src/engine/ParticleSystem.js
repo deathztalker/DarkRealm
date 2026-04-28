@@ -169,9 +169,12 @@ export class Particle {
             }
 
             case 'ring': {
-                ctx.lineWidth = this.size * 0.3;
+                // El radio crece conforme la partícula muere (expansión)
+                const progress = 1 - (this.life / this.maxLife);
+                const expandedRadius = this.size * (0.2 + progress * 1.5);
+                ctx.lineWidth = Math.max(0.5, this.size * 0.15 * (1 - progress));
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, TAU);
+                ctx.arc(this.x, this.y, expandedRadius, 0, TAU);
                 ctx.stroke();
                 break;
             }
@@ -361,8 +364,8 @@ export class ParticleSystem {
 
     emitShockwave(x, y, radius = 40, color = '#b0a080') {
         this.emitBurst(x, y, color, 12, 3);
-        // Expanding ring
-        this._spawn(x, y, 0, 0, 300, color, radius, { shape: 'ring', gravity: 0 });
+        // Expanding ring — vida muy corta, solo un flash visual
+        this._spawn(x, y, 0, 0, 150, color, radius, { shape: 'ring', gravity: 0 });
     }
 
     // ── Elemental Trails ────────────────────────────────────────────────────────
@@ -447,8 +450,8 @@ export class ParticleSystem {
 
     emitHolyBurst(x, y) {
         this.emitBurst(x, y, '#ffe880', 10, 2, { shape: 'star' });
-        // Expanding halo ring
-        this._spawn(x, y, 0, 0, 400, '#ffffc0', 30, { shape: 'ring', gravity: 0 });
+        // Expanding halo ring — vida corta para que no se quede flotando
+        this._spawn(x, y, 0, 0, 180, '#ffffc0', 25, { shape: 'ring', gravity: 0 });
     }
 
     emitHolyNova(x, y, radius = 80) {
@@ -516,8 +519,8 @@ export class ParticleSystem {
             this._spawn(px, py, Math.cos(angle + Math.PI / 2) * 1.5, Math.sin(angle + Math.PI / 2) * 1.5,
                 600, i % 2 === 0 ? color : secondColor, this._rand(2, 5), { shape: 'glow', gravity: 0 });
         }
-        // Center swirl
-        this._spawn(x, y, 0, 0, 400, color, 20, { shape: 'ring', gravity: 0 });
+        // Center swirl — vida corta
+        this._spawn(x, y, 0, 0, 180, color, 20, { shape: 'ring', gravity: 0 });
     }
 
     // ── Buff / Debuff Effects (NEW) ─────────────────────────────────────────────

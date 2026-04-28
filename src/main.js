@@ -31,6 +31,7 @@ import { Vendor } from './vendorSystem.js';
 import { VendorUI } from './ui/vendorUI.js';
 import { campaign } from './systems/campaignSystem.js';
 import { Projectile } from './entities/projectile.js';
+import { WeatherSystem } from './systems/weatherSystem.js';
 
 // Expose globals for external modules
 window.loot = loot;
