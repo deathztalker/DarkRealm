@@ -90,15 +90,22 @@ export const WeatherSystem = {
     _dustAccum: 0,            // acumulador de polvo ambiental
     _leafAccum: 0,            // acumulador de hojas
     _emberAccum: 0,
+    _lastTheme: null,
 
     // ─── Update ─────────────────────────────────────────────────────────────
 
-    update(dt, zoneLevel, theme) {
+    update(dt, zoneLevel, theme, renderer) {
         // Avance de tiempo (1s real = 10 min juego)
         this.worldTime = (this.worldTime + dt * 10) % DAY_MINUTES;
         const hour = this.worldTime / MINUTE;
         this.isNight = (hour >= 20 || hour < 6);
         window.isNight = this.isNight;
+
+        // Limpiar clima si cambia el tema
+        if (theme !== this._lastTheme) {
+            if (fx) fx.clearWeather();
+            this._lastTheme = theme;
+        }
 
         // Color de cielo interpolado suavemente
         this._skyColor = getSkyColor(hour);
@@ -116,16 +123,16 @@ export const WeatherSystem = {
         }
 
         // Partículas climáticas
-        this._updateWeatherParticles(dt, zoneLevel, theme);
+        this._updateWeatherParticles(dt, zoneLevel, theme, renderer);
 
         // Calor (acto 4)
         this._heatHaze = (zoneLevel > 95 && zoneLevel <= 101) ? 1.0 : 0.0;
     },
 
-    _updateWeatherParticles(dt, zoneLevel, theme) {
-        if (!fx) return;
-        const W = window.innerWidth;
-        const H = window.innerHeight;
+    _updateWeatherParticles(dt, zoneLevel, theme, renderer) {
+        if (!fx || !renderer) return;
+        const W = renderer.width;
+        const H = renderer.height;
 
         this._dustAccum += dt;
         this._leafAccum += dt;

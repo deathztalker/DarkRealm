@@ -975,7 +975,7 @@ function gameLoop(timestamp) {
 
     // --- Phase 3.1: Atmospheric Weather & Time System ---
     if (player) {
-        WeatherSystem.update(dt, zoneLevel, window.currentTheme);
+        WeatherSystem.update(dt, zoneLevel, window.currentTheme, renderer);
     }
 
     if (player) {

@@ -11,6 +11,7 @@ export class Particle {
         this.rotation = 0; this.rotationSpeed = 0;
         this.shape = 'circle';
         this.length = 0;
+        this.isScreenSpace = false; // New property
     }
 
     update(dt) {
@@ -330,6 +331,7 @@ export class ParticleSystem {
             p.shape = 'line';
             p.length = 15;
             p.rotation = Math.PI / 2;
+            p.isScreenSpace = true;
             this.particles.push(p);
         }
     }
@@ -341,6 +343,7 @@ export class ParticleSystem {
             const p = new Particle(px, py, (Math.random() - 0.5) * 1, 1 + Math.random() * 2, 8000, '#fff', 1 + Math.random() * 2);
             p.shape = 'snowflake';
             p.rotationSpeed = (Math.random() - 0.5) * 0.05;
+            p.isScreenSpace = true;
             this.particles.push(p);
         }
     }
@@ -353,6 +356,7 @@ export class ParticleSystem {
             const p = new Particle(px, py, 3 + Math.random() * 5, 2 + Math.random() * 3, 6000, '#fff', 1 + Math.random() * 2);
             p.shape = 'snowflake';
             p.rotationSpeed = (Math.random() - 0.5) * 0.1;
+            p.isScreenSpace = true;
             this.particles.push(p);
         }
         // Swirling frost mist
@@ -360,6 +364,7 @@ export class ParticleSystem {
             const mx = Math.random() * width;
             const my = Math.random() * height;
             const mist = new Particle(mx, my, 2 + Math.random() * 2, (Math.random() - 0.5) * 0.5, 4000, 'rgba(230, 245, 255, 0.1)', 30 + Math.random() * 40);
+            mist.isScreenSpace = true;
             this.particles.push(mist);
         }
     }
@@ -369,6 +374,7 @@ export class ParticleSystem {
             const px = -20;
             const py = Math.random() * height;
             const p = new Particle(px, py, 4 + Math.random() * 4, (Math.random() - 0.5) * 0.5, 4000, 'rgba(212, 160, 23, 0.2)', 1 + Math.random() * 2);
+            p.isScreenSpace = true;
             this.particles.push(p);
         }
     }
@@ -379,6 +385,7 @@ export class ParticleSystem {
             const py = height + 20;
             const p = new Particle(px, py, (Math.random() - 0.5) * 1, -(1 + Math.random() * 1.5), 3000, '#ff4500', 1.5);
             p.gravity = -0.01;
+            p.isScreenSpace = true;
             this.particles.push(p);
         }
     }
@@ -400,8 +407,41 @@ export class ParticleSystem {
             const px = Math.random() * width;
             const py = Math.random() * height;
             const p = new Particle(px, py, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2, 5000, 'rgba(200, 200, 200, 0.05)', 40 + Math.random() * 40);
+            p.isScreenSpace = true;
             this.particles.push(p);
         }
+    }
+
+    /** Internal helper for WeatherSystem */
+    _spawn(x, y, vx, vy, life, color, size, options = {}) {
+        const p = new Particle(x, y, vx, vy, life, color, size);
+        if (options.shape) p.shape = options.shape;
+        if (options.gravity !== undefined) p.gravity = options.gravity;
+        if (options.rotationSpeed !== undefined) p.rotationSpeed = options.rotationSpeed;
+        p.isScreenSpace = true; // Most weather spawns are screen-space
+        this.particles.push(p);
+    }
+
+    _rand(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
+    clearWeather() {
+        // Remove all environmental/weather particles
+        const weatherShapes = ['snowflake', 'line', 'glow'];
+        const weatherColors = [
+            'rgba(100, 150, 255, 0.4)', // Rain
+            'rgba(212, 160, 23, 0.2)',  // Sand
+            '#ff4500',                  // Embers
+            'rgba(200, 200, 200, 0.05)', // Mist
+            '#8020ff', '#c040ff', '#ff20ff', '#4000ff' // Void sparks
+        ];
+        
+        this.particles = this.particles.filter(p => {
+            const isWeatherShape = weatherShapes.includes(p.shape);
+            const isWeatherColor = weatherColors.includes(p.color) || (p.color && p.color.includes('rgba(180,230,255'));
+            return !isWeatherShape && !isWeatherColor;
+        });
     }
 
     update(dt) {
@@ -430,15 +470,19 @@ export class ParticleSystem {
         if (this.shakeTimer > 0) {
             ctx.translate((Math.random() - 0.5) * this.shakeIntensity, (Math.random() - 0.5) * this.shakeIntensity);
         }
-        // Particles still rendered in current ctx state
-        // (If ctx was already reset to 1,0,0,1, we need to toScreen these too)
+
         for (const p of this.particles) {
-            const screen = camera.toScreen(p.x, p.y);
-            // Patch particle to use screen coords temporary for drawing
-            const prevX = p.x, prevY = p.y;
-            p.x = screen.x; p.y = screen.y;
-            p.render(ctx);
-            p.x = prevX; p.y = prevY;
+            if (p.isScreenSpace) {
+                // Already in screen coords, draw directly
+                p.render(ctx);
+            } else {
+                // World space, project to screen
+                const screen = camera.toScreen(p.x, p.y);
+                const prevX = p.x, prevY = p.y;
+                p.x = screen.x; p.y = screen.y;
+                p.render(ctx);
+                p.x = prevX; p.y = prevY;
+            }
         }
         for (const t of this.floatingTexts) t.render(ctx, camera);
         ctx.restore();
