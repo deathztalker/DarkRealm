@@ -86,14 +86,12 @@ export class MobileControls {
             const dist = `calc(${btnDef.dist}px * var(--mobile-ui-scale))`;
 
             const rad = (btnDef.angle * Math.PI) / 180;
-            // Note: coordinates will be handled by CSS transform for better performance
             
             btn.style.cssText = `
                 position: absolute;
                 bottom: calc(50px * var(--mobile-ui-scale)); 
                 right: calc(50px * var(--mobile-ui-scale));
                 width: ${btnSize}; height: ${btnSize}; 
-                transform: translate(calc(Math.cos(${rad}) * ${dist}), calc(Math.sin(${rad}) * ${dist}));
                 background: rgba(20, 20, 20, 0.85); 
                 border: 2px solid rgba(212,175,55,0.4); 
                 border-radius: 50%; 
@@ -105,11 +103,8 @@ export class MobileControls {
                 backdrop-filter: blur(4px);
             `;
             
-            // Re-calculate X and Y for JS logic
             const x = Math.cos(rad) * btnDef.dist; 
             const y = Math.sin(rad) * btnDef.dist;
-            
-            // Override transform with calc to use CSS variables
             btn.style.transform = `translate(calc(${x}px * var(--mobile-ui-scale)), calc(${y}px * var(--mobile-ui-scale)))`;
 
             if (btnDef.size === 'large') {
@@ -144,51 +139,90 @@ export class MobileControls {
             }
         });
 
-        // Toggle UI buttons (Inventory, etc)
+        // --- MOBILE SHORTCUTS DRAWER ("The Parchment") ---
         const uiBtnContainer = document.createElement('div');
         uiBtnContainer.id = 'mobile-ui-shortcuts';
         this.uiContainer = uiBtnContainer;
 
+        const style = document.createElement('style');
+        style.textContent = `
+            #mobile-ui-shortcuts {
+                position: absolute;
+                display: flex;
+                align-items: center;
+                pointer-events: auto;
+                transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                z-index: 1100;
+            }
+            .mobile-shortcut-btn {
+                width: 42px; height: 42px;
+                background: rgba(20, 15, 10, 0.85);
+                border: 1px solid var(--gold);
+                border-radius: 8px;
+                display: flex; justify-content: center; align-items: center;
+                font-size: 20px; color: white;
+                transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                backdrop-filter: blur(4px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+                flex-shrink: 0;
+            }
+            #mobile-ui-handle {
+                width: 32px; height: 42px;
+                background: linear-gradient(to right, #bf642f, #8a431c);
+                border: 1px solid var(--gold);
+                display: flex; justify-content: center; align-items: center;
+                cursor: pointer; font-size: 14px; color: white;
+                z-index: 10;
+                box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                text-shadow: 1px 1px 2px #000;
+            }
+            .shortcuts-inner {
+                display: flex;
+                gap: 8px;
+                padding: 6px;
+                background: rgba(40, 30, 20, 0.7);
+                border: 1px solid #5a4530;
+                border-right: none;
+                border-radius: 12px 0 0 12px;
+                overflow: hidden;
+                transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                transform-origin: right center;
+                width: auto;
+                max-width: 500px;
+            }
+            #mobile-ui-shortcuts.closed .shortcuts-inner {
+                width: 0 !important;
+                padding: 0 !important;
+                opacity: 0;
+                transform: scaleX(0);
+                border: none;
+            }
+            #mobile-ui-shortcuts.portrait { top: 120px; right: 0; flex-direction: row; }
+            #mobile-ui-shortcuts.landscape { top: 10px; right: 0; flex-direction: row; }
+        `;
+        document.head.appendChild(style);
+
+        const inner = document.createElement('div');
+        inner.className = 'shortcuts-inner';
+        
         const handle = document.createElement('div');
         handle.id = 'mobile-ui-handle';
-        handle.innerHTML = '◀';
-        handle.style.cssText = 'width:24px; height:42px; background:rgba(191,100,47,0.8); border:1px solid var(--gold); border-radius:4px 0 0 4px; display:flex; justify-content:center; align-items:center; cursor:pointer; font-size:12px; color:white; margin-right:-8px; z-index:10;';
+        handle.innerHTML = '📜';
+        handle.style.borderRadius = '0 8px 8px 0';
         
-        let isOpen = true;
+        let isOpen = false;
+        uiBtnContainer.classList.add('closed');
+        uiBtnContainer.classList.add(window.innerHeight > window.innerWidth ? 'portrait' : 'landscape');
+
         handle.onclick = (e) => {
             e.stopPropagation();
             isOpen = !isOpen;
-            const buttons = uiBtnContainer.querySelectorAll('.mobile-shortcut-btn');
-            buttons.forEach((btn, i) => {
-                setTimeout(() => {
-                    btn.style.transform = isOpen ? 'scale(1) translateX(0)' : 'scale(0) translateX(50px)';
-                    btn.style.opacity = isOpen ? '1' : '0';
-                    btn.style.pointerEvents = isOpen ? 'auto' : 'none';
-                }, i * 50); // Unroll effect
-            });
-            handle.innerHTML = isOpen ? '◀' : '▶';
-            uiBtnContainer.style.background = isOpen ? 'rgba(0,0,0,0.4)' : 'transparent';
-            uiBtnContainer.style.border = isOpen ? '1px solid #4a3520' : 'none';
-            uiBtnContainer.style.boxShadow = isOpen ? '0 0 20px rgba(0,0,0,0.5)' : 'none';
+            uiBtnContainer.classList.toggle('closed', !isOpen);
+            handle.innerHTML = isOpen ? '▶' : '📜';
+            if (navigator.vibrate) navigator.vibrate(10);
         };
 
-        // Portrait vs Landscape Logic
-        const isPortrait = window.innerHeight > window.innerWidth;
-        const baseStyle = 'display:flex; gap:8px; pointer-events:auto; padding:8px; border:1px solid #4a3520; border-radius:12px; backdrop-filter:blur(6px); box-shadow:0 0 20px rgba(0,0,0,0.5); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);';
-
-        if (isPortrait) {
-            uiBtnContainer.style.cssText = `position:absolute; top:120px; right:10px; flex-direction:column; background:rgba(0,0,0,0.4); ${baseStyle}`;
-            handle.style.borderRadius = '4px 0 0 4px';
-            handle.style.marginRight = '-8px';
-            handle.style.width = '24px'; handle.style.height = '42px';
-        } else {
-            uiBtnContainer.style.cssText = `position:absolute; bottom:10px; right:10px; flex-direction:row-reverse; background:rgba(0,0,0,0.4); ${baseStyle}`;
-            handle.style.borderRadius = '4px 4px 0 0';
-            handle.style.marginTop = '-8px';
-            handle.style.width = '42px'; handle.style.height = '24px';
-            handle.innerHTML = '▼';
-        }
-
+        uiBtnContainer.appendChild(inner);
         uiBtnContainer.appendChild(handle);
         container.appendChild(uiBtnContainer);
 
@@ -207,71 +241,43 @@ export class MobileControls {
         uiButtons.forEach(btnDef => {
             const btn = document.createElement('div');
             btn.className = 'mobile-shortcut-btn';
-            btn.style.cssText = 'width:42px; height:42px; background:rgba(0,0,0,0.6); border:1px solid rgba(212,175,55,0.3); border-radius:8px; display:flex; justify-content:center; align-items:center; font-size:20px; color:white; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); backdrop-filter: blur(4px);';
             btn.innerHTML = btnDef.icon;
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                btn.style.background = 'rgba(212,175,55,0.3)';
-                btn.style.borderColor = 'rgba(212,175,55,0.8)';
                 btn.style.transform = 'scale(0.9)';
+                btn.style.background = 'rgba(212,175,55,0.4)';
                 bus.emit(btnDef.action, {});
             });
             btn.addEventListener('touchend', () => {
-                btn.style.background = 'rgba(0,0,0,0.6)';
-                btn.style.borderColor = 'rgba(212,175,55,0.3)';
                 btn.style.transform = 'scale(1.0)';
+                btn.style.background = 'rgba(20, 15, 10, 0.85)';
             });
-            uiBtnContainer.appendChild(btn);
+            inner.appendChild(btn);
         });
 
-        // Resize handler for orientation shifts
         const applyLayout = () => {
             const isPortrait = window.innerHeight > window.innerWidth;
-            if (isPortrait) {
-                this.uiContainer.style.top = '120px';
-                this.uiContainer.style.right = '10px';
-                this.uiContainer.style.left = 'auto';
-                this.uiContainer.style.flexDirection = 'column';
-                handle.style.width = '24px'; handle.style.height = '42px';
-                handle.style.borderRadius = '4px 0 0 4px';
-                handle.style.marginRight = '-8px';
-                handle.style.marginTop = '0';
-                handle.innerHTML = isOpen ? '◀' : '▶';
-            } else {
-                this.uiContainer.style.top = '10px';
-                this.uiContainer.style.right = '50px';
-                this.uiContainer.style.left = 'auto';
-                this.uiContainer.style.flexDirection = 'row';
-                handle.style.width = '42px'; handle.style.height = '24px';
-                handle.style.borderRadius = '0 0 4px 4px';
-                handle.style.marginRight = '0';
-                handle.style.marginTop = '-8px';
-                handle.innerHTML = isOpen ? '▲' : '▼';
-            }
+            uiBtnContainer.classList.toggle('portrait', isPortrait);
+            uiBtnContainer.classList.toggle('landscape', !isPortrait);
+            if (isPortrait) uiBtnContainer.style.top = '120px';
+            else uiBtnContainer.style.top = '10px';
         };
 
         window.addEventListener('resize', applyLayout);
-        applyLayout(); // Run once
+        applyLayout();
     }
 
-    /**
-     * Synchronize mobile icons with player's actual equipped skills
-     */
     update(player) {
         if (!this.active || !player) return;
 
-        // Use global icon map for perfect 1:1 mirroring with Hero bar
         const getRAIcon = (id) => {
             if (window.getIconForSkill) return window.getIconForSkill(id);
-            // Fallback map if needed
             return 'ra-interdiction';
         };
 
-        // Update Skill Buttons
         this.skillButtons.forEach(btnObj => {
             const skillId = player.hotbar[btnObj.slot];
             const span = btnObj.el.querySelector('span');
-
             if (skillId) {
                 const iconClass = getRAIcon(skillId);
                 span.innerHTML = `<i class="ra ${iconClass}" style="color:var(--gold, #d4af37); font-size:24px;"></i>`;
@@ -284,18 +290,13 @@ export class MobileControls {
             }
         });
 
-        // Update Potion Button
         if (this.potionButton) {
             const firstPotion = player.belt.find(p => p !== null);
             const span = this.potionButton.querySelector('span');
-            if (firstPotion) {
-                span.innerHTML = '<i class="ra ra-bubbles" style="color:#ff5050; font-size:24px;"></i>';
-            } else {
-                span.textContent = '🧪';
-            }
+            if (firstPotion) span.innerHTML = '<i class="ra ra-bubbles" style="color:#ff5050; font-size:24px;"></i>';
+            else span.textContent = '🧪';
         }
 
-        // Update Interact/Attack Button based on Weapon
         if (this.interactButton) {
             const weapon = player.equipment.mainhand;
             const span = this.interactButton.querySelector('span');
@@ -316,7 +317,6 @@ export class MobileControls {
         }
     }
 
-
     _setupEvents() {
         if (!this.joystick.base) return;
 
@@ -332,7 +332,6 @@ export class MobileControls {
 
         window.addEventListener('touchmove', e => {
             if (!this.joystick.active) return;
-
             let touch = null;
             for (let i = 0; i < e.changedTouches.length; i++) {
                 if (e.changedTouches[i].identifier === this.joystick.identifier) {
@@ -341,28 +340,21 @@ export class MobileControls {
                 }
             }
             if (!touch) return;
-
             const dx = touch.clientX - this.joystick.startX;
             const dy = touch.clientY - this.joystick.startY;
             const distance = Math.sqrt(dx * dx + dy * dy);
             const angle = Math.atan2(dy, dx);
-
             const limitedDistance = Math.min(distance, this.joystick.maxRadius);
             this.joystick.currentX = Math.cos(angle) * limitedDistance;
             this.joystick.currentY = Math.sin(angle) * limitedDistance;
-
             this.joystick.stick.style.transform = `translate(calc(-50% + ${this.joystick.currentX}px), calc(-50% + ${this.joystick.currentY}px))`;
-
-            // Update Input keys based on joystick position
             const threshold = 0.3;
             const normalizedX = this.joystick.currentX / this.joystick.maxRadius;
             const normalizedY = this.joystick.currentY / this.joystick.maxRadius;
-
             this.input.keys['KeyW'] = normalizedY < -threshold;
             this.input.keys['KeyS'] = normalizedY > threshold;
             this.input.keys['KeyA'] = normalizedX < -threshold;
             this.input.keys['KeyD'] = normalizedX > threshold;
-
         }, { passive: false });
 
         window.addEventListener('touchend', e => {
@@ -374,18 +366,13 @@ export class MobileControls {
                 }
             }
             if (!touchFound) return;
-
             this.joystick.active = false;
             this.joystick.identifier = null;
             this.joystick.currentX = 0;
             this.joystick.currentY = 0;
             this.joystick.stick.style.transform = 'translate(-50%, -50%)';
-
-            // Reset keys
-            this.input.keys['KeyW'] = false;
-            this.input.keys['KeyS'] = false;
-            this.input.keys['KeyA'] = false;
-            this.input.keys['KeyD'] = false;
+            this.input.keys['KeyW'] = false; this.input.keys['KeyS'] = false;
+            this.input.keys['KeyA'] = false; this.input.keys['KeyD'] = false;
         });
     }
 }
