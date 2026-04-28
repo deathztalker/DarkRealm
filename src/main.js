@@ -4384,6 +4384,11 @@ bus.on('ui:toggle:social', () => togglePanel('social'));
 bus.on('ui:toggle:stash', () => togglePanel('stash'));
 bus.on('ui:toggle:cube', () => togglePanel('cube'));
 bus.on('ui:toggle:journal', () => togglePanel('quests'));
+bus.on('ui:toggle:astral', () => {
+    if (window.isAstralOpen) AstralUI.hide();
+    else AstralUI.show();
+    bus.emit('ui:click');
+});
 
 // renderInventory was merged down to line 3147
 

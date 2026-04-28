@@ -149,42 +149,77 @@ export class MobileControls {
         uiBtnContainer.id = 'mobile-ui-shortcuts';
         this.uiContainer = uiBtnContainer;
 
+        const handle = document.createElement('div');
+        handle.id = 'mobile-ui-handle';
+        handle.innerHTML = '◀';
+        handle.style.cssText = 'width:24px; height:42px; background:rgba(191,100,47,0.8); border:1px solid var(--gold); border-radius:4px 0 0 4px; display:flex; justify-content:center; align-items:center; cursor:pointer; font-size:12px; color:white; margin-right:-8px; z-index:10;';
+        
+        let isOpen = true;
+        handle.onclick = (e) => {
+            e.stopPropagation();
+            isOpen = !isOpen;
+            const buttons = uiBtnContainer.querySelectorAll('.mobile-shortcut-btn');
+            buttons.forEach((btn, i) => {
+                setTimeout(() => {
+                    btn.style.transform = isOpen ? 'scale(1) translateX(0)' : 'scale(0) translateX(50px)';
+                    btn.style.opacity = isOpen ? '1' : '0';
+                    btn.style.pointerEvents = isOpen ? 'auto' : 'none';
+                }, i * 50); // Unroll effect
+            });
+            handle.innerHTML = isOpen ? '◀' : '▶';
+            uiBtnContainer.style.background = isOpen ? 'rgba(0,0,0,0.4)' : 'transparent';
+            uiBtnContainer.style.border = isOpen ? '1px solid #4a3520' : 'none';
+            uiBtnContainer.style.boxShadow = isOpen ? '0 0 20px rgba(0,0,0,0.5)' : 'none';
+        };
+
         // Portrait vs Landscape Logic
         const isPortrait = window.innerHeight > window.innerWidth;
-        const baseStyle = 'display:flex; gap:12px; pointer-events:auto; padding:8px; background:rgba(0,0,0,0.4); border:1px solid #4a3520; border-radius:12px; backdrop-filter:blur(6px); box-shadow:0 0 20px rgba(0,0,0,0.5);';
+        const baseStyle = 'display:flex; gap:8px; pointer-events:auto; padding:8px; border:1px solid #4a3520; border-radius:12px; backdrop-filter:blur(6px); box-shadow:0 0 20px rgba(0,0,0,0.5); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);';
 
         if (isPortrait) {
-            uiBtnContainer.style.cssText = `position:absolute; top:120px; left:10px; flex-direction:column; ${baseStyle}`;
+            uiBtnContainer.style.cssText = `position:absolute; top:120px; right:10px; flex-direction:column; background:rgba(0,0,0,0.4); ${baseStyle}`;
+            handle.style.borderRadius = '4px 0 0 4px';
+            handle.style.marginRight = '-8px';
+            handle.style.width = '24px'; handle.style.height = '42px';
         } else {
-            uiBtnContainer.style.cssText = `position:absolute; top:10px; left:50%; transform:translateX(-50%); flex-direction:row; ${baseStyle}`;
+            uiBtnContainer.style.cssText = `position:absolute; bottom:10px; right:10px; flex-direction:row-reverse; background:rgba(0,0,0,0.4); ${baseStyle}`;
+            handle.style.borderRadius = '4px 4px 0 0';
+            handle.style.marginTop = '-8px';
+            handle.style.width = '42px'; handle.style.height = '24px';
+            handle.innerHTML = '▼';
         }
 
+        uiBtnContainer.appendChild(handle);
         container.appendChild(uiBtnContainer);
 
         const uiButtons = [
             { id: 'inv', action: 'ui:toggle:inventory', icon: '🎒' },
             { id: 'char', action: 'ui:toggle:character', icon: '📊' },
+            { id: 'astral', action: 'ui:toggle:astral', icon: '✨' },
             { id: 'merc', action: 'ui:toggle:mercenary', icon: '🛡️' },
+            { id: 'skill', action: 'ui:toggle:talents', icon: '📜' },
             { id: 'social', action: 'ui:toggle:social', icon: '👥' },
-            { id: 'port', action: 'action:town_portal', icon: '🌀' },
-            { id: 'skill', action: 'ui:toggle:talents', icon: '✨' },
-            { id: 'ques', action: 'ui:toggle:quests', icon: '📜' },
-            { id: 'map', action: 'ui:toggle:fullmap', icon: '🗺️' }
+            { id: 'ques', action: 'ui:toggle:journal', icon: '📖' },
+            { id: 'map', action: 'ui:toggle:fullmap', icon: '🗺️' },
+            { id: 'port', action: 'action:town_portal', icon: '🌀' }
         ];
 
         uiButtons.forEach(btnDef => {
             const btn = document.createElement('div');
-            btn.style.cssText = 'width:42px; height:42px; background:rgba(0,0,0,0.4); border:1px solid rgba(212,175,55,0.2); border-radius:8px; display:flex; justify-content:center; align-items:center; font-size:20px; color:white; transition: all 0.2s; backdrop-filter: blur(4px);';
+            btn.className = 'mobile-shortcut-btn';
+            btn.style.cssText = 'width:42px; height:42px; background:rgba(0,0,0,0.6); border:1px solid rgba(212,175,55,0.3); border-radius:8px; display:flex; justify-content:center; align-items:center; font-size:20px; color:white; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); backdrop-filter: blur(4px);';
             btn.innerHTML = btnDef.icon;
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 btn.style.background = 'rgba(212,175,55,0.3)';
                 btn.style.borderColor = 'rgba(212,175,55,0.8)';
+                btn.style.transform = 'scale(0.9)';
                 bus.emit(btnDef.action, {});
             });
             btn.addEventListener('touchend', () => {
-                btn.style.background = 'rgba(0,0,0,0.4)';
-                btn.style.borderColor = 'rgba(212,175,55,0.2)';
+                btn.style.background = 'rgba(0,0,0,0.6)';
+                btn.style.borderColor = 'rgba(212,175,55,0.3)';
+                btn.style.transform = 'scale(1.0)';
             });
             uiBtnContainer.appendChild(btn);
         });
@@ -194,17 +229,24 @@ export class MobileControls {
             const isPortrait = window.innerHeight > window.innerWidth;
             if (isPortrait) {
                 this.uiContainer.style.top = '120px';
-                this.uiContainer.style.left = '10px';
-                this.uiContainer.style.right = 'auto';
-                this.uiContainer.style.transform = 'none';
-                this.uiContainer.style.flexDirection = 'column';
-            } else {
-                // LANDSCAPE: Move to top right row
-                this.uiContainer.style.top = '10px';
                 this.uiContainer.style.right = '10px';
                 this.uiContainer.style.left = 'auto';
-                this.uiContainer.style.transform = 'none';
+                this.uiContainer.style.flexDirection = 'column';
+                handle.style.width = '24px'; handle.style.height = '42px';
+                handle.style.borderRadius = '4px 0 0 4px';
+                handle.style.marginRight = '-8px';
+                handle.style.marginTop = '0';
+                handle.innerHTML = isOpen ? '◀' : '▶';
+            } else {
+                this.uiContainer.style.top = '10px';
+                this.uiContainer.style.right = '50px';
+                this.uiContainer.style.left = 'auto';
                 this.uiContainer.style.flexDirection = 'row';
+                handle.style.width = '42px'; handle.style.height = '24px';
+                handle.style.borderRadius = '0 0 4px 4px';
+                handle.style.marginRight = '0';
+                handle.style.marginTop = '-8px';
+                handle.innerHTML = isOpen ? '▲' : '▼';
             }
         };
 
