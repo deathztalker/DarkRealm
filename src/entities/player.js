@@ -90,7 +90,11 @@ export class Player {
         this.hpBuffer = 0;
         this.mpBuffer = 0;
 
-        this.activeAuras = new Map();
+        this.activeAura = null;
+        this._auraSlvl = 0;
+        this._auraTimer = 0;
+        this.itemAuras = new Map();
+        this.partyAuras = [];
 
         this.permanentResists = 0;
         this.hasLarzukReward = false;

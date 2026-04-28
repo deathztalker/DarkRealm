@@ -368,7 +368,7 @@ const $ = id => document.getElementById(id);
 const hudManager = new HUDManager($);
 let socialHUD = null;
 
-window.addSocialRequest = (fromId, fromName, type) => { if(socialHUD) socialHUD.addRequest(fromId, fromName, type); };
+window.addSocialRequest = (fromId, fromName, type) => { if (socialHUD) socialHUD.addRequest(fromId, fromName, type); };
 window.socialHUD = null;
 
 // ——— MENU PARTICLES ———
@@ -439,7 +439,7 @@ function showClassInfo(classId) {
     const statsEl = document.getElementById('class-stats');
     if (nameEl) nameEl.innerHTML = `<i class="ra ${getIconForClass(cls.id)}" style="font-size:24px;vertical-align:middle;color:var(--gold);"></i> ${cls.name}`;
     if (descEl) descEl.textContent = cls.desc;
-    
+
     // Safety check for statBars and stats
     const statsHtml = ['str', 'dex', 'vit', 'int'].map(s => {
         let val = 0;
@@ -722,16 +722,16 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
         const seedChanged = (seed !== window._currentZoneSeed);
         console.log(`[MMO] Server Seed: ${seed} | Local Seed: ${window._currentZoneSeed} | Changed: ${seedChanged}`);
         window._currentZoneSeed = seed;
-        
+
         if (dungeon && seedChanged) {
             console.log(`[MMO] Re-generating dungeon with server seed: ${seed}`);
-            
+
             // Recalculate theme using the new authoritative seed
             dungeon._seed = seed;
             window.currentTheme = resolveTheme(zoneLevel, dungeon);
-            
+
             dungeon.generate(zoneLevel, window.currentTheme, seed);
-            
+
             // Move player to the correct start position for this new layout
             if (player) {
                 player.x = dungeon.playerStart.x;
@@ -739,7 +739,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
                 player.targetX = player.x;
                 player.targetY = player.y;
             }
-            
+
             // Sync entities to new layout
             npcs = dungeon.npcSpawns.map(s => new NPC(s.id, s.name, s.type, s.x, s.y, s.icon, s.dialogue, dungeon));
             gameObjects = (dungeon.objectSpawns || []).map(s => {
@@ -753,7 +753,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
             });
             if (zoneLevel > 0) {
                 enemies = dungeon.enemySpawns.map(s => new Enemy(s));
-                
+
                 // Apply difficulty & rift scaling (same as initial generation)
                 const diffMult = window.DIFFICULTY_MULT?.[window._difficulty] || 1;
                 let riftMult = 1.0;
@@ -765,13 +765,13 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
                     e.hp = e.maxHp;
                     e.dmg = Math.round(e.dmg * dmgM);
                 }
-                
+
                 window.enemies = enemies;
                 if (network.game) network.game.enemies = enemies;
             }
             if (network.game) network.game.gameObjects = gameObjects;
             player.setRefs(dungeon, camera, enemies);
-            
+
             // Sync player and followers to new spawn point
             if (player && dungeon.playerStart) {
                 player.x = dungeon.playerStart.x;
@@ -781,11 +781,11 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
                 if (player.minions) player.minions.forEach(m => { m.x = player.x; m.y = player.y; });
                 if (typeof mercenary !== 'undefined' && mercenary) { mercenary.x = player.x; mercenary.y = player.y; }
             }
-            
+
             explored = Array.from({ length: dungeon.height }, () => Array(dungeon.width).fill(false));
             addCombatLog(`Dungeon layout synced with server seed: ${seed}`, 'log-info');
         }
-        
+
         // Log syncId of first few enemies for cross-client verification
         if (enemies && enemies.length > 0) {
             console.log(`[MMO] Enemy verification — Total: ${enemies.length}, First 3 syncIds:`,
@@ -832,7 +832,7 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
             droppedGold.splice(idx, 1);
         }
     };
-    
+
     // Init Social HUD
     if (!socialHUD) {
         socialHUD = new SocialHUD(network);
@@ -1028,17 +1028,17 @@ function gameLoop(timestamp) {
             if (Date.now() - window._lastCompSync > 200) {
                 window._lastCompSync = Date.now();
                 if (player.minions.length > 0) {
-                    const minionData = player.minions.map(m => ({ 
-                        id: m.id, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, 
-                        sprite: m.sprite, name: m.name, anim: m.animState, dir: m.facingDir 
+                    const minionData = player.minions.map(m => ({
+                        id: m.id, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp,
+                        sprite: m.sprite, name: m.name, anim: m.animState, dir: m.facingDir
                     }));
                     network.socket.emit('minion_sync', minionData);
                 }
                 if (window.mercenary && window.mercenary.hp > 0) {
                     const m = window.mercenary;
-                    network.socket.emit('merc_sync', { 
-                        id: 'merc_' + player.charName, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, 
-                        sprite: m.sprite, name: m.name, anim: m.animState, dir: m.facingDir 
+                    network.socket.emit('merc_sync', {
+                        id: 'merc_' + player.charName, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp,
+                        sprite: m.sprite, name: m.name, anim: m.animState, dir: m.facingDir
                     });
                 }
             }
@@ -1818,7 +1818,7 @@ function checkInteractions(pos) {
                         o.icon = 'obj_chest_open'; // Update live instance icon
                     }
                 }
-                
+
                 // MMO: Tell others the object updated
                 if (network.isConnected) {
                     network.socket.emit('object_update', { id: o.id, isOpen: true });
@@ -1972,7 +1972,7 @@ function checkInteractions(pos) {
                 if (player.addToInventory(di)) {
                     addCombatLog(`Picked up ${di.name}`, 'log-item');
                     bus.emit('item:pickup', { item: di });
-                    
+
                     // MMO Sync: Tell others to remove this item
                     if (network.isConnected) network.broadcastLootPickup(di.id);
 
@@ -2702,7 +2702,7 @@ function updateHud() {
     const isParagon = player.level >= 99;
     const xpToNext = isParagon ? (100000 + (player.paragonLevel * 50000)) : player.xpToNext;
     const xpPct = xpToNext ? (player.xp / xpToNext * 100) : 100;
-    
+
     const xpBar = $('xp-bar');
     if (xpBar) {
         xpBar.style.width = Math.min(100, xpPct) + '%';
@@ -2837,7 +2837,7 @@ function updateHud() {
             const auraName = player.activeAura.replace('_', ' ').toUpperCase();
             createStatusIcon(player.activeAura, '🕯️', '#ffd700', `Aura: ${auraName}`, { type: 'aura', name: auraName, id: player.activeAura });
         }
-        
+
         // Party Auras
         if (player.partyAuras) {
             for (const pa of player.partyAuras) {
@@ -3471,7 +3471,7 @@ function getIconForSkill(id) {
         'shapeshifting': 'ra-wolf-head',
         'archery': 'ra-archery-target',
         'marksmanship': 'ra-archery-target',
-        
+
         // ========== OVERHAUL MUTATIONS & NEW SKILLS ==========
         'bash_heavy': 'ra-hammer-drop',
         'bash_bleed': 'ra-bleeding-hearts',
@@ -3520,7 +3520,7 @@ function getIconForSkill(id) {
     };
 
     if (iconMap[id]) return iconMap[id];
-    
+
     // Pattern Matcher for new/missing skills
     const s = id.toLowerCase();
     if (s.includes('summon') || s.includes('raise')) return 'ra-tombstone';
@@ -5026,7 +5026,7 @@ function renderTalentTree() {
                 const el = document.createElement('div');
                 el.className = `talent-node ${node.type === 'active' ? 'active-skill' : ''} ${pts > 0 ? (isMaxed ? 'maxed' : 'unlocked') : ''} ${!reqMet ? 'locked' : ''}`;
                 el.innerHTML = `<span style="display:flex;justify-content:center;align-items:center;width:100%;height:100%;"><i class="ra ${getIconForSkill(node.id)}" style="font-size:32px; color: ${pts > 0 ? 'var(--gold)' : '#aaa'}; text-shadow:0 0 4px #000;"></i></span><span class="talent-node-pts">${pts}/${node.maxPts}</span>`;
-                
+
                 // --- PREMIUM TOOLTIP HOOKS ---
                 el.addEventListener('mouseenter', (e) => showSkillTooltip(node.id, e.clientX, e.clientY));
                 el.addEventListener('mousemove', (e) => moveTooltip(e.clientX, e.clientY));
@@ -7956,7 +7956,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (saveData) {
             startGame(selectedCharSlot.id, saveData);
             addCombatLog(`Welcome back, ${selectedCharSlot.name}.`, 'log-info');
-            
+
             // Mobile immersive hint
             if (window.innerWidth <= 1024) {
                 setTimeout(() => {
@@ -8291,7 +8291,7 @@ function updateCharPreview(slot) {
 
 // --- Phase 29: World Overlay & Time Logic ---
 function renderWorldOverlay(ctx, w, h) {
-    const hour = worldTime / 60;
+    const hour = WeatherSystem.worldTime / 60;
     let alpha = 0;
     let color = '0, 0, 0';
 
@@ -8332,11 +8332,11 @@ function renderWorldOverlay(ctx, w, h) {
 function updateWorldClockUI() {
     const clock = $('world-clock');
     if (!clock) return;
-    const hour = Math.floor(worldTime / 60);
-    const min = Math.floor(worldTime % 60);
+    const hour = Math.floor(WeatherSystem.worldTime / 60);
+    const min = Math.floor(WeatherSystem.worldTime % 60);
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const h12 = hour % 12 || 12;
-    clock.textContent = `${h12}:${min < 10 ? '0' : ''}${min} ${ampm} ${window.isNight ? 'ðŸŒ™' : 'â˜€ï¸'}`;
+    clock.textContent = `${h12}:${min < 10 ? '0' : ''}${min} ${ampm} ${window.isNight ? '🌙' : '☀️'}`;
 }
 
 // --- Phase 29: Blacksmith Crafting UI ---
@@ -8956,7 +8956,7 @@ window.addEventListener('DOMContentLoaded', () => {
                                     addCombatLog(`Player "${arg}" not found in this zone.`, 'log-dmg');
                                 }
                             }
-                        } else if (cmd === '/w') { 
+                        } else if (cmd === '/w') {
                             const targetName = parts[1];
                             const msg = parts.slice(2).join(' ');
                             if (targetName && msg) network.sendWhisper(targetName, msg);
@@ -8989,14 +8989,14 @@ window.addEventListener('DOMContentLoaded', () => {
         });
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && document.activeElement !== chatInput && state === 'GAME') { chatInput.focus(); e.preventDefault(); }
-            
+
             const k = e.key.toLowerCase();
             if (document.activeElement !== chatInput && state === 'GAME') {
                 if (window.socialHUD && window.socialHUD.handleInput(k)) {
                     e.preventDefault();
                     return;
                 }
-                
+
                 if (k === 'p') bus.emit('action:town_portal');
                 if (k === 'm') togglePanel('mercenary');
                 if (k === 'n') {
@@ -9076,7 +9076,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (saveData) {
             startGame(selectedCharSlot.id, saveData);
             addCombatLog(`Welcome back, ${selectedCharSlot.name}.`, 'log-info');
-            
+
             // Mobile immersive hint
             if (window.innerWidth <= 1024) {
                 setTimeout(() => {
@@ -9127,7 +9127,7 @@ function initDraggableChat() {
     if (savedPos) {
         container.style.left = savedPos.x + 'px';
         container.style.bottom = savedPos.y + 'px';
-        container.style.top = 'auto'; 
+        container.style.top = 'auto';
     }
 
     let isMinimized = false;
@@ -9162,17 +9162,17 @@ function initDraggableChat() {
     const onStart = (e) => {
         if (chatLocked) return;
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-        
+
         isDragging = true;
         const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
         const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-        
+
         startX = clientX;
         startY = clientY;
         const rect = container.getBoundingClientRect();
         initialX = rect.left;
         initialY = rect.top;
-        
+
         if (e.type.includes('mouse')) {
             document.onmousemove = onMove;
             document.onmouseup = onEnd;
@@ -9186,13 +9186,13 @@ function initDraggableChat() {
         if (!isDragging) return;
         const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
         const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-        
+
         const dx = clientX - startX;
         const dy = clientY - startY;
         container.style.left = (initialX + dx) + 'px';
         container.style.top = (initialY + dy) + 'px';
         container.style.bottom = 'auto';
-        
+
         if (e.type.includes('touch')) e.preventDefault(); // Prevent scroll while dragging
     };
 
