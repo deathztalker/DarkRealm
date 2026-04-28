@@ -1,14 +1,14 @@
 export const WARRIOR_MUTATIONS = {
     bash: [
         {
-            id: 'bash_heavy', name: 'Heavy Impact', max: 5,
+            id: 'bash_heavy', name: 'Heavy Impact', max: 5, reqBaseLevel: 1,
             desc: '+10% Damage and +5% Stun duration per level.',
             masteryPerk: 'Impact waves deal 30% damage to enemies behind the target.',
             mod: { pctDmg: 10, stunDuration: 0.1 },
             icon: 'ra-hammer-drop'
         },
         {
-            id: 'bash_bleed', name: 'Internal Bleeding', max: 5,
+            id: 'bash_bleed', name: 'Internal Bleeding', max: 5, reqBaseLevel: 5,
             desc: 'Causes target to bleed for 50% damage over 3s.',
             masteryPerk: 'Bleeding enemies take 20% more damage from your other skills.',
             mod: { bleedDmg: 50, bleedDur: 3 },
@@ -17,14 +17,14 @@ export const WARRIOR_MUTATIONS = {
     ],
     bloodthirst: [
         {
-            id: 'bt_vamp', name: 'Vampiric Thirst', max: 5,
+            id: 'bt_vamp', name: 'Vampiric Thirst', max: 5, reqBaseLevel: 1,
             desc: '+2% Healing from Bloodthirst per level.',
             masteryPerk: 'If Bloodthirst kills an enemy, its cooldown is reset.',
             mod: { healPct: 2 },
             icon: 'ra-dripping-blade'
         },
         {
-            id: 'bt_frenzy', name: 'Frenzied Strike', max: 5,
+            id: 'bt_frenzy', name: 'Frenzied Strike', max: 5, reqBaseLevel: 5,
             desc: '+10% Attack Speed for 3s after using Bloodthirst.',
             masteryPerk: 'Bloodthirst now hits 2 additional nearby targets.',
             mod: { attackSpeedPct: 10 },

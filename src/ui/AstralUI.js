@@ -85,6 +85,7 @@ export const AstralUI = {
                     <div class="astral-tabs">
                         <div class="astral-tab active" data-tab="mutations">Skill Mutations</div>
                         <div class="astral-tab" data-tab="runes">Rune Core</div>
+                        <div class="astral-tab" data-tab="fusion">Rune Fusion</div>
                         <div class="astral-tab" data-tab="constellation">Astral Constellation</div>
                     </div>
                     <div class="close-astral">&times;</div>
@@ -131,7 +132,79 @@ export const AstralUI = {
 
         if (tab === 'mutations') this.renderMutations(container);
         else if (tab === 'runes') this.renderRuneCore(container);
+        else if (tab === 'fusion') this.renderFusion(container);
         else if (tab === 'constellation') this.renderConstellation(container);
+    },
+
+    renderFusion(container) {
+        import('../data/runes.js').then(({ SUPPORT_RUNES }) => {
+            const player = window.player;
+            container.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; gap:30px; padding:20px;">
+                    <h3 style="color:var(--gold); margin:0;">LEGENDARY RUNE FUSION</h3>
+                    <p style="font-size:12px; color:#888; max-width:600px; text-align:center;">
+                        Combine standard support runes to forge legendary variants with immense power.
+                    </p>
+                    <div class="fusion-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:20px; width:100%;"></div>
+                </div>
+            `;
+
+            const grid = container.querySelector('.fusion-grid');
+
+            Object.entries(SUPPORT_RUNES).forEach(([id, rune]) => {
+                if (!rune.fusion) return;
+
+                const card = document.createElement('div');
+                card.style.cssText = 'background:#1a1510; border:1px solid #bf642f; padding:15px; border-radius:4px; display:flex; flex-direction:column; gap:10px;';
+                
+                const hasIngredients = rune.fusion.every(ingId => 
+                    player.inventory.some(item => item && item.type === 'support_rune' && item.baseId === ingId)
+                );
+
+                card.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <img src="assets/${rune.icon}.png" style="width:32px; height:32px; image-rendering:pixelated;" onerror="this.src='assets/item_rune_el.png'">
+                        <div style="color:var(--gold); font-weight:bold;">${rune.name}</div>
+                    </div>
+                    <div style="font-size:11px; color:#ccc;">${JSON.stringify(rune.mod)}</div>
+                    <div style="font-size:10px; color:#888; margin-top:5px;">Required Runes:</div>
+                    <div style="display:flex; gap:5px;">
+                        ${rune.fusion.map(ingId => {
+                            const ing = SUPPORT_RUNES[ingId];
+                            const playerHas = player.inventory.some(item => item && item.type === 'support_rune' && item.baseId === ingId);
+                            return `<div title="${ing.name}" style="width:24px; height:24px; background:rgba(0,0,0,0.5); border:1px solid ${playerHas ? '#4caf50' : '#ff4444'}; display:flex; align-items:center; justify-content:center;"><i class="ra ${ing.icon}" style="font-size:14px; color:${playerHas ? '#fff' : '#666'}"></i></div>`;
+                        }).join('')}
+                    </div>
+                    <button class="btn-fusion" style="margin-top:10px; padding:8px; background:${hasIngredients ? '#bf642f' : '#333'}; border:none; color:#fff; cursor:${hasIngredients ? 'pointer' : 'not-allowed'}; font-family:inherit;" ${hasIngredients ? '' : 'disabled'}>
+                        FUSE RUNE
+                    </button>
+                `;
+
+                card.querySelector('.btn-fusion').onclick = () => {
+                    if (hasIngredients) {
+                        // Consume ingredients
+                        rune.fusion.forEach(ingId => {
+                            const idx = player.inventory.findIndex(item => item && item.type === 'support_rune' && item.baseId === ingId);
+                            if (idx !== -1) player.inventory[idx] = null;
+                        });
+                        // Add fused rune
+                        player.addToInventory({
+                            id: `rune_${Date.now()}`,
+                            baseId: id,
+                            name: rune.name,
+                            type: 'support_rune',
+                            icon: rune.icon,
+                            mod: rune.mod,
+                            rarity: 'unique'
+                        });
+                        bus.emit('combat:log', { text: `Forged Legendary Rune: ${rune.name}!`, cls: 'log-info' });
+                        this.renderFusion(container);
+                    }
+                };
+
+                grid.appendChild(card);
+            });
+        });
     },
 
     renderMutations(container) {
@@ -166,14 +239,19 @@ export const AstralUI = {
 
             const nodesContainer = card.querySelector('.mutation-nodes');
 
-            tree.forEach(node => {
+            tree.forEach((node, idx) => {
                 const spent = (player.mutationTrees[skillId]?.pointsSpent || {})[node.id] || 0;
                 const nodeEl = document.createElement('div');
                 nodeEl.className = 'mutation-node';
                 if (spent > 0) nodeEl.classList.add(spent >= node.max ? 'maxed' : 'unlocked');
 
-                let locked = false;
-                if (node.req) {
+                // Symbiosis: Check Talent Tree base level
+                const baseLvl = player.talents.baseLevel(skillId);
+                const reqBaseLvl = node.reqBaseLevel || (idx === 0 ? 1 : 5); // Default: 1st node req lv1, others lv5
+                const talentMet = baseLvl >= reqBaseLvl;
+
+                let locked = !talentMet;
+                if (!locked && node.req) {
                     const [reqId, reqLvl] = node.req.split(':');
                     const reqSpent = (player.mutationTrees[skillId]?.pointsSpent || {})[reqId] || 0;
                     if (reqSpent < parseInt(reqLvl)) locked = true;
@@ -186,11 +264,16 @@ export const AstralUI = {
                         <span style="color:var(--gold); font-size:10px;">${spent}/${node.max}</span>
                     </div>
                     <div style="font-size:10px; color:#ccc;">${node.desc}</div>
+                    ${!talentMet ? `<div style="color:#ff4444; font-size:9px; margin-top:4px;">Requires Base Skill Lv ${reqBaseLvl}</div>` : ''}
                     ${node.masteryPerk ? `<div class="perk-box"><strong>MASTERY PERK:</strong> ${node.masteryPerk}</div>` : ''}
                 `;
 
                 nodeEl.onclick = () => {
-                    if (locked) return;
+                    if (locked) {
+                        const msg = !talentMet ? `Requires Base Skill Lv ${reqBaseLvl}` : `Pre-requisite mutation not met`;
+                        bus.emit('combat:log', { text: msg, cls: 'log-dmg' });
+                        return;
+                    }
                     if (mastery.points > 0 && spent < node.max) {
                         mastery.points--;
                         if (!player.mutationTrees[skillId]) player.mutationTrees[skillId] = { pointsSpent: {} };

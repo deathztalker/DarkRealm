@@ -863,8 +863,13 @@ export class Player {
     effectiveSkillLevel(skillId) {
         const base = this.talents.baseLevel(skillId) || 0;
         const bonus = this.getSkillBonus(skillId);
+        
+        // Skill Mastery Symbiosis: +1 effective level per 5 mastery levels
+        const mastery = this.skillMastery[skillId] || { lvl: 1 };
+        const masteryBonus = Math.floor((mastery.lvl - 1) / 5);
+
         if (base <= 0 && !this.hasSpecificSkillBonus(skillId)) return 0;
-        return base + bonus;
+        return base + bonus + masteryBonus;
     }
 
     _onClick(data) {
