@@ -11,6 +11,8 @@ import { RARITY, SLOT } from '../data/items.js';
 import { Projectile, AoEZone } from './projectile.js';
 import { fx } from '../engine/ParticleSystem.js';
 import { SkillLogic } from '../systems/skillLogic.js';
+import { getMutationMods } from '../data/mutationTrees.js';
+import { getAstralStats, getAstralProcs } from '../data/astralConstellation.js';
 
 const XP_TABLE = Array.from({ length: 100 }, (_, i) => Math.round(80 * Math.pow(1.18, i)));
 const MOVE_SPEED_BASE = 100; // px/s in world space
@@ -96,6 +98,14 @@ export class Player {
 
         this.skillMap = getSkillMap(classId);
 
+        // --- NEW: Astral Rune Core Systems ---
+        this.skillMastery = {}; // skillId -> { xp: 0, lvl: 0, points: 0 }
+        this.mutationTrees = {}; // skillId -> { pointsSpent: { nodeIdx: points } }
+        this.runeSlots = {}; // skillId -> [runeObj, runeObj, ...]
+        this.astralPoints = 0;
+        this.astralTree = {}; // nodeIdx -> points
+        this.astralProcCooldowns = {}; // procId -> timestamp
+
         bus.on('input:click', d => this._onClick(d));
         bus.on('player:applyAuraSlow', d => {
             if (this.hp <= 0) return;
@@ -119,6 +129,17 @@ export class Player {
         return new Set((this._statuses || []).map(s => s.type));
     }
 
+    effectiveSkillLevel(skillId) {
+        let level = this.talents.baseLevel(skillId);
+        if (level === 0) return 0; // Skill not learned
+        return level + (this.allSkillBonus || 0); // Add item bonuses etc
+    }
+
+    invalidateStats() {
+        this._statsDirty = true;
+        this._recalcStats();
+    }
+
     _recalcStats() {
         if (!this._statsDirty) return;
         this._statsDirty = false;
@@ -126,6 +147,9 @@ export class Player {
         const s = this._gearStats();
         const ts = this._talentStats();
         for (const k in ts) s[k] = (s[k] || 0) + ts[k];
+
+        const as = getAstralStats(this);
+        for (const k in as) s[k] = (s[k] || 0) + as[k];
 
         // Ensure pctDmg is initialized
         this.pctDmg = s.pctDmg || 0;
@@ -1051,6 +1075,10 @@ export class Player {
         const baseDmg = this.wepMin + Math.random() * (this.wepMax - this.wepMin);
         applyDamage(this, target, calcDamage(this, baseDmg, DMG_TYPE.PHYSICAL, target), 'autoAttack');
         
+        // --- Astral Procs ---
+        this.checkAstralProcs('onHit', target.x, target.y, target);
+        this.checkAstralProcs('onAttack', target.x, target.y, target);
+
         // --- Imbuement / On-Hit Effects ---
         if (this.poisonDmgPerSec > 0) applyDot(target, this.poisonDmgPerSec, 'poison', 3, 'player_imbuement_poison');
         if (this.holyDmgOnHit > 0) applyDamage(this, target, { dealt: this.holyDmgOnHit, isCrit: false, type: 'holy' }, 'player_imbuement_holy');
@@ -1145,6 +1173,9 @@ export class Player {
         const isAura = skill.group === 'aura';
         const isTeleport = skill.group === 'teleport';
 
+        const m = getMutationMods(this, skillId);
+        const rm = this.getSupportRuneMods(skillId);
+
         if (isAura) {
             if (this.activeAura === skillId) {
                 this.activeAura = null;
@@ -1158,158 +1189,181 @@ export class Player {
             this._statsDirty = true;
             this._recalcStats();
             this._setAnimState('cast'); this.attackCd = 0.3; bus.emit('skill:used', { skillId, slotIdx }); return;
-        } else if (skillId === 'holy_shock') {
-            const hRange = 250;
-            const dist = Math.hypot(targetX - this.x, targetY - this.y);
-            if (dist < hRange) {
-                if (target) {
-                    applyDamage(this, target, calcDamage(this, totalBase, type, target), skillId);
-                    if (fx) fx.emitHolyBurst(target.x, target.y);
-                } else {
-                    this.hp = Math.min(this.maxHp, this.hp + 60 + slvl * 30);
-                    if (fx) fx.emitHeal(this.x, this.y);
-                }
-            }
-            this._setAnimState('cast'); this.attackCd = 0.4; bus.emit('skill:used', { skillId, slotIdx }); return;
-        } else if (isTeleport) {
-            const dist = Math.hypot(targetX - this.x, targetY - this.y), maxD = 200 + slvl * 10;
-            if (dist > maxD) { const r = maxD / dist; targetX = this.x + (targetX - this.x) * r; targetY = this.y + (targetY - this.y) * r; }
-            if (fx) fx.emitBurst(this.x, this.y, '#8080ff', 12, 2);
-            this.x = targetX; this.y = targetY; this.path = [];
-            if (fx) fx.emitBurst(this.x, this.y, '#b0b0ff', 12, 2);
-            this._setAnimState('cast'); this.attackCd = 0.3; bus.emit('skill:used', { skillId, slotIdx }); return;
-        } else if (isBuff) {
-            // --- NEW: Toggle Logic ---
-            if (skill.type === 'toggle') {
-                const existingIdx = this._buffs.findIndex(b => b.id === skillId);
-                if (existingIdx !== -1) {
-                    this._buffs.splice(existingIdx, 1);
-                    bus.emit('combat:log', { text: `${skill.name} Deactivated`, cls: 'log-info' });
-                } else {
-                    this._buffs.push({ id: skillId, duration: 999999, base: totalBase }); // Indefinite
-                    bus.emit('combat:log', { text: `${skill.name} Activated`, cls: 'log-info' });
-                }
-            } else {
-                this._buffs.push({ id: skillId, duration: 15 + slvl, base: totalBase });
-            }
-            
-            this._recalcStats();
-            if (fx) {
-                if (skillId.includes('holy') || skillId.includes('divine')) fx.emitHolyBurst(this.x, this.y);
-                else if (['bone', 'frozen', 'energy', 'cyclone'].some(k => skillId.includes(k))) fx.emitBurst(this.x, this.y, '#80d0ff', 12, 2);
-                else if (['berserk', 'enchant', 'fire', 'wrath', 'blood_rage'].some(k => skillId.includes(k))) fx.emitBurst(this.x, this.y, '#ff6000', 15, 2);
-                else if (['bear', 'wolf', 'primal', 'jungle'].some(k => skillId.includes(k))) { fx.emitBurst(this.x, this.y, '#40c040', 12, 2); fx.emitShockwave(this.x, this.y, 30, '#408040'); }
-                else if (['vanish', 'shadow', 'dark'].some(k => skillId.includes(k))) fx.emitShadow(this.x, this.y);
-                else if (['poison', 'venom', 'virulence'].some(k => skillId.includes(k))) fx.emitPoisonCloud(this.x, this.y, 20);
-                else fx.emitBurst(this.x, this.y, '#ffe880', 10, 1.5);
-            }
-            if (skillId === 'blood_rage') {
-                this.hp = Math.max(1, this.hp - (this.maxHp * 0.2)); 
-            }
-            this._setAnimState('cast'); this.attackCd = 0.5; bus.emit('skill:used', { skillId, slotIdx }); return;
-        } else if (isMelee) {
-            const mRange = (['whirlwind', 'cleave', 'slam', 'storm', 'dance', 'zeal'].some(k => skillId.includes(k))) ? 60 : 50;
-            if (['whirlwind', 'cleave', 'blade_dance', 'divine_storm'].some(k => skillId === k)) {
-                bus.emit('combat:spawnAoE', { aoe: new AoEZone(this.x, this.y, 50, 0.3, totalBase, type, this, 0.8, skillId) });
-                if (fx) { for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) fx.emitSlash(this.x, this.y, a, (type === 'holy' ? '#ffd040' : '#cccccc'), 30); fx.emitShockwave(this.x, this.y, 40, '#aaa'); }
-            } else if (['slam', 'leap_attack', 'bear_slam', 'shockwave', 'heroic_leap'].some(k => skillId === k)) {
-                const sX = target ? target.x : this.x, sY = target ? target.y : this.y;
-                bus.emit('combat:spawnAoE', { aoe: new AoEZone(sX, sY, 60, 0.4, totalBase, type, this, 0.5, skillId) });
-                if (fx) { fx.emitShockwave(sX, sY, 60, '#b0a080'); fx.shake(300, 5); }
-            } else if (target && Math.hypot(target.x - this.x, target.y - this.y) < mRange) {
-                let finalDmg = totalBase;
-                if (skillId === 'shattering_throw' && (target.boneArmor > 0 || target.energyShield > 0)) {
-                    finalDmg *= 2;
-                    target.boneArmor = 0;
-                    bus.emit('combat:log', { text: "SHIELD SHATTERED!", cls: 'log-dmg' });
-                }
-                
-                const multiHits = { 'zeal': Math.floor(3 + 0.2 * slvl), 'double_swing': 2, 'strafe': 5, 'multi_shot': 3 };
-                const hitCount = multiHits[skillId] || 1;
-
-                for (let i = 0; i < hitCount; i++) {
-                    setTimeout(() => {
-                        if (target && target.hp > 0) {
-                            applyDamage(this, target, calcDamage(this, finalDmg, type, target), skillId);
-                            if (this.poisonDmgPerSec > 0) applyDot(target, this.poisonDmgPerSec, 'poison', 3, 'player_imbuement_poison');
-                            if (this.holyDmgOnHit > 0) applyDamage(this, target, { dealt: this.holyDmgOnHit, isCrit: false, type: 'holy' }, 'player_imbuement_holy');
-                            if (this.fireDmgOnHit > 0) applyDamage(this, target, { dealt: this.fireDmgOnHit, isCrit: false, type: 'fire' }, 'player_imbuement_fire');
-                            if (fx) fx.emitSlash(target.x, target.y, Math.random() * Math.PI * 2, '#fff', 15);
-                        }
-                    }, i * 150);
-                }
-
-                SkillLogic.onHit(this, target, skillId, slvl, totalBase);
-                if (fx && skillId !== 'zeal') {
-                    const ang = Math.atan2(target.y - this.y, target.x - this.x);
-                    if (['rend', 'eviscerate', 'backstab', 'lacerate', 'shred'].some(k => skillId.includes(k))) { fx.emitSlash(target.x, target.y, ang, '#cc2020', 18); fx.emitBlood(target.x, target.y, ang); }
-                    else if (skillId === 'execute' || skillId === 'bloodthirst') { fx.emitSlash(target.x, target.y, ang, '#ff0000', 25); fx.emitBlood(target.x, target.y, ang); fx.shake(200, 4); }
-                    else if (['bash', 'smite', 'shiv'].some(k => skillId.includes(k))) { fx.emitHitImpact(target.x, target.y, 'physical'); fx.shake(120, 2); }
-                    else if (['holy', 'crusader', 'righteous'].some(k => skillId.includes(k))) { fx.emitSlash(target.x, target.y, ang, '#ffd040', 20); fx.emitHolyBurst(target.x, target.y); }
-                    else { fx.emitSlash(target.x, target.y, ang, '#cccccc', 20); fx.emitBlood(target.x, target.y, ang); }
-                }
-            }
-        } else if (isAoE) {
-            const rad = isNova ? 100 : 70, aX = isNova ? this.x : targetX, aY = isNova ? this.y : targetY;
-            const dur = ['blizzard', 'fire_wall', 'consecration', 'earthquake'].some(k => skillId.includes(k)) ? 6 : 0.6;
-            if (['meteor', 'volcano', 'fissure'].some(k => skillId === k)) {
-                setTimeout(() => { bus.emit('combat:spawnAoE', { aoe: new AoEZone(targetX, targetY, 60, 0.5, totalBase, type, this, 0.5, skillId) }); if (fx) { fx.emitShockwave(targetX, targetY, 60, '#ff6000'); fx.shake(400, 6); } }, 1500);
-                if (fx) for (let i = 0; i < 15; i++) setTimeout(() => fx.emitFireTrail(targetX + (Math.random()-0.5)*20, targetY - 30 + i * 3), i * 100);
-            } else {
-                bus.emit('combat:spawnAoE', { aoe: new AoEZone(aX, aY, rad, dur, totalBase * (dur > 1 ? 0.3 : 0.8), type, this, 0.5, skillId) });
-                if (fx && isNova) fx.emitBurst(this.x, this.y, type === 'cold' ? '#80d0ff' : type === 'fire' ? '#ff6000' : '#ffff00', 20, 3);
-            }
-        } else {
-            const speeds = { fire: 200, cold: 160, lightning: 280, poison: 140, shadow: 180, holy: 200, earth: 150, physical: 220, magic: 190 };
-            const colors = { fire: '#ff4000', cold: '#4080ff', poison: '#00ff00', lightning: '#ffff00' };
-            const piercing = ['bone_spear', 'lightning', 'frozen_orb'].includes(skillId);
-            const aoeR = (skillId === 'fireball' || skillId === 'chaos_bolt') ? 40 : 0;
-            const bnc = skillId === 'chain_lightning' ? 3 + Math.floor(slvl/4) : 0;
-            const pR = (['fireball', 'frozen_orb', 'chaos_bolt'].includes(skillId)) ? 10 : (skillId === 'bone_spear' ? 6 : 8);
-            bus.emit('combat:spawnProjectile', { proj: Projectile.create(this.x, this.y, targetX, targetY, speeds[type]||180, colors[type]||'#cccccc', totalBase, type, this, piercing, pR, aoeR, bnc, skillId) });
         }
+
+        // --- Multipliers from Runes ---
+        let totalBase = baseDmg * (1 + synBonus) * statMult;
+        totalBase *= (1 + rm.pctDmg / 100);
+        if (rm.pctPhysDmg && type === DMG_TYPE.PHYSICAL) totalBase *= (1 + rm.pctPhysDmg / 100);
+        if (rm.cannotDealNonPhys && type !== DMG_TYPE.PHYSICAL) totalBase = 0;
+
+        const executeSkill = () => {
+            if (skillId === 'holy_shock') {
+                const hRange = 250;
+                const dist = Math.hypot(targetX - this.x, targetY - this.y);
+                if (dist < hRange) {
+                    if (target) {
+                        applyDamage(this, target, calcDamage(this, totalBase, type, target), skillId);
+                        if (fx) fx.emitHolyBurst(target.x, target.y);
+                    } else {
+                        this.hp = Math.min(this.maxHp, this.hp + 60 + slvl * 30);
+                        if (fx) fx.emitHeal(this.x, this.y);
+                    }
+                }
+            } else if (isTeleport) {
+                const dist = Math.hypot(targetX - this.x, targetY - this.y), maxD = 200 + slvl * 10;
+                if (dist > maxD) { const r = maxD / dist; targetX = this.x + (targetX - this.x) * r; targetY = this.y + (targetY - this.y) * r; }
+                if (fx) fx.emitBurst(this.x, this.y, '#8080ff', 12, 2);
+                this.x = targetX; this.y = targetY; this.path = [];
+                if (fx) fx.emitBurst(this.x, this.y, '#b0b0ff', 12, 2);
+            } else if (isBuff) {
+                if (skill.type === 'toggle') {
+                    const existingIdx = this._buffs.findIndex(b => b.id === skillId);
+                    if (existingIdx !== -1) {
+                        this._buffs.splice(existingIdx, 1);
+                        bus.emit('combat:log', { text: `${skill.name} Deactivated`, cls: 'log-info' });
+                    } else {
+                        this._buffs.push({ id: skillId, duration: 999999, base: totalBase }); 
+                        bus.emit('combat:log', { text: `${skill.name} Activated`, cls: 'log-info' });
+                    }
+                } else {
+                    this._buffs.push({ id: skillId, duration: 15 + slvl, base: totalBase });
+                }
+                this._recalcStats();
+                if (fx) {
+                    if (skillId.includes('holy') || skillId.includes('divine')) fx.emitHolyBurst(this.x, this.y);
+                    else if (['bone', 'frozen', 'energy', 'cyclone'].some(k => skillId.includes(k))) fx.emitBurst(this.x, this.y, '#80d0ff', 12, 2);
+                    else if (['berserk', 'enchant', 'fire', 'wrath', 'blood_rage'].some(k => skillId.includes(k))) fx.emitBurst(this.x, this.y, '#ff6000', 15, 2);
+                    else if (['bear', 'wolf', 'primal', 'jungle'].some(k => skillId.includes(k))) { fx.emitBurst(this.x, this.y, '#40c040', 12, 2); fx.emitShockwave(this.x, this.y, 30, '#408040'); }
+                    else if (['vanish', 'shadow', 'dark'].some(k => skillId.includes(k))) fx.emitShadow(this.x, this.y);
+                    else if (['poison', 'venom', 'virulence'].some(k => skillId.includes(k))) fx.emitPoisonCloud(this.x, this.y, 20);
+                    else fx.emitBurst(this.x, this.y, '#ffe880', 10, 1.5);
+                }
+                if (skillId === 'blood_rage') this.hp = Math.max(1, this.hp - (this.maxHp * 0.2)); 
+            } else if (isMelee) {
+                const mRange = (['whirlwind', 'cleave', 'slam', 'storm', 'dance', 'zeal'].some(k => skillId.includes(k))) ? 60 : 50;
+                if (['whirlwind', 'cleave', 'blade_dance', 'divine_storm'].some(k => skillId === k)) {
+                    bus.emit('combat:spawnAoE', { aoe: new AoEZone(this.x, this.y, 50, 0.3, totalBase, type, this, 0.8, skillId) });
+                    if (fx) { for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) fx.emitSlash(this.x, this.y, a, (type === 'holy' ? '#ffd040' : '#cccccc'), 30); fx.emitShockwave(this.x, this.y, 40, '#aaa'); }
+                } else if (['slam', 'leap_attack', 'bear_slam', 'shockwave', 'heroic_leap'].some(k => skillId === k)) {
+                    const sX = target ? target.x : this.x, sY = target ? target.y : this.y;
+                    bus.emit('combat:spawnAoE', { aoe: new AoEZone(sX, sY, 60, 0.4, totalBase, type, this, 0.5, skillId) });
+                    if (fx) { fx.emitShockwave(sX, sY, 60, '#b0a080'); fx.shake(300, 5); }
+                } else if (target && Math.hypot(target.x - this.x, target.y - this.y) < mRange) {
+                    let finalDmg = totalBase;
+                    if (skillId === 'shattering_throw' && (target.boneArmor > 0 || target.energyShield > 0)) { finalDmg *= 2; target.boneArmor = 0; bus.emit('combat:log', { text: "SHIELD SHATTERED!", cls: 'log-info' }); }
+                    const multiHits = { 'zeal': Math.floor(3 + 0.2 * slvl), 'double_swing': 2, 'strafe': 5, 'multi_shot': 3 };
+                    const hitCount = multiHits[skillId] || 1;
+                    for (let i = 0; i < hitCount; i++) {
+                        setTimeout(() => {
+                            if (target && target.hp > 0) {
+                                applyDamage(this, target, calcDamage(this, finalDmg, type, target), skillId);
+                                if (fx) fx.emitSlash(target.x, target.y, Math.random() * Math.PI * 2, '#fff', 15);
+                            }
+                        }, i * 150);
+                    }
+                    SkillLogic.onHit(this, target, skillId, slvl, totalBase);
+                }
+            } else if (isAoE) {
+                const rad = isNova ? 100 : 70, aX = isNova ? this.x : targetX, aY = isNova ? this.y : targetY;
+                const dur = ['blizzard', 'fire_wall', 'consecration', 'earthquake'].some(k => skillId.includes(k)) ? 6 : 0.6;
+                if (['meteor', 'volcano', 'fissure'].some(k => skillId === k)) {
+                    setTimeout(() => { bus.emit('combat:spawnAoE', { aoe: new AoEZone(targetX, targetY, 60, 0.5, totalBase, type, this, 0.5, skillId) }); if (fx) { fx.emitShockwave(targetX, targetY, 60, '#ff6000'); fx.shake(400, 6); } }, 1500);
+                    if (fx) for (let i = 0; i < 15; i++) setTimeout(() => fx.emitFireTrail(targetX + (Math.random()-0.5)*20, targetY - 30 + i * 3), i * 100);
+                } else {
+                    bus.emit('combat:spawnAoE', { aoe: new AoEZone(aX, aY, rad, dur, totalBase * (dur > 1 ? 0.3 : 0.8), type, this, 0.5, skillId) });
+                    if (fx && isNova) fx.emitBurst(this.x, this.y, type === 'cold' ? '#80d0ff' : type === 'fire' ? '#ff6000' : '#ffff00', 20, 3);
+                }
+            } else {
+                const speeds = { fire: 200, cold: 160, lightning: 280, poison: 140, shadow: 180, holy: 200, earth: 150, physical: 220, magic: 190 };
+                const colors = { fire: '#ff4000', cold: '#4080ff', poison: '#00ff00', lightning: '#ffff00' };
+                const piercings = { 'bone_spear': true, 'lightning': true, 'frozen_orb': true };
+                const piercing = piercings[skillId] || false;
+                
+                let aoeR = (skillId === 'fireball' || skillId === 'chaos_bolt') ? 40 : 0;
+                if (m.aoeRadiusPct) aoeR *= (1 + m.aoeRadiusPct / 100);
+
+                const bnc = skillId === 'chain_lightning' ? 3 + Math.floor(slvl/4) : 0;
+                const pR = (['fireball', 'frozen_orb', 'chaos_bolt'].includes(skillId)) ? 10 : (skillId === 'bone_spear' ? 6 : 8);
+                
+                const projCount = 1 + (rm.extraProjectiles || 0);
+                const spread = rm.parallel ? 0 : Math.PI / 6;
+
+                for (let i = 0; i < projCount; i++) {
+                    let finalTx = targetX, finalTy = targetY;
+                    if (projCount > 1) {
+                        const angle = Math.atan2(targetY - this.y, targetX - this.x) + (i - (projCount - 1) / 2) * spread;
+                        finalTx = this.x + Math.cos(angle) * 200;
+                        finalTy = this.y + Math.sin(angle) * 200;
+                    }
+                    bus.emit('combat:spawnProjectile', { proj: Projectile.create(this.x, this.y, finalTx, finalTy, speeds[type]||180, colors[type]||'#cccccc', totalBase, type, this, piercing, pR, aoeR, bnc, skillId) });
+                }
+            }
+        };
+
+        // --- Astral Procs ---
+        this.checkAstralProcs('onAttack', targetX, targetY, target);
+
+        executeSkill();
+        if (rm.echoCount) {
+            for (let i = 1; i <= rm.echoCount; i++) setTimeout(() => executeSkill(), i * 300);
+        }
+
         this._setAnimState('cast');
-        this.attackCd = 0.5 * (1 - Math.min(0.75, (this.pctFCR || 0) / 100));
+        this.attackCd = 0.5 * (1 - Math.min(0.75, ((this.pctFCR || 0) + rm.pctFCR) / 100));
         const dx = targetX - this.x, dy = targetY - this.y;
         if (Math.abs(dx) > Math.abs(dy)) this.facingDir = dx > 0 ? 'right' : 'left'; else this.facingDir = dy > 0 ? 'down' : 'up';
         bus.emit('skill:used', { skillId, slotIdx, target, type });
         SkillLogic.onCast(this, skillId, slvl, targetX, targetY, this._enemies);
+
+        // --- NEW: Gain Skill XP ---
+        this.gainSkillXp(skillId, 10); 
     }
 
-    _spawnMinion(skillId, slvl, skill) {
-        if (this.minions.length >= this.maxMinions) this.minions.shift();
-        const synBonus = this.talents.synergyBonus(skillId);
-        const statScaling = 1 + (this.int / 100); 
-        const hp = Math.round((30 + slvl * 15) * (1 + (this.minionHpPct || 0) / 100) * (1 + synBonus));
-        const dmg = Math.round(((skill.dmgBase || 8) + (skill.dmgPerLvl || 4) * slvl) * (1 + (this.minionDmgPct || 0) / 100) * (1 + synBonus) * statScaling);
+_spawnMinion(skillId, slvl, skill) {
+    if (this.minions.length >= this.maxMinions) this.minions.shift();
+    const synBonus = this.talents.synergyBonus(skillId);
+    const statScaling = 1 + (this.int / 100); 
 
-        let sprite = 'summon_skeleton'; // fallback
-        if (skillId.includes('golem')) sprite = (skillId === 'fire_golem') ? 'enemy_energy_elemental' : (skillId === 'iron_golem' ? 'summon_iron_golem' : 'summon_clay_golem');
-        if (skillId === 'blood_golem') sprite = 'summon_blood_golem';
-        if (skillId === 'skeleton_mage') sprite = 'summon_skeleton_mage';
-        if (skillId === 'raise_skeleton') sprite = 'summon_skeleton';
-        if (skillId.includes('wolf')) sprite = 'summon_dire_wolf';
-        if (skillId.includes('grizzly') || skillId.includes('bear')) sprite = 'summon_grizzly';
-        if (skillId.includes('valkyrie')) sprite = 'summon_valkyrie';
-        if (skillId.includes('voidwalker') || skillId.includes('succubus') || skillId.includes('imp') || skillId === 'summon_felguard') {
-            sprite = (skillId === 'summon_felguard') ? 'enemy_demon' : 'summon_voidwalker';
-        }
-        if (skillId === 'oak_sage') sprite = 'env_tree';
-        if (skillId === 'heart_of_wolverine') sprite = 'enemy_ghost';
+    const m = getMutationMods(this, skillId);
 
-        const minion = {
-            id: `minion_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-            name: skill.name || skillId.replace(/_/g, ' '), skillId,
-            x: this.x + (Math.random()-0.5)*30, y: this.y + (Math.random()-0.5)*30,
-            hp, maxHp: hp, damage: dmg,
-            moveSpeed: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k))) ? 0 : 80,
-            isStationary: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k)) || skillId === 'oak_sage' || skillId === 'heart_of_wolverine'),
-            attackRange: (skill.group === 'totem' || skillId.includes('mage') || skillId.includes('imp')) ? 200 : 25,
-            attackCd: 0, attackSpeed: 1.2, age: 0, duration: 20 + slvl * 2, icon: `skill_${skillId}`, sprite,
-            animState: 'idle', facingDir: 'south',
-            size: (skillId.includes('golem') || skillId.includes('grizzly') || skillId.includes('valkyrie')) ? 24 : 16,
-            formationOffset: { x: (Math.random()-0.5)*80, y: (Math.random()-0.5)*80 }
-        };
+    let hp = Math.round((30 + slvl * 15) * (1 + (this.minionHpPct || 0) / 100) * (1 + synBonus));
+    if (m.minionHp) hp *= (1 + m.minionHp / 100);
+
+    const dmg = Math.round(((skill.dmgBase || 8) + (skill.dmgPerLvl || 4) * slvl) * (1 + (this.minionDmgPct || 0) / 100) * (1 + synBonus) * statScaling);
+
+    let sprite = 'summon_skeleton'; // fallback
+    if (skillId.includes('golem')) sprite = (skillId === 'fire_golem') ? 'enemy_energy_elemental' : (skillId === 'iron_golem' ? 'summon_iron_golem' : 'summon_clay_golem');
+    if (skillId === 'blood_golem') sprite = 'summon_blood_golem';
+    if (skillId === 'skeleton_mage') sprite = 'summon_skeleton_mage';
+    if (skillId === 'raise_skeleton') {
+        sprite = 'summon_skeleton';
+        if (m.archerConversion && Math.random() < m.archerConversion) sprite = 'summon_skeleton_mage'; // Use mage as archer for now
+    }
+    if (skillId.includes('wolf')) sprite = 'summon_dire_wolf';
+    if (skillId.includes('grizzly') || skillId.includes('bear')) sprite = 'summon_grizzly';
+    if (skillId.includes('valkyrie')) sprite = 'summon_valkyrie';
+    if (skillId.includes('voidwalker') || skillId.includes('succubus') || skillId.includes('imp') || skillId === 'summon_felguard') {
+        sprite = (skillId === 'summon_felguard') ? 'enemy_demon' : 'summon_voidwalker';
+    }
+    if (skillId === 'oak_sage') sprite = 'env_tree';
+    if (skillId === 'heart_of_wolverine') sprite = 'enemy_ghost';
+
+    const minion = {
+        id: `minion_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        name: skill.name || skillId.replace(/_/g, ' '), skillId,
+        x: this.x + (Math.random()-0.5)*30, y: this.y + (Math.random()-0.5)*30,
+        hp, maxHp: hp, damage: dmg,
+        armor: (m.minionArmor || 0),
+        explodeDmg: m.explodeDmg || 0,
+        moveSpeed: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k))) ? 0 : 80,
+        isStationary: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k)) || skillId === 'oak_sage' || skillId === 'heart_of_wolverine'),
+        attackRange: (skill.group === 'totem' || skillId.includes('mage') || skillId.includes('imp') || sprite === 'summon_skeleton_mage') ? 200 : 25,
+        attackCd: 0, attackSpeed: 1.2, age: 0, duration: 20 + slvl * 2, icon: `skill_${skillId}`, sprite,
+        animState: 'idle', facingDir: 'south',
+        size: (skillId.includes('golem') || skillId.includes('grizzly') || skillId.includes('valkyrie')) ? 24 : 16,
+        formationOffset: { x: (Math.random()-0.5)*80, y: (Math.random()-0.5)*80 }
+    };
         this.minions.push(minion); bus.emit('minion:spawned', { minion });
         this._statsDirty = true; this._recalcStats(); // Recalc for sage buffs
     }
@@ -1646,6 +1700,87 @@ export class Player {
         ctx.fillStyle = '#e03030'; ctx.fillRect(this.x - w / 2, this.y - 12, w * (this.hp / this.maxHp), h);
     }
 
+    gainSkillXp(skillId, amount) {
+        if (!this.skillMastery[skillId]) {
+            this.skillMastery[skillId] = { xp: 0, lvl: 1, points: 0 };
+        }
+        
+        const m = this.skillMastery[skillId];
+        if (m.lvl >= 20) return; // Cap for now
+
+        m.xp += amount;
+        const nextXp = 100 * Math.pow(1.5, m.lvl - 1);
+        
+        if (m.xp >= nextXp) {
+            m.xp -= nextXp;
+            m.lvl++;
+            m.points++;
+            bus.emit('combat:log', { text: `Mastery Up: ${skillId.replace(/_/g, ' ')} is now Lv ${m.lvl}!`, cls: 'log-info' });
+            if (fx) fx.emitText(this.x, this.y - 30, "SKILL LEVEL UP!", '#ffd700');
+        }
+    }
+
+    getSupportRuneMods(skillId) {
+        const mods = {
+            extraProjectiles: 0,
+            pctDmg: 0,
+            pctFCR: 0,
+            pctPhysDmg: 0,
+            cannotDealNonPhys: false,
+            echoCount: 0,
+            parallel: false
+        };
+
+        const slots = this.runeSlots[skillId];
+        if (!slots || !Array.isArray(slots)) return mods;
+
+        slots.forEach(rune => {
+            if (!rune || !rune.mod) return;
+            for (const [stat, val] of Object.entries(rune.mod)) {
+                if (typeof val === 'boolean') mods[stat] = val;
+                else mods[stat] += val;
+            }
+        });
+
+        return mods;
+    }
+
+    checkAstralProcs(trigger, targetX, targetY, target) {
+        const procs = getAstralProcs(this);
+        if (procs.length === 0) return;
+
+        const now = Date.now();
+        procs.forEach(p => {
+            if (p.trigger !== trigger) return;
+            if (this.astralProcCooldowns[p.id] && now - this.astralProcCooldowns[p.id] < p.cd * 1000) return;
+            
+            if (Math.random() * 100 < p.chance) {
+                this.astralProcCooldowns[p.id] = now;
+                this._executeAstralProc(p, targetX, targetY, target);
+            }
+        });
+    }
+
+    _executeAstralProc(proc, tx, ty, target) {
+        bus.emit('combat:log', { text: `CELESTIAL PROC: ${proc.id.replace('proc_', '').toUpperCase()}!`, cls: 'log-info' });
+        
+        if (proc.effect === 'lightning_strike') {
+            if (fx) fx.emitBurst(tx, ty, '#ffff00', 20, 3);
+            const dmg = 50 + this.level * 10;
+            if (target) applyDamage(this, target, { dealt: dmg, isCrit: false, type: DMG_TYPE.LIGHTNING }, 'astral_proc');
+        } else if (proc.effect === 'aoe_physical_stun') {
+            const rad = 80;
+            bus.emit('combat:spawnAoE', { aoe: new AoEZone(this.x, this.y, rad, 0.4, 40 + this.level * 5, 'physical', this, 0.5, 'astral_trample') });
+            if (fx) fx.emitShockwave(this.x, this.y, rad, '#aaa');
+        } else if (proc.effect === 'poison_bolt') {
+            import('./projectile.js').then(({ Projectile }) => {
+                const ang = Math.random() * Math.PI * 2;
+                const ptx = this.x + Math.cos(ang) * 200, pty = this.y + Math.sin(ang) * 200;
+                bus.emit('combat:spawnProjectile', { proj: Projectile.create(this.x, this.y, ptx, pty, 160, '#00ff00', 30 + this.level * 5, 'poison', this, false, 8, 0, 0, 'astral_acid') });
+            });
+        }
+    }
+
     serialize() {
         return {
             classId: this.classId, level: this.level, xp: this.xp, charName: this.charName, isHardcore: this.isHardcore, 
@@ -1656,7 +1791,13 @@ export class Player {
             inventory: this.inventory, belt: this.belt, hotbar: this.hotbar, permanentResists: this.permanentResists, hasLarzukReward: this.hasLarzukReward,
             hasAnyaReward: this.hasAnyaReward, hasImbue: this.hasImbue, magicFind: this.magicFind || 0, goldFind: this.goldFind || 0,
             crushingBlow: this.crushingBlow || 0, allSkillBonus: this.allSkillBonus || 0, activeAura: this.activeAura, _auraSlvl: this._auraSlvl,
-            mercenary: window.mercenary ? window.mercenary.serialize() : null
+            mercenary: window.mercenary ? window.mercenary.serialize() : null,
+            // Mastery & Rune Core
+            skillMastery: this.skillMastery,
+            mutationTrees: this.mutationTrees,
+            runeSlots: this.runeSlots,
+            astralPoints: this.astralPoints,
+            astralTree: this.astralTree
         };
     }
 
@@ -1671,6 +1812,13 @@ export class Player {
         p.hasAnyaReward = !!data.hasAnyaReward; p.hasImbue = !!data.hasImbue; p.magicFind = data.magicFind || 0; p.goldFind = data.goldFind || 0;
         p.crushingBlow = data.crushingBlow || 0; p.allSkillBonus = data.allSkillBonus || 0; p.activeAura = data.activeAura || null; p._auraSlvl = data._auraSlvl || 0;
         
+        // Mastery & Rune Core
+        p.skillMastery = data.skillMastery || {};
+        p.mutationTrees = data.mutationTrees || {};
+        p.runeSlots = data.runeSlots || {};
+        p.astralPoints = data.astralPoints || 0;
+        p.astralTree = data.astralTree || {};
+
         if (data.mercenary) {
             import('./mercenary.js').then(({ Mercenary }) => {
                 window.mercenary = Mercenary.deserialize(data.mercenary);

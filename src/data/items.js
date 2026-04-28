@@ -135,6 +135,13 @@ export const ITEM_BASES = {
     hellforge_hammer: { name: "Hellforge Hammer", slot: SLOT.MAINHAND, type: 'mace', icon: 'item_war_hammer', minDmg: 8, maxDmg: 20, atkSpd: 0.8, req: { str: 20 }, size: [1, 3], flavor: '"Only this hammer can shatter a Prime Evil\'s soulstone."', identified: true },
     hellfire_torch: { name: "Hellfire Torch", slot: 'charm', type: 'charm', icon: 'item_charm_grand', size: [1, 3], rarity: 'unique', identified: true, flavor: '"The ultimate prize for those who conquered Hell\'s fury."' },
 
+    // === SUPPORT RUNES (Astral Rune Core) ===
+    rune_support_gmp: { name: 'Greater Multiple Projectiles Support', slot: 'none', type: 'support_rune', icon: 'item_rune_el', size: [1, 1], price: 500, mod: { extraProjectiles: 4, pctDmg: -25 } },
+    rune_support_faster_casting: { name: 'Faster Casting Support', slot: 'none', type: 'support_rune', icon: 'item_rune_tir', size: [1, 1], price: 300, mod: { pctFCR: 20 } },
+    rune_support_brutality: { name: 'Brutality Support', slot: 'none', type: 'support_rune', icon: 'item_rune_amn', size: [1, 1], price: 400, mod: { pctPhysDmg: 40, cannotDealNonPhys: 1 } },
+    rune_support_echo: { name: 'Echo Support', slot: 'none', type: 'support_rune', icon: 'item_rune_sol', size: [1, 1], price: 600, mod: { echoCount: 1, pctDmg: -10 } },
+    rune_support_volley: { name: 'Volley Support', slot: 'none', type: 'support_rune', icon: 'item_rune_shael', size: [1, 1], price: 350, mod: { extraProjectiles: 2, parallel: 1 } },
+
     // === CHARMS ===
     charm: { name: 'Charm', slot: 'none', type: 'charm', icon: 'item_charm_small', size: [1, 1], price: 50 },
     small_charm: { name: 'Small Charm', slot: 'none', type: 'charm', icon: 'item_charm_small', size: [1, 1], price: 100 },

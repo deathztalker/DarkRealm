@@ -19,6 +19,7 @@ import { NetworkManager } from './network/NetworkManager.js';
 import { NPC } from './entities/npc.js';
 import { Mercenary } from './entities/mercenary.js';
 import { HUDManager } from './ui/HUDManager.js';
+import { AstralUI } from './ui/AstralUI.js';
 import { SocialHUD } from './ui/SocialHUD.js';
 import { Pet } from './entities/pet.js';
 import { GameObject } from './entities/object.js';
@@ -7785,6 +7786,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // Phase 31: Init Supabase
     DB.init();
     VendorUI.init();
+    AstralUI.init();
 
     // Auth UI Listeners (Consolidated)
     if ($('btn-open-auth')) $('btn-open-auth').onclick = () => $('auth-modal').classList.remove('hidden');
@@ -8929,6 +8931,10 @@ window.addEventListener('DOMContentLoaded', () => {
                 
                 if (k === 'p') bus.emit('action:town_portal');
                 if (k === 'm') togglePanel('mercenary');
+                if (k === 'n') {
+                    if (window.isAstralOpen) AstralUI.hide();
+                    else AstralUI.show();
+                }
             }
         });
     }

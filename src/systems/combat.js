@@ -998,6 +998,18 @@ function _onKillLogic(killer, victim) {
     // Momentum (new): killing blow gives attacker +10 % dmg for 5 s
     if (killer.isPlayer) {
         applyStatus(killer, 'momentum', 5, 10, { name: 'Momentum', desc: '+10% damage after kill' });
+
+        // --- NEW: Astral Point Logic ---
+        let ap = 0;
+        if (victim.isBoss) ap = 5;
+        else if (victim.rarity === 'elite' || victim.rarity === 'unique') ap = 1;
+        else if (Math.random() < 0.005) ap = 1; // 0.5% chance from trash
+
+        if (ap > 0) {
+            killer.astralPoints += ap;
+            bus.emit('combat:log', { text: `Gained ${ap} Astral Point(s)!`, cls: 'log-info' });
+            if (fx) fx.emitText(killer.x, killer.y - 40, `+${ap} ASTRAL`, '#00ffff');
+        }
     }
 }
 

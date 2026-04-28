@@ -1,6 +1,8 @@
 import { bus } from '../engine/EventBus.js';
-import { applyStatus, applyDot, DMG_TYPE, applyDamage } from './combat.js';
+import { applyStatus, applyDot, DMG_TYPE, applyDamage, calcDamage } from './combat.js';
 import { fx } from '../engine/ParticleSystem.js';
+import { getMutationMods } from '../data/mutationTrees.js';
+import { AoEZone } from '../entities/projectile.js';
 
 /**
  * SkillLogic — Specialized logic for character skills.
@@ -13,9 +15,27 @@ export const SkillLogic = {
     onHit(attacker, target, skillId, slvl, baseDmg) {
         if (!target || target.hp <= 0) return;
 
+        const m = getMutationMods(attacker, skillId);
+
+        // --- Astral Procs ---
+        if (attacker.isPlayer) {
+            attacker.checkAstralProcs('onHit', target.x, target.y, target);
+        }
+
         // ══════════════ WARRIOR ══════════════
         if (skillId === 'bash') {
-            if (Math.random() < 0.2) applyStatus(target, 'stun', 0.8);
+            const stunDur = 0.8 + (m.stunDuration || 0);
+            if (Math.random() < 0.2) applyStatus(target, 'stun', stunDur);
+            
+            if (m.aoeRadius) {
+                const aoeDmg = baseDmg * (m.aoeDmgPct / 100);
+                bus.emit('combat:spawnAoE', { aoe: new AoEZone(target.x, target.y, m.aoeRadius, 0.2, aoeDmg, 'physical', attacker, 0.5, 'bash_shattering') });
+                if (fx) fx.emitShockwave(target.x, target.y, m.aoeRadius, '#aaa');
+            }
+
+            if (m.bleedDmg) {
+                applyDot(target, baseDmg * (m.bleedDmg / 100) / m.bleedDur, 'physical', m.bleedDur, 'warrior_bash_bleed');
+            }
         }
         if (skillId === 'shield_bash') {
             applyStatus(target, 'stun', 1.5 + slvl * 0.05);
@@ -59,7 +79,28 @@ export const SkillLogic = {
 
         // ══════════════ SORCERESS ══════════════
         if (['fire_bolt', 'fireball', 'meteor', 'immolate', 'fire_storm', 'immolate_warlock'].includes(skillId)) {
-            applyDot(target, baseDmg * 0.2, 'fire', 4, 'sorc_burn');
+            let burnDmgMult = 0.2;
+            let burnDur = 4;
+            
+            if (skillId === 'fireball' && m.burnDmg) {
+                burnDmgMult *= (1 + m.burnDmg / 100);
+                burnDur *= (1 + m.burnDur / 100);
+            }
+
+            applyDot(target, baseDmg * burnDmgMult, 'fire', burnDur, 'sorc_burn');
+            
+            if (skillId === 'fireball' && m.splitCount && !target._hasSplit) {
+                target._hasSplit = true; // prevent infinite loops
+                import('../entities/projectile.js').then(({ Projectile }) => {
+                    for (let i = 0; i < m.splitCount; i++) {
+                        const ang = (Math.PI * 2 / m.splitCount) * i;
+                        const tx = target.x + Math.cos(ang) * 100;
+                        const ty = target.y + Math.sin(ang) * 100;
+                        bus.emit('combat:spawnProjectile', { proj: Projectile.create(target.x, target.y, tx, ty, 150, '#ff4000', baseDmg * 0.4, 'fire', attacker, false, 6, 20, 0, 'fireball_split') });
+                    }
+                });
+            }
+
             if (['meteor', 'immolate'].includes(skillId)) {
                 fx.emitBurst(target.x, target.y, '#ff4000', 15, 3);
                 fx.shake(200, 4);
