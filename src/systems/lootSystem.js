@@ -36,22 +36,22 @@ export const SETS = {
 
 export const SET_ITEMS = [
     // Sigon's
-    { id: 'sigon_visor', name: "Sigon's Visor", base: 'great_helm', rarity: RARITY.SET, icon: 'item_great_helm_hd', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'flatMP', value: 30 }, { stat: 'flatArmor', value: 25 }] },
-    { id: 'sigon_shelter', name: "Sigon's Shelter", base: 'plate_mail', rarity: RARITY.SET, icon: 'item_plate_mail_hd', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'lightRes', value: 30 }, { stat: 'flatArmor', value: 50 }] },
+    { id: 'sigon_visor', name: "Sigon's Visor", base: 'great_helm', rarity: RARITY.SET, icon: 'item_great_helm', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'flatMP', value: 30 }, { stat: 'flatArmor', value: 25 }] },
+    { id: 'sigon_shelter', name: "Sigon's Shelter", base: 'plate_mail', rarity: RARITY.SET, icon: 'item_plate_mail', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'lightRes', value: 30 }, { stat: 'flatArmor', value: 50 }] },
     { id: 'sigon_gage', name: "Sigon's Gage", base: 'gauntlets', rarity: RARITY.SET, icon: 'item_gauntlets', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'flatSTR', value: 10 }, { stat: 'pctIAS', value: 30 }] },
     { id: 'sigon_sabot', name: "Sigon's Sabot", base: 'war_boots', rarity: RARITY.SET, icon: 'item_war_boots', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'pctMoveSpeed', value: 20 }, { stat: 'coldRes', value: 40 }] },
     { id: 'sigon_wrap', name: "Sigon's Wrap", base: 'leather_belt', rarity: RARITY.SET, icon: 'item_belt', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: 'flatHP', value: 20 }, { stat: 'fireRes', value: 20 }] },
-    { id: 'sigon_guard', name: "Sigon's Guard", base: 'tower_shield', rarity: RARITY.SET, icon: 'item_shield_hd', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: '+allSkills', value: 1 }, { stat: 'blockChance', value: 20 }] },
+    { id: 'sigon_guard', name: "Sigon's Guard", base: 'tower_shield', rarity: RARITY.SET, icon: 'item_shield', dropLvl: 12, setId: 'sigon', setName: "Sigon's Complete Steel", mods: [{ stat: '+allSkills', value: 1 }, { stat: 'blockChance', value: 20 }] },
     // Death's
-    { id: 'deaths_touch', name: "Death's Touch", base: 'long_sword', rarity: RARITY.SET, icon: 'item_sword_hd', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'lifeStealPct', value: 4 }, { stat: 'flatMaxDmg', value: 25 }] },
+    { id: 'deaths_touch', name: "Death's Touch", base: 'long_sword', rarity: RARITY.SET, icon: 'item_sword', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'lifeStealPct', value: 4 }, { stat: 'flatMaxDmg', value: 25 }] },
     // ... rest of Death's
     { id: 'deaths_hand', name: "Death's Hand", base: 'leather_gloves', rarity: RARITY.SET, icon: 'item_gloves', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'poisRes', value: 50 }] },
     { id: 'deaths_guard', name: "Death's Guard", base: 'leather_belt', rarity: RARITY.SET, icon: 'item_belt', dropLvl: 6, setId: 'deaths', setName: "Death's Disguise", mods: [{ stat: 'magicDmgReduce', value: 3 }] },
     // Milabrega's
-    { id: 'milabrega_orb', name: "Milabrega's Orb", base: 'buckler', rarity: RARITY.SET, icon: 'item_shield_hd', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'magicFind', value: 20 }] },
+    { id: 'milabrega_orb', name: "Milabrega's Orb", base: 'buckler', rarity: RARITY.SET, icon: 'item_shield', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'magicFind', value: 20 }] },
     { id: 'milabrega_diadem', name: "Milabrega's Diadem", base: 'crown', rarity: RARITY.SET, icon: 'item_crown', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'flatMP', value: 15 }, { stat: 'flatHP', value: 15 }] },
     { id: 'milabrega_robe', name: "Milabrega's Robe", base: 'chain_mail', rarity: RARITY.SET, icon: 'item_chain_mail', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'flatDmgReduce', value: 2 }] },
-    { id: 'milabrega_rod', name: "Milabrega's Rod", base: 'war_hammer', rarity: RARITY.SET, icon: 'item_war_hammer_hd', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'pctDmg', value: 50 }] }
+    { id: 'milabrega_rod', name: "Milabrega's Rod", base: 'war_hammer', rarity: RARITY.SET, icon: 'item_war_hammer', dropLvl: 17, setId: 'milabregas', setName: "Milabrega's Regalia", mods: [{ stat: 'pctDmg', value: 50 }] }
 ];
 
 // Unique item definitions (hand-crafted, fixed mods)
@@ -61,7 +61,7 @@ const UNIQUES = [
         name: "Joaco's Val'anyr",
         base: 'mace',
         rarity: RARITY.UNIQUE,
-        icon: 'item_mace_hd',
+        icon: 'item_mace',
         dropLvl: 30,
         mods: [
             { stat: '+allSkills', value: 1 },
@@ -116,7 +116,7 @@ const UNIQUES = [
     },
     {
         id: 'enigma_robe', name: 'Enigma Robe', base: 'plate_mail', rarity: RARITY.UNIQUE,
-        icon: 'item_plate_mail_hd', dropLvl: 65,
+        icon: 'item_plate_mail', dropLvl: 65,
         mods: [
             { stat: '+allSkills', value: 2 },
             { stat: 'flatSTR', value: 45 },
@@ -139,7 +139,7 @@ const UNIQUES = [
     },
     {
         id: 'doombringer', name: 'Doombringer', base: 'long_sword', rarity: RARITY.UNIQUE,
-        icon: 'item_sword_hd', dropLvl: 50,
+        icon: 'item_sword', dropLvl: 50,
         mods: [
             { stat: 'pctDmg', value: 180 },
             { stat: 'lifeStealPct', value: 8 },
@@ -211,7 +211,7 @@ const UNIQUES = [
     // --- Unique Shields ---
     {
         id: 'herald_of_zakarum', name: 'Herald of Zakarum', base: 'tower_shield', rarity: RARITY.UNIQUE,
-        icon: 'item_shield_hd', dropLvl: 42,
+        icon: 'item_shield', dropLvl: 42,
         mods: [
             { stat: '+classSkills:paladin', value: 2 },
             { stat: 'blockChance', value: 30 },
@@ -223,7 +223,7 @@ const UNIQUES = [
     },
     {
         id: 'stormshield', name: 'Stormshield', base: 'tower_shield', rarity: RARITY.UNIQUE,
-        icon: 'item_shield_hd', dropLvl: 73,
+        icon: 'item_shield', dropLvl: 73,
         mods: [
             { stat: 'pctDmgReduce', value: 35 },
             { stat: 'blockChance', value: 35 },
@@ -236,7 +236,7 @@ const UNIQUES = [
     },
     {
         id: 'butchers_cleaver', name: 'Butcher\'s Cleaver', base: 'war_axe', rarity: RARITY.UNIQUE,
-        icon: 'item_axe_hd', dropLvl: 10,
+        icon: 'item_axe', dropLvl: 10,
         mods: [
             { stat: 'pctDmg', value: 80 },
             { stat: 'lifeStealPct', value: 10 },
@@ -247,7 +247,7 @@ const UNIQUES = [
     },
     {
         id: 'vampire_gaze', name: 'Vampire Gaze', base: 'great_helm', rarity: RARITY.UNIQUE,
-        icon: 'item_great_helm_hd', dropLvl: 41,
+        icon: 'item_great_helm', dropLvl: 41,
         mods: [
             { stat: 'lifeStealPct', value: 8 },
             { stat: 'manaStealPct', value: 8 },
@@ -276,7 +276,7 @@ const UNIQUES = [
     },
     {
         id: 'arreats_face', name: "Arreat's Face", base: 'great_helm', rarity: RARITY.UNIQUE,
-        icon: 'item_great_helm_hd', dropLvl: 42,
+        icon: 'item_great_helm', dropLvl: 42,
         mods: [
             { stat: '+classSkills:warrior', value: 2 },
             { stat: 'pctIAS', value: 30 },
@@ -307,7 +307,7 @@ const UNIQUES = [
     // ═══════════════════════════════════════════════════════
     {
         id: 'thunderfury', name: 'Thunderfury, Blessed Blade of the Windseeker',
-        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 60,
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword', dropLvl: 60,
         mods: [
             { stat: 'pctDmg', value: 160 },
             { stat: 'pctIAS', value: 25 },
@@ -320,7 +320,7 @@ const UNIQUES = [
     },
     {
         id: 'shadowmourne', name: 'Shadowmourne',
-        base: 'zweihander', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 80,
+        base: 'zweihander', rarity: RARITY.UNIQUE, icon: 'item_sword', dropLvl: 80,
         mods: [
             { stat: 'pctDmg', value: 240 },
             { stat: 'lifeStealPct', value: 12 },
@@ -333,7 +333,7 @@ const UNIQUES = [
     },
     {
         id: 'sulfuras', name: "Sulfuras, Hand of Ragnaros",
-        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 70,
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer', dropLvl: 70,
         mods: [
             { stat: 'pctDmg', value: 200 },
             { stat: 'flatFireDmg', value: 100 },
@@ -346,7 +346,7 @@ const UNIQUES = [
     },
     {
         id: 'valanyr', name: "Val'anyr, Hammer of Ancient Kings",
-        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 75,
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer', dropLvl: 75,
         mods: [
             { stat: '+allSkills', value: 2 },
             { stat: 'flatHP', value: 600 },
@@ -374,7 +374,7 @@ const UNIQUES = [
     },
     {
         id: 'frostmourne', name: "Frostmourne",
-        base: 'zweihander', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 85,
+        base: 'zweihander', rarity: RARITY.UNIQUE, icon: 'item_sword', dropLvl: 85,
         mods: [
             { stat: 'pctDmg', value: 300 },
             { stat: 'manaStealPct', value: 15 },
@@ -416,7 +416,7 @@ const UNIQUES = [
     },
     {
         id: 'ashbringer', name: "Corrupted Ashbringer",
-        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 65,
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword', dropLvl: 65,
         mods: [
             { stat: 'pctDmg', value: 150 },
             { stat: 'flatHP', value: 200 },
@@ -450,7 +450,7 @@ const UNIQUES = [
 
     {   // ── DOOMHAMMER — Shaman legendary (melee lightning, Windfury synergy)
         id: 'doomhammer', name: "Doomhammer",
-        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 68,
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer', dropLvl: 68,
         mods: [
             { stat: 'pctDmg', value: 175 },
             { stat: 'flatLightDmg', value: 70 },
@@ -481,7 +481,7 @@ const UNIQUES = [
     },
     {   // ── DRACONIC EDGE — Warrior (dragon breath, berserk synergy)
         id: 'draconic_edge', name: "Draconic Edge",
-        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 65,
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword', dropLvl: 65,
         mods: [
             { stat: 'pctDmg', value: 185 },
             { stat: 'flatFireDmg', value: 55 },
@@ -513,7 +513,7 @@ const UNIQUES = [
     },
     {   // ── VOIDREAPER — Warlock (void wound, soul fire synergy)
         id: 'voidreaper', name: "Voidreaper",
-        base: 'zweihander', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 75,
+        base: 'zweihander', rarity: RARITY.UNIQUE, icon: 'item_sword', dropLvl: 75,
         mods: [
             { stat: 'pctDmg', value: 220 },
             { stat: 'flatHP', value: 250 },
@@ -528,7 +528,7 @@ const UNIQUES = [
     },
     {   // ── BONEREAVER'S EDGE — Necromancer (armor shatter, amplify damage synergy)
         id: 'bonereaver_edge', name: "Bonereaver's Edge",
-        base: 'zweihander', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 72,
+        base: 'zweihander', rarity: RARITY.UNIQUE, icon: 'item_sword', dropLvl: 72,
         mods: [
             { stat: 'pctDmg', value: 200 },
             { stat: 'flatSTR', value: 45 },
@@ -557,7 +557,7 @@ const UNIQUES = [
     },
     {   // ── HAMMER OF THE NAARU — Paladin (holy storm, consecration synergy)
         id: 'hammer_naaru', name: "Hammer of the Naaru",
-        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 70,
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer', dropLvl: 70,
         mods: [
             { stat: '+allSkills', value: 2 },
             { stat: 'flatHP', value: 450 },
@@ -573,7 +573,7 @@ const UNIQUES = [
     },
     {   // ── QUEL'SERRAR — Warrior/Paladin (precision strike, shield synergy)
         id: 'quelserrar', name: "Quel'Serrar",
-        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 58,
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword', dropLvl: 58,
         mods: [
             { stat: 'pctDmg', value: 140 },
             { stat: 'flatArmor', value: 200 },
@@ -759,7 +759,7 @@ const UNIQUES = [
 
     {   // ── STORMRAGE VESTMENTS — Druid (hurricane / shapeshifting synergy)
         id: 'stormrage_vestments', name: "Stormrage Vestments",
-        base: 'chest', rarity: RARITY.UNIQUE, icon: 'item_chest_hd', dropLvl: 70,
+        base: 'chest', rarity: RARITY.UNIQUE, icon: 'item_chest', dropLvl: 70,
         mods: [
             { stat: '+allSkills',      value: 2   },
             { stat: 'pctDmg',          value: 80  },
@@ -793,7 +793,7 @@ const UNIQUES = [
     },
     {   // ── CENARION CUDGEL — Druid heal-on-hit (healing_stream, nature synergy)
         id: 'cenarion_cudgel', name: "Cenarion Cudgel",
-        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 62,
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer', dropLvl: 62,
         mods: [
             { stat: '+allSkills',      value: 2   },
             { stat: 'flatHP',          value: 400 },
@@ -825,7 +825,7 @@ const UNIQUES = [
     },
     {   // ── THE UNSTOPPABLE FORCE — Warrior (massive stun, berserk+leap synergy)
         id: 'unstoppable_force', name: "The Unstoppable Force",
-        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 72,
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer', dropLvl: 72,
         mods: [
             { stat: 'pctDmg',          value: 230 },
             { stat: 'flatSTR',         value: 55  },
@@ -872,7 +872,7 @@ const UNIQUES = [
     },
     {   // ── AZURESONG MAGEBLADE — Sorceress (mana flood, energy_shield synergy)
         id: 'azuresong_mageblade', name: "Azuresong Mageblade",
-        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 60,
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword', dropLvl: 60,
         mods: [
             { stat: '+allSkills',      value: 2   },
             { stat: 'flatMP',          value: 500 },
@@ -987,7 +987,7 @@ const UNIQUES = [
     },
     {   // ── HAMMER OF GRACE — Paladin (blessed hammer spiral, Conviction synergy)
         id: 'hammer_of_grace', name: "Hammer of Grace",
-        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 68,
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer', dropLvl: 68,
         mods: [
             { stat: '+allSkills',    value: 2   },
             { stat: 'pctHolyDmg',   value: 120 },
@@ -1004,7 +1004,7 @@ const UNIQUES = [
     },
     {   // ── RHOK'DELAR REBORN — Ranger (stellar arrow + nature arrow combo)
         id: 'rhokdelar_reborn', name: "Rhok'delar Reborn",
-        base: 'long_bow', rarity: RARITY.UNIQUE, icon: 'item_bow_hd', dropLvl: 65,
+        base: 'long_bow', rarity: RARITY.UNIQUE, icon: 'item_bow_long', dropLvl: 65,
         mods: [
             { stat: '+allSkills',      value: 2   },
             { stat: 'pctDmg',          value: 160 },
@@ -1020,7 +1020,7 @@ const UNIQUES = [
     },
     {   // ── CORRUPTION'S EMBRACE — Warlock (seed of corruption, soul fire synergy)
         id: 'corruptions_embrace', name: "Corruption's Embrace",
-        base: 'robe', rarity: RARITY.UNIQUE, icon: 'item_chest_hd', dropLvl: 72,
+        base: 'robe', rarity: RARITY.UNIQUE, icon: 'item_chest', dropLvl: 72,
         mods: [
             { stat: '+allSkills',      value: 3   },
             { stat: 'pctShadowDmg',    value: 100 },
@@ -1037,7 +1037,7 @@ const UNIQUES = [
     },
     {   // ── STONEBARK VESTMENT — Druid (bear form overhaul, barkskin synergy)
         id: 'stonebark_vestment', name: "Stonebark Vestment",
-        base: 'chest', rarity: RARITY.UNIQUE, icon: 'item_chest_hd', dropLvl: 65,
+        base: 'chest', rarity: RARITY.UNIQUE, icon: 'item_chest', dropLvl: 65,
         mods: [
             { stat: '+allSkills',      value: 2   },
             { stat: 'flatHP',          value: 500 },
@@ -1054,7 +1054,7 @@ const UNIQUES = [
     },
     {   // ── DEATHCHARGER'S REINS — Universal (mounted speed, charge proc)
         id: 'deathchargers_reins', name: "Deathcharger's Reins",
-        base: 'boots', rarity: RARITY.UNIQUE, icon: 'item_boots_hd', dropLvl: 60,
+        base: 'boots', rarity: RARITY.UNIQUE, icon: 'item_boots_war', dropLvl: 60,
         mods: [
             { stat: 'pctMoveSpeed',    value: 50  },
             { stat: 'pctDmg',          value: 80  },
@@ -1069,7 +1069,7 @@ const UNIQUES = [
     },
     {   // ── EYE OF NERUB — Rogue/Ranger (web trap + multishot, death sentry synergy)
         id: 'eye_of_nerub', name: "Eye of Nerub",
-        base: 'amulet', rarity: RARITY.UNIQUE, icon: 'item_amulet_hd', dropLvl: 62,
+        base: 'amulet', rarity: RARITY.UNIQUE, icon: 'item_amulet', dropLvl: 62,
         mods: [
             { stat: 'critChance',   value: 15  },
             { stat: 'critMulti',    value: 40  },
@@ -1101,7 +1101,7 @@ const UNIQUES = [
     },
     {   // ── NELTHARION'S BLADE — Warrior (colossal slam, ignore armor, colossal build)
         id: 'neltharions_blade', name: "Neltharion's Blade",
-        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 80,
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword', dropLvl: 80,
         mods: [
             { stat: 'pctDmg',          value: 250 },
             { stat: 'flatSTR',         value: 60  },
@@ -1164,7 +1164,7 @@ const UNIQUES = [
 
     {   // ── THE ASHBRINGER — Paladin Retribution (Divine Storm empowerment, holy crit proc)
         id: 'the_ashbringer', name: "The Ashbringer",
-        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 85,
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword', dropLvl: 85,
         mods: [
             { stat: '+allSkills',   value: 3   },
             { stat: 'pctHolyDmg',  value: 200 },
@@ -1181,7 +1181,7 @@ const UNIQUES = [
     },
     {   // ── VAL'ANYR — Paladin healer / Protection (healing surge, block proc)
         id: 'valanyr', name: "Val'anyr, Hammer of Ancient Kings",
-        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 80,
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer', dropLvl: 80,
         mods: [
             { stat: '+allSkills',      value: 3   },
             { stat: 'healBoostPct',    value: 120 },
@@ -1199,7 +1199,7 @@ const UNIQUES = [
     },
     {   // ── LIBRAM OF AVENGEMENT — Paladin Retribution (Judgement × 2, crit seal proc)
         id: 'libram_avengement', name: "Libram of Avengement",
-        base: 'off_hand', rarity: RARITY.UNIQUE, icon: 'item_amulet_hd', dropLvl: 72,
+        base: 'off_hand', rarity: RARITY.UNIQUE, icon: 'item_amulet', dropLvl: 72,
         mods: [
             { stat: 'pctHolyDmg',   value: 80  },
             { stat: '+allSkills',   value: 2   },
@@ -1214,7 +1214,7 @@ const UNIQUES = [
     },
     {   // ── BULWARK OF ANCIENT KINGS — Protection Paladin (avenger shield bounce ×4, fortress proc)
         id: 'bulwark_ancient_kings', name: "Bulwark of the Ancient Kings",
-        base: 'shield', rarity: RARITY.UNIQUE, icon: 'item_shield_hd', dropLvl: 78,
+        base: 'shield', rarity: RARITY.UNIQUE, icon: 'item_shield', dropLvl: 78,
         mods: [
             { stat: 'pctArmor',        value: 120 },
             { stat: 'blockChance',     value: 25  },
@@ -1232,7 +1232,7 @@ const UNIQUES = [
     },
     {   // ── THUNDERFURY — Warrior/Shaman (chain lightning, wind fury, boss control)
         id: 'thunderfury', name: "Thunderfury, Blessed Blade of the Windseeker",
-        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 80,
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword', dropLvl: 80,
         mods: [
             { stat: 'pctDmg',          value: 180 },
             { stat: 'pctLightDmg',     value: 120 },
@@ -1247,7 +1247,7 @@ const UNIQUES = [
     },
     {   // ── SHADOWMOURNE — Warrior/Paladin (soul fragment harvest, explode mechanic)
         id: 'shadowmourne', name: "Shadowmourne",
-        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 85,
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword', dropLvl: 85,
         mods: [
             { stat: 'pctDmg',          value: 300 },
             { stat: 'flatSTR',         value: 70  },
@@ -1263,7 +1263,7 @@ const UNIQUES = [
     },
     {   // ── FROSTMOURNE — Warlock/Necromancer (soul harvest, undead raise, silence)
         id: 'frostmourne', name: "Frostmourne",
-        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword_hd', dropLvl: 90,
+        base: 'long_sword', rarity: RARITY.UNIQUE, icon: 'item_sword', dropLvl: 90,
         mods: [
             { stat: '+allSkills',      value: 4   },
             { stat: 'pctShadowDmg',    value: 200 },
@@ -1296,7 +1296,7 @@ const UNIQUES = [
     },
     {   // ── THORI'DAL — Ranger (instant volley, no-ammo, star proc)
         id: 'thoridal', name: "Thori'dal, the Stars' Fury",
-        base: 'long_bow', rarity: RARITY.UNIQUE, icon: 'item_bow_hd', dropLvl: 82,
+        base: 'long_bow', rarity: RARITY.UNIQUE, icon: 'item_bow_long', dropLvl: 82,
         mods: [
             { stat: '+allSkills',       value: 3   },
             { stat: 'pctDmg',           value: 200 },
@@ -1312,7 +1312,7 @@ const UNIQUES = [
     },
     {   // ── SULFURAS — Warrior (lava proc, eternal flame, crushing blow)
         id: 'sulfuras', name: "Sulfuras, Hand of Ragnaros",
-        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer_hd', dropLvl: 78,
+        base: 'war_hammer', rarity: RARITY.UNIQUE, icon: 'item_war_hammer', dropLvl: 78,
         mods: [
             { stat: 'pctDmg',          value: 220 },
             { stat: 'pctFireDmg',      value: 150 },
