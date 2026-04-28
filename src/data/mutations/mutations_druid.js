@@ -1,279 +1,295 @@
 export const DRUID_MUTATIONS = {
+    // --- SHAPESHIFTING TREE ---
     dire_wolf: [
         {
-            id: 'dw_speed', name: 'Wolf Speed', max: 5,
-            desc: '+10% Movement speed while in wolf form.',
-            masteryPerk: 'In wolf form, you have a 20% chance to dodge all attacks.',
-            mod: { moveSpeedPct: 10 },
-            icon: 'ra-fast-forward'
+            id: 'dw_ferocity', name: 'Alpha Ferocity', max: 5, reqBaseLevel: 1,
+            desc: '+10% Attack Speed and +5% Crit Chance while transformed.',
+            masteryPerk: 'Wolf Form attacks have a 20% chance to cause target to flee for 2s.',
+            mod: { pctIAS: 10, critChance: 5 },
+            icon: 'ra-wolf-howl'
         }
     ],
     bear_form: [
         {
-            id: 'bf_armor', name: 'Bear Armor', max: 5,
-            desc: '+20% Armor bonus while in bear form.',
-            masteryPerk: 'In bear form, you are immune to all knockback and stun effects.',
-            mod: { armorPct: 20 },
-            icon: 'ra-heavy-shield'
+            id: 'bf_iron_hide', name: 'Grizzly Skin', max: 5, reqBaseLevel: 1,
+            desc: '+20% Armor and +15% Health while transformed.',
+            masteryPerk: 'Bear Form attacks have high knockback and stun for 0.5s.',
+            mod: { pctArmor: 20, pctHP: 15 },
+            icon: 'ra-bear-head'
+        }
+    ],
+    feral_mastery: [
+        {
+            id: 'fm_primal', name: 'Primal Instinct', max: 5, reqBaseLevel: 1,
+            desc: '+5% Damage and +2% Crit Chance while shapeshifted.',
+            masteryPerk: 'Shapeshifting has a 10% chance to reset the cooldown of Maul or Shred.',
+            mod: { pctDmg: 5, critChance: 2 },
+            icon: 'ra-lion'
         }
     ],
     maul: [
         {
-            id: 'maul_ravage', name: 'Ravage', max: 5,
-            desc: '+15% Bleed damage per level.',
-            masteryPerk: 'Shred: Bleeding targets have their Armor reduced by 20%.',
-            mod: { bleedDmgPct: 15 },
-            icon: 'ra-bear-claw'
-        },
-        {
-            id: 'maul_shaker', name: 'Earthshaker', max: 5,
-            desc: 'Adds 20% Earth damage per level.',
-            masteryPerk: 'Seismic Wave: Maul creates a shockwave that travels behind the target.',
-            mod: { earthDmgPct: 20 },
-            icon: 'ra-earth-crack'
+            id: 'ma_heavy', name: 'Heavy Swipe', max: 5, reqBaseLevel: 5,
+            desc: '+15% Damage and +0.2s stun duration.',
+            masteryPerk: 'Maul generates 1 stack of Feral Rage on hit.',
+            mod: { pctDmg: 15, stunDur: 0.2 },
+            icon: 'ra-bear-head'
         }
     ],
     shred: [
         {
-            id: 'shr_frenzy', name: 'Wolf Frenzy', max: 5,
-            desc: '+10% Attack Speed for 3s on hit.',
-            masteryPerk: 'Shred has a 20% chance to strike the target a second time.',
-            mod: { speedPct: 10 },
-            icon: 'ra-lightning-trio'
+            id: 'sh_tear', name: 'Rip and Tear', max: 5, reqBaseLevel: 5,
+            desc: '+15% Damage and applies a bleed for 3s.',
+            masteryPerk: 'Shred deals 50% more damage to bleeding enemies.',
+            mod: { pctDmg: 15, bleedDmg: 20 },
+            icon: 'ra-dripping-blade'
         }
     ],
     bear_slam: [
         {
-            id: 'bs_shock', name: 'Thunder Slam', max: 5,
-            desc: '+15% Damage and +0.5s stun.',
-            masteryPerk: 'Bear Slam creates a secondary shockwave after 1s.',
-            mod: { pctDmg: 15, stunDur: 0.5 },
-            icon: 'ra-heavy-fall'
+            id: 'bs_shockwave', name: 'Seismic Shock', max: 5, reqBaseLevel: 10,
+            desc: '+15% Damage and +10% AoE radius.',
+            masteryPerk: 'Bear Slam leaves the ground trembling, slowing enemies for 3s.',
+            mod: { pctDmg: 15, radiusPct: 10 },
+            icon: 'ra-waves-pulse'
         }
     ],
     lacerate: [
         {
-            id: 'lac_bleed', name: 'Deep Laceration', max: 5,
-            desc: '+20% Bleed damage and +2s duration.',
-            masteryPerk: 'Lacerate reduces enemy health regeneration by 100%.',
-            mod: { bleedPct: 20, duration: 2 },
-            icon: 'ra-bleeding-hearts'
+            id: 'la_open_wound', name: 'Deep Laceration', max: 5, reqBaseLevel: 10,
+            desc: '+20% Bleed damage per level.',
+            masteryPerk: 'Lacerate reduces target healing received by 50% for 5s.',
+            mod: { bleedDmgPct: 20 },
+            icon: 'ra-dripping-blade'
         }
     ],
     rabies: [
         {
-            id: 'rab_contagion', name: 'Viral Rabies', max: 5,
-            desc: '+15% Poison damage and +10% spread radius.',
-            masteryPerk: 'Enemies infected by Rabies deal 20% less damage.',
-            mod: { poisonPct: 15, radiusPct: 10 },
-            icon: 'ra-poison-cloud'
+            id: 'rb_contagion', name: 'Toxic Contagion', max: 5, reqBaseLevel: 10,
+            desc: 'Poison spreads 20% faster and lasts 1s longer.',
+            masteryPerk: 'Rabies reduces enemy poison resistance by 20% for 5s.',
+            mod: { spreadSpeed: 20 },
+            icon: 'ra-biohazard'
         }
     ],
     feral_charge: [
         {
-            id: 'fc_impact', name: 'Feral Impact', max: 5,
+            id: 'fc_impact', name: 'Savage Charge', max: 5, reqBaseLevel: 15,
             desc: '+20% Damage and +1s immobilization.',
-            masteryPerk: 'Feral Charge cooldown is reset if it kills the target.',
-            mod: { pctDmg: 20, immobDur: 1 },
-            icon: 'ra-boots'
+            masteryPerk: 'Feral Charge stuns the target for 1s if they are bleeding.',
+            mod: { pctDmg: 20 },
+            icon: 'ra-fast-forward'
         }
     ],
     fire_claws: [
         {
-            id: 'fcl_blaze', name: 'Inferno Claws', max: 5,
-            desc: '+15% Fire damage and +5% Crit chance.',
-            masteryPerk: 'Fire Claws attacks release a small fire nova.',
-            mod: { fireDmgPct: 15, critChance: 5 },
-            icon: 'ra-large-fire'
+            id: 'fc_inferno', name: 'Inferno Claws', max: 5, reqBaseLevel: 15,
+            desc: '+15% Fire Damage and +10% splash radius.',
+            masteryPerk: 'Fire Claws ignore 30% of the target\'s fire resistance.',
+            mod: { pctFireDmg: 15 },
+            icon: 'ra-flame-symbol'
         }
     ],
     king_of_the_jungle: [
         {
-            id: 'koj_fury', name: 'Primal Fury', max: 5,
-            desc: '+10% Damage bonus and +2s duration.',
-            masteryPerk: 'While King of the Jungle is active, all skills cost 0 mana.',
-            mod: { dmgBonus: 10, duration: 2 },
-            icon: 'ra-wolf-howl'
+            id: 'kotj_apex', name: 'Apex Predator', max: 5, reqBaseLevel: 20,
+            desc: '+2s duration and +10% damage bonus.',
+            masteryPerk: 'While in King of the Jungle, you are immune to all CC.',
+            mod: { duration: 2, pctDmg: 10 },
+            icon: 'ra-burning-embers'
         }
     ],
+
+    // --- NATURE TREE ---
     twister: [
         {
-            id: 'tw_lightning', name: 'Charged Twister', max: 5,
-            desc: '+15% Lightning damage and +5% stun chance.',
-            masteryPerk: 'Twister now fires 2 tornadoes in a V-shape.',
-            mod: { lightDmgPct: 15, stunChance: 5 },
-            icon: 'ra-lightning-bolt'
+            id: 'tw_shred', name: 'Razor Winds', max: 5, reqBaseLevel: 1,
+            desc: '+10% Physical Damage and +0.5s stun duration.',
+            masteryPerk: 'Twisters pull nearby enemies into their path.',
+            mod: { pctDmg: 10 },
+            icon: 'ra-cyclone'
+        }
+    ],
+    nature_mastery: [
+        {
+            id: 'nm_elemental', name: 'Primal attunement', max: 5, reqBaseLevel: 1,
+            desc: '+5% Elemental Damage per level.',
+            masteryPerk: 'Your nature spells have a 10% chance to root the target.',
+            mod: { pctElemDmg: 5 },
+            icon: 'ra-crystals'
         }
     ],
     cyclone_armor: [
         {
-            id: 'ca_barrier', name: 'Wind Barrier', max: 5,
-            desc: '+50 Absorption and +10s duration.',
-            masteryPerk: 'Cyclone Armor reflects 50% of elemental damage taken.',
-            mod: { absorbPct: 50, duration: 10 },
-            icon: 'ra-bolt-shield'
+            id: 'ca_tempest', name: 'Eye of the Storm', max: 5, reqBaseLevel: 5,
+            desc: '+150 Magic absorption per level.',
+            masteryPerk: 'Cyclone Armor periodically releases a mini-tornado at enemies.',
+            mod: { absorbCap: 150 },
+            icon: 'ra-cyclone'
         }
     ],
     fissure: [
         {
-            id: 'fis_magma', name: 'Magma Fissure', max: 5,
-            desc: '+15% Fire damage and +1s duration.',
-            masteryPerk: 'Fissure leaves burning ground that lasts 5s.',
-            mod: { fireDmgPct: 15, duration: 1 },
+            id: 'fi_magma', name: 'Magma Vents', max: 5, reqBaseLevel: 5,
+            desc: '+2 magma vents and +10% radius.',
+            masteryPerk: 'Fissure leaves burning patches on the ground for 5s.',
+            mod: { extraVents: 2 },
             icon: 'ra-volcano'
         }
     ],
     hurricane: [
         {
-            id: 'hur_storm', name: 'Eye of the Storm', max: 5,
-            desc: '+10% Damage and +10% Radius.',
-            masteryPerk: 'Hurricane now follows you as you move.',
-            mod: { dmgPct: 10, radiusPct: 10 },
+            id: 'hu_tempest', name: 'Great Storm', max: 5, reqBaseLevel: 10,
+            desc: '+15% Hurricane radius and +15% Cold Damage.',
+            masteryPerk: 'Hurricane damage ticks 20% more often.',
+            mod: { radiusPct: 15, pctColdDmg: 15 },
             icon: 'ra-cyclone'
         }
     ],
     volcano: [
         {
-            id: 'vol_eruption', name: 'Mega Volcano', max: 5,
-            desc: '+15% Fire damage and +10% AoE.',
-            masteryPerk: 'Volcano erupts twice as often.',
-            mod: { fireDmgPct: 15, aoePct: 10 },
+            id: 'vo_eruption', name: 'Magma Fountain', max: 5, reqBaseLevel: 10,
+            desc: '+15% Fire Damage and +10% radius.',
+            masteryPerk: 'Volcano fires 1 extra projectile every second.',
+            mod: { pctDmg: 15 },
             icon: 'ra-volcano'
         }
     ],
     solar_beam: [
         {
-            id: 'sb_purity', name: 'Divine Beam', max: 5,
-            desc: '+20% Damage and +1s Silence.',
-            masteryPerk: 'Solar Beam heals allies caught in its light.',
-            mod: { pctDmg: 20, silenceDur: 1 },
-            icon: 'ra-sun'
+            id: 'sb_radiance', name: 'Blinding Light', max: 5, reqBaseLevel: 15,
+            desc: '+20% Damage and +1s silence.',
+            masteryPerk: 'Solar Beam always critical strikes blinded enemies.',
+            mod: { pctDmg: 20 },
+            icon: 'ra-sun-glow'
         }
     ],
     armageddon: [
         {
-            id: 'arm_apocalypse', name: 'Starfall', max: 5,
-            desc: '+20% Fire damage and +1s duration.',
-            masteryPerk: 'Armageddon meteors are 50% larger.',
-            mod: { fireDmgPct: 20, duration: 1 },
+            id: 'ar_cataclysm', name: 'Rain of Chaos', max: 5, reqBaseLevel: 15,
+            desc: '+20% Meteor damage and +1 meteor per wave.',
+            masteryPerk: 'Armageddon Meteors create a Fissure upon impact.',
+            mod: { pctFireDmg: 20 },
             icon: 'ra-meteor'
         }
     ],
     boulder_toss: [
         {
-            id: 'bt_mass', name: 'Massive Boulder', max: 5,
-            desc: '+20% Damage and +10% Knockback.',
+            id: 'bt_heavy', name: 'Avalanche', max: 5, reqBaseLevel: 10,
+            desc: '+15% Damage and +10% knockback.',
             masteryPerk: 'Boulder Toss leaves a trail of debris that slows enemies.',
-            mod: { pctDmg: 20, knockbackPct: 10 },
-            icon: 'ra-mountains'
+            mod: { pctDmg: 15 },
+            icon: 'ra-mountain-cave'
         }
     ],
     force_of_nature: [
         {
-            id: 'fon_ancient', name: 'Ancient Treants', max: 5,
-            desc: '+20% Treant HP and Damage.',
-            masteryPerk: 'You can now summon 5 Treants instead of 3.',
-            mod: { treantHp: 20, treantDmg: 20 },
-            icon: 'ra-pine-tree'
+            id: 'fon_treant', name: 'Ironwood Grove', max: 5, reqBaseLevel: 20,
+            desc: '+1 Treant summoned and +15% Treant HP.',
+            masteryPerk: 'Treants now emit a Thorns aura (100 physical reflect).',
+            mod: { extraSummons: 1 },
+            icon: 'ra-oak-leaf'
         }
     ],
     starfall: [
         {
-            id: 'sf_arcane', name: 'Arcane Rain', max: 5,
-            desc: '+20% Damage and +2s duration.',
-            masteryPerk: 'Starfall now hits the same enemy multiple times.',
-            mod: { pctDmg: 20, duration: 2 },
-            icon: 'ra-ghost'
+            id: 'st_celestial', name: 'Aether Rain', max: 5, reqBaseLevel: 25,
+            desc: '+20% Arcane damage and +10% radius.',
+            masteryPerk: 'Starfall restores 1% Mana for every enemy it kills.',
+            mod: { pctDmg: 20 },
+            icon: 'ra-meteor'
         }
     ],
     entangling_roots: [
         {
-            id: 'er_nature', name: 'Deep Roots', max: 5,
-            desc: '+1s root duration and +15% Damage.',
-            masteryPerk: 'Entangling Roots spreads to a nearby enemy on impact.',
-            mod: { rootDur: 1, pctDmg: 15 },
-            icon: 'ra-pine-tree'
+            id: 'er_thorny', name: 'Barbed Vines', max: 5, reqBaseLevel: 25,
+            desc: '+15% Damage and +1s root duration.',
+            masteryPerk: 'Entangling Roots reduces target armor by 30%.',
+            mod: { pctDmg: 15 },
+            icon: 'ra-biohazard'
         }
     ],
+
+    // --- HEALING TREE ---
     healing_touch: [
         {
-            id: 'ht_grace', name: 'Nature Grace', max: 5,
-            desc: '+15% Healing and -10% Mana cost.',
-            masteryPerk: 'Healing Touch cleanses all poisons from the target.',
-            mod: { healPct: 15, manaRed: 10 },
-            icon: 'ra-health'
+            id: 'ht_grace', name: 'Divine Touch', max: 5, reqBaseLevel: 1,
+            desc: '+15% Healing and +10% range.',
+            masteryPerk: 'Healing Touch also grants 10% physical damage reduction for 5s.',
+            mod: { pctHeal: 15 },
+            icon: 'ra-heartburn'
         }
     ],
     rejuvenation: [
         {
-            id: 'rej_spirit', name: 'Spiritual Growth', max: 5,
-            desc: '+15% HoT healing and +2s duration.',
-            masteryPerk: 'Rejuvenation restores 1% Mana per second while active.',
-            mod: { healPct: 15, duration: 2 },
-            icon: 'ra-water-drop'
+            id: 're_bloom', name: 'Spring Growth', max: 5, reqBaseLevel: 1,
+            desc: '+10% Healing per tick and +1s duration.',
+            masteryPerk: 'Rejuvenation has a 20% chance to jump to a nearby ally.',
+            mod: { pctHeal: 10 },
+            icon: 'ra-oak-leaf'
         }
     ],
     oak_sage: [
         {
-            id: 'os_vitality', name: 'Eternal Oak', max: 5,
-            desc: '+5% HP bonus and +10% Radius.',
-            masteryPerk: 'Oak Sage also grants +10% Damage Reduction.',
-            mod: { hpBonus: 5, radiusPct: 10 },
-            icon: 'ra-pine-tree'
+            id: 'os_life', name: 'Essence of Life', max: 5, reqBaseLevel: 5,
+            desc: '+10% Life bonus and +15% Spirit HP.',
+            masteryPerk: 'Oak Sage also increases Life Regeneration by 20 per second.',
+            mod: { lifeBonusPct: 10 },
+            icon: 'ra-heartburn'
         }
     ],
     innervate: [
         {
-            id: 'inn_fountain', name: 'Mana Well', max: 5,
-            desc: '+10 Mana/s and +2s duration.',
+            id: 'in_surge', name: 'Mana Flow', max: 5, reqBaseLevel: 5,
+            desc: '+20% Mana restored and +2s duration.',
             masteryPerk: 'Innervate also increases Cast Speed by 20%.',
-            mod: { manaBonus: 10, duration: 2 },
-            icon: 'ra-water-drop'
+            mod: { manaPct: 20 },
+            icon: 'ra-sun-glow'
         }
     ],
     regrowth: [
         {
-            id: 'reg_bloom', name: 'Nature Bloom', max: 5,
-            desc: '+15% Healing and +2s duration.',
-            masteryPerk: 'Regrowth has a 20% chance to trigger Rejuvenation.',
-            mod: { healPct: 15, duration: 2 },
-            icon: 'ra-pine-tree'
+            id: 'rg_wild', name: 'Wild Growth', max: 5, reqBaseLevel: 10,
+            desc: '+15% Instant healing and +10% HoT healing.',
+            masteryPerk: 'Regrowth duration is doubled if the target is below 50% HP.',
+            mod: { pctHeal: 15 },
+            icon: 'ra-oak-leaf'
         }
     ],
     heart_of_wolverine: [
         {
-            id: 'how_fury', name: 'Spirit Fury', max: 5,
-            desc: '+5% Damage bonus and +10% Radius.',
-            masteryPerk: 'Heart of Wolverine also grants +10% Critical Strike chance.',
-            mod: { dmgBonus: 5, radiusPct: 10 },
-            icon: 'ra-wolf-howl'
+            id: 'hw_war', name: 'Primal Fury', max: 5, reqBaseLevel: 10,
+            desc: '+10% Damage and +5% Attack Rating bonus.',
+            masteryPerk: 'Heart of Wolverine also grants 10% Deadly Strike chance.',
+            mod: { dmgBonusPct: 10 },
+            icon: 'ra-muscle-fat'
         }
     ],
     tranquility: [
         {
-            id: 'tra_serene', name: 'Deep Serenity', max: 5,
-            desc: '+20% Healing and +1s duration.',
-            masteryPerk: 'Tranquility also reduces all incoming damage by 30% for allies.',
-            mod: { healPct: 20, duration: 1 },
-            icon: 'ra-water-drop'
+            id: 'tr_serenity', name: 'Deep Peace', max: 5, reqBaseLevel: 15,
+            desc: '+15% Healing pulse and +2s duration.',
+            masteryPerk: 'Tranquility reduces all damage taken by allies by 20%.',
+            mod: { pctHeal: 15 },
+            icon: 'ra-sun-glow'
         }
     ],
     wild_growth: [
         {
-            id: 'wg_expansion', name: 'Expanding Wilds', max: 5,
-            desc: '+1 target hit and +15% Healing.',
-            masteryPerk: 'Wild Growth now targets all allies within 100px.',
-            mod: { extraTargets: 1, healPct: 15 },
-            icon: 'ra-pine-tree'
+            id: 'wg_forest', name: 'Living Forest', max: 5, reqBaseLevel: 15,
+            desc: '+15% Healing and affects 1 extra target.',
+            masteryPerk: 'Wild Growth pulses have a 10% chance to purge debuffs.',
+            mod: { pctHeal: 15 },
+            icon: 'ra-oak-leaf'
         }
     ],
     tree_of_life: [
         {
-            id: 'tol_ancient', name: 'Ancient Form', max: 5,
-            desc: '+20% Healing and +10% Armor.',
-            masteryPerk: 'In tree form, you cast Rejuvenation on yourself every 5s.',
-            mod: { healBonus: 20, armorPct: 10 },
-            icon: 'ra-pine-tree'
+            id: 'tol_ancient', name: 'Ancient Form', max: 5, reqBaseLevel: 25,
+            desc: '+20% Healing bonus and +10% Armor bonus.',
+            masteryPerk: 'While in Tree Form, you are immune to silence and mana burn.',
+            mod: { pctHeal: 20 },
+            icon: 'ra-oak-leaf'
         }
     ]
 };

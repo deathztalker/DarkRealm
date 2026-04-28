@@ -47,6 +47,13 @@ export const ASTRAL_CONSTELLATION = {
         },
         { id: 53, name: 'Chimera\'s Bond', pos: { x: 210, y: 90 }, req: [51], max: 3, stats: { minionLifestealShare: 10, pctHP: 5 } },
 
+        // THE HAWK (Ranged & Precision)
+        { id: 60, name: 'Hawk\'s Eye', pos: { x: -30, y: -70 }, req: [2], max: 5, stats: { attackRangeBonus: 10, critChance: 2 } },
+        { id: 61, name: 'Hawk\'s Talon', pos: { x: -30, y: -110 }, req: [60], max: 5, stats: { pctIAS: 5, deadlyStrike: 5 } },
+        { id: 62, name: 'Windrunner (Celestial Proc)', pos: { x: -60, y: -140 }, req: [61], max: 1,
+            proc: { id: 'proc_windrunner', trigger: 'onHit', chance: 10, cd: 5.0, effect: 'speed_burst' }
+        },
+
         // --- TIER 3: ELDER KEYNODES (Game Changers) ---
         { 
             id: 100, name: 'ELDER: Blood Magic', pos: { x: -150, y: 0 }, req: [11], max: 1,

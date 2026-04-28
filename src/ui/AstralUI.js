@@ -485,11 +485,12 @@ export const AstralUI = {
 
         draw();
 
-        // Pan / Zoom
+        // Pan / Zoom & Hover Tooltips
         let isDragging = false;
         let lastX, lastY;
 
         parent.onmousedown = (e) => { isDragging = true; lastX = e.clientX; lastY = e.clientY; };
+        
         window.onmousemove = (e) => {
             if (isDragging) {
                 offsetX += e.clientX - lastX;
@@ -497,17 +498,56 @@ export const AstralUI = {
                 lastX = e.clientX;
                 lastY = e.clientY;
                 draw();
+                return;
+            }
+
+            // Hover tooltip logic
+            if (this.currentTab === 'constellation' && !isDragging) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = (e.clientX - rect.left - offsetX) / zoom;
+                const mouseY = (e.clientY - rect.top - offsetY) / zoom;
+
+                let hoveredNode = null;
+                ASTRAL_CONSTELLATION.nodes.forEach(node => {
+                    const dx = mouseX - (node.pos.x * 5);
+                    const dy = mouseY - (node.pos.y * 5);
+                    if (dx * dx + dy * dy < 150) {
+                        hoveredNode = node;
+                    }
+                });
+
+                if (hoveredNode) {
+                    canvas.style.cursor = 'pointer';
+                    infoPanel.style.opacity = '1';
+                    infoPanel.innerHTML = `
+                        <h3 style="margin:0; color:var(--gold); text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);">${hoveredNode.name}</h3>
+                        <div style="font-size:12px; color:#ddd; margin-top:8px;">
+                            ${hoveredNode.special ? `<p style="color:#ffd700; border-left: 2px solid #ffd700; padding-left: 6px;"><strong>ELDER POWER:</strong> ${hoveredNode.special}</p>` : ''}
+                            ${hoveredNode.proc ? `<p style="color:#00ffff; border-left: 2px solid #00ffff; padding-left: 6px;"><strong>CELESTIAL PROC:</strong> ${hoveredNode.proc.effect.replace(/_/g, ' ')}</p>` : ''}
+                            ${hoveredNode.stats ? `<p>Grants: <span style="color:#4caf50;">${JSON.stringify(hoveredNode.stats).replace(/[{}"']/g, '').replace(/:/g, ': +')}</span></p>` : ''}
+                            <div style="margin-top: 10px; font-size:10px; background: rgba(0,0,0,0.5); padding: 4px; text-align: center; border: 1px solid #444;">
+                                Level: <span style="color:#00ffff;">${window.player.astralTree[hoveredNode.id] || 0}/${hoveredNode.max}</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    canvas.style.cursor = 'grab';
+                    infoPanel.style.opacity = '0';
+                }
             }
         };
+
         window.onmouseup = () => { isDragging = false; };
+        
         parent.onwheel = (e) => {
             e.preventDefault();
             const delta = e.deltaY > 0 ? 0.9 : 1.1;
-            zoom = Math.min(2, Math.max(0.2, zoom * delta));
+            zoom = Math.min(2.5, Math.max(0.3, zoom * delta));
             draw();
         };
 
         parent.onclick = (e) => {
+            if (isDragging) return;
             const rect = canvas.getBoundingClientRect();
             const mouseX = (e.clientX - rect.left - offsetX) / zoom;
             const mouseY = (e.clientY - rect.top - offsetY) / zoom;
@@ -523,20 +563,7 @@ export const AstralUI = {
 
             if (clickedNode) {
                 this.tryUnlockAstral(clickedNode);
-                
-                // Show info
-                infoPanel.style.opacity = '1';
-                infoPanel.innerHTML = `
-                    <h3 style="margin:0; color:var(--gold);">${clickedNode.name}</h3>
-                    <div style="font-size:12px; color:#aaa; margin-top:5px;">
-                        ${clickedNode.special ? `<p style="color:#ffd700;"><strong>ELDER POWER:</strong> ${clickedNode.special}</p>` : ''}
-                        ${clickedNode.stats ? `<p>Grants: ${JSON.stringify(clickedNode.stats)}</p>` : ''}
-                        <p style="font-size:10px;">Level: ${window.player.astralTree[clickedNode.id] || 0}/${clickedNode.max}</p>
-                    </div>
-                `;
-                draw();
-            } else {
-                infoPanel.style.opacity = '0';
+                draw(); // Redraw to update active states
             }
         };
     },
@@ -560,7 +587,19 @@ export const AstralUI = {
             player.astralTree[node.id] = (player.astralTree[node.id] || 0) + 1;
             player.invalidateStats();
             bus.emit('combat:log', { text: `Activated ${node.name}!`, cls: 'log-info' });
-            document.getElementById('astral-points-val').textContent = player.astralPoints;
+            
+            // Sparkle effect
+            const pointsVal = document.getElementById('astral-points-val');
+            pointsVal.textContent = player.astralPoints;
+            pointsVal.style.transition = 'none';
+            pointsVal.style.textShadow = '0 0 20px #fff, 0 0 40px #00ffff';
+            pointsVal.style.color = '#fff';
+            setTimeout(() => {
+                pointsVal.style.transition = 'all 1s';
+                pointsVal.style.textShadow = '0 0 5px #00ffff';
+                pointsVal.style.color = '#00ffff';
+            }, 50);
+
         } else {
             bus.emit('combat:log', { text: 'No Astral Points!', cls: 'log-dmg' });
         }

@@ -59,6 +59,8 @@ export const SUPPORT_RUNES = {
     legion: { name: 'Legion', icon: 'ra-pawn', mod: { extraMinions: 1, petDmgPct: -10 } },
     feral: { name: 'Feral Speed', icon: 'ra-wolf-howl', mod: { petIasPct: 30, petMoveSpeed: 10 } },
     vanguard: { name: 'Vanguard', icon: 'ra-shield', mod: { petHpPct: 50, petThreat: 30 } },
+    expansion: { name: 'Expansion', icon: 'ra-expand', mod: { aoeRadiusPct: 25, pctDmg: -10 } },
+    endurance: { name: 'Endurance', icon: 'ra-hourglass', mod: { buffDurationPct: 50 } },
 
     // Fused Legendary Runes
     celestial_fury: { 
@@ -75,6 +77,11 @@ export const SUPPORT_RUNES = {
         name: 'Astral Projection', icon: 'ra-crystal-ball',
         fusion: ['echo', 'convergence'],
         mod: { echoCount: 2, parallel: true, pctDmg: -10, isLegendary: true }
+    },
+    timeless_expanse: {
+        name: 'Timeless Expanse', icon: 'ra-infinity',
+        fusion: ['expansion', 'endurance'],
+        mod: { aoeRadiusPct: 40, buffDurationPct: 100, pctDmg: 10, isLegendary: true }
     }
 };
 

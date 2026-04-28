@@ -1804,6 +1804,10 @@ _spawnMinion(skillId, slvl, skill) {
                 m.lustTimer = 5.0; // 5s of enrage
                 if (fx) fx.emitBurst(m.x, m.y, '#ff0000', 10, 2);
             });
+        } else if (proc.effect === 'speed_burst') {
+            this._buffs.push({ id: 'windrunner_burst', duration: 3.0, value: 50 }); // +50% speed
+            this._recalcStats();
+            if (fx) fx.emitBurst(this.x, this.y, '#00ffff', 15, 2);
         }
     }
 
