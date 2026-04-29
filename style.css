@@ -1923,18 +1923,7 @@ pointer-events: none;
 #custom-tooltip, #tooltip, #tooltip-compare {
   position: fixed;
   pointer-events: none;
-  max-height: 85vh;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--gold) transparent;
-}
-
-#custom-tooltip::-webkit-scrollbar, #tooltip::-webkit-scrollbar {
-  width: 4px;
-}
-
-#custom-tooltip::-webkit-scrollbar-thumb, #tooltip::-webkit-scrollbar-thumb {
-  background: var(--gold);
+  z-index: 10000;
 }
 
 #custom-tooltip.hidden {

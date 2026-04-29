@@ -1374,6 +1374,9 @@ export class Player {
         if (skillId === 'oak_sage') sprite = 'env_tree';
         if (skillId === 'heart_of_wolverine') sprite = 'enemy_ghost';
 
+        const isPermanent = ['raise_', 'summon_', 'golem', 'revive', 'spirit_wolf', 'dire_wolf', 'grizzly', 'valkyrie', 'clay_golem', 'blood_golem', 'iron_golem', 'fire_golem'].some(k => skillId.includes(k));
+        const duration = isPermanent ? 3600 * 24 : (20 + slvl * 2); // 24 hours for permanent summons
+
         const minion = {
             id: `minion_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
             name: skill.name || skillId.replace(/_/g, ' '), skillId,
@@ -1381,15 +1384,15 @@ export class Player {
             hp, maxHp: hp, damage: dmg,
             armor: (m.minionArmor || 0) + (as.minionArmorPct || 0),
             explodeDmg: (m.explodeDmg || 0) + (rm.isLegendary && skillId.includes('dead') ? 50 : 0),
-            moveSpeed: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k))) ? 0 : (80 * (1 + (rm.petMoveSpeed || 0) / 100)),
+            moveSpeed: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k))) ? 0 : (90 * (1 + (rm.petMoveSpeed || 0) / 100)),
             isStationary: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k)) || skillId === 'oak_sage' || skillId === 'heart_of_wolverine'),
-            attackRange: (skill.group === 'totem' || skillId.includes('mage') || skillId.includes('imp') || sprite === 'summon_skeleton_mage') ? 200 : 25,
+            attackRange: (skill.group === 'totem' || skillId.includes('mage') || skillId.includes('imp') || sprite === 'summon_skeleton_mage') ? 220 : 35,
             attackCd: 0,
-            attackSpeed: 1.2 * (1 + (this.minionIasPct + (rm.petIasPct || 0) + (as.minionIasPct || 0)) / 100),
-            age: 0, duration: 20 + slvl * 2, icon: `skill_${skillId}`, sprite,
+            attackSpeed: 1.1 / (1 + (this.minionIasPct + (rm.petIasPct || 0) + (as.minionIasPct || 0)) / 100),
+            age: 0, duration, icon: `skill_${skillId}`, sprite,
             animState: 'idle', facingDir: 'south',
             size: (skillId.includes('golem') || skillId.includes('grizzly') || skillId.includes('valkyrie')) ? 24 : 16,
-            formationOffset: { x: (Math.random() - 0.5) * 80, y: (Math.random() - 0.5) * 80 }
+            formationOffset: { x: (Math.random() - 0.5) * 100, y: (Math.random() - 0.5) * 100 }
         };
         this.minions.push(minion); bus.emit('minion:spawned', { minion });
         this._statsDirty = true; this._recalcStats(); // Recalc for sage buffs
@@ -1409,25 +1412,72 @@ export class Player {
                     m.attackCd = m.attackSpeed;
                     if (fx) fx.emitBurst(near.x, near.y, '#ffff00', 5);
 
+                    // --- Mutation Progress for Minion Hits ---
+                    this.gainSkillXp(m.skillId, 2);
+
                     // --- Astral Procs on Minion Hit ---
                     this.checkAstralProcs('onMinionHit', near.x, near.y, near);
                 }
                 return true;
             }
-            const dx = (this.x + m.formationOffset.x) - m.x, dy = (this.y + m.formationOffset.y) - m.y, dist = Math.hypot(dx, dy);
-            if (dist > 800) { m.x = this.x + m.formationOffset.x; m.y = this.y + m.formationOffset.y; if (fx) fx.emitBurst(m.x, m.y, '#a0ffa0', 10, 1.5); return true; }
-            if (dist < 250) {
-                let near = null, nD = 300;
-                for (const e of enemies) { if (e.hp > 0 && e.state !== 'dead') { const d = Math.hypot(e.x - m.x, e.y - m.y); if (d < nD) { near = e; nD = d; } } }
-                if (near) {
-                    const ang = Math.atan2(near.y - m.y, near.x - m.x);
-                    if (nD > m.attackRange) {
-                        const nx = m.x + Math.cos(ang) * m.moveSpeed * dt, ny = m.y + Math.sin(ang) * m.moveSpeed * dt;
-                        if (!dungeon || dungeon.isWalkable(nx, ny)) { m.x = nx; m.y = ny; moved = true; }
-                        m.facingDir = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang)) ? (Math.cos(ang) > 0 ? 'right' : 'left') : (Math.sin(ang) > 0 ? 'down' : 'up');
-                        m.animState = 'walk';
-                    }
-                    else if (m.attackCd <= 0) {
+
+            // IMPROVED FOLLOW AI: Minions stay closer and acquire targets faster
+            const targetX = this.x + m.formationOffset.x;
+            const targetY = this.y + m.formationOffset.y;
+            const dx = targetX - m.x, dy = targetY - m.y, dist = Math.hypot(dx, dy);
+
+            // Teleport if too far
+            if (dist > 800) { 
+                m.x = targetX; m.y = targetY; 
+                if (fx) fx.emitBurst(m.x, m.y, '#a0ffa0', 10, 1.5); 
+                return true; 
+            }
+
+            // Target Acquisition
+            let near = null, nD = 350;
+            for (const e of (enemies || [])) { 
+                if (e.hp > 0 && e.state !== 'dead') { 
+                    const d = Math.hypot(e.x - m.x, e.y - m.y); 
+                    if (d < nD) { near = e; nD = d; } 
+                } 
+            }
+
+            if (near) {
+                const ang = Math.atan2(near.y - m.y, near.x - m.x);
+                if (nD > m.attackRange) {
+                    // Chase target
+                    const nx = m.x + Math.cos(ang) * m.moveSpeed * dt, ny = m.y + Math.sin(ang) * m.moveSpeed * dt;
+                    if (!dungeon || dungeon.isWalkable(nx, ny)) { m.x = nx; m.y = ny; moved = true; }
+                    m.facingDir = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang)) ? (Math.cos(ang) > 0 ? 'right' : 'left') : (Math.sin(ang) > 0 ? 'down' : 'up');
+                    m.animState = 'walk';
+                }
+                else if (m.attackCd <= 0) {
+                    // Attack target
+                    applyDamage(this, near, calcDamage(this, m.damage, 'physical', near), m.skillId);
+                    m.attackCd = m.attackSpeed;
+                    m.animState = 'attack';
+                    if (fx) fx.emitSlash(near.x, near.y, ang, '#ffffff', 10);
+                    
+                    // --- Mutation Progress for Minion Hits ---
+                    this.gainSkillXp(m.skillId, 2);
+
+                    // --- Astral Procs on Minion Hit ---
+                    this.checkAstralProcs('onMinionHit', near.x, near.y, near);
+                }
+            } else if (dist > 60) {
+                // Return to formation if no enemies
+                const ang = Math.atan2(dy, dx);
+                const nx = m.x + Math.cos(ang) * m.moveSpeed * dt, ny = m.y + Math.sin(ang) * m.moveSpeed * dt;
+                if (!dungeon || dungeon.isWalkable(nx, ny)) { m.x = nx; m.y = ny; moved = true; }
+                m.animState = 'walk';
+                m.facingDir = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang)) ? (Math.cos(ang) > 0 ? 'right' : 'left') : (Math.sin(ang) > 0 ? 'down' : 'up');
+            } else {
+                m.animState = 'idle';
+            }
+
+            return true;
+        });
+    }
                         applyDamage(this, near, calcDamage(this, m.damage, 'physical', near), m.skillId);
                         m.attackCd = m.attackSpeed;
                         m.animState = 'attack';
