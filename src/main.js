@@ -5864,13 +5864,32 @@ function showTooltip(item, x, y) {
 
 function moveTooltip(x, y) {
     const tt = $('custom-tooltip');
+    if (!tt || tt.style.display === 'none') return;
+
     const offset = 15;
+    const padding = 10;
+    
     let tx = x + offset;
     let ty = y + offset;
 
-    // Bounds check
-    if (tx + tt.offsetWidth > window.innerWidth) tx = x - tt.offsetWidth - offset;
-    if (ty + tt.offsetHeight > window.innerHeight) ty = y - tt.offsetHeight - offset;
+    const tw = tt.offsetWidth;
+    const th = tt.offsetHeight;
+    const ww = window.innerWidth;
+    const wh = window.innerHeight;
+
+    // Flip horizontal if overflow
+    if (tx + tw > ww - padding) {
+        tx = x - tw - offset;
+    }
+
+    // Flip vertical if overflow
+    if (ty + th > wh - padding) {
+        ty = y - th - offset;
+    }
+
+    // Final clamp to screen boundaries
+    tx = Math.max(padding, Math.min(tx, ww - tw - padding));
+    ty = Math.max(padding, Math.min(ty, wh - th - padding));
 
     tt.style.left = `${tx}px`;
     tt.style.top = `${ty}px`;

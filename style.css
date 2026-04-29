@@ -1881,6 +1881,18 @@ pointer-events: none;
   gap: 12px;
   align-items: flex-start;
   pointer-events: none;
+  max-width: 95vw; /* Don't exceed viewport width */
+}
+
+@media (max-width: 800px) {
+  .tooltip-compare-container {
+    flex-direction: column !important;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .tooltip-inner {
+    max-width: 280px !important;
+  }
 }
 
 .tooltip-inner {
@@ -1893,6 +1905,7 @@ pointer-events: none;
   border-radius: 4px;
   text-align: center;
   position: relative;
+  word-wrap: break-word; /* Ensure long words don't break layout */
 }
 
 .tooltip-inner::before {
@@ -1907,10 +1920,21 @@ pointer-events: none;
   border-radius: 3px;
 }
 
-#custom-tooltip {
+#custom-tooltip, #tooltip, #tooltip-compare {
   position: fixed;
-  z-index: 999;
   pointer-events: none;
+  max-height: 85vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold) transparent;
+}
+
+#custom-tooltip::-webkit-scrollbar, #tooltip::-webkit-scrollbar {
+  width: 4px;
+}
+
+#custom-tooltip::-webkit-scrollbar-thumb, #tooltip::-webkit-scrollbar-thumb {
+  background: var(--gold);
 }
 
 #custom-tooltip.hidden {
