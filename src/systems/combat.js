@@ -913,11 +913,13 @@ function _handleExtraEffect(attacker, target, proc, mult, dealt) {
             if (Math.random() < 0.3) {
                 fx?.emitLightning?.(target.x, target.y, target.x, target.y - 100, 2);
                 target.hp = Math.max(0, safeNum(target.hp) - Math.round(dealt * 0.5));
+                bus.emit('combat:log', { text: '⚡ Lightning Overload!', cls: 'log-dmg' });
             }
             break;
         case 'dragon_breath':
             if (fx) fx.emitBurst(target.x, target.y, '#ff8800', 20, 4);
             applyStatus(target, 'burn', 3, Math.round(100 * mult));
+            bus.emit('combat:log', { text: '🔥 Dragon Breath!', cls: 'log-dmg' });
             break;
         case 'blizzard_veil':
             applyStatus(attacker, 'shielded', 4, 200);
@@ -926,12 +928,15 @@ function _handleExtraEffect(attacker, target, proc, mult, dealt) {
                 if (ext) ext.duration = 4;
                 else attacker._buffs.push({ id: 'blizzard_veil_proc', type: 'blizzard_veil_proc', duration: 4, name: 'Blizzard Veil' });
             }
+            bus.emit('combat:log', { text: '❄️ Blizzard Veil!', cls: 'log-info' });
             break;
         case 'void_wound':
             applyDot(target, Math.round(150 * mult), DMG_TYPE.SHADOW, 5, 'void_reaper');
+            bus.emit('combat:log', { text: '🌀 Void Wound!', cls: 'log-dmg' });
             break;
         case 'bone_shatter':
             target.armorDebuff = safeNum(target.armorDebuff) + 50;
+            bus.emit('combat:log', { text: '🦴 Bone Shatter!', cls: 'log-dmg' });
             break;
     }
 }
@@ -971,6 +976,10 @@ function _fireEquipmentProcs(attacker, target, dealt, enemies) {
 
         const handler = PROC_MAP[proc.effect];
         if (handler) {
+            // Log the item proc for Legendaries
+            if (item.isLegendary) {
+                bus.emit('combat:log', { text: `✨ ${item.name} Triggers!`, cls: 'log-crit' });
+            }
             handler(attacker, target, proc, synFX, finalMult, enemies);
         } else {
             // Unrecognised proc — skip silently
