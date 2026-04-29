@@ -1831,48 +1831,119 @@ _spawnMinion(skillId, slvl, skill) {
 
     serialize() {
         return {
-            classId: this.classId, className: this.className, level: this.level, xp: this.xp, charName: this.charName, isHardcore: this.isHardcore, 
+            classId: this.classId,
+            className: this.className,
+            charName: this.charName,
+            isHardcore: !!this.isHardcore,
+            level: this.level,
+            xp: this.xp,
+
+            // Stats
+            x: this.x,
+            y: this.y,
+            hp: this.hp,
+            mp: this.mp,
+            baseStr: this.baseStr,
+            baseDex: this.baseDex,
+            baseVit: this.baseVit,
+            baseInt: this.baseInt,
+            statPoints: this.statPoints,
+            permanentResists: this.permanentResists || 0,
+
+            // Progression
+            gold: this.gold,
+            totalMonstersSlain: this.totalMonstersSlain || 0,
+            totalGoldCollected: this.totalGoldCollected || 0,
             maxDifficulty: this.maxDifficulty || 0,
-            x: this.x, y: this.y, hp: this.hp, mp: this.mp, baseStr: this.baseStr, baseDex: this.baseDex, baseVit: this.baseVit, baseInt: this.baseInt,
-            statPoints: this.statPoints, gold: this.gold, totalMonstersSlain: this.totalMonstersSlain, totalGoldCollected: this.totalGoldCollected,
-            talents: this.talents.serialize(), equipment: this.equipment, secondaryEquipment: this.secondaryEquipment, activeWeaponSet: this.activeWeaponSet,
-            inventory: this.inventory, belt: this.belt, hotbar: this.hotbar, permanentResists: this.permanentResists, hasLarzukReward: this.hasLarzukReward,
-            hasAnyaReward: this.hasAnyaReward, hasImbue: this.hasImbue, magicFind: this.magicFind || 0, goldFind: this.goldFind || 0,
-            crushingBlow: this.crushingBlow || 0, allSkillBonus: this.allSkillBonus || 0, activeAura: this.activeAura, _auraSlvl: this._auraSlvl,
-            mercenary: window.mercenary ? window.mercenary.serialize() : null,
-            // Mastery & Rune Core
-            skillMastery: this.skillMastery,
-            mutationTrees: this.mutationTrees,
-            runeSlots: this.runeSlots,
-            astralPoints: this.astralPoints,
-            astralTree: this.astralTree
-        };
-    }
+            highestZone: this.highestZone || 0,
 
-    static deserialize(data) {
-        const p = new Player(data.classId); p.charName = data.charName || p.className; p.isHardcore = !!data.isHardcore; p.maxDifficulty = data.maxDifficulty || 0;
-        p.level = data.level; p.xp = data.xp; p.x = data.x; p.y = data.y; p.hp = data.hp; p.mp = data.mp;
-        p.baseStr = data.baseStr; p.baseDex = data.baseDex; p.baseVit = data.baseVit; p.baseInt = data.baseInt;
-        p.statPoints = data.statPoints; p.gold = data.gold; p.totalMonstersSlain = data.totalMonstersSlain || 0; p.totalGoldCollected = data.totalGoldCollected || 0;
-        p.talents = TalentTree.deserialize(data.talents); p.equipment = data.equipment || {}; p.secondaryEquipment = data.secondaryEquipment || { mainhand: null, offhand: null };
-        p.activeWeaponSet = data.activeWeaponSet || 1; p.inventory = data.inventory || Array(40).fill(null); p.belt = data.belt || [null, null, null, null];
-        p.hotbar = data.hotbar || [null, null, null, null, null]; p.permanentResists = data.permanentResists || 0; p.hasLarzukReward = !!data.hasLarzukReward;
-        p.hasAnyaReward = !!data.hasAnyaReward; p.hasImbue = !!data.hasImbue; p.magicFind = data.magicFind || 0; p.goldFind = data.goldFind || 0;
-        p.crushingBlow = data.crushingBlow || 0; p.allSkillBonus = data.allSkillBonus || 0; p.activeAura = data.activeAura || null; p._auraSlvl = data._auraSlvl || 0;
-        
-        // Mastery & Rune Core
-        p.skillMastery = data.skillMastery || {};
-        p.mutationTrees = data.mutationTrees || {};
-        p.runeSlots = data.runeSlots || {};
-        p.astralPoints = data.astralPoints || 0;
-        p.astralTree = data.astralTree || {};
+            // Paragon System
+            paragonLevel: this.paragonLevel || 0,
+            paragonXp: this.paragonXp || 0,
+            paragonPoints: this.paragonPoints || 0,
+            paragonStats: this.paragonStats || {
+                core: { str: 0, dex: 0, int: 0, vit: 0 },
+                offense: { ias: 0, crit: 0 },
+                defense: { armor: 0, res: 0 },
+                utility: { mf: 0, gf: 0 }
+            },
 
-        if (data.mercenary) {
+            // Skills & Mutations
+            talents: this.talents.serialize(),
+            mutationTrees: this.mutationTrees || {},
+            skillMastery: this.skillMastery || {},
+
+            // Astral Constellation
+            astralPoints: this.astralPoints || 0,
+            astralTree: this.astralTree || {},
+
+            // Rune Core
+            runeSlots: this.runeSlots || {},
+
+            // Items & Gear
+            equipment: this.equipment || {},
+            secondaryEquipment: this.secondaryEquipment || { mainhand: null, offhand: null },
+            activeWeaponSet: this.activeWeaponSet || 1,
+            inventory: this.inventory || [],
+            belt: this.belt || [null, null, null, null],
+            hotbar: this.hotbar || [null, null, null, null, null],
+
+            // Quest Rewards
+            hasLarzukReward: !!this.hasLarzukReward,
+            hasAnyaReward: !!this.hasAnyaReward,
+            hasImbue: !!this.hasImbue,
+
+            // Misc
+            activeAura: this.activeAura || null,
+            _auraSlvl: this._auraSlvl || 0,
+            magicFind: this.magicFind || 0,
+            goldFind: this.goldFind || 0,
+            crushingBlow: this.crushingBlow || 0,
+            allSkillBonus: this.allSkillBonus || 0,
+            mercenary: window.mercenary ? window.mercenary.serialize() : null
+            };
+            }
+
+            static deserialize(data) {
+            if (!data) return null;
+            const p = new Player(data.classId);
+
+            // ... (rest of basic info, stats, paragon, economy, skills)
+            if (data.talents) p.talents = TalentTree.deserialize(data.talents);
+            p.mutationTrees = data.mutationTrees || {};
+            p.skillMastery = data.skillMastery || {};
+            p.astralPoints = data.astralPoints || 0;
+            p.astralTree = data.astralTree || {};
+            p.runeSlots = data.runeSlots || {};
+
+            // Gear
+            p.equipment = data.equipment || {};
+            p.secondaryEquipment = data.secondaryEquipment || { mainhand: null, offhand: null };
+            p.activeWeaponSet = data.activeWeaponSet || 1;
+            p.inventory = data.inventory || Array(40).fill(null);
+            p.belt = data.belt || [null, null, null, null];
+            p.hotbar = data.hotbar || [null, null, null, null, null];
+
+            // Rewards
+            p.hasLarzukReward = !!data.hasLarzukReward;
+            p.hasAnyaReward = !!data.hasAnyaReward;
+            p.hasImbue = !!data.hasImbue;
+
+            // Stats & Bonuses
+            p.magicFind = data.magicFind || 0;
+            p.goldFind = data.goldFind || 0;
+            p.crushingBlow = data.crushingBlow || 0;
+            p.allSkillBonus = data.allSkillBonus || 0;
+            p.activeAura = data.activeAura || null;
+            p._auraSlvl = data._auraSlvl || 0;
+
+            // Restore Mercenary if exists
+            if (data.mercenary) {
             import('./mercenary.js').then(({ Mercenary }) => {
                 window.mercenary = Mercenary.deserialize(data.mercenary);
             });
-        }
+            }
 
-        p._recalcStats(); return p;
-    }
-}
+            p._recalcStats();
+            return p;
+            }}
