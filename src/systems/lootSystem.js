@@ -269,7 +269,7 @@ const UNIQUES = [
     // --- Unique Charms ---
     {
         id: 'gheeds_fortune', name: "Gheed's Fortune", base: 'grand_charm', rarity: RARITY.UNIQUE,
-        icon: 'item_charm_grand', dropLvl: 62,
+        icon: 'item_gheeds_fortune', dropLvl: 62,
         mods: [
             { stat: 'magicFind', value: 40 },
             { stat: 'goldFind', value: 120 },
@@ -279,7 +279,7 @@ const UNIQUES = [
     },
     {
         id: 'annihilus', name: 'Annihilus', base: 'small_charm', rarity: RARITY.UNIQUE,
-        icon: 'item_charm_small', dropLvl: 80,
+        icon: 'item_annihilus', dropLvl: 80,
         mods: [
             { stat: '+allSkills', value: 1 },
             { stat: 'allRes', value: 15 },
@@ -290,7 +290,7 @@ const UNIQUES = [
     },
     {
         id: 'hellfire_torch', name: "Hellfire Torch", base: 'grand_charm', rarity: RARITY.UNIQUE,
-        icon: 'item_charm_grand', dropLvl: 90,
+        icon: 'item_hellfire_torch', dropLvl: 90,
         mods: [
             { stat: '+allSkills', value: 3 },
             { stat: 'allRes', value: 20 },
@@ -715,7 +715,7 @@ const UNIQUES = [
 
     {
         id: 'charm_storm_heart', name: "Storm Heart",
-        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 55,
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_charm_small', dropLvl: 55,
         mods: [{ stat: 'flatLightDmg', value: 15 }, { stat: 'allRes', value: 10 }],
         isLegendaryCharm: true,
         legendaryBoosts: ['thunderfury'],
@@ -805,7 +805,7 @@ const UNIQUES = [
     },
     {
         id: 'charm_thunder_talisman', name: "Thunder Talisman",
-        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_ring', dropLvl: 55,
+        base: 'charm', rarity: RARITY.UNIQUE, icon: 'item_charm_small', dropLvl: 55,
         mods: [{ stat: 'flatLightDmg', value: 22 }, { stat: 'pctIAS', value: 8 }],
         isLegendaryCharm: true,
         legendaryBoosts: ['doomhammer', 'thunderfury'],
@@ -1531,6 +1531,13 @@ export class LootSystem {
         const totalMF = (context.magicFind || 0) + riftMF;
 
         const ilvl = Math.max(1, enemy.level + (enemy.isRiftBoss || enemy.isRiftGuardian ? 10 : 5));
+
+        // 1. Dedicated Consumable Roll (15% chance for Runes, Gems, Support Runes, or Potions)
+        if (Math.random() < 0.15) {
+            return this._rollConsumable(ilvl);
+        }
+
+        // 2. Standard Equipment Roll
         const rarity = this._rollRarity(enemy, totalMF);
 
         if (rarity === RARITY.UNIQUE) {
@@ -1548,13 +1555,66 @@ export class LootSystem {
      * Generate a specific item by level and rarity (used for shops/gambling)
      */
     generate(ilvl = 1, rarity = RARITY.NORMAL) {
-        const baseIds = Object.keys(ITEM_BASES).filter(id => {
-            const b = ITEM_BASES[id];
-            return b.type !== 'gem' && b.type !== 'potion' && b.type !== 'scroll' && b.type !== 'material';
-        });
-        const baseId = baseIds[Math.floor(Math.random() * baseIds.length)];
+        const allBases = Object.keys(ITEM_BASES);
+        let pool = [];
+
+        // WEIGHTED POOL: 20% chance to force a Jewelry/Charm drop
+        if (Math.random() < 0.20) {
+            pool = allBases.filter(id => {
+                const b = ITEM_BASES[id];
+                return b.type === 'ring' || b.type === 'amulet' || b.type === 'charm';
+            });
+        }
+
+        // Default or Fallback: Equipment Pool
+        if (pool.length === 0) {
+            pool = allBases.filter(id => {
+                const b = ITEM_BASES[id];
+                // Exclude consumables from standard gear generation to keep it focused
+                return b.type !== 'gem' && b.type !== 'potion' && b.type !== 'scroll' && 
+                       b.type !== 'material' && b.type !== 'support_rune';
+            });
+        }
+
+        const baseId = pool[Math.floor(Math.random() * pool.length)];
         const base = ITEM_BASES[baseId];
         return this._buildItem(baseId, base, rarity, ilvl);
+    }
+
+    /**
+     * Internal helper to roll for consumables (Runes, Gems, Potions)
+     */
+    _rollConsumable(ilvl) {
+        const roll = Math.random();
+        let subPool = [];
+
+        if (roll < 0.25) {
+            // Runes (Socketable) - Higher level enemies drop more runes
+            subPool = Object.keys(ITEM_BASES).filter(id => id.startsWith('rune_') && !id.includes('support'));
+        } else if (roll < 0.45) {
+            // Support Runes (Astral Core)
+            subPool = Object.keys(ITEM_BASES).filter(id => ITEM_BASES[id].type === 'support_rune');
+        } else if (roll < 0.75) {
+            // Gems (Filter by ilvl: chipped for low, perfect for high)
+            const isHigh = ilvl > 50 || Math.random() < 0.1;
+            subPool = Object.keys(ITEM_BASES).filter(id => {
+                const b = ITEM_BASES[id];
+                if (b.type !== 'gem' || id.startsWith('rune_')) return false;
+                return isHigh ? id.startsWith('perfect_') : id.startsWith('chipped_');
+            });
+        } else {
+            // Potions & Utility
+            subPool = ['potion_hp_minor', 'potion_mp_minor', 'potion_rejuv', 'scroll_identify', 'scroll_town_portal'];
+        }
+
+        // Safety fallback if pool is empty
+        if (subPool.length === 0) return this.generate(ilvl, RARITY.NORMAL);
+
+        const baseId = subPool[Math.floor(Math.random() * subPool.length)];
+        const base = ITEM_BASES[baseId];
+        
+        // Consumables are always Normal rarity but identified
+        return this._buildItem(baseId, base, RARITY.NORMAL, ilvl);
     }
 
     _dropChance(enemy) {
