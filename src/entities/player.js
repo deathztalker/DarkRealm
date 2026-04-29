@@ -58,6 +58,33 @@ export class Player {
         this.baseVit = cls.stats.vit;
         this.baseInt = cls.stats.int;
 
+        this._dots = [];
+        this.hitFlashTimer = 0;
+        this.lastAttacker = null;
+
+        this._statsDirty = true;
+        this.talents = new TalentTree(classId);
+
+        this.equipment = {};
+        this.secondaryEquipment = { mainhand: null, offhand: null };
+        this.activeWeaponSet = 1;
+        this.inventory = Array(40).fill(null);
+        this.belt = Array(4).fill(null);
+
+        this.hotbar = [null, null, null, null, null];
+        this.cooldowns = [0, 0, 0, 0, 0];
+        this.minions = [];
+        this.maxMinions = 10;
+        this.comboPoints = 0;
+        this.maxComboPoints = 5;
+
+        this.path = [];
+        this.pathfinder = new Pathfinder();
+        this.moveSpeed = MOVE_SPEED_BASE;
+        this.attackTarget = null;
+        this.attackCd = 0;
+        this.pushX = 0; this.pushY = 0;
+
         this._buffs = [];
         this.hpBuffer = 0;
         this.mpBuffer = 0;
