@@ -21,36 +21,29 @@ export const Vendor = {
     },
 
     generateVendorStock(vendorId) {
-        // Auto-init fallback if needed
-        if (!this.loot && window.loot) {
-            this.loot = window.loot;
-        }
+        if (!this.loot && window.loot) this.loot = window.loot;
+        if (!this.loot) return;
 
-        if (!this.loot) {
-            console.error("Vendor system not initialized with loot system!");
-            return;
-        }
         const profile = this.profiles[vendorId] || this.profiles['default'];
         const newItems = [];
         const lvl = (window.player && window.player.level) ? window.player.level : 5;
 
-        console.log(`Generating stock for ${vendorId} (Lvl ${lvl})...`);
-
         for (let i = 0; i < profile.numItems; i++) {
             const rarity = profile.rarities[Math.floor(Math.random() * profile.rarities.length)];
-            // Pass null as the third param if your loot.generate expects (lvl, rarity, type)
-            const item = this.loot.generate(lvl, rarity);
-            if (item) {
-                item.identified = true; // Vendor items are always identified
-                newItems.push(item);
-            }
-        }
+            
+            // Pick a type from the profile
+            let type = profile.itemTypes[Math.floor(Math.random() * profile.itemTypes.length)];
+            
+            // Map common profile shorthand to actual system types
+            let forceType = null;
+            if (['potion_hp', 'potion_mp', 'potion'].includes(type)) forceType = 'potion';
+            else if (['scroll_tp', 'scroll_id', 'scroll'].includes(type)) forceType = 'scroll';
+            else if (['weapon', 'armor', 'ring', 'amulet', 'charm'].includes(type)) forceType = type;
 
-        // Emergency fallback: if no items generated, generate at least some basic potions
-        if (newItems.length === 0) {
-            for(let i=0; i<3; i++) {
-                const potion = this.loot.generate(lvl, 'normal');
-                if(potion) newItems.push(potion);
+            const item = this.loot.generate(lvl, rarity, forceType);
+            if (item) {
+                item.identified = true; 
+                newItems.push(item);
             }
         }
 
@@ -58,7 +51,6 @@ export const Vendor = {
             items: newItems,
             lastStocked: Date.now()
         };
-        console.log(`Generated ${newItems.length} items for ${vendorId}`);
     },
 
     openShopForNpc(npc) {

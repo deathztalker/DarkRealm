@@ -1554,23 +1554,28 @@ export class LootSystem {
     /**
      * Generate a specific item by level and rarity (used for shops/gambling)
      */
-    generate(ilvl = 1, rarity = RARITY.NORMAL) {
+    generate(ilvl = 1, rarity = RARITY.NORMAL, forceType = null) {
         const allBases = Object.keys(ITEM_BASES);
         let pool = [];
 
-        // WEIGHTED POOL: 20% chance to force a Jewelry/Charm drop
-        if (Math.random() < 0.20) {
+        // 1. If a specific type is forced (e.g. by a Vendor)
+        if (forceType) {
+            pool = allBases.filter(id => ITEM_BASES[id].type === forceType);
+        }
+
+        // 2. WEIGHTED POOL: 20% chance to force a Jewelry/Charm drop (if no forceType)
+        if (pool.length === 0 && !forceType && Math.random() < 0.20) {
             pool = allBases.filter(id => {
                 const b = ITEM_BASES[id];
                 return b.type === 'ring' || b.type === 'amulet' || b.type === 'charm';
             });
         }
 
-        // Default or Fallback: Equipment Pool
+        // 3. Default or Fallback: Equipment Pool
         if (pool.length === 0) {
             pool = allBases.filter(id => {
                 const b = ITEM_BASES[id];
-                // Exclude consumables from standard gear generation to keep it focused
+                // Exclude consumables from general gear pool unless forced
                 return b.type !== 'gem' && b.type !== 'potion' && b.type !== 'scroll' && 
                        b.type !== 'material' && b.type !== 'support_rune';
             });

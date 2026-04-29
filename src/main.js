@@ -5253,7 +5253,7 @@ function renderInventory() {
         player.belt.forEach((item, i) => {
             const slot = document.createElement('div');
             slot.className = 'belt-slot';
-            slot.innerHTML = item ? getItemHtml(item) : '';
+            slot.innerHTML = (item ? getItemHtml(item) : '') + `<div class="hotkey-label">${i + 1}</div>`;
             if (item) {
                 const itemEl = slot.querySelector('.inv-item');
                 setupTooltip(itemEl, item);

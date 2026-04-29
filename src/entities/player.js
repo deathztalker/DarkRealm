@@ -1547,15 +1547,37 @@ _spawnMinion(skillId, slvl, skill) {
     usePotion(slot) {
         const item = this.belt[slot]; if (!item) return;
         let rHp = 0, rMp = 0, inst = false;
-        if (item.baseId === 'health_potion') rHp = this.maxHp * 0.35;
-        if (item.baseId === 'mana_potion') rMp = this.maxMp * 0.35;
-        if (item.baseId === 'rejuv_potion') { rHp = this.maxHp * 0.5; rMp = this.maxMp * 0.5; inst = true; }
-        if (inst) { this.hp = Math.min(this.maxHp, this.hp + rHp); this.mp = Math.min(this.maxMp, this.mp + rMp); }
-        else { this.hpBuffer += rHp; this.mpBuffer += rMp; }
-        const bId = item.baseId; this.belt[slot] = null;
+        
+        const bid = item.baseId || '';
+        // Updated to match ITEM_BASES (potion_hp_minor, potion_mp_minor, potion_rejuv)
+        if (bid.includes('potion_hp')) rHp = this.maxHp * 0.40;
+        if (bid.includes('potion_mp')) rMp = this.maxMp * 0.40;
+        if (bid === 'potion_rejuv') { 
+            rHp = this.maxHp * 0.60; 
+            rMp = this.maxMp * 0.60; 
+            inst = true; 
+        }
+
+        if (inst) { 
+            this.hp = Math.min(this.maxHp, this.hp + rHp); 
+            this.mp = Math.min(this.maxMp, this.mp + rMp); 
+        } else { 
+            this.hpBuffer += rHp; 
+            this.mpBuffer += rMp; 
+        }
+
+        const bId = item.baseId; 
+        this.belt[slot] = null;
+        
+        // Auto-refill from inventory
         const iIdx = this.inventory.findIndex(x => x && x.baseId === bId);
-        if (iIdx !== -1) { this.belt[slot] = this.inventory[iIdx]; this.inventory[iIdx] = null; }
-        this._statsDirty = true; this._recalcStats();
+        if (iIdx !== -1) { 
+            this.belt[slot] = this.inventory[iIdx]; 
+            this.inventory[iIdx] = null; 
+        }
+        
+        this._statsDirty = true; 
+        this._recalcStats();
     }
 
     addToInventory(item) {
