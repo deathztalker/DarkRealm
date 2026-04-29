@@ -1243,28 +1243,17 @@ function gameLoop(timestamp) {
     // Achievement checker (every frame is fine, checks are cheap)
     checkAchievements();
 
-    // Check portal walk-over collisions
+    // Check portal and waypoint proximity
     for (const o of gameObjects) {
-        if (o.type === 'portal' || o.type === 'uber_portal' || o.type === 'rift_exit') {
-            const dist = Math.sqrt((player.x - o.x) ** 2 + (player.y - o.y) ** 2);
-            if (dist < 20) {
-                const now = Date.now();
-                if (player._lastPortalEntry && now - player._lastPortalEntry < 2000) continue;
-                player._lastPortalEntry = now;
-
-                if (o.type === 'portal') {
-                    const res = o.interact(player);
-                    if (res && res.type === 'PORTAL') {
-                        addCombatLog('Entering Portal...', 'log-level');
-                        nextZone(res.targetZone);
-                        break;
-                    }
-                } else {
-                    // Direct targetZone objects
-                    addCombatLog('Entering Portal...', 'log-level');
-                    nextZone(o.targetZone);
-                    break;
-                }
+        const dist = Math.sqrt((player.x - o.x) ** 2 + (player.y - o.y) ** 2);
+        
+        // 1. Automatic Waypoint Discovery (Keep this as requested)
+        if (o.type === 'waypoint' && dist < 50) {
+            if (!discoveredWaypoints.has(o.zone)) {
+                discoveredWaypoints.add(o.zone);
+                addCombatLog(`Waypoint Discovered: ${ZONE_NAMES[o.zone] || 'Area'}`, 'log-crit');
+                saveGame();
+                if (window.fx) window.fx.emitBurst(o.x, o.y, '#ffd700', 30, 2.5);
             }
         }
     }
@@ -4878,8 +4867,29 @@ injectCodexButton();
 
 // Also bind R key to Codex
 window.addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 'u' && !document.activeElement.tagName.match(/INPUT|TEXTAREA/)) {
+    const key = e.key.toLowerCase();
+    
+    // Rune Codex
+    if (key === 'u' && !document.activeElement.tagName.match(/INPUT|TEXTAREA/)) {
         openRuneCodex();
+    }
+    
+    // Manual Portal Entry
+    if (key === 'e' && !document.activeElement.tagName.match(/INPUT|TEXTAREA/)) {
+        if (window._nearbyPortal) {
+            const o = window._nearbyPortal;
+            addCombatLog(`Entering ${o.name || 'Portal'}...`, 'log-level');
+            
+            if (o.type === 'portal') {
+                const res = o.interact(player);
+                if (res && res.type === 'PORTAL') {
+                    nextZone(res.targetZone);
+                }
+            } else {
+                nextZone(o.targetZone);
+            }
+            window._nearbyPortal = null; // Reset to prevent double triggers
+        }
     }
 });
 // ——— QUEST LOG ———
