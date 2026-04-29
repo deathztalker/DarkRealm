@@ -4672,6 +4672,15 @@ bus.on('action:interact', () => {
         return;
     }
 
+    // 3. FALLBACK: Basic Attack
+    const near = player._nearestEnemy();
+    if (near) {
+        const dist = Math.sqrt((near.x - player.x) ** 2 + (near.y - player.y) ** 2);
+        if (dist < player.attackRange + 30) {
+            player._autoAttack(near);
+        }
+    }
+
     // 3. Closest Gold
     let closestGold = null;
     let minGoldDist = 45;

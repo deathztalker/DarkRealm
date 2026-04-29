@@ -95,15 +95,34 @@ export class MobileControls {
             const baseTransform = `translate(calc(${x}px * var(--mobile-ui-scale)), calc(${y}px * var(--mobile-ui-scale)))`;
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                btn.style.transform = `${baseTransform} scale(0.9)`;
-                btn.style.background = 'rgba(212,175,55,0.4)';
+                btn.style.transform = `${baseTransform} scale(1.15)`;
+                btn.style.background = 'rgba(60, 60, 60, 0.95)';
+
+                // --- CONTINUOUS ATTACK/INTERACT ---
                 bus.emit(btnDef.action, { mouse: this.input ? this.input.mouse : null });
                 if (navigator.vibrate) navigator.vibrate(15);
+
+                if (btnDef.slot === 'interact') {
+                    if (this._interactInterval) clearInterval(this._interactInterval);
+                    btn.style.boxShadow = '0 0 20px #ffd700'; // Visual glow
+                    this._interactInterval = setInterval(() => {
+                        bus.emit(btnDef.action, { mouse: this.input ? this.input.mouse : null });
+                    }, 250); // Repeat every 250ms while held
+                }
             });
-            btn.addEventListener('touchend', () => {
+
+            const stopInteract = () => {
                 btn.style.transform = `${baseTransform} scale(1.0)`;
                 btn.style.background = 'rgba(20, 20, 20, 0.85)';
-            });
+                btn.style.boxShadow = 'none';
+                if (this._interactInterval) {
+                    clearInterval(this._interactInterval);
+                    this._interactInterval = null;
+                }
+            };
+
+            btn.addEventListener('touchend', stopInteract);
+            btn.addEventListener('touchcancel', stopInteract);
             btnContainer.appendChild(btn);
 
             if (typeof btnDef.slot === 'number') this.skillButtons.push({ el: btn, slot: btnDef.slot, originalIcon: btnDef.icon });

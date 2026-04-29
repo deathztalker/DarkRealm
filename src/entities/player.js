@@ -443,7 +443,7 @@ export class Player {
         
         let baseAtkSpd = (wep?.atkSpd || 1.0) * (1 + (this.pctIAS || 0) / 100);
         this.atkSpd = baseAtkSpd * (this._auraSlowFactor < 1 ? (1 - (1 - this._auraSlowFactor) * 0.5) : 1);
-        this.attackRange = wep && wep.range ? Math.max(30, wep.range) : 30;
+        this.attackRange = wep && wep.range ? Math.max(45, wep.range) : 45;
         this.attackRange += (s.attackRangeBonus || 0);
 
         const radianceLvl = this.effectiveSkillLevel('radiance');
@@ -888,12 +888,18 @@ export class Player {
 
     _findEnemyAt(wx, wy) {
         if (!this._enemies) return null;
+        let best = null, bD = Infinity;
         for (const e of this._enemies) {
             if (e.hp <= 0) continue;
             const dx = e.x - wx, dy = e.y - wy;
-            if (dx * dx + dy * dy < 144) return e;
+            const dSq = dx * dx + dy * dy;
+            // 1600 = 40px radius. Much easier to click on mobile/desktop.
+            if (dSq < 1600 && dSq < bD) {
+                bD = dSq;
+                best = e;
+            }
         }
-        return null;
+        return best;
     }
 
     setRefs(dungeon, camera, enemies) {
@@ -1134,7 +1140,19 @@ export class Player {
         this.cooldowns[slotIdx] = skill.cd || 0;
 
         const isSummon = skill.group === 'summon' || ['summon_', 'imp', 'infernal', 'companion_', 'raven', 'grizzly', 'oak_sage', 'golem', 'skeleton_mage', 'revive', 'spirit_wolf', 'vine', 'voidwalker', 'succubus', 'ancestral_'].some(k => skillId.startsWith(k));
-        const target = this.attackTarget || this._nearestEnemy();
+        let target = this.attackTarget || this._nearestEnemy();
+        
+        // AUTO-ACQUIRE for Melee: If no target, find nearest within melee range
+        const isMelee = skill.group === 'melee';
+        if (isMelee && !target) {
+            const near = this._nearestEnemy();
+            if (near) {
+                const dist = Math.hypot(near.x - this.x, near.y - this.y);
+                const mRange = (['whirlwind', 'cleave', 'slam', 'storm', 'dance', 'zeal'].some(k => skillId.includes(k))) ? 70 : 60;
+                if (dist < mRange + 20) target = near;
+            }
+        }
+
         let targetX = target ? target.x : (this.moveDir ? this.x + this.moveDir.x * 100 : this.x);
         let targetY = target ? target.y : (this.moveDir ? this.y + this.moveDir.y * 100 : this.y + 10);
 
