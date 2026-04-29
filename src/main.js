@@ -9272,10 +9272,14 @@ function addChatMessage(sender, text, type = 'general') {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     let html = `<span class="chat-msg-time">[${time}]</span>`;
 
-    const displaySender = sender || 'Stranger';
+    const displaySender = sender || (type === 'general' ? 'Stranger' : '');
 
     if (type === 'whisper') html += `<span class="chat-msg-sender">[From ${displaySender}]:</span>`;
     else if (type === 'system') html += `<span class="chat-msg-sender">[System]:</span>`;
+    else if (type === 'combat' || type === 'loot') {
+        // No sender prefix for combat/loot logs unless explicitly provided
+        if (sender) html += `<span class="chat-msg-sender">${displaySender}:</span>`;
+    }
     else html += `<span class="chat-msg-sender">${displaySender}:</span>`;
 
     html += `<span class="chat-msg-text">${text}</span>`;
