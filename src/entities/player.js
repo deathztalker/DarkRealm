@@ -1977,6 +1977,18 @@ _spawnMinion(skillId, slvl, skill) {
 
         p._recalcStats();
 
+        // --- EMERGENCY RECOVERY PARCHE ---
+        // If level is 1 but character has gold or learned skills, they were likely hit by the bug.
+        // We restore them to Level 60 and grant full points.
+        if (p.level === 1 && (p.gold > 1000 || Object.keys(p.talents.points).length > 0)) {
+            console.warn("[RECOVERY] Bug detected. Restoring character to Level 60...");
+            p.level = 60;
+            p.xp = 0;
+            p.statPoints = 300; // 60 levels * 5 points
+            p.talents.unspent = 60; // 60 levels * 1 point
+            addCombatLog("CHARACTER RESTORED TO LEVEL 60", "log-crit");
+        }
+
         // --- RETROACTIVE COMPENSATION ---
         const totalAstralSpent = Object.values(p.astralTree).reduce((a, b) => a + b, 0);
         if (p.level >= 10 && p.astralPoints === 0 && totalAstralSpent === 0) {
