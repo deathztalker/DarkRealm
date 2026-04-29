@@ -766,27 +766,67 @@ export class Dungeon {
                 };
 
                 if (isBoss) {
-                    const uniqueMapping = {
-                        40: { name: 'Radament', icon: 'enemy_skeleton', isRadament: true, hpMult: 3.5 },
-                        46: { name: 'Beetleburst', icon: 'enemy_spider', isBeetleburst: true, hpMult: 3.0 },
-                        48: { name: 'Coldworm the Burrower', icon: 'enemy_spider', isColdworm: true, hpMult: 3.5 },
-                        59: { name: 'The Summoner', icon: 'class_sorceress', hpMult: 6.0, dmgMult: 4.5 },
-                        82: { name: 'Battlemaid Sarina', icon: 'enemy_ghost', isSarina: true, hpMult: 3.0 },
-                        92: { name: 'Toorc Icefist', icon: 'enemy_skeleton', isCouncil: true, hpMult: 4.5 },
-                        103: { name: 'Shenk the Overseer', icon: 'enemy_demon', isShenk: true, hpMult: 4.0 },
-                        109: { name: 'Frozenstein', icon: 'enemy_demon', isFrozenstein: true, hpMult: 4.0 },
+                    const bossPool = {
+                        1: [ // Act 1 (1-37)
+                            { name: 'Blood Raven', icon: 'enemy_cultist', hpMult: 4.5, xpMult: 15, isUnique: true },
+                            { name: 'Bonebreaker', icon: 'enemy_skeleton', hpMult: 4.0, xpMult: 12, isUnique: true },
+                            { name: 'Treehead Woodfist', icon: 'enemy_golem', hpMult: 4.5, xpMult: 14, isUnique: true },
+                            { name: 'Griswold', icon: 'enemy_zombie', hpMult: 5.0, xpMult: 18, isUnique: true },
+                            { name: 'Pitspawn Fouldog', icon: 'enemy_bat', hpMult: 3.2, xpMult: 10, isUnique: true },
+                            { name: 'Angry Jano', icon: 'boss_angry_jano', hpMult: 6.0, xpMult: 25, id: 'angry_jano', isUnique: true, deathSound: 'assets/death_jano.mp3' },
+                            { name: 'Demon Wirt', icon: 'boss_demon_wirt', hpMult: 2.5, xpMult: 20, id: 'demon_wirt', isUnique: true },
+                            { name: 'Niruko the Swift', icon: 'enemy_goblin', hpMult: 3.5, xpMult: 15, isUnique: true, special: 'extra_fast' }
+                        ],
+                        2: [ // Act 2 (38-67)
+                            { name: 'Radament', icon: 'boss_radament', isRadament: true, hpMult: 5.5, xpMult: 20 },
+                            { name: 'Beetleburst', icon: 'boss_beetleburst', isBeetleburst: true, hpMult: 4.5, xpMult: 15 },
+                            { name: 'Coldworm the Burrower', icon: 'enemy_spider', isColdworm: true, hpMult: 5.0, xpMult: 15 },
+                            { name: 'Fangskin', icon: 'enemy_demon', hpMult: 4.2, xpMult: 18, isUnique: true },
+                            { name: 'The Summoner', icon: 'class_sorceress', hpMult: 8.0, dmgMult: 5.5 }
+                        ],
+                        3: [ // Act 3 (68-95)
+                            { name: 'Battlemaid Sarina', icon: 'enemy_ghost', isSarina: true, hpMult: 4.5, xpMult: 18 },
+                            { name: 'Icehawk Riftwing', icon: 'enemy_bat', hpMult: 3.5, xpMult: 15, isUnique: true, special: 'cold_enchanted' },
+                            { name: 'Endugu the Witch Doctor', icon: 'enemy_goblin', hpMult: 6.0, xpMult: 22, isUnique: true, special: 'teleporter' },
+                            { name: 'Ismail Vilehand', icon: 'enemy_skeleton', hpMult: 5.5, xpMult: 20, isCouncil: true }
+                        ],
+                        4: [ // Act 4 (96-101)
+                            { name: 'Izual', icon: 'boss_izual', isIzual: true, hpMult: 12.0, xpMult: 35 },
+                            { name: 'Hephaisto the Armorer', icon: 'boss_hephaisto', isHephaisto: true, hpMult: 10.0, xpMult: 30 }
+                        ],
+                        5: [ // Act 5 (102-125)
+                            { name: 'Shenk the Overseer', icon: 'boss_shenk', isShenk: true, hpMult: 5.5, xpMult: 20 },
+                            { name: 'Frozenstein', icon: 'enemy_golem', isFrozenstein: true, hpMult: 6.5, xpMult: 22 },
+                            { name: 'Pindleskin', icon: 'enemy_zombie', hpMult: 5.0, xpMult: 25, isUnique: true },
+                            { name: 'Eldritch the Rectifier', icon: 'enemy_demon', hpMult: 4.8, xpMult: 18, isUnique: true }
+                        ]
                     };
-                    if (uniqueMapping[zl]) Object.assign(spawn, uniqueMapping[zl]);
-                    if (zl === 98) { spawn.name = 'Izual'; spawn.icon = 'boss_izual'; spawn.isIzual = true; spawn.hpMult = 8.0; }
-                    if (zl === 100) {
-                        spawn.name = 'Hephaisto'; spawn.icon = 'boss_hephaisto'; spawn.isHephaisto = true; spawn.hpMult = 8.0;
-                        this.objectSpawns.push({ id: 'hellforge', type: 'hellforge', name: 'The Hellforge', x: spawn.x + 60, y: spawn.y, icon: 'obj_altar' });
-                    }
-                    if (zl === 116 && i === this.rooms.length - 1) {
-                        spawn.name = 'Talic the Defender'; spawn.icon = 'enemy_demon'; spawn.isAncient = true; spawn.hpMult = 5.0;
-                        this.enemySpawns.push({ ...spawn, name: 'Madawc the Guardian', x: spawn.x + 40, isAncient: true });
-                        this.enemySpawns.push({ ...spawn, name: 'Korlic the Protector', x: spawn.x - 40, isAncient: true });
-                        this.objectSpawns.push({ id: 'ancients_altar', type: 'ancients_altar', name: 'Altar of the Heavens', x: spawn.x, y: spawn.y - 60, icon: 'obj_altar' });
+
+                    // STRICT ACT BOSSES
+                    if (zl === 37) Object.assign(spawn, { name: 'Andariel', icon: 'boss_andariel', isAndariel: true, hpMult: 15, dmgMult: 3.5 });
+                    else if (zl === 67) Object.assign(spawn, { name: 'Duriel', icon: 'boss_duriel', isDuriel: true, hpMult: 18, dmgMult: 4.0 });
+                    else if (zl === 95) Object.assign(spawn, { name: 'Mephisto', icon: 'boss_mephisto', isMephisto: true, hpMult: 20, dmgMult: 4.5 });
+                    else if (zl === 101) Object.assign(spawn, { name: 'Diablo', icon: 'boss_diablo', isDiablo: true, hpMult: 25, dmgMult: 5.0 });
+                    else if (zl === 125) Object.assign(spawn, { name: 'Baal', icon: 'boss_baal', isBaal: true, hpMult: 35, dmgMult: 6.5 });
+                    else if (zl === 126) Object.assign(spawn, { name: 'The Cow King', icon: 'boss_cow_king', isCowKing: true, hpMult: 12, dmgMult: 3.0 });
+                    else {
+                        // RANDOM ZONE BOSS
+                        const act = zl <= 37 ? 1 : zl <= 67 ? 2 : zl <= 95 ? 3 : zl <= 101 ? 4 : 5;
+                        const available = bossPool[act];
+                        const chosen = available[Math.floor(this.rng() * available.length)];
+                        Object.assign(spawn, chosen);
+                        
+                        // Spawn Hephaisto special altar
+                        if (spawn.isHephaisto) {
+                            this.objectSpawns.push({ id: 'hellforge', type: 'hellforge', name: 'The Hellforge', x: spawn.x + 60, y: spawn.y, icon: 'obj_altar' });
+                        }
+                        // Act 5 Ancients level special logic
+                        if (zl === 116 && i === this.rooms.length - 1) {
+                            spawn.name = 'Talic the Defender'; spawn.icon = 'enemy_demon'; spawn.isAncient = true; spawn.hpMult = 7.0;
+                            this.enemySpawns.push({ ...spawn, syncId: `ancient_madawc_${this._seed}`, name: 'Madawc the Guardian', x: spawn.x + 40, isAncient: true });
+                            this.enemySpawns.push({ ...spawn, syncId: `ancient_korlic_${this._seed}`, name: 'Korlic the Protector', x: spawn.x - 40, isAncient: true });
+                            this.objectSpawns.push({ id: 'ancients_altar', type: 'ancients_altar', name: 'Altar of the Heavens', x: spawn.x, y: spawn.y - 60, icon: 'obj_altar' });
+                        }
                     }
                 }
                 this.enemySpawns.push(spawn);

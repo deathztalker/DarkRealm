@@ -2079,13 +2079,14 @@ function checkDeaths() {
                     // CEREMONIAL VICTORY
                     const banner = $('boss-victory-announcement');
                     if (banner) {
-                        $('vic-boss-name').textContent = e.name || 'Act Boss';
+                        $('vic-boss-name').textContent = e.name || 'Boss Slain';
                         banner.classList.remove('hidden');
                         setTimeout(() => banner.classList.add('hidden'), 4000);
+                        
+                        if (fx) fx.shake(2000, 15); // Powerful shake
+                        timeScale = 0.05; // Dramatic Slow-Mo Finish
+                        addCombatLog(`${(e.name || 'BOSS').toUpperCase()} HAS BEEN DEFEATED!`, 'log-crit');
                     }
-                    fx.shake(2000, 15); // Powerful shake
-                    timeScale = 0.05; // Dramatic Slow-Mo Finish
-                    addCombatLog('DEATH BLOW!', 'log-crit');
                 }
 
                 // Standard Loot with MF/GF
