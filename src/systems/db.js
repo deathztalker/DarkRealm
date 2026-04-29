@@ -38,15 +38,27 @@ export const DB = {
     },
 
     async signIn(email, password) {
-        const { data, error } = await this.client.auth.signInWithPassword({ email, password });
+        const { data, error } = await this.client.auth.signInWithPassword({ 
+            email, 
+            password,
+            options: {
+                redirectTo: window.location.origin + window.location.pathname
+            }
+        });
         if (error) return { success: false, error: error.message };
         return { success: true, data };
     },
 
     async signUp(email, password) {
         // Supabase sign ups by default require email confirmation unless disabled in Auth -> Providers.
-        // We handle the basic call here.
-        const { data, error } = await this.client.auth.signUp({ email, password });
+        // We specify redirectTo to ensure it returns to the current origin (local or prod).
+        const { data, error } = await this.client.auth.signUp({ 
+            email, 
+            password,
+            options: {
+                redirectTo: window.location.origin + window.location.pathname
+            }
+        });
         if (error) return { success: false, error: error.message };
         return { success: true, data };
     },
