@@ -1850,9 +1850,12 @@ function checkInteractions(pos) {
             } else if (res && res.type === 'PORTAL') {
                 addCombatLog(`Entering ${o.name || 'Portal'}...`, 'log-level');
 
-                // PORTAL DESTRUCTION: Remove temporary portals after use
-                const isTemporary = o.id && (o.id.startsWith('tp_') || o.id === 'town_return_tp' || o.id.includes('portal'));
-                if (isTemporary) {
+                // ROUND TRIP LOGIC: 
+                // 1. If going TO town, keep the portal open.
+                // 2. If returning FROM town (destination is not town), destroy the portal.
+                const isReturningFromTown = res.targetZone !== 'town' && (o.id && (o.id.startsWith('tp_') || o.id === 'town_return_tp' || o.id.includes('portal')));
+                
+                if (isReturningFromTown) {
                     const idx = gameObjects.indexOf(o);
                     if (idx !== -1) gameObjects.splice(idx, 1);
                     
