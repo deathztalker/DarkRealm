@@ -1478,25 +1478,6 @@ export class Player {
             return true;
         });
     }
-                        applyDamage(this, near, calcDamage(this, m.damage, 'physical', near), m.skillId);
-                        m.attackCd = m.attackSpeed;
-                        m.animState = 'attack';
-                        m.facingDir = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang)) ? (Math.cos(ang) > 0 ? 'right' : 'left') : (Math.sin(ang) > 0 ? 'down' : 'up');
-                    } else if (m.attackCd < m.attackSpeed * 0.7) {
-                        m.animState = 'idle';
-                    }
-                    return true;
-                }
-            }
-            if (dist > 40) {
-                const s = (dist > 250 ? m.moveSpeed * 1.5 : m.moveSpeed), nx = m.x + (dx / dist) * s * dt, ny = m.y + (dy / dist) * s * dt;
-                if (!dungeon || dungeon.isWalkable(nx, ny)) { m.x = nx; m.y = ny; moved = true; }
-                m.facingDir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-            }
-            m.animState = moved ? 'walk' : 'idle';
-            return true;
-        });
-    }
 
     renderMinions(renderer, time) {
         for (const m of this.minions) {
