@@ -2048,6 +2048,9 @@ function checkDeaths() {
             }
 
             player.addXp(e.xpReward);
+            if (mercenary && mercenary.hp > 0) {
+                mercenary.gainXp(e.xpReward);
+            }
 
             // Authoritative Loot & Gold Generation (Host Only)
             if (network.isHost) {

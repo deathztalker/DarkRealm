@@ -1999,6 +1999,23 @@ _spawnMinion(skillId, slvl, skill) {
         if (data.mercenary) {
             import('./mercenary.js').then(({ Mercenary }) => {
                 window.mercenary = Mercenary.deserialize(data.mercenary);
+                
+                // --- MERCENARY RETROACTIVE COMPENSATION ---
+                if (window.mercenary && window.mercenary.level < p.level) {
+                    const oldLvl = window.mercenary.level;
+                    window.mercenary.level = p.level;
+                    window.mercenary.xp = 0;
+                    window.mercenary.xpToNextLevel = window.mercenary._calcXpReq(window.mercenary.level);
+                    
+                    // Grant points: 1 point per 2 levels
+                    const totalPointsEarned = Math.floor(window.mercenary.level / 2);
+                    let spent = 0; 
+                    for (const pts of Object.values(window.mercenary.points)) spent += pts;
+                    window.mercenary.unspentPoints = Math.max(0, totalPointsEarned - spent);
+                    
+                    window.mercenary._recalcStats();
+                    console.log(`[Retroactive] Mercenary boosted from Lvl ${oldLvl} to ${p.level} to match player.`);
+                }
             });
         }
 

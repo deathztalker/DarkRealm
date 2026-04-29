@@ -976,9 +976,10 @@ function _fireEquipmentProcs(attacker, target, dealt, enemies) {
 
         const handler = PROC_MAP[proc.effect];
         if (handler) {
-            // Log the item proc for Legendaries
+            // Log the item proc for Legendaries with owner info
             if (item.isLegendary) {
-                bus.emit('combat:log', { text: `✨ ${item.name} Triggers!`, cls: 'log-crit' });
+                const owner = attacker.isPlayer ? 'You' : (attacker.charName || attacker.name || 'Your Mercenary');
+                bus.emit('combat:log', { text: `✨ ${owner} triggered ${item.name}!`, cls: 'log-crit' });
             }
             handler(attacker, target, proc, synFX, finalMult, enemies);
         } else {
