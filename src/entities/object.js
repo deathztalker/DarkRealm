@@ -28,7 +28,7 @@ export class GameObject {
                 window.fx.shake(200, 2);
             }
             return { type: 'BREAKABLE' };
-        } else if (this.type === 'portal') {
+        } else if (this.type === 'portal' || this.type === 'rift_exit' || this.type === 'boss_portal' || this.type === 'uber_portal') {
             return { type: 'PORTAL', targetZone: this.targetZone };
         } else if (this.type === 'waypoint') {
             return { type: 'WAYPOINT', zone: this.zone };

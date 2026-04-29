@@ -1979,13 +1979,20 @@ export class Player {
             goldFind: this.goldFind || 0,
             crushingBlow: this.crushingBlow || 0,
             allSkillBonus: this.allSkillBonus || 0,
-            mercenary: window.mercenary ? window.mercenary.serialize() : null
+            mercenary: window.mercenary ? window.mercenary.serialize() : null,
+            // Rift Persistence
+            riftLevel: window.riftLevel || 1,
+            riftProgress: window.riftProgress || 0
         };
     }
 
     static deserialize(data) {
         if (!data) return null;
         const p = new Player(data.classId);
+        
+        // Restore Rift Progress
+        window.riftLevel = data.riftLevel || 1;
+        window.riftProgress = data.riftProgress || 0;
 
         // Basic Info
         p.charName = data.charName || p.className;

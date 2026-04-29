@@ -1791,7 +1791,10 @@ function checkInteractions(pos) {
     // Check Objects
     for (const o of gameObjects) {
         const d = Math.sqrt((o.x - worldPos.x) ** 2 + (o.y - worldPos.y) ** 2);
-        if (d < 20) {
+        // INCREASED RADIUS: Portals (50px) are now easier to click than other objects (20px)
+        const interactRadius = (o.type === 'portal' || o.type === 'rift_exit' || o.type === 'boss_portal' || o.type === 'uber_portal') ? 50 : 20;
+
+        if (d < interactRadius) {
             if (o.type === 'pantheon_monument') {
                 renderDialoguePicker({ id: 'pantheon_monument', name: o.name, x: o.x, y: o.y });
                 return;
@@ -1851,15 +1854,15 @@ function checkInteractions(pos) {
                 addCombatLog(`Entering ${o.name || 'Portal'}...`, 'log-level');
 
                 // ROUND TRIP LOGIC: 
-                // 1. If going TO town, keep the portal open.
-                // 2. If returning FROM town (destination is not town), destroy the portal.
-                const isReturningFromTown = res.targetZone !== 'town' && (o.id && (o.id.startsWith('tp_') || o.id === 'town_return_tp' || o.id.includes('portal')));
+                // Only destroy actual player-invoked Town Portals (tp_). 
+                // DO NOT destroy Rift Portals, Boss Portals, or Act Portals.
+                const isTownPortal = o.id && (o.id.startsWith('tp_') || o.id === 'town_return_tp');
+                const isReturningFromTown = res.targetZone !== 'town' && isTownPortal;
                 
                 if (isReturningFromTown) {
                     const idx = gameObjects.indexOf(o);
                     if (idx !== -1) gameObjects.splice(idx, 1);
                     
-                    // MMO: Sync portal removal
                     if (network.isConnected) {
                         network.socket.emit('object_update', { id: o.id, destroyed: true });
                     }
@@ -2781,7 +2784,13 @@ function updateHud() {
     }
     // Zone Label
     const zoneNameDisplay = $('zone-name');
-    if (zoneNameDisplay) zoneNameDisplay.textContent = ZONE_NAMES[zoneLevel] || `Level ${zoneLevel}`;
+    if (zoneNameDisplay) {
+        if (zoneLevel >= 128) {
+            zoneNameDisplay.textContent = `Greater Rift Depth ${window.riftLevel || 1}`;
+        } else {
+            zoneNameDisplay.textContent = ZONE_NAMES[zoneLevel] || `Level ${zoneLevel}`;
+        }
+    }
 
     // Loot Filter HUD
     const lfh = $('hud-loot-filter');
