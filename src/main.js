@@ -3789,40 +3789,55 @@ function skillTooltipText(skillId) {
 
     const effLvl = player.effectiveSkillLevel(skillId);
     const synBonus = player.talents.synergyBonus ? player.talents.synergyBonus(skillId) : 0;
+    const m = getMutationMods(player, skillId);
 
-    let t = `<div class="tooltip-inner" style="color:#fff; min-width: 240px; padding: 12px; border: 1px solid #444; background: rgba(10,8,5,0.95); box-shadow: 0 0 20px rgba(0,0,0,0.8);">`;
-    t += `<div class="tooltip-name" style="color:var(--gold); font-size: 16px; font-family: Cinzel, serif; border-bottom: 1px solid #bf642f; padding-bottom: 4px; margin-bottom: 8px;">${skill.name} <span style="color:#aaa; font-size:12px;">(Lv ${effLvl})</span></div>`;
-    t += `<div class="tooltip-rarity" style="color:#888; font-size: 10px; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 1px;">— Active Skill —</div>`;
-    t += `<div class="tooltip-stats" style="color:#ccc; font-size:12px; line-height: 1.4;">${formatPremiumDescription(skill.desc)}</div>`;
+    let t = `<div class="tooltip-inner" style="color:#fff; min-width: 260px; padding: 12px; border: 1px solid #444; background: rgba(10,8,5,0.98); box-shadow: 0 0 25px rgba(0,0,0,0.9);">`;
+    t += `<div class="tooltip-name" style="color:var(--gold); font-size: 18px; font-family: Cinzel, serif; border-bottom: 2px solid #bf642f; padding-bottom: 6px; margin-bottom: 10px;">${skill.name} <span style="color:#aaa; font-size:12px;">(Lv ${effLvl})</span></div>`;
+    
+    const isSummon = skill.group === 'summon' || ['summon_', 'raise_', 'golem', 'skeleton', 'wolf', 'raven', 'grizzly', 'succubus', 'voidwalker'].some(k => skillId.includes(k));
+    t += `<div class="tooltip-rarity" style="color:#888; font-size: 10px; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 1.5px;">— ${isSummon ? 'Summoning Skill' : 'Active Skill'} —</div>`;
+    
+    t += `<div class="tooltip-stats" style="color:#ccc; font-size:12px; line-height: 1.5;">${formatPremiumDescription(skill.desc)}</div>`;
 
-    t += `<div style="margin-top:12px; padding-top:8px; border-top:1px solid #333;">`;
-    if (skill.mana) t += `<div style="color:#4850b8; font-size: 11px;">Mana Cost: <span style="color:#fff;">${skill.mana}</span></div>`;
-    if (skill.cd) t += `<div style="color:#aaa; font-size: 11px;">Cooldown: <span style="color:#fff;">${skill.cd}s</span></div>`;
+    t += `<div style="margin-top:12px; padding-top:8px; border-top:1px solid #333; display:grid; grid-template-columns: 1fr 1fr; gap: 5px;">`;
+    if (skill.mana) t += `<div style="color:#4850b8; font-size: 11px;">Mana: <span style="color:#fff;">${skill.mana}</span></div>`;
+    if (skill.cd) t += `<div style="color:#aaa; font-size: 11px;">CD: <span style="color:#fff;">${skill.cd}s</span></div>`;
+    t += `</div>`;
 
-    if (skill.dmgBase) {
+    if (isSummon) {
+        // --- Dynamic Summon Scaling Display ---
+        const statScaling = 1 + (player.int / 100);
+        const dmgBase = ((skill.dmgBase || 8) + (skill.dmgPerLvl || 4) * effLvl);
+        const dmgMult = (1 + (player.minionDmgPct + (player.minionDmgPct || 0)) / 100) * (1 + synBonus) * statScaling;
+        const finalMinionDmg = Math.round(dmgBase * dmgMult);
+        
+        const hpBase = (30 + effLvl * 15);
+        const hpMult = (1 + (player.minionHpPct || 0) / 100) * (1 + synBonus);
+        let finalMinionHp = Math.round(hpBase * hpMult);
+        if (m.minionHp) finalMinionHp *= (1 + m.minionHp / 100);
+
+        t += `<div style="margin-top:12px; padding:10px; background:rgba(0,255,0,0.05); border:1px solid rgba(0,255,0,0.2); border-radius:4px;">`;
+        t += `<div style="color:#a0ffa0; font-weight:bold; font-size:11px; margin-bottom:5px; text-transform:uppercase;">Minion Stats (Scaled):</div>`;
+        t += `<div style="color:#fff; font-size:12px;">Damage: <span style="color:var(--gold);">${finalMinionDmg}</span></div>`;
+        t += `<div style="color:#fff; font-size:12px;">Health: <span style="color:#4caf50;">${finalMinionHp}</span></div>`;
+        if (synBonus > 0) {
+            t += `<div style="color:#00ff00; font-size:10px; margin-top:4px;">+${Math.round(synBonus * 100)}% from Masteries/Synergies</div>`;
+        }
+        t += `</div>`;
+    } else if (skill.dmgBase) {
+        // --- Regular Skill Scaling Display ---
         const baseDmg = skill.dmgBase + (skill.dmgPerLvl || 0) * (effLvl - 1);
         const wepDmg = (player.wepMin + player.wepMax) / 2;
         let totalBase = baseDmg + (skill.wepDmgPct ? wepDmg * (skill.wepDmgPct / 100) : 0);
 
-        let typeMultiplier = 0;
         const dmgType = skill.group === 'fire' || skill.group === 'cold' || skill.group === 'lightning' || skill.group === 'poison' || skill.group === 'shadow' || skill.group === 'holy' ? skill.group : 'physical';
-
-        if (dmgType === 'fire') typeMultiplier = player.pctFireDmg || 0;
-        if (dmgType === 'cold') typeMultiplier = player.pctColdDmg || 0;
-        if (dmgType === 'lightning') typeMultiplier = player.pctLightDmg || 0;
-        if (dmgType === 'poison') typeMultiplier = player.pctPoisonDmg || 0;
-        if (dmgType === 'shadow') typeMultiplier = player.pctShadowDmg || 0;
-        if (dmgType === 'holy') typeMultiplier = player.pctHolyDmg || 0;
-
-        const finalMultiplier = 1 + (player.pctDmg || 0) / 100 + synBonus + typeMultiplier / 100;
+        const typeBonus = player[`pct${cap(dmgType)}Dmg`] || 0;
+        
+        const finalMultiplier = 1 + (player.pctDmg || 0) / 100 + synBonus + typeBonus / 100;
         const finalDmg = Math.round(totalBase * finalMultiplier);
 
         const dmgColors = { fire: '#ff6030', cold: '#30ccff', lightning: '#ffff40', poison: '#50ff50', shadow: '#cc60ff', physical: '#ffffff', holy: '#ffd700' };
-        t += `<div style="color:${dmgColors[dmgType] || '#fff'}; font-weight:bold; margin-top:6px; font-size: 13px; text-shadow: 0 0 5px rgba(0,0,0,0.5);">Damage: ${finalDmg} ${dmgType.toUpperCase()}</div>`;
-
-        if (synBonus > 0) {
-            t += `<div style="color:#00ff00; font-size:11px; margin-top: 2px;">+${Math.round(synBonus * 100)}% from Synergies</div>`;
-        }
+        t += `<div style="color:${dmgColors[dmgType] || '#fff'}; font-weight:bold; margin-top:10px; font-size: 14px; text-shadow: 0 0 8px rgba(0,0,0,0.6);">Average Damage: ${finalDmg} ${dmgType.toUpperCase()}</div>`;
     }
 
     if (skill.synergies && skill.synergies.length > 0) {
@@ -3839,10 +3854,10 @@ function skillTooltipText(skillId) {
     }
 
     if (skill.tip) {
-        t += `<div style="margin-top:10px; font-style:italic; color:#888; font-size:10px; border-top: 1px solid #222; padding-top: 6px;">Tip: ${skill.tip}</div>`;
+        t += `<div style="margin-top:12px; font-style:italic; color:#888; font-size:10px; border-top: 1px solid #222; padding-top: 8px;">Tip: ${skill.tip}</div>`;
     }
 
-    t += `</div></div>`;
+    t += `</div>`;
     return t;
 }
 
@@ -4184,7 +4199,20 @@ bus.on('combat:damage', d => {
         } else {
             const targetName = d.target?.name || 'Enemy';
             const dmgText = `<span style="color:${color}">${d.dealt}</span>`;
-            addCombatLog(`Dealt ${dmgText} to ${targetName}${d.isCrit ? ' (CRIT!)' : ''}`, 'combat');
+            
+            // Differentiate source: Proc, Minion, or Player
+            let sourceLabel = '';
+            if (d.skillId?.includes('_proc') || d.skillId?.includes('_trigger')) {
+                sourceLabel = ' <span style="color:#aaa; font-size:10px;">[Proc]</span>';
+            } else if (d.attacker?.id?.startsWith('minion_')) {
+                sourceLabel = ` <span style="color:#a0ffa0; font-size:10px;">[${d.attacker.name}]</span>`;
+            } else if (d.attacker?.isMercenary) {
+                sourceLabel = ` <span style="color:#ffcc00; font-size:10px;">[Mercenary]</span>`;
+            } else {
+                sourceLabel = ' <span style="color:#aaa; font-size:10px;">[You]</span>';
+            }
+
+            addCombatLog(`Dealt ${dmgText} to ${targetName}${sourceLabel}${d.isCrit ? ' (CRIT!)' : ''}`, 'combat');
         }
     }
     // Use our high-precision Canvas-based system instead of DOM for perfect mobile alignment
