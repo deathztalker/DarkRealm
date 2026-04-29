@@ -176,14 +176,14 @@ body {
     max-height: 90vh;
     padding-bottom: 50px;
   }
-  
+
   .char-list-side {
     width: 100% !important;
     max-width: 400px;
     border-right: none !important;
     border-top: 1px solid var(--border);
   }
-  
+
   .char-preview-side {
     width: 100% !important;
     display: flex;
@@ -191,14 +191,16 @@ body {
     align-items: center;
   }
 
-  .game-title { font-size: 2.5em !important; }
-  
+  .game-title {
+    font-size: 2.5em !important;
+  }
+
   #hud {
     transform: scale(0.8);
     transform-origin: bottom center;
     bottom: -15px !important;
   }
-  
+
   #hud-buttons {
     flex-wrap: wrap;
     justify-content: center;
@@ -208,7 +210,9 @@ body {
     width: 200px;
   }
 
-  .panel, .ui-panel, .window {
+  .panel,
+  .ui-panel,
+  .window {
     width: 96% !important;
     left: 2% !important;
     top: 5% !important;
@@ -226,8 +230,11 @@ body {
     width: 250px !important;
   }
 
-  .game-title { font-size: 1.8em !important; margin-top: 5px; }
-  
+  .game-title {
+    font-size: 1.8em !important;
+    margin-top: 5px;
+  }
+
   #hud {
     transform: scale(0.65);
     bottom: -25px !important;
@@ -293,7 +300,7 @@ body {
 #char-preview-pedestal {
   width: 300px;
   height: 400px;
-  background: radial-gradient(circle at 50% 80%, rgba(216, 176, 104, 0.2), transparent 63%);
+  background: radial-gradient(circle at 50% 80%, rgba(216, 181, 112, 2.2), transparent 37%);
   position: relative;
   display: flex;
   justify-content: center;
@@ -744,15 +751,17 @@ body {
   border-top: 2px solid #3a3025;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.8);
   z-index: 100;
-  pointer-events: none; /* Let clicks pass to canvas by default */
+  pointer-events: none;
+  /* Let clicks pass to canvas by default */
 }
 
 #btn-fullscreen-hud {
   pointer-events: all !important;
   z-index: 101;
 }
-  z-index: 50;
-  pointer-events: none;
+
+z-index: 50;
+pointer-events: none;
 }
 
 #hud::before {
@@ -1254,25 +1263,25 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
 }
 
 .hud-btn:hover {
   border-color: var(--gold);
   background: #1e1830;
   transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(0,0,0,0.7);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.7);
 }
 
 /* Mobile adjustments for the fullscreen button */
 @media (max-width: 768px) {
-    #btn-fullscreen-hud {
-        bottom: 140px !important; 
-        left: 20px !important;
-        width: 48px !important;
-        height: 48px !important;
-        font-size: 24px !important;
-    }
+  #btn-fullscreen-hud {
+    bottom: 140px !important;
+    left: 20px !important;
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 24px !important;
+  }
 }
 
 /* =============================================
@@ -2387,11 +2396,12 @@ body.socketing-mode .inv-slot {
 /* --- Chat Minimization Logic (Global) --- */
 .chat-container.minimized {
   height: 32px !important;
-  width: 180px !important; /* Increased for handle */
+  width: 180px !important;
+  /* Increased for handle */
   background: rgba(10, 8, 5, 0.9) !important;
   border: 1px solid var(--gold) !important;
   overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(5px);
   border-radius: 16px;
 }
@@ -2420,7 +2430,7 @@ body.socketing-mode .inv-slot {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 50%;
   padding: 0;
 }
@@ -2541,32 +2551,36 @@ body.socketing-mode .inv-slot {
 
   /* MOBILE CHAT ADAPTATION — Ultra Compact */
   .chat-container {
-    width: 200px; /* Reduced from 260px */
-    height: 100px; /* Reduced from 120px */
+    width: 200px;
+    /* Reduced from 260px */
+    height: 100px;
+    /* Reduced from 120px */
     bottom: 70px;
     left: 10px;
-    background: rgba(0, 0, 0, 0.2); /* More transparent */
+    background: rgba(0, 0, 0, 0.2);
+    /* More transparent */
     font-size: 11px;
     border-radius: 8px;
     backdrop-filter: blur(2px);
   }
-  
+
   .chat-container.minimized {
     height: 28px !important;
     width: 100px !important;
     background: rgba(191, 100, 47, 0.3) !important;
     border: 1px solid var(--gold) !important;
-    border-radius: 14px; /* Pill shape */
+    border-radius: 14px;
+    /* Pill shape */
     overflow: hidden;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
   }
-  
+
   .chat-container.minimized .chat-tabs {
     background: transparent !important;
     border: none !important;
     justify-content: center;
   }
-  
+
   .chat-container.minimized .chat-tab,
   .chat-container.minimized #btn-chat-lock {
     display: none !important;
@@ -2581,18 +2595,18 @@ body.socketing-mode .inv-slot {
 
   .chat-container:not(:focus-within):not(.unlocked):not(.minimized) {
     height: 28px;
-    background: rgba(0,0,0,0.1);
+    background: rgba(0, 0, 0, 0.1);
     border-color: transparent;
   }
-  
-  .chat-messages-area { 
-    font-size: 10px !important; 
+
+  .chat-messages-area {
+    font-size: 10px !important;
     padding: 4px !important;
   }
-  
-  .chat-tab { 
-    padding: 2px 6px !important; 
-    font-size: 9px !important; 
+
+  .chat-tab {
+    padding: 2px 6px !important;
+    font-size: 9px !important;
   }
 
   /* MMO LOGIN MOBILE */
@@ -2603,20 +2617,39 @@ body.socketing-mode .inv-slot {
     max-height: 95vh;
     overflow-y: auto;
   }
+
   .class-selection-container {
     flex-direction: column !important;
     height: auto !important;
   }
+
   .char-preview-side {
     width: 100% !important;
     height: 160px !important;
     margin-bottom: 10px !important;
   }
-  #char-preview-pedestal { transform: scale(0.6) !important; margin-top: -20px !important; }
-  .class-selection-main { width: 100% !important; }
-  .class-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 5px !important; }
-  .class-card { padding: 8px !important; }
-  .class-card-name { font-size: 9px !important; }
+
+  #char-preview-pedestal {
+    transform: scale(0.6) !important;
+    margin-top: -20px !important;
+  }
+
+  .class-selection-main {
+    width: 100% !important;
+  }
+
+  .class-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 5px !important;
+  }
+
+  .class-card {
+    padding: 8px !important;
+  }
+
+  .class-card-name {
+    font-size: 9px !important;
+  }
 
   /* IN-GAME HUD */
   #hud {
@@ -2646,10 +2679,23 @@ body.socketing-mode .inv-slot {
       width: 220px !important;
       height: 90px !important;
     }
-    .class-selection-container { flex-direction: row !important; }
-    .char-preview-side { width: 35% !important; height: auto !important; }
-    .class-selection-main { width: 65% !important; }
-    .class-grid { grid-template-columns: repeat(5, 1fr) !important; }
+
+    .class-selection-container {
+      flex-direction: row !important;
+    }
+
+    .char-preview-side {
+      width: 35% !important;
+      height: auto !important;
+    }
+
+    .class-selection-main {
+      width: 65% !important;
+    }
+
+    .class-grid {
+      grid-template-columns: repeat(5, 1fr) !important;
+    }
 
     #minimap {
       top: auto !important;
@@ -3517,7 +3563,8 @@ body.socketing-mode .inv-item:not(.unidentified) {
   border-radius: 4px;
   font-family: 'Crimson Text', serif;
   transition: background 0.3s, border 0.3s;
-  pointer-events: auto; /* Permite clics en la caja de chat */
+  pointer-events: auto;
+  /* Permite clics en la caja de chat */
 }
 
 .chat-container:focus-within,
@@ -3541,7 +3588,8 @@ body.socketing-mode .inv-item:not(.unidentified) {
   height: 100%;
   image-rendering: pixelated;
   cursor: crosshair;
-  z-index: 1; /* Asegura que esté al fondo */
+  z-index: 1;
+  /* Asegura que esté al fondo */
 }
 
 .chat-container.unlocked::before {
@@ -3566,7 +3614,8 @@ body.socketing-mode .inv-item:not(.unidentified) {
   display: flex;
   background: rgba(20, 20, 20, 0.8);
   border-bottom: 1px solid #333;
-  user-select: none; /* Prevent text selection while dragging */
+  user-select: none;
+  /* Prevent text selection while dragging */
 }
 
 .chat-tab {
@@ -3602,16 +3651,45 @@ body.socketing-mode .inv-item:not(.unidentified) {
   scrollbar-width: thin;
 }
 
-.chat-msg { word-wrap: break-word; }
-.chat-msg-time { color: #555; margin-right: 6px; font-size: 11px; }
-.chat-msg-sender { font-weight: bold; margin-right: 4px; color: #ffd700; }
+.chat-msg {
+  word-wrap: break-word;
+}
 
-.chat-msg-general { color: #fff; }
-.chat-msg-combat { color: #ffb0b0; }
-.chat-msg-system { color: #ffff00; }
-.chat-msg-whisper { color: #ff80ff; }
-.chat-msg-party { color: #aaaaff; }
-.chat-msg-loot { color: #00ff00; }
+.chat-msg-time {
+  color: #555;
+  margin-right: 6px;
+  font-size: 11px;
+}
+
+.chat-msg-sender {
+  font-weight: bold;
+  margin-right: 4px;
+  color: #ffd700;
+}
+
+.chat-msg-general {
+  color: #fff;
+}
+
+.chat-msg-combat {
+  color: #ffb0b0;
+}
+
+.chat-msg-system {
+  color: #ffff00;
+}
+
+.chat-msg-whisper {
+  color: #ff80ff;
+}
+
+.chat-msg-party {
+  color: #aaaaff;
+}
+
+.chat-msg-loot {
+  color: #00ff00;
+}
 
 .chat-input-wrapper {
   display: flex;
@@ -3645,8 +3723,14 @@ body.socketing-mode .inv-item:not(.unidentified) {
   padding: 2px 0;
 }
 
-.chat-messages-area::-webkit-scrollbar { width: 4px; }
-.chat-messages-area::-webkit-scrollbar-thumb { background: #4a3520; border-radius: 2px; }
+.chat-messages-area::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chat-messages-area::-webkit-scrollbar-thumb {
+  background: #4a3520;
+  border-radius: 2px;
+}
 
 
 /* =============================================
@@ -3741,7 +3825,7 @@ body.socketing-mode .inv-item:not(.unidentified) {
     top: 5px !important;
     right: 5px !important;
   }
-  
+
   #btn-toggle-fullscreen {
     width: 44px;
     height: 44px;
@@ -4015,7 +4099,7 @@ body.socketing-mode .inv-item:not(.unidentified) {
 
 /* Tooltip highlight for legendary items */
 .tooltip-legendary-name {
-  background: linear-gradient(90deg, transparent, rgba(255,215,0,0.08), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.08), transparent);
   text-align: center;
   padding: 2px 0 6px;
   letter-spacing: 1px;
@@ -4026,33 +4110,63 @@ body.socketing-mode .inv-item:not(.unidentified) {
 }
 
 @keyframes legendary-shimmer {
-  0%, 100% { opacity: 1; filter: brightness(1); }
-  50% { opacity: 0.8; filter: brightness(1.4); }
+
+  0%,
+  100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+
+  50% {
+    opacity: 0.8;
+    filter: brightness(1.4);
+  }
 }
 
 /* Inventory slot glow for legendary items */
 .inv-slot[data-legendary='true'],
 .equip-slot[data-legendary='true'] {
-  box-shadow: 0 0 12px 3px rgba(255,200,50,0.6), inset 0 0 6px rgba(255,200,50,0.15);
-  border-color: rgba(255,200,50,0.8) !important;
+  box-shadow: 0 0 12px 3px rgba(255, 200, 50, 0.6), inset 0 0 6px rgba(255, 200, 50, 0.15);
+  border-color: rgba(255, 200, 50, 0.8) !important;
   animation: legendary-border-pulse 2s ease-in-out infinite;
 }
 
 @keyframes legendary-border-pulse {
-  0%, 100% { box-shadow: 0 0 12px 3px rgba(255,200,50,0.6), inset 0 0 6px rgba(255,200,50,0.15); }
-  50%       { box-shadow: 0 0 22px 6px rgba(255,200,50,0.9), inset 0 0 12px rgba(255,200,50,0.3); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 12px 3px rgba(255, 200, 50, 0.6), inset 0 0 6px rgba(255, 200, 50, 0.15);
+  }
+
+  50% {
+    box-shadow: 0 0 22px 6px rgba(255, 200, 50, 0.9), inset 0 0 12px rgba(255, 200, 50, 0.3);
+  }
 }
 
 /* On-Hit proc flash overlay */
 @keyframes proc-flash {
-  0%   { opacity: 0.9; transform: scale(1); }
-  50%  { opacity: 0.5; transform: scale(1.08); }
-  100% { opacity: 0; transform: scale(1.15); }
+  0% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.08);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.15);
+  }
 }
 
 .proc-flash {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   pointer-events: none;
   z-index: 500;
   animation: proc-flash 0.6s ease-out forwards;
@@ -4063,7 +4177,7 @@ body.socketing-mode .inv-item:not(.unidentified) {
   position: fixed;
   top: 130px;
   right: 220px;
-  background: rgba(80,0,120,0.85);
+  background: rgba(80, 0, 120, 0.85);
   border: 1px solid #8800cc;
   border-radius: 4px;
   padding: 4px 10px;
@@ -4081,7 +4195,7 @@ body.socketing-mode .inv-item:not(.unidentified) {
   right: 220px;
   width: 100px;
   height: 6px;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   border: 1px solid #ffdd44;
   border-radius: 3px;
   display: none;
@@ -4097,8 +4211,15 @@ body.socketing-mode .inv-item:not(.unidentified) {
 
 /* Duel banner */
 @keyframes duel-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(255,68,68,0.5); }
-  50%       { box-shadow: 0 0 40px rgba(255,68,68,0.9); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(255, 68, 68, 0.9);
+  }
 }
 
 #duel-banner {
