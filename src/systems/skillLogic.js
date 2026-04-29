@@ -18,7 +18,7 @@ export const SkillLogic = {
         const m = getMutationMods(attacker, skillId);
 
         // --- Astral Procs ---
-        if (attacker.isPlayer) {
+        if (attacker.isPlayer && typeof attacker.checkAstralProcs === 'function') {
             attacker.checkAstralProcs('onHit', target.x, target.y, target);
         }
 
