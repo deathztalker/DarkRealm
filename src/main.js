@@ -1848,7 +1848,20 @@ function checkInteractions(pos) {
                 addCombatLog(`You smashed a barrel!`, 'log-info');
                 fx.emitBurst(o.x, o.y, '#8b4513', 10, 1.5);
             } else if (res && res.type === 'PORTAL') {
-                addCombatLog('Entering Portal...', 'log-level');
+                addCombatLog(`Entering ${o.name || 'Portal'}...`, 'log-level');
+
+                // PORTAL DESTRUCTION: Remove temporary portals after use
+                const isTemporary = o.id && (o.id.startsWith('tp_') || o.id === 'town_return_tp' || o.id.includes('portal'));
+                if (isTemporary) {
+                    const idx = gameObjects.indexOf(o);
+                    if (idx !== -1) gameObjects.splice(idx, 1);
+                    
+                    // MMO: Sync portal removal
+                    if (network.isConnected) {
+                        network.socket.emit('object_update', { id: o.id, destroyed: true });
+                    }
+                }
+
                 nextZone(res.targetZone);
             } else if (res && res.type === 'WAYPOINT') {
                 if (!discoveredWaypoints.has(res.zone)) {
@@ -7854,7 +7867,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if ($('auth-close')) $('auth-modal').onclick = () => $('auth-modal').classList.add('hidden');
 
     // Fullscreen Toggle
-    $('btn-toggle-fullscreen')?.addEventListener('click', () => {
+    const toggleFS = () => {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().catch(err => {
                 console.warn(`Error attempting to enable full-screen mode: ${err.message}`);
@@ -7862,7 +7875,9 @@ window.addEventListener('DOMContentLoaded', () => {
         } else {
             if (document.exitFullscreen) document.exitFullscreen();
         }
-    });
+    };
+    $('btn-toggle-fullscreen')?.addEventListener('click', toggleFS);
+    $('btn-fullscreen-hud')?.addEventListener('click', toggleFS);
 
     $('btn-auth-login')?.addEventListener('click', async () => {
         const e = $('auth-email').value, p = $('auth-password').value;

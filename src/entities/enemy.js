@@ -247,47 +247,37 @@ export class Enemy {
             }
         }
 
-        // --- Phase 23: Duriel Specialized States ---
-        this.isDuriel = this.isDuriel || (spawn.level === 10) || false;
+        // --- Phase 23-26: Specialized Boss States (Removed incorrect level overrides) ---
+        // Boss properties are now correctly passed from the dungeon generator spawn data.
         if (this.isDuriel) {
             this.name = "Duriel, Lord of Pain";
-            this.icon = 'enemy_demon';
             this.maxHp = Math.round(base.hp * scale * 3.5 * diffMult);
             this.dmg = Math.round(base.dmg * scale * 2.0 * diffMult);
             this.hp = this.maxHp;
             this.holyFreezeRadius = 250;
             this.holyFreezeSlow = 0.5;
-            this.isRiftBoss = false; // Ensure not flagged as rift boss
+            this.isRiftBoss = false;
         }
 
-        // --- Phase 24: Mephisto Specialized States ---
-        this.isMephisto = this.isMephisto || (spawn.level === 15) || (this.name === 'Mephisto, Lord of Hatred');
         if (this.isMephisto) {
             this.name = "Mephisto, Lord of Hatred";
-            this.icon = 'enemy_ghost';
-            this.maxHp = Math.round(this.maxHp * 2.5); // On top of boss pool base
+            this.maxHp = Math.round(this.maxHp * 2.5);
             this.hp = this.maxHp;
             this.element = 'lightning';
         }
 
-        // --- Phase 25: Diablo Specialized States ---
-        this.isDiablo = this.isDiablo || (spawn.level === 20);
         if (this.isDiablo) {
             this.name = "Diablo, Lord of Terror";
-            this.icon = 'enemy_demon';
-            this.maxHp = Math.round(base.hp * scale * 5.5 * diffMult); // Increased from 3.5
-            this.dmg = Math.round(base.dmg * scale * 3.0 * diffMult); // Increased from 2.5
+            this.maxHp = Math.round(base.hp * scale * 5.5 * diffMult);
+            this.dmg = Math.round(base.dmg * scale * 3.0 * diffMult);
             this.hp = this.maxHp;
             this.element = 'fire';
         }
 
-        // --- Phase 26: Baal Specialized States ---
-        this.isBaal = this.isBaal || (spawn.level === 25);
         if (this.isBaal) {
             this.name = "Baal, Lord of Destruction";
-            this.icon = 'enemy_cultist';
-            this.maxHp = Math.round(base.hp * scale * 7.5 * diffMult); // Increased from 4.0
-            this.dmg = Math.round(base.dmg * scale * 4.2 * diffMult); // Increased from 3.2
+            this.maxHp = Math.round(base.hp * scale * 7.5 * diffMult);
+            this.dmg = Math.round(base.dmg * scale * 4.2 * diffMult);
             this.hp = this.maxHp;
             this.element = 'cold';
         }

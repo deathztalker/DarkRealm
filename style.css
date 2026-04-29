@@ -1243,11 +1243,28 @@ body {
   font-size: 1rem;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
 .hud-btn:hover {
   border-color: var(--gold);
   background: #1e1830;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.7);
+}
+
+/* Mobile adjustments for the fullscreen button */
+@media (max-width: 768px) {
+    #btn-fullscreen-hud {
+        bottom: 140px !important; 
+        left: 20px !important;
+        width: 48px !important;
+        height: 48px !important;
+        font-size: 24px !important;
+    }
 }
 
 /* =============================================
