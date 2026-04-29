@@ -1945,5 +1945,29 @@ _spawnMinion(skillId, slvl, skill) {
             }
 
             p._recalcStats();
+
+            // --- RETROACTIVE COMPENSATION ---
+            // If a high level player loads and has 0 astral points spent/available, grant them based on level.
+            const totalAstralSpent = Object.values(p.astralTree).reduce((a, b) => a + b, 0);
+            if (p.level >= 10 && p.astralPoints === 0 && totalAstralSpent === 0) {
+                // Grant 1 Astral Point every 2 levels starting from level 10
+                const compensation = Math.floor((p.level - 10) / 2) + 1;
+                if (compensation > 0) {
+                    p.astralPoints = compensation;
+                    console.log(`[Retroactive] Granted ${compensation} Astral Points for Level ${p.level}`);
+                }
+            }
+
+            // Grant initial Skill Mastery/Mutation points if the system is new for this char
+            if (p.level >= 20 && Object.keys(p.skillMastery).length === 0) {
+                // Initialize basic mastery for learned skills
+                Object.keys(p.skillMap).forEach(id => {
+                    if (p.talents.isLearned(id)) {
+                        p.skillMastery[id] = { xp: 0, lvl: 5, points: 2 }; 
+                    }
+                });
+                console.log(`[Retroactive] Initialized Skill Mastery for existing skills.`);
+            }
+
             return p;
             }}
