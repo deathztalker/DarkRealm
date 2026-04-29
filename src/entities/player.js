@@ -1940,7 +1940,12 @@ _spawnMinion(skillId, slvl, skill) {
         p.totalGoldCollected = data.totalGoldCollected || 0;
 
         // Skills & Systems
-        if (data.talents) p.talents = TalentTree.deserialize(data.talents);
+        if (data.talents) {
+            p.talents = TalentTree.deserialize(data.talents);
+        } else {
+            p.talents = new TalentTree(p.classId);
+        }
+        
         p.mutationTrees = data.mutationTrees || {};
         p.skillMastery = data.skillMastery || {};
         p.astralPoints = data.astralPoints || 0;
@@ -1978,28 +1983,28 @@ _spawnMinion(skillId, slvl, skill) {
         p._recalcStats();
 
         // --- EMERGENCY RECOVERY PARCHE ---
-        // If level is 1 but character has gold or learned skills, they were likely hit by the bug.
-        // We restore them to Level 60 and grant full points.
-        if (p.level === 1 && (p.gold > 1000 || Object.keys(p.talents.points).length > 0)) {
+        // Verify points property exists before checking recovery
+        const hasPointsLearned = p.talents && p.talents.points && Object.keys(p.talents.points).length > 0;
+        if (p.level === 1 && (p.gold > 1000 || hasPointsLearned)) {
             console.warn("[RECOVERY] Bug detected. Restoring character to Level 60...");
             p.level = 60;
             p.xp = 0;
-            p.statPoints = 300; // 60 levels * 5 points
-            p.talents.unspent = 60; // 60 levels * 1 point
-            addCombatLog("CHARACTER RESTORED TO LEVEL 60", "log-crit");
+            p.statPoints = 300; 
+            p.talents.unspent = 60;
+            if (typeof addCombatLog !== 'undefined') addCombatLog("CHARACTER RESTORED TO LEVEL 60", "log-crit");
         }
 
         // --- RETROACTIVE COMPENSATION ---
-        const totalAstralSpent = Object.values(p.astralTree).reduce((a, b) => a + b, 0);
+        const totalAstralSpent = Object.values(p.astralTree).reduce((a, b) => a + (Number(b) || 0), 0);
         if (p.level >= 10 && p.astralPoints === 0 && totalAstralSpent === 0) {
             const compensation = Math.floor((p.level - 10) / 2) + 1;
-            if (compensation > 0) {
-                p.astralPoints = compensation;
-            }
+            if (compensation > 0) p.astralPoints = compensation;
         }
+
         if (p.level >= 20 && Object.keys(p.skillMastery).length === 0) {
             Object.keys(p.skillMap).forEach(id => {
-                if (p.talents.isLearned(id)) {
+                // Now talents is a class instance, so isLearned works
+                if (p.talents && typeof p.talents.isLearned === 'function' && p.talents.isLearned(id)) {
                     p.skillMastery[id] = { xp: 0, lvl: 5, points: 2 }; 
                 }
             });
