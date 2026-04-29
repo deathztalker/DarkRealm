@@ -189,9 +189,12 @@ export class Input {
             // Potions (1, 2, 3, 4)
             'Digit1': 'potion:use:0', 'Digit2': 'potion:use:1', 'Digit3': 'potion:use:2', 'Digit4': 'potion:use:3',
             
-            // Skills (Q, W, E, R, F or Digit 5-9)
-            'KeyQ': 'skill:use:0', 'KeyW': 'skill:use:1', 'KeyE': 'skill:use:2', 'KeyR': 'skill:use:3', 'KeyF': 'skill:use:4',
-            'Digit5': 'skill:use:4',
+            // Skills (Q, E, R, F, G) - Skipping W to keep it for movement
+            'KeyQ': 'skill:use:0', 
+            'KeyE': 'skill:use:1', 
+            'KeyR': 'skill:use:2', 
+            'KeyF': 'skill:use:3', 
+            'KeyG': 'skill:use:4',
 
             'KeyP': 'action:town_portal',
             'Space': 'action:interact',

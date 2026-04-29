@@ -1127,7 +1127,7 @@ export class Player {
         this.mp -= (skill.mana || 0);
         this.cooldowns[slotIdx] = skill.cd || 0;
 
-        const isSummon = skill.group === 'summon' || ['summon_', 'imp', 'infernal', 'companion_', 'raven', 'grizzly', 'oak_sage', 'golem', 'skeleton_mage', 'revive', 'spirit_wolf', 'vine', 'voidwalker', 'succubus', 'ancestral_'].some(k => skillId.startsWith(k));
+        const isSummon = skill.group === 'summon' || ['summon_', 'raise_', 'imp', 'infernal', 'companion_', 'raven', 'grizzly', 'oak_sage', 'golem', 'skeleton_mage', 'revive', 'spirit_wolf', 'vine', 'voidwalker', 'succubus', 'ancestral_'].some(k => skillId.startsWith(k));
         let target = this.attackTarget || this._nearestEnemy();
 
         // AUTO-ACQUIRE for Melee: If no target, find nearest within melee range
