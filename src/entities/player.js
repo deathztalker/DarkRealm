@@ -140,6 +140,10 @@ export class Player {
         const ts = this._talentStats();
         for (const k in ts) s[k] = (s[k] || 0) + ts[k];
 
+        // --- NEW: Aggregate Global Mutation Stats ---
+        const ms = this._mutationStats();
+        for (const k in ms) s[k] = (s[k] || 0) + ms[k];
+
         const as = getAstralStats(this);
         for (const k in as) s[k] = (s[k] || 0) + as[k];
 
@@ -449,6 +453,19 @@ export class Player {
         this.critBleed = !!ts.critBleed;
         this.cheatDeath = !!ts.cheatDeath;
         this.maxCurses = ts.maxCurses || 1;
+    }
+
+    _mutationStats() {
+        const s = {};
+        if (!this.mutationTrees) return s;
+        for (const skillId in this.mutationTrees) {
+            const mods = getMutationMods(this, skillId);
+            for (const [stat, val] of Object.entries(mods)) {
+                // Aggregate only base stats, not perk flags
+                if (typeof val === 'number') s[stat] = (s[stat] || 0) + val;
+            }
+        }
+        return s;
     }
 
     _riftStats() {
@@ -1127,7 +1144,8 @@ export class Player {
         this.mp -= (skill.mana || 0);
         this.cooldowns[slotIdx] = skill.cd || 0;
 
-        const isSummon = skill.group === 'summon' || ['summon_', 'raise_', 'imp', 'infernal', 'companion_', 'raven', 'grizzly', 'oak_sage', 'golem', 'skeleton_mage', 'revive', 'spirit_wolf', 'vine', 'voidwalker', 'succubus', 'ancestral_'].some(k => skillId.startsWith(k));
+        const isSummon = skill.group === 'summon' || 
+            ['summon_', 'raise_', 'golem', 'skeletal_', 'skeleton_', 'revive', 'spirit_wolf', 'dire_wolf', 'grizzly', 'oak_sage', 'heart_of_', 'spirit_of_', 'vine', 'voidwalker', 'succubus', 'imp', 'felguard', 'ancestral_'].some(k => skillId.includes(k));
         let target = this.attackTarget || this._nearestEnemy();
 
         // AUTO-ACQUIRE for Melee: If no target, find nearest within melee range
@@ -1358,21 +1376,26 @@ export class Player {
         const dmg = Math.round(dmgBase * dmgMult);
 
         let sprite = 'summon_skeleton'; // fallback
-        if (skillId.includes('golem')) sprite = (skillId === 'fire_golem') ? 'enemy_energy_elemental' : (skillId === 'iron_golem' ? 'summon_iron_golem' : 'summon_clay_golem');
-        if (skillId === 'blood_golem') sprite = 'summon_blood_golem';
-        if (skillId === 'skeleton_mage') sprite = 'summon_skeleton_mage';
-        if (skillId === 'raise_skeleton') {
+        if (skillId.includes('golem')) {
+            if (skillId.includes('fire')) sprite = 'summon_fire_golem';
+            else if (skillId.includes('iron')) sprite = 'summon_iron_golem';
+            else if (skillId.includes('blood')) sprite = 'summon_blood_golem';
+            else sprite = 'summon_clay_golem'; // Clay
+        }
+        else if (skillId.includes('mage')) sprite = 'summon_skeleton_mage';
+        else if (skillId.includes('revive')) sprite = 'enemy_cultist';
+        else if (skillId === 'raise_skeleton') {
             sprite = 'summon_skeleton';
-            if (m.archerConversion && Math.random() < m.archerConversion) sprite = 'summon_skeleton_mage';
+            if (m.archerConversion && Math.random() < m.archerConversion) sprite = 'enemy_skeleton';
         }
-        if (skillId.includes('wolf')) sprite = 'summon_dire_wolf';
-        if (skillId.includes('grizzly') || skillId.includes('bear')) sprite = 'summon_grizzly';
-        if (skillId.includes('valkyrie')) sprite = 'summon_valkyrie';
-        if (skillId.includes('voidwalker') || skillId.includes('succubus') || skillId.includes('imp') || skillId === 'summon_felguard') {
-            sprite = (skillId === 'summon_felguard') ? 'enemy_demon' : 'summon_voidwalker';
+        else if (skillId.includes('wolf')) sprite = 'summon_spirit_wolf';
+        else if (skillId.includes('grizzly') || skillId.includes('bear')) sprite = 'summon_grizzly';
+        else if (skillId.includes('valkyrie')) sprite = 'class_paladin';
+        else if (skillId.includes('voidwalker') || skillId.includes('succubus') || skillId.includes('imp') || skillId === 'summon_felguard') {
+            sprite = 'enemy_demon';
         }
-        if (skillId === 'oak_sage') sprite = 'env_tree';
-        if (skillId === 'heart_of_wolverine') sprite = 'enemy_ghost';
+        else if (skillId === 'oak_sage') sprite = 'enemy_energy_elemental';
+        else if (skillId === 'heart_of_wolverine') sprite = 'enemy_ghost';
 
         const isPermanent = ['raise_', 'summon_', 'golem', 'revive', 'spirit_wolf', 'dire_wolf', 'grizzly', 'valkyrie', 'clay_golem', 'blood_golem', 'iron_golem', 'fire_golem'].some(k => skillId.includes(k));
         const duration = isPermanent ? 3600 * 24 : (20 + slvl * 2); // 24 hours for permanent summons
@@ -1413,7 +1436,7 @@ export class Player {
                     if (fx) fx.emitBurst(near.x, near.y, '#ffff00', 5);
 
                     // --- Mutation Progress for Minion Hits ---
-                    this.gainSkillXp(m.skillId, 2);
+                    this.gainSkillXp(m.skillId, 5);
 
                     // --- Astral Procs on Minion Hit ---
                     this.checkAstralProcs('onMinionHit', near.x, near.y, near);
@@ -1459,7 +1482,7 @@ export class Player {
                     if (fx) fx.emitSlash(near.x, near.y, ang, '#ffffff', 10);
                     
                     // --- Mutation Progress for Minion Hits ---
-                    this.gainSkillXp(m.skillId, 2);
+                    this.gainSkillXp(m.skillId, 5);
 
                     // --- Astral Procs on Minion Hit ---
                     this.checkAstralProcs('onMinionHit', near.x, near.y, near);
