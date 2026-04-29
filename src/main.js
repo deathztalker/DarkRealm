@@ -3863,7 +3863,7 @@ function renderMinimap() {
     // Minimap Discovery (Unified Radius)
     if (explored) {
         if (player) {
-            const radius = 18;
+            const radius = 35; // Increased from 18 to cover more area
             const px = Math.floor(player.x / dungeon.tileSize);
             const py = Math.floor(player.y / dungeon.tileSize);
             for (let r = Math.max(0, py - radius); r <= Math.min(dungeon.height - 1, py + radius); r++) {
@@ -3880,8 +3880,8 @@ function renderMinimap() {
 
     // Zoom Logic
     const zoom = minimapZoom || 1.0;
-    const sx = (mw / dungeon.width) * zoom;
-    const sy = (mh / dungeon.height) * zoom;
+    const sx = (mw / 120) * zoom; // Fixed denominator to match standard dungeon view
+    const sy = (mh / 120) * zoom;
 
     // Offset to center on player
     const px_tile = player.x / dungeon.tileSize;
@@ -4175,10 +4175,13 @@ bus.on('combat:damage', d => {
     }
     if (!d.target?.isPlayer) {
         const cls = d.isCrit ? 'log-crit' : 'log-dmg';
+        const color = colors[d.type] || '#ffffff';
         if (d.dealt === 0 && d.type !== 'physical') {
             addCombatLog(`Target is IMMUNE to ${d.type}!`, 'log-dmg');
         } else {
-            addCombatLog(`${d.dealt} ${d.type} damage${d.isCrit ? ' CRIT!' : ''}`, cls);
+            const targetName = d.target?.name || 'Enemy';
+            const dmgText = `<span style="color:${color}">${d.dealt}</span>`;
+            addCombatLog(`Dealt ${dmgText} to ${targetName}${d.isCrit ? ' (CRIT!)' : ''}`, 'combat');
         }
     }
     // Use our high-precision Canvas-based system instead of DOM for perfect mobile alignment
