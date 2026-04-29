@@ -1904,70 +1904,94 @@ _spawnMinion(skillId, slvl, skill) {
             };
             }
 
-            static deserialize(data) {
-            if (!data) return null;
-            const p = new Player(data.classId);
+    static deserialize(data) {
+        if (!data) return null;
+        const p = new Player(data.classId);
 
-            // ... (rest of basic info, stats, paragon, economy, skills)
-            if (data.talents) p.talents = TalentTree.deserialize(data.talents);
-            p.mutationTrees = data.mutationTrees || {};
-            p.skillMastery = data.skillMastery || {};
-            p.astralPoints = data.astralPoints || 0;
-            p.astralTree = data.astralTree || {};
-            p.runeSlots = data.runeSlots || {};
+        // Basic Info
+        p.charName = data.charName || p.className;
+        p.isHardcore = !!data.isHardcore;
+        p.level = data.level || 1;
+        p.xp = data.xp || 0;
+        p.maxDifficulty = data.maxDifficulty || 0;
+        p.highestZone = data.highestZone || 0;
 
-            // Gear
-            p.equipment = data.equipment || {};
-            p.secondaryEquipment = data.secondaryEquipment || { mainhand: null, offhand: null };
-            p.activeWeaponSet = data.activeWeaponSet || 1;
-            p.inventory = data.inventory || Array(40).fill(null);
-            p.belt = data.belt || [null, null, null, null];
-            p.hotbar = data.hotbar || [null, null, null, null, null];
+        // Stats
+        p.x = data.x || 0;
+        p.y = data.y || 0;
+        p.hp = data.hp;
+        p.mp = data.mp;
+        p.baseStr = data.baseStr || 10;
+        p.baseDex = data.baseDex || 10;
+        p.baseVit = data.baseVit || 10;
+        p.baseInt = data.baseInt || 10;
+        p.statPoints = data.statPoints || 0;
+        p.permanentResists = data.permanentResists || 0;
 
-            // Rewards
-            p.hasLarzukReward = !!data.hasLarzukReward;
-            p.hasAnyaReward = !!data.hasAnyaReward;
-            p.hasImbue = !!data.hasImbue;
+        // Paragon
+        p.paragonLevel = data.paragonLevel || 0;
+        p.paragonXp = data.paragonXp || 0;
+        p.paragonPoints = data.paragonPoints || 0;
+        if (data.paragonStats) p.paragonStats = data.paragonStats;
 
-            // Stats & Bonuses
-            p.magicFind = data.magicFind || 0;
-            p.goldFind = data.goldFind || 0;
-            p.crushingBlow = data.crushingBlow || 0;
-            p.allSkillBonus = data.allSkillBonus || 0;
-            p.activeAura = data.activeAura || null;
-            p._auraSlvl = data._auraSlvl || 0;
+        // Economy & Tracking
+        p.gold = data.gold || 0;
+        p.totalMonstersSlain = data.totalMonstersSlain || 0;
+        p.totalGoldCollected = data.totalGoldCollected || 0;
 
-            // Restore Mercenary if exists
-            if (data.mercenary) {
+        // Skills & Systems
+        if (data.talents) p.talents = TalentTree.deserialize(data.talents);
+        p.mutationTrees = data.mutationTrees || {};
+        p.skillMastery = data.skillMastery || {};
+        p.astralPoints = data.astralPoints || 0;
+        p.astralTree = data.astralTree || {};
+        p.runeSlots = data.runeSlots || {};
+
+        // Gear
+        p.equipment = data.equipment || {};
+        p.secondaryEquipment = data.secondaryEquipment || { mainhand: null, offhand: null };
+        p.activeWeaponSet = data.activeWeaponSet || 1;
+        p.inventory = data.inventory || Array(40).fill(null);
+        p.belt = data.belt || [null, null, null, null];
+        p.hotbar = data.hotbar || [null, null, null, null, null];
+
+        // Rewards
+        p.hasLarzukReward = !!data.hasLarzukReward;
+        p.hasAnyaReward = !!data.hasAnyaReward;
+        p.hasImbue = !!data.hasImbue;
+
+        // Stats & Bonuses
+        p.magicFind = data.magicFind || 0;
+        p.goldFind = data.goldFind || 0;
+        p.crushingBlow = data.crushingBlow || 0;
+        p.allSkillBonus = data.allSkillBonus || 0;
+        p.activeAura = data.activeAura || null;
+        p._auraSlvl = data._auraSlvl || 0;
+
+        // Restore Mercenary if exists
+        if (data.mercenary) {
             import('./mercenary.js').then(({ Mercenary }) => {
                 window.mercenary = Mercenary.deserialize(data.mercenary);
             });
+        }
+
+        p._recalcStats();
+
+        // --- RETROACTIVE COMPENSATION ---
+        const totalAstralSpent = Object.values(p.astralTree).reduce((a, b) => a + b, 0);
+        if (p.level >= 10 && p.astralPoints === 0 && totalAstralSpent === 0) {
+            const compensation = Math.floor((p.level - 10) / 2) + 1;
+            if (compensation > 0) {
+                p.astralPoints = compensation;
             }
-
-            p._recalcStats();
-
-            // --- RETROACTIVE COMPENSATION ---
-            // If a high level player loads and has 0 astral points spent/available, grant them based on level.
-            const totalAstralSpent = Object.values(p.astralTree).reduce((a, b) => a + b, 0);
-            if (p.level >= 10 && p.astralPoints === 0 && totalAstralSpent === 0) {
-                // Grant 1 Astral Point every 2 levels starting from level 10
-                const compensation = Math.floor((p.level - 10) / 2) + 1;
-                if (compensation > 0) {
-                    p.astralPoints = compensation;
-                    console.log(`[Retroactive] Granted ${compensation} Astral Points for Level ${p.level}`);
+        }
+        if (p.level >= 20 && Object.keys(p.skillMastery).length === 0) {
+            Object.keys(p.skillMap).forEach(id => {
+                if (p.talents.isLearned(id)) {
+                    p.skillMastery[id] = { xp: 0, lvl: 5, points: 2 }; 
                 }
-            }
+            });
+        }
 
-            // Grant initial Skill Mastery/Mutation points if the system is new for this char
-            if (p.level >= 20 && Object.keys(p.skillMastery).length === 0) {
-                // Initialize basic mastery for learned skills
-                Object.keys(p.skillMap).forEach(id => {
-                    if (p.talents.isLearned(id)) {
-                        p.skillMastery[id] = { xp: 0, lvl: 5, points: 2 }; 
-                    }
-                });
-                console.log(`[Retroactive] Initialized Skill Mastery for existing skills.`);
-            }
-
-            return p;
-            }}
+        return p;
+    }}
