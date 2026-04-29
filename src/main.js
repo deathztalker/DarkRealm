@@ -3057,7 +3057,7 @@ function getIconForSkill(id) {
         'lightning': 'ra-lightning-bolt',
         'charged_bolt': 'ra-focused-lightning',
         'lightning_bolt': 'ra-lightning-bolt',
-        'chain_lightning': 'ra-lightning-branches',
+        'chain_lightning': 'ra-lightning-trio',
         'static_field': 'ra-energise',
         'teleport': 'ra-player-teleport',
         'light_mastery': 'ra-lightning-sword',
@@ -3068,7 +3068,7 @@ function getIconForSkill(id) {
         'lightning_surge': 'ra-focused-lightning',
         'static_charge': 'ra-energise',
         'arcane_shield': 'ra-circular-shield',
-        'chain_lightning_mastery': 'ra-lightning-branches',
+        'chain_lightning_mastery': 'ra-lightning-trio',
         'slow_time': 'ra-hourglass',
 
         // ========== NECROMANCER ==========
@@ -3164,8 +3164,8 @@ function getIconForSkill(id) {
         // ========== SHAMAN ==========
         'shaman': 'ra-eclipse',
         'elemental': 'ra-minerals',
-        'lightning_bolt': 'ra-lightning-frequency',
-        'chain_lightning': 'ra-lightning-branches',
+        'lightning_bolt': 'ra-lightning-bolt',
+        'chain_lightning': 'ra-lightning-trio',
         'thunder_strike': 'ra-lightning-sword',
         'elem_mastery': 'ra-bolt-shield',
         'storm_caller': 'ra-lightning-storm',
@@ -3355,7 +3355,7 @@ function getIconForSkill(id) {
         'bow_mastery': 'ra-crossbow',
         'piercing_arrow': 'ra-supersonic-arrow',
         'explosive_arrow': 'ra-fire-bomb',
-        'rapid_fire': 'ra-lightning-frequency',
+        'rapid_fire': 'ra-lightning-bolt',
         'volley': 'ra-arrow-cluster',
         'strafe': 'ra-arrow-flights',
         'rain_of_arrows': 'ra-target-arrows',
@@ -4878,7 +4878,7 @@ injectCodexButton();
 
 // Also bind R key to Codex
 window.addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 'r' && !document.activeElement.tagName.match(/INPUT|TEXTAREA/)) {
+    if (e.key.toLowerCase() === 'u' && !document.activeElement.tagName.match(/INPUT|TEXTAREA/)) {
         openRuneCodex();
     }
 });

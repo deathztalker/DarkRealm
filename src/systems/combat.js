@@ -973,9 +973,7 @@ function _fireEquipmentProcs(attacker, target, dealt, enemies) {
         if (handler) {
             handler(attacker, target, proc, synFX, finalMult, enemies);
         } else {
-            // Unrecognised proc — skip silently (don't throw)
-            if (process?.env?.NODE_ENV !== 'production')
-                console.warn(`[CombatSystem] Unknown proc effect: "${proc.effect}"`);
+            // Unrecognised proc — skip silently
         }
 
         if (proc.extraEffect) _handleExtraEffect(attacker, target, proc, finalMult, dealt);

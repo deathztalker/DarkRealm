@@ -7,6 +7,13 @@ export const ROGUE_MUTATIONS = {
             masteryPerk: 'Claw Strike has a 20% chance to generate 2 Combo Points.',
             mod: { pctDmg: 10, bleedDmg: 20 },
             icon: 'ra-dripping-blade'
+        },
+        {
+            id: 'cs_shred', name: 'Shredding Claws', max: 5, reqBaseLevel: 1,
+            desc: '+15% Damage and +5% Crit Chance per level.',
+            masteryPerk: 'Claw Strike now ignores 50% of the target\'s armor.',
+            mod: { pctDmg: 15, critChance: 5 },
+            icon: 'ra-dripping-blade'
         }
     ],
     shadow_step: [
@@ -15,6 +22,13 @@ export const ROGUE_MUTATIONS = {
             desc: '+20% range and +10% damage to the next attack.',
             masteryPerk: 'Shadow Step leaves a decoy that distracts enemies for 2s.',
             mod: { rangeBonus: 20 },
+            icon: 'ra-fast-forward'
+        },
+        {
+            id: 'ss_ambush', name: 'Shadow Ambush', max: 5, reqBaseLevel: 10,
+            desc: '+15% Crit Multi and +10% Projectile Speed for the next attack.',
+            masteryPerk: 'Shadow Step instantly grants 2 Combo Points.',
+            mod: { critMulti: 15 },
             icon: 'ra-fast-forward'
         }
     ],
@@ -25,6 +39,13 @@ export const ROGUE_MUTATIONS = {
             masteryPerk: 'Ambush resets its cooldown if used from a Smoke Bomb.',
             mod: { critMulti: 20, pctDmg: 10 },
             icon: 'ra-snowflake'
+        },
+        {
+            id: 'am_deadly', name: 'Deadly Ambush', max: 5, reqBaseLevel: 10,
+            desc: '+25% Damage and +5% Crit Chance.',
+            masteryPerk: 'Ambush now deals double damage if the target is above 90% Health.',
+            mod: { pctDmg: 25, critChance: 5 },
+            icon: 'ra-deadly-strike'
         }
     ],
     assassin_mastery: [
@@ -34,6 +55,13 @@ export const ROGUE_MUTATIONS = {
             masteryPerk: 'Your critical strikes reduce enemy armor by 5% for 3s.',
             mod: { pctDex: 5, critMulti: 10 },
             icon: 'ra-bullseye'
+        },
+        {
+            id: 'am_phantom', name: 'Phantom Master', max: 5, reqBaseLevel: 15,
+            desc: '+10% Dodge Chance and +5% Movement Speed.',
+            masteryPerk: 'Your finishers have a 20% chance to reset the cooldown of Vanish.',
+            mod: { dodgeChance: 10, moveSpeedPct: 5 },
+            icon: 'ra-shadow-follower'
         }
     ],
     eviscerate: [
@@ -43,6 +71,13 @@ export const ROGUE_MUTATIONS = {
             masteryPerk: 'Eviscerate deals 50% more damage if the target is already bleeding.',
             mod: { pctDmg: 15, bleedDmg: 20 },
             icon: 'ra-dripping-blade'
+        },
+        {
+            id: 'ev_execution', name: 'Fatal Eviscerate', max: 5, reqBaseLevel: 5,
+            desc: '+20% Damage and +10% Crit Multi.',
+            masteryPerk: 'Eviscerate now has a 25% chance to refund all Combo Points on kill.',
+            mod: { pctDmg: 20, critMulti: 10 },
+            icon: 'ra-deadly-strike'
         }
     ],
     vanish: [
@@ -52,6 +87,13 @@ export const ROGUE_MUTATIONS = {
             masteryPerk: 'Vanish grants a 100% chance to dodge the next 2 attacks.',
             mod: { moveSpeed: 10 },
             icon: 'ra-fast-forward'
+        },
+        {
+            id: 'va_decoy', name: 'Mirror Image', max: 5, reqBaseLevel: 10,
+            desc: '+1 decoy summoned and +2s duration.',
+            masteryPerk: 'Vanish decoys now explode for 100% damage when they disappear.',
+            mod: { extraDecoys: 1 },
+            icon: 'ra-double-team'
         }
     ],
     fan_of_knives: [
@@ -60,6 +102,13 @@ export const ROGUE_MUTATIONS = {
             desc: '+15% Damage and +10% radius.',
             masteryPerk: 'Fan of Knives has a 30% chance to reset the cooldown of Shadow Step.',
             mod: { pctDmg: 15, radiusPct: 10 },
+            icon: 'ra-split-arrows'
+        },
+        {
+            id: 'fok_poison', name: 'Toxic Fans', max: 5, reqBaseLevel: 15,
+            desc: '+10% Poison Damage and +10% Infection Chance.',
+            masteryPerk: 'Fan of Knives now hits all enemies twice in the same area.',
+            mod: { poisDmgPct: 10 },
             icon: 'ra-split-arrows'
         }
     ],
@@ -70,6 +119,13 @@ export const ROGUE_MUTATIONS = {
             masteryPerk: 'If a Marked target dies, all nearby enemies are also marked.',
             mod: { dmgAmp: 10 },
             icon: 'ra-skull'
+        },
+        {
+            id: 'dm_reaper', name: 'Reaper\'s Mark', max: 5, reqBaseLevel: 20,
+            desc: '+15% Crit Chance vs marked targets and +10% Damage.',
+            masteryPerk: 'Marked targets take 50% increased damage from your finishers.',
+            mod: { critChanceVsMarked: 15, pctDmg: 10 },
+            icon: 'ra-skull'
         }
     ],
     smoke_bomb: [
@@ -79,6 +135,13 @@ export const ROGUE_MUTATIONS = {
             masteryPerk: 'Enemies in the smoke are also Blinded for 2s.',
             mod: { poisDmg: 20 },
             icon: 'ra-biohazard'
+        },
+        {
+            id: 'sb_choke', name: 'Choking Smoke', max: 5, reqBaseLevel: 20,
+            desc: 'Enemies in smoke deal 20% less damage and are slowed by 15%.',
+            masteryPerk: 'Smoke Bomb now grants all allies in the area 30% Dodge Chance.',
+            mod: { enemyDmgRedPct: 20, slowPct: 15 },
+            icon: 'ra-cloud'
         }
     ],
     blade_dance: [
@@ -88,6 +151,13 @@ export const ROGUE_MUTATIONS = {
             masteryPerk: 'While Dancing, you deflect 30% of incoming projectiles.',
             mod: { radiusPct: 15, moveSpeedPct: 5 },
             icon: 'ra-cyclone'
+        },
+        {
+            id: 'bd_frenzy', name: 'Frenzied Dance', max: 5, reqBaseLevel: 15,
+            desc: '+10% Attack Speed and +5% Crit Chance while dancing.',
+            masteryPerk: 'Blade Dance now releases 3 daggers at random enemies every 1s.',
+            mod: { attackSpeedPct: 10, critChance: 5 },
+            icon: 'ra-fast-forward'
         }
     ],
     cloak_of_shadows: [
@@ -97,6 +167,13 @@ export const ROGUE_MUTATIONS = {
             masteryPerk: 'While Cloaked, you regenerate 5% of your maximum health per second.',
             mod: { duration: 1 },
             icon: 'ra-shield'
+        },
+        {
+            id: 'cos_mirror', name: 'Reflective Shadows', max: 5, reqBaseLevel: 25,
+            desc: '+15% Reflect Damage and +10% All Res while active.',
+            masteryPerk: 'Cloak of Shadows now grants 100% Magic Resistance for the first 2s.',
+            mod: { reflectPct: 15, allRes: 10 },
+            icon: 'ra-bolt-shield'
         }
     ],
     shadow_clone: [
@@ -105,6 +182,13 @@ export const ROGUE_MUTATIONS = {
             desc: 'Shadow Clone deals +10% of your damage.',
             masteryPerk: 'Shadow Clone now lasts 5s longer and can use your finishers.',
             mod: { cloneDmg: 10 },
+            icon: 'ra-shadow-follower'
+        },
+        {
+            id: 'sc_dual', name: 'Twin Shadows', max: 5, reqBaseLevel: 25,
+            desc: '+1 shadow clone and +5% clone damage.',
+            masteryPerk: 'Shadow Clones now mirror your basic attacks as well.',
+            mod: { extraClones: 1 },
             icon: 'ra-shadow-follower'
         }
     ],
@@ -115,6 +199,13 @@ export const ROGUE_MUTATIONS = {
             masteryPerk: 'Assassinate resets its cooldown if it kills the target.',
             mod: { pctDmg: 25, critChance: 10 },
             icon: 'ra-skull'
+        },
+        {
+            id: 'as_ghost', name: 'Ghostly Strike', max: 5, reqBaseLevel: 20,
+            desc: '+20% Damage and ignores 20% Magic Resistance.',
+            masteryPerk: 'Assassinate now teleports you behind the target automatically.',
+            mod: { pctDmg: 20 },
+            icon: 'ra-ghost'
         }
     ],
 
