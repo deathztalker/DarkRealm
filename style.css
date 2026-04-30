@@ -760,10 +760,6 @@ body {
   z-index: 101;
 }
 
-z-index: 50;
-pointer-events: none;
-}
-
 #hud::before {
   content: "";
   position: absolute;
@@ -1881,7 +1877,8 @@ pointer-events: none;
   gap: 12px;
   align-items: flex-start;
   pointer-events: none;
-  max-width: 95vw; /* Don't exceed viewport width */
+  max-width: 95vw;
+  /* Don't exceed viewport width */
 }
 
 @media (max-width: 800px) {
@@ -1890,6 +1887,7 @@ pointer-events: none;
     max-height: 90vh;
     overflow-y: auto;
   }
+
   .tooltip-inner {
     max-width: 280px !important;
   }
@@ -1905,7 +1903,8 @@ pointer-events: none;
   border-radius: 4px;
   text-align: center;
   position: relative;
-  word-wrap: break-word; /* Ensure long words don't break layout */
+  word-wrap: break-word;
+  /* Ensure long words don't break layout */
 }
 
 .tooltip-inner::before {
@@ -1920,7 +1919,9 @@ pointer-events: none;
   border-radius: 3px;
 }
 
-#custom-tooltip, #tooltip, #tooltip-compare {
+#custom-tooltip,
+#tooltip,
+#tooltip-compare {
   position: fixed;
   pointer-events: none;
   z-index: 10000;
