@@ -1145,7 +1145,7 @@ export class Player {
         this.cooldowns[slotIdx] = skill.cd || 0;
 
         const isSummon = skill.group === 'summon' || 
-            ['summon_', 'raise_', 'golem', 'skeletal_', 'skeleton_', 'revive', 'spirit_wolf', 'dire_wolf', 'grizzly', 'oak_sage', 'heart_of_', 'spirit_of_', 'vine', 'voidwalker', 'succubus', 'imp', 'felguard', 'ancestral_'].some(k => skillId.includes(k));
+            ['summon_', 'raise_', 'golem', 'skeletal_', 'skeleton_', 'revive', 'spirit_wolf', 'dire_wolf', 'grizzly', 'oak_sage', 'heart_of_', 'spirit_of_', 'vine', 'voidwalker', 'succubus', 'imp', 'felguard', 'ancestral_', 'army_'].some(k => skillId.includes(k));
         let target = this.attackTarget || this._nearestEnemy();
 
         // AUTO-ACQUIRE for Melee: If no target, find nearest within melee range
@@ -1162,7 +1162,18 @@ export class Player {
         let targetX = target ? target.x : (this.moveDir ? this.x + this.moveDir.x * 100 : this.x);
         let targetY = target ? target.y : (this.moveDir ? this.y + this.moveDir.y * 100 : this.y + 10);
 
-        if (isSummon) { this._spawnMinion(skillId, slvl, skill); bus.emit('skill:used', { skillId, slotIdx }); this._setAnimState('cast'); this.attackCd = 0.5; return; }
+        if (isSummon) { 
+            if (skillId === 'army_of_dead') {
+                for (let i = 0; i < 5; i++) this._spawnMinion('raise_skeleton', slvl, skill);
+                for (let i = 0; i < 3; i++) this._spawnMinion('skeletal_mage', slvl, skill);
+            } else {
+                this._spawnMinion(skillId, slvl, skill); 
+            }
+            bus.emit('skill:used', { skillId, slotIdx }); 
+            this._setAnimState('cast'); 
+            this.attackCd = 0.5; 
+            return; 
+        }
 
         const synBonus = this.talents.synergyBonus(skillId);
         let baseDmg = (skill.dmgBase || 10) + (skill.dmgPerLvl || 5) * slvl;
@@ -1386,16 +1397,23 @@ export class Player {
         else if (skillId.includes('revive')) sprite = 'enemy_cultist';
         else if (skillId === 'raise_skeleton') {
             sprite = 'summon_skeleton';
-            if (m.archerConversion && Math.random() < m.archerConversion) sprite = 'enemy_skeleton';
+            if (m.archerConversion && Math.random() < m.archerConversion) {
+                sprite = 'summon_skeleton_archer';
+            }
         }
-        else if (skillId.includes('wolf')) sprite = 'summon_spirit_wolf';
+        else if (skillId.includes('wolf')) {
+            sprite = skillId.includes('dire') ? 'summon_dire_wolf' : 'summon_spirit_wolf';
+        }
         else if (skillId.includes('grizzly') || skillId.includes('bear')) sprite = 'summon_grizzly';
-        else if (skillId.includes('valkyrie')) sprite = 'class_paladin';
-        else if (skillId.includes('voidwalker') || skillId.includes('succubus') || skillId.includes('imp') || skillId === 'summon_felguard') {
+        else if (skillId.includes('valkyrie')) sprite = 'summon_valkyrie';
+        else if (skillId.includes('voidwalker')) sprite = 'summon_voidwalker';
+        else if (skillId.includes('succubus') || skillId.includes('imp') || skillId === 'summon_felguard') {
             sprite = 'enemy_demon';
         }
         else if (skillId === 'oak_sage') sprite = 'enemy_energy_elemental';
         else if (skillId === 'heart_of_wolverine') sprite = 'enemy_ghost';
+        else if (skillId.includes('vine')) sprite = 'enemy_energy_elemental'; // placeholder
+        else if (skill.group === 'totem') sprite = 'obj_pillar_holy'; // Totem placeholder
 
         const isPermanent = ['raise_', 'summon_', 'golem', 'revive', 'spirit_wolf', 'dire_wolf', 'grizzly', 'valkyrie', 'clay_golem', 'blood_golem', 'iron_golem', 'fire_golem'].some(k => skillId.includes(k));
         const duration = isPermanent ? 3600 * 24 : (20 + slvl * 2); // 24 hours for permanent summons
@@ -1409,7 +1427,7 @@ export class Player {
             explodeDmg: (m.explodeDmg || 0) + (rm.isLegendary && skillId.includes('dead') ? 50 : 0),
             moveSpeed: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k))) ? 0 : (90 * (1 + (rm.petMoveSpeed || 0) / 100)),
             isStationary: (skill.group === 'totem' || ['trap', 'sentry'].some(k => skillId.includes(k)) || skillId === 'oak_sage' || skillId === 'heart_of_wolverine'),
-            attackRange: (skill.group === 'totem' || skillId.includes('mage') || skillId.includes('imp') || sprite === 'summon_skeleton_mage') ? 220 : 35,
+            attackRange: (skill.group === 'totem' || skillId.includes('mage') || skillId.includes('imp') || skillId.includes('succubus') || sprite === 'summon_skeleton_mage' || sprite === 'summon_skeleton_archer' || skillId === 'mercenary_archer') ? 220 : 35,
             attackCd: 0,
             attackSpeed: 1.1 / (1 + (this.minionIasPct + (rm.petIasPct || 0) + (as.minionIasPct || 0)) / 100),
             age: 0, duration, icon: `skill_${skillId}`, sprite,

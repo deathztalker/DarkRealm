@@ -289,6 +289,7 @@ export const ASSET_NAMES = [
 'summon_grizzly',
 'summon_iron_golem',
 'summon_skeleton',
+'summon_skeleton_archer',
 'summon_skeleton_mage',
 'summon_spirit_wolf',
 'summon_valkyrie',
