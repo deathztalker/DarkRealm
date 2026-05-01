@@ -1329,7 +1329,7 @@ export class Player {
                 let aoeR = (skillId === 'fireball' || skillId === 'chaos_bolt') ? 40 : 0;
                 if (m.aoeRadiusPct) aoeR *= (1 + m.aoeRadiusPct / 100);
 
-                const bnc = skillId === 'chain_lightning' ? 3 + Math.floor(slvl / 4) : 0;
+                const bnc = (skillId === 'chain_lightning' ? 3 + Math.floor(slvl / 4) : 0) + (rm.chainBounces || 0);
                 const pR = (['fireball', 'frozen_orb', 'chaos_bolt'].includes(skillId)) ? 10 : (skillId === 'bone_spear' ? 6 : 8);
 
                 const projCount = 1 + (rm.extraProjectiles || 0);
@@ -1868,7 +1868,8 @@ export class Player {
             pctPhysDmg: 0,
             cannotDealNonPhys: false,
             echoCount: 0,
-            parallel: false
+            parallel: false,
+            chainBounces: 0
         };
 
         const slots = this.runeSlots[skillId];
@@ -1927,6 +1928,15 @@ export class Player {
             this._buffs.push({ id: 'windrunner_burst', duration: 3.0, value: 50 }); // +50% speed
             this._recalcStats();
             if (fx) fx.emitBurst(this.x, this.y, '#00ffff', 15, 2);
+        } else if (proc.effect === 'heal_and_burst') {
+            const healAmt = this.maxHp * 0.3; // 30% heal
+            this.hp = Math.min(this.maxHp, this.hp + healAmt);
+            if (fx) {
+                fx.emitHeal(this.x, this.y);
+                fx.emitHolyBurst(this.x, this.y, 100);
+            }
+            const rad = 120;
+            bus.emit('combat:spawnAoE', { aoe: new AoEZone(this.x, this.y, rad, 0.5, 100 + this.level * 10, 'fire', this, 1.0, 'astral_rebirth') });
         }
     }
 

@@ -1,5 +1,6 @@
 import { DB } from '../systems/db.js';
 import { bus } from '../engine/EventBus.js';
+import { Enemy } from '../entities/enemy.js';
 
 /**
  * NetworkManager — Handles WebSocket communication, state sync, and relay events.
@@ -281,7 +282,7 @@ export class NetworkManager {
         this.socket.on('enemy_sync', (data) => {
             if (!this.isHost && Array.isArray(data)) {
                 const aliveIds = new Set(data.map(ed => ed.id));
-                let matched = 0, killed = 0;
+                let matched = 0, killed = 0, spawned = 0;
                 
                 if (this.game.enemies) {
                     this.game.enemies.forEach(enemy => {
@@ -294,7 +295,7 @@ export class NetworkManager {
                 }
 
                 data.forEach(ed => {
-                    const enemy = this.game.enemies?.find(e => e.syncId === ed.id);
+                    let enemy = this.game.enemies?.find(e => e.syncId === ed.id);
                     if (enemy) {
                         enemy.x = ed.x; enemy.y = ed.y;
                         enemy.hp = ed.hp; 
@@ -302,6 +303,20 @@ export class NetworkManager {
                         enemy.animState = ed.anim;
                         enemy.facingDir = ed.dir;
                         matched++;
+                    } else if (this.game.enemies && ed.type) {
+                        // Spawning missing monster (e.g. from Host respawn)
+                        const newEnemy = new Enemy({
+                            type: ed.type,
+                            name: ed.name,
+                            icon: ed.icon,
+                            isBoss: ed.isBoss,
+                            x: ed.x, y: ed.y,
+                            hp: ed.hp, maxHp: ed.maxHp || ed.hp,
+                            level: window.player?.level || 1
+                        });
+                        newEnemy.syncId = ed.id;
+                        this.game.enemies.push(newEnemy);
+                        spawned++;
                     }
                 });
                 
@@ -310,12 +325,7 @@ export class NetworkManager {
                 this._syncLogCounter++;
                 if (this._syncLogCounter % 90 === 1) {
                     const localCount = this.game.enemies?.filter(e => e.hp > 0).length || 0;
-                    console.log(`[EnemySync] Host: ${data.length} alive | Local: ${localCount} alive | Matched: ${matched} | Killed: ${killed}`);
-                    if (matched === 0 && data.length > 0 && localCount > 0) {
-                        console.warn('[EnemySync] ⚠️ ZERO matches! SyncId mismatch detected.');
-                        console.warn('[EnemySync] Host IDs:', data.slice(0, 3).map(d => d.id));
-                        console.warn('[EnemySync] Local IDs:', this.game.enemies.filter(e => e.hp > 0).slice(0, 3).map(e => e.syncId));
-                    }
+                    console.log(`[EnemySync] Host: ${data.length} alive | Local: ${localCount} alive | Matched: ${matched} | Killed: ${killed} | Spawned: ${spawned}`);
                 }
             }
         });
@@ -494,7 +504,9 @@ export class NetworkManager {
                 hp: p.hp, maxHp: p.maxHp,
                 mp: p.mp, maxMp: p.maxMp,
                 activeAura: p.activeAura,
-                classId: p.classId
+                classId: p.classId,
+                mf: p.magicFind || 0,
+                gf: p.goldFind || 0
             });
         }
     }
@@ -615,16 +627,31 @@ export class NetworkManager {
         } catch (e) { console.error("Leaderboard Query Error:", e); return []; }
     }
 
-    broadcastLootSpawn(item) {
+    broadcastLootSpawn(item, ownerId = null) {
         if (this.isConnected && this.isHost) {
-            this.socket.emit('loot_spawn', { id: item.id, baseId: item.baseId, name: item.name, rarity: item.rarity, icon: item.icon, x: item.x, y: item.y });
+            this.socket.emit('loot_spawn', { 
+                id: item.id, 
+                baseId: item.baseId, 
+                name: item.name, 
+                rarity: item.rarity, 
+                icon: item.icon, 
+                x: item.x, 
+                y: item.y,
+                ownerId: ownerId
+            });
         }
     }
 
     broadcastLootPickup(lootId) { if (this.isConnected) this.socket.emit('loot_pickup', lootId); }
-    broadcastGoldSpawn(gold) {
+    broadcastGoldSpawn(gold, ownerId = null) {
         if (this.isConnected && this.isHost) {
-            this.socket.emit('gold_spawn', { id: gold.id || `gold_${Date.now()}_${Math.random()}`, x: gold.x, y: gold.y, amount: gold.amount });
+            this.socket.emit('gold_spawn', { 
+                id: gold.id || `gold_${Date.now()}_${Math.random()}`, 
+                x: gold.x, 
+                y: gold.y, 
+                amount: gold.amount,
+                ownerId: ownerId
+            });
         }
     }
     broadcastGoldPickup(goldId) { if (this.isConnected) this.socket.emit('gold_pickup', goldId); }
@@ -651,3 +678,4 @@ export class NetworkManager {
         this.socket.emit('join_zone', { zoneId, roomName, seed, playerData: this.game.player.serialize() });
     }
 }
+

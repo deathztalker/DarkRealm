@@ -320,6 +320,14 @@ export function applyDamage(attacker, target, dmgResult, skillId = null, context
     // ── Apply HP loss ─────────────────────────────────────────
     finalDealt = Math.max(0, finalDealt);
     target.hp = Math.max(0, safeNum(target.hp) - finalDealt);
+
+    // --- Astral Proc: onLowHP ---
+    if (target.isPlayer && typeof target.checkAstralProcs === 'function' && target.hp > 0 && target.maxHp > 0) {
+        if (target.hp / target.maxHp <= 0.25) {
+            target.checkAstralProcs('onLowHP', target.x, target.y, target);
+        }
+    }
+
     if (finalDealt > 0) {
         target.lastAttacker = attacker ? (attacker.name || attacker.charName) : (skillId || 'Environment');
         

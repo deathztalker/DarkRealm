@@ -803,7 +803,10 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     };
 
     network.onRemoteLootSpawn = (data) => {
-        // data: { id, baseId, name, rarity, icon, x, y }
+        // data: { id, baseId, name, rarity, icon, x, y, ownerId }
+        const myName = player?.charName || 'guest';
+        if (data.ownerId && data.ownerId !== myName) return;
+
         if (!droppedItems.some(it => it.id === data.id)) {
             droppedItems.push({ ...data, active: true });
             if (['unique', 'set', 'rare'].includes(data.rarity)) {
@@ -823,6 +826,10 @@ function startGame(slotId = null, loadPlayerData = null, charName = null) {
     };
 
     network.onGoldSpawn = (data) => {
+        // data: { id, x, y, amount, ownerId }
+        const myName = player?.charName || 'guest';
+        if (data.ownerId && data.ownerId !== myName) return;
+
         if (!droppedGold.some(g => g.id === data.id)) {
             droppedGold.push({ ...data, active: true });
         }
@@ -1011,7 +1018,11 @@ function gameLoop(timestamp) {
                         hp: Math.round(e.hp),
                         maxHp: Math.round(e.maxHp),
                         anim: e.animState,
-                        dir: e.facingDir
+                        dir: e.facingDir,
+                        type: e.type, // e.g. 'skeleton' or 'boss'
+                        name: e.name,
+                        icon: e.icon,
+                        isBoss: e.isBoss || e.type === 'boss'
                     }));
                     network.sendEnemySync(enemyData);
                 }
@@ -1248,7 +1259,7 @@ function gameLoop(timestamp) {
     // Check portal and waypoint proximity
     for (const o of gameObjects) {
         const dist = Math.sqrt((player.x - o.x) ** 2 + (player.y - o.y) ** 2);
-        
+
         // 1. Automatic Waypoint Discovery (Keep this as requested)
         if (o.type === 'waypoint' && dist < 50) {
             if (!discoveredWaypoints.has(o.zone)) {
@@ -1315,8 +1326,9 @@ function gameLoop(timestamp) {
         renderer.ctx.restore();
     }
 
-    // Dropped items (with loot filter)
+    // Dropped items (with loot filter and owner check)
     for (const di of droppedItems) {
+        if (di.ownerId && di.ownerId !== player.charName) continue; // Instanced Loot check
         if (lootFilter >= 1 && (!di.rarity || di.rarity === 'normal')) continue;
         if (lootFilter >= 2 && di.rarity === 'magic') continue;
 
@@ -1860,11 +1872,11 @@ function checkInteractions(pos) {
                 // DO NOT destroy Rift Portals, Boss Portals, or Act Portals.
                 const isTownPortal = o.id && (o.id.startsWith('tp_') || o.id === 'town_return_tp');
                 const isReturningFromTown = res.targetZone !== 'town' && isTownPortal;
-                
+
                 if (isReturningFromTown) {
                     const idx = gameObjects.indexOf(o);
                     if (idx !== -1) gameObjects.splice(idx, 1);
-                    
+
                     if (network.isConnected) {
                         network.socket.emit('object_update', { id: o.id, destroyed: true });
                     }
@@ -2059,117 +2071,133 @@ function checkDeaths() {
 
             // Authoritative Loot & Gold Generation (Host Only)
             if (network.isHost) {
-                // Bosses guarantee a loot explosion (Multi-drop)
-                if (e.type === 'boss') {
-                    const dropCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
-                    for (let i = 0; i < dropCount; i++) {
-                        const r = Math.random();
-                        const rarity = r < 0.05 ? 'unique' : (r < 0.15 ? 'set' : (r < 0.4 ? 'rare' : 'magic'));
-                        const bossItem = loot.generate(zoneLevel, rarity);
-                        if (bossItem) {
-                            bossItem.x = e.x + (Math.random() - 0.5) * 40;
-                            bossItem.y = e.y + (Math.random() - 0.5) * 40;
-                            bossItem.id = `loot_${Date.now()}_${Math.random()}`;
-                            droppedItems.push(bossItem);
-                            network.broadcastLootSpawn(bossItem);
+                const zonePlayers = [player, ...network.otherPlayers.values()];
+                const myName = player?.charName || 'guest';
 
-                            const beamColors = { rare: '#ffff00', unique: '#ff8000', set: '#00ff00', magic: '#8080ff' };
-                            if (beamColors[bossItem.rarity]) fx.emitBurst(bossItem.x, bossItem.y - 10, beamColors[bossItem.rarity], 8, 1);
+                for (const p of zonePlayers) {
+                    const charName = p.charName || p.name || (p === player ? myName : 'guest');
+
+                    // Bosses guarantee a loot explosion (Multi-drop) per player
+                    if (e.type === 'boss') {
+                        const dropCount = 4 + Math.floor(Math.random() * 3); // 4-6 items
+                        for (let i = 0; i < dropCount; i++) {
+                            const r = Math.random();
+                            const rarity = r < 0.05 ? 'unique' : (r < 0.15 ? 'set' : (r < 0.4 ? 'rare' : 'magic'));
+                            const bossItem = loot.generate(zoneLevel, rarity);
+                            if (bossItem) {
+                                bossItem.x = e.x + (Math.random() - 0.5) * 40;
+                                bossItem.y = e.y + (Math.random() - 0.5) * 40;
+                                bossItem.id = `loot_${Date.now()}_${Math.random()}`;
+                                bossItem.ownerId = charName;
+                                droppedItems.push(bossItem);
+                                network.broadcastLootSpawn(bossItem, charName);
+
+                                if (charName === myName) {
+                                    const beamColors = { rare: '#ffff00', unique: '#ff8000', set: '#00ff00', magic: '#8080ff' };
+                                    if (beamColors[bossItem.rarity]) fx.emitBurst(bossItem.x, bossItem.y - 10, beamColors[bossItem.rarity], 8, 1);
+                                }
+                            }
+                        }
+
+                        // CEREMONIAL VICTORY (Only once)
+                        if (p === player) {
+                            const banner = $('boss-victory-announcement');
+                            if (banner) {
+                                $('vic-boss-name').textContent = e.name || 'Boss Slain';
+                                banner.classList.remove('hidden');
+                                setTimeout(() => banner.classList.add('hidden'), 4000);
+
+                                if (fx) fx.shake(2000, 15); // Powerful shake
+                                timeScale = 0.05; // Dramatic Slow-Mo Finish
+                                addCombatLog(`${(e.name || 'BOSS').toUpperCase()} HAS BEEN DEFEATED!`, 'log-crit');
+                            }
+                        }
+                    }
+                    // Quest Item Drops
+                    if (e.isRadament) {
+                        const qItem = { ...ITEM_BASES.book_of_skill, id: 'book_of_skill', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'radament' };
+                        droppedItems.push(qItem);
+                        network.broadcastLootSpawn(qItem);
+                    } else if (e.isBeetleburst) {
+                        const qItem = { ...ITEM_BASES.staff_of_kings, id: 'staff_of_kings', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' };
+                        droppedItems.push(qItem);
+                        network.broadcastLootSpawn(qItem);
+                    } else if (e.isColdworm) {
+                        const qItem = { ...ITEM_BASES.viper_amulet, id: 'viper_amulet', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' };
+                        droppedItems.push(qItem);
+                        network.broadcastLootSpawn(qItem);
+                    } else if (e.isSarina) {
+                        const qItem = { id: 'khalim_heart', name: "Khalim's Heart", rarity: 'unique', icon: 'item_charm_small', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' };
+                        droppedItems.push(qItem);
+                        network.broadcastLootSpawn(qItem);
+                    } else if (e.isCouncil) {
+                        const qItem = { id: 'khalim_brain', name: "Khalim's Brain", rarity: 'unique', icon: 'item_charm_large', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' };
+                        droppedItems.push(qItem);
+                        network.broadcastLootSpawn(qItem);
+                    } else if (e.isShenk) {
+                        addCombatLog("Shenk the Overseer: 'BAAL SHALL... REWARD... ME...'", 'log-dmg');
+                    } else if (e.isHephaisto) {
+                        const hammer = { ...ITEM_BASES.hellforge_hammer, id: 'hellforge_hammer', baseId: 'hellforge_hammer', rarity: 'unique', x: e.x, y: e.y, identified: true };
+                        droppedItems.push(hammer);
+                        network.broadcastLootSpawn(hammer);
+                        addCombatLog("Hephaisto slayed! The Hellforge Hammer is ours.", 'log-crit');
+                    } else if (e.name === 'Mephisto' || e.isMephisto) {
+                        const stone = { ...ITEM_BASES.mephisto_soulstone, id: 'mephisto_soulstone', baseId: 'mephisto_soulstone', rarity: 'unique', x: e.x + 10, y: e.y + 10, identified: true };
+                        droppedItems.push(stone);
+                        network.broadcastLootSpawn(stone);
+                        addCombatLog("Mephisto's Soulstone has been recovered!", 'log-crit');
+                    }
+                    // Horadric Fragment Drops
+                    const fragChance = 0.10 + (player.magicFind || 0) / 1000;
+                    if (Math.random() < fragChance) {
+                        const fragment = {
+                            id: `frag_${Date.now()}`,
+                            name: 'Horadric Fragment',
+                            rarity: 'magic',
+                            icon: 'item_ruby',
+                            x: e.x + (Math.random() - 0.5) * 30,
+                            y: e.y + (Math.random() - 0.5) * 30
+                        };
+                        droppedItems.push(fragment);
+                        network.broadcastLootSpawn(fragment);
+                        if (fx) fx.emitBurst(fragment.x, fragment.y, '#00ffff', 10, 1);
+                    }
+                    // Standard Loot with MF/GF
+                    const pMf = p.magicFind !== undefined ? p.magicFind : (p.mf || 0);
+                    const item = loot.roll(e, { magicFind: pMf });
+                    if (item) {
+                        item.x = e.x + (Math.random() - 0.5) * 20;
+                        item.y = e.y + (Math.random() - 0.5) * 20;
+                        item.id = `loot_${Date.now()}_${Math.random()}`;
+                        item.ownerId = charName;
+                        droppedItems.push(item);
+                        network.broadcastLootSpawn(item, charName);
+
+                        if (charName === myName) {
+                            // Loot beam for rare+ items
+                            const beamColors = { rare: '#ffff00', unique: '#ff8000', set: '#00ff00', magic: '#6060ff' };
+                            const beamC = beamColors[item.rarity];
+                            if (beamC) fx.emitBurst(item.x, item.y - 20, beamC, 12, 1);
                         }
                     }
 
-                    // CEREMONIAL VICTORY
-                    const banner = $('boss-victory-announcement');
-                    if (banner) {
-                        $('vic-boss-name').textContent = e.name || 'Boss Slain';
-                        banner.classList.remove('hidden');
-                        setTimeout(() => banner.classList.add('hidden'), 4000);
-                        
-                        if (fx) fx.shake(2000, 15); // Powerful shake
-                        timeScale = 0.05; // Dramatic Slow-Mo Finish
-                        addCombatLog(`${(e.name || 'BOSS').toUpperCase()} HAS BEEN DEFEATED!`, 'log-crit');
+                    // Gold Drops
+                    const pGf = p.goldFind !== undefined ? p.goldFind : (p.gf || 0);
+                    const goldAmt = loot.rollGold(e, pGf);
+                    if (goldAmt > 0) {
+                        const goldObj = {
+                            id: `gold_${Date.now()}_${Math.random()}`,
+                            x: e.x + (Math.random() - 0.5) * 15,
+                            y: e.y + (Math.random() - 0.5) * 15,
+                            amount: goldAmt,
+                            ownerId: charName
+                        };
+                        droppedGold.push(goldObj);
+                        network.broadcastGoldSpawn(goldObj, charName);
                     }
                 }
-
-                // Standard Loot with MF/GF
-                const item = loot.roll(e, { magicFind: player.magicFind || 0 });
-                if (item) {
-                    item.x = e.x + (Math.random() - 0.5) * 20;
-                    item.y = e.y + (Math.random() - 0.5) * 20;
-                    item.id = `loot_${Date.now()}_${Math.random()}`;
-                    droppedItems.push(item);
-                    network.broadcastLootSpawn(item);
-
-                    // Loot beam for rare+ items
-                    const beamColors = { rare: '#ffff00', unique: '#ff8000', set: '#00ff00', magic: '#6060ff' };
-                    const beamC = beamColors[item.rarity];
-                    if (beamC) fx.emitBurst(item.x, item.y - 20, beamC, 12, 1);
-                }
-
-                // Quest Item Drops
-                if (e.isRadament) {
-                    const qItem = { ...ITEM_BASES.book_of_skill, id: 'book_of_skill', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'radament' };
-                    droppedItems.push(qItem);
-                    network.broadcastLootSpawn(qItem);
-                } else if (e.isBeetleburst) {
-                    const qItem = { ...ITEM_BASES.staff_of_kings, id: 'staff_of_kings', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' };
-                    droppedItems.push(qItem);
-                    network.broadcastLootSpawn(qItem);
-                } else if (e.isColdworm) {
-                    const qItem = { ...ITEM_BASES.viper_amulet, id: 'viper_amulet', rarity: 'unique', x: e.x, y: e.y, isQuestItem: true, qId: 'horadric_staff' };
-                    droppedItems.push(qItem);
-                    network.broadcastLootSpawn(qItem);
-                } else if (e.isSarina) {
-                    const qItem = { id: 'khalim_heart', name: "Khalim's Heart", rarity: 'unique', icon: 'item_charm_small', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' };
-                    droppedItems.push(qItem);
-                    network.broadcastLootSpawn(qItem);
-                } else if (e.isCouncil) {
-                    const qItem = { id: 'khalim_brain', name: "Khalim's Brain", rarity: 'unique', icon: 'item_charm_large', x: e.x, y: e.y, isQuestItem: true, qId: 'khalims_will' };
-                    droppedItems.push(qItem);
-                    network.broadcastLootSpawn(qItem);
-                } else if (e.isShenk) {
-                    addCombatLog("Shenk the Overseer: 'BAAL SHALL... REWARD... ME...'", 'log-dmg');
-                } else if (e.isHephaisto) {
-                    const hammer = { ...ITEM_BASES.hellforge_hammer, id: 'hellforge_hammer', baseId: 'hellforge_hammer', rarity: 'unique', x: e.x, y: e.y, identified: true };
-                    droppedItems.push(hammer);
-                    network.broadcastLootSpawn(hammer);
-                    addCombatLog("Hephaisto slayed! The Hellforge Hammer is ours.", 'log-crit');
-                } else if (e.name === 'Mephisto' || e.isMephisto) {
-                    const stone = { ...ITEM_BASES.mephisto_soulstone, id: 'mephisto_soulstone', baseId: 'mephisto_soulstone', rarity: 'unique', x: e.x + 10, y: e.y + 10, identified: true };
-                    droppedItems.push(stone);
-                    network.broadcastLootSpawn(stone);
-                    addCombatLog("Mephisto's Soulstone has been recovered!", 'log-crit');
-                }
-
-                // Horadric Fragment Drops
-                const fragChance = 0.10 + (player.magicFind || 0) / 1000;
-                if (Math.random() < fragChance) {
-                    const fragment = {
-                        id: `frag_${Date.now()}`,
-                        name: 'Horadric Fragment',
-                        rarity: 'magic',
-                        icon: 'item_ruby',
-                        x: e.x + (Math.random() - 0.5) * 30,
-                        y: e.y + (Math.random() - 0.5) * 30
-                    };
-                    droppedItems.push(fragment);
-                    network.broadcastLootSpawn(fragment);
-                    if (fx) fx.emitBurst(fragment.x, fragment.y, '#00ffff', 10, 1);
-                }
-
-                // Gold Drops (FIXED: Now properly pushed to droppedGold)
-                const goldAmt = loot.rollGold(e, player.goldFind || 0);
-                if (goldAmt > 0) {
-                    const goldObj = {
-                        id: `gold_${Date.now()}_${Math.random()}`,
-                        x: e.x + (Math.random() - 0.5) * 15,
-                        y: e.y + (Math.random() - 0.5) * 15,
-                        amount: goldAmt
-                    };
-                    droppedGold.push(goldObj);
-                    network.broadcastGoldSpawn(goldObj);
-                }
             }
+
 
             // Kill counter
             killCount++;
@@ -3567,7 +3595,7 @@ function getItemHtml(item, cantEquip = false, isGamble = false) {
 
     // Fallback icon logic if item.icon is missing
     let iconName = isGamble ? 'item_orb' : (item.icon || `item_${item.type || 'orb'}`);
-    
+
     // Safety: Strip ghost "_hd" suffix that might exist in old saves/injections
     if (typeof iconName === 'string') iconName = iconName.replace('_hd', '');
 
@@ -3601,7 +3629,7 @@ function getItemHtml(item, cantEquip = false, isGamble = false) {
         'item_shield_source': 'item_source',
         'item_shield_royal': 'item_shield',
         'item_shield_kite': 'item_shield_kite',
-        'item_staff_kings': 'item_staff_kings' 
+        'item_staff_kings': 'item_staff_kings'
     };
     if (iconAliases[iconName]) iconName = iconAliases[iconName];
 
@@ -3805,10 +3833,10 @@ function skillTooltipText(skillId) {
 
     let t = `<div class="tooltip-inner" style="color:#fff; min-width: 260px; padding: 12px; border: 1px solid #444; background: rgba(10,8,5,0.98); box-shadow: 0 0 25px rgba(0,0,0,0.9);">`;
     t += `<div class="tooltip-name" style="color:var(--gold); font-size: 18px; font-family: Cinzel, serif; border-bottom: 2px solid #bf642f; padding-bottom: 6px; margin-bottom: 10px;">${skill.name} <span style="color:#aaa; font-size:12px;">(Lv ${effLvl})</span></div>`;
-    
+
     const isSummon = skill.group === 'summon' || ['summon_', 'raise_', 'golem', 'skeleton', 'wolf', 'raven', 'grizzly', 'succubus', 'voidwalker'].some(k => skillId.includes(k));
     t += `<div class="tooltip-rarity" style="color:#888; font-size: 10px; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 1.5px;">— ${isSummon ? 'Summoning Skill' : 'Active Skill'} —</div>`;
-    
+
     t += `<div class="tooltip-stats" style="color:#ccc; font-size:12px; line-height: 1.5;">${formatPremiumDescription(skill.desc)}</div>`;
 
     t += `<div style="margin-top:12px; padding-top:8px; border-top:1px solid #333; display:grid; grid-template-columns: 1fr 1fr; gap: 5px;">`;
@@ -3822,7 +3850,7 @@ function skillTooltipText(skillId) {
         const dmgBase = ((skill.dmgBase || 8) + (skill.dmgPerLvl || 4) * effLvl);
         const dmgMult = (1 + (player.minionDmgPct + (player.minionDmgPct || 0)) / 100) * (1 + synBonus) * statScaling;
         const finalMinionDmg = Math.round(dmgBase * dmgMult);
-        
+
         const hpBase = (30 + effLvl * 15);
         const hpMult = (1 + (player.minionHpPct || 0) / 100) * (1 + synBonus);
         let finalMinionHp = Math.round(hpBase * hpMult);
@@ -3844,7 +3872,7 @@ function skillTooltipText(skillId) {
 
         const dmgType = skill.group === 'fire' || skill.group === 'cold' || skill.group === 'lightning' || skill.group === 'poison' || skill.group === 'shadow' || skill.group === 'holy' ? skill.group : 'physical';
         const typeBonus = player[`pct${cap(dmgType)}Dmg`] || 0;
-        
+
         const finalMultiplier = 1 + (player.pctDmg || 0) / 100 + synBonus + typeBonus / 100;
         const finalDmg = Math.round(totalBase * finalMultiplier);
 
@@ -4211,7 +4239,7 @@ bus.on('combat:damage', d => {
         } else {
             const targetName = d.target?.name || 'Enemy';
             const dmgText = `<span style="color:${color}">${d.dealt}</span>`;
-            
+
             // Differentiate source: Proc, Minion, or Player
             let sourceLabel = '';
             if (d.skillId?.includes('_proc') || d.skillId?.includes('_trigger')) {
@@ -4939,18 +4967,18 @@ injectCodexButton();
 // Also bind R key to Codex
 window.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
-    
+
     // Rune Codex
     if (key === 'u' && !document.activeElement.tagName.match(/INPUT|TEXTAREA/)) {
         openRuneCodex();
     }
-    
+
     // Manual Portal Entry
     if (key === 'e' && !document.activeElement.tagName.match(/INPUT|TEXTAREA/)) {
         if (window._nearbyPortal) {
             const o = window._nearbyPortal;
             addCombatLog(`Entering ${o.name || 'Portal'}...`, 'log-level');
-            
+
             if (o.type === 'portal') {
                 const res = o.interact(player);
                 if (res && res.type === 'PORTAL') {
@@ -5908,7 +5936,7 @@ function moveTooltip(x, y) {
 
     const offset = 15;
     const padding = 10;
-    
+
     let tx = x + offset;
     let ty = y + offset;
 
@@ -9205,6 +9233,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
 function updateRespawns() {
     if (!worldZones[zoneLevel]) return;
+    // MMO: Only the Host (or single player) handles respawns to avoid duplicates
+    if (network && network.isConnected && !network.isHost) return;
+
     const now = Date.now();
     const queue = worldZones[zoneLevel].respawnQueue;
     if (!queue) return;
